@@ -1,4 +1,6 @@
-# A Benchmark Dataset for Airborne Machine Learning
+---
+title: A Benchmark Dataset for Airborne Machine Learning
+---
 
 <div class="image-container">
     <div style="display: flex;">
