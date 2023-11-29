@@ -1,8 +1,11 @@
 # MillionTrees Dataset
 
-<img src="public/HARV_image1.png" alt="Image Placeholder" width="500">
-
-![Image Placeholder](public/sample_drone_image.png){:width="1000px"}
+<div class="image-container">
+    <div style="display: flex;">
+        <img src="public/HARV_image1.png" alt="Image Placeholder" width="50%">
+        <img src="public/open_drone_example.png" alt="Image Placeholder" width="50%">
+    </div>
+</div>
 
 The MillionTrees seeks to collect a million tree locations to create a global benchmark for machine learning models for airborne tree data. Machine learning models need large amounts of data to generate realistic predictions. Existing benchmarks often have small amounts of data, often less than 10,000 trees, from single geographic locations and resolutions. The MillionTrees will cover a range of backgrounds, taxa, focal views and resolutions. 
 
