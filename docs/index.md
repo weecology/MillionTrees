@@ -1,4 +1,4 @@
-# MillionTrees Dataset
+# A Benchmark Dataset for Airborne Machine Learning
 
 <div class="image-container">
     <div style="display: flex;">
@@ -9,22 +9,11 @@
 
 The MillionTrees seeks to collect a million tree locations to create a global benchmark for machine learning models for airborne tree data. Machine learning models need large amounts of data to generate realistic predictions. Existing benchmarks often have small amounts of data, often less than 10,000 trees, from single geographic locations and resolutions. The MillionTrees will cover a range of backgrounds, taxa, focal views and resolutions. 
 
-# How to contribute
-
-* RGB airborne data
-
-* Tree locations in stem, box, and polygon datasets.
-
 # Why do we need this benchmark?
 
-Forests underlie many ecosystem services, agricultural systems and urban planning programs. Monitoring, mapping and measuring forests is an essential task globally.
-The growth in acquisition tools has led to many attempts to capture tree information from airborne perspectives. At the core of many of these methods is the need to identify individual tree crowns to further process for species, trait, or health information. The quality of the tree segmentations substantially impacts downstream analysis.
-There have been dozens, if not hundreds, of articles predicting tree locations from airborne sensors. Here we focus on RGB images due to their low cost, uniform calibration across manufacturers and high resolution. There have been multiple recent reviews on RGB tree detection. The vast majority of articles assess proposed algorithms at one or two locations, often in similar habitat types and with little understanding about generalization across environments, sensors, resolutions, focal views and taxa. To move beyond the duplication and static constriction of the field, we need to tackle a unified concept of tree detection.
-To develop a fully global sense of tree detection we need detectors that can be useful across a range of ecosystems, tree densities and taxonomy
-Handle data from many input types, sensors and focal views. Robust in urban settings to non-tree backgrounds. Can be quickly customized to new datasets
-To achieve these goals, we need data that covers these conditions.
+Forests underlie many ecosystem services, agricultural systems and urban planning programs. Monitoring, mapping and measuring forests is an essential task globally. The growth in acquisition tools has led to many attempts to capture tree information from airborne perspectives. At the core of many of these methods is the need to identify individual tree crowns to further process for species, trait, or health information. There have been dozens, if not hundreds, of articles predicting tree locations from airborne sensors. Here we focus on *RGB images* due to their low cost, uniform calibration across manufacturers and high resolution. The vast majority of articles assess proposed algorithms at one or two locations, often in similar habitat types and with little understanding about generalization across environments, sensors, resolutions, focal views and taxa. To move beyond the duplication and static constriction of the field, we need to tackle a unified concept of tree detection that can be useful across a range of ecosystems, tree densities and taxonomy, as well as handle data from many input types, sensors and focal views. Models should be robust in urban settings to non-tree backgrounds and be quickly customized to new datasets
 
-There has been a myopic view of the task that has been overly constrained by off-the-shelf architectures, rather than the essential nature of the task. Tree localization, counting, and crown detection are all interrelated tasks using geometric representations of trees. We should not design benchmarks around current model architectures, we should put the problem first and build architectures that meet that need.
+There has been a narrow view of the task that has been overly constrained by off-the-shelf architectures, rather than the essential nature of the task. Tree localization, counting, and crown detection are all interrelated tasks using geometric representations of trees. We should not design benchmarks around current model architectures, we should put the problem first and build architectures that meet that need.
 
 # How to contribute and what attribution do authors recieve?
 
@@ -40,15 +29,15 @@ We welcome any geometric representation of trees in airborne imagery. Usually we
 
 ## Points
 
-![Image Placeholder](public/street_trees.png)
+<img src="public/street_trees.png" alt="Image Placeholder" width="50%">
 
-## Polygon
+## Polygons
 
-![Image Placeholder](public/polygon_example.png)
+<img src="public/polygon_example.png" alt="Image Placeholder" width="70%">
 
 ## Boxes
 
-![Image Placeholder](public/HARV_037.tif)
+<img src="public/HARV_037.png" alt="Image Placeholder" width="30%">
 
 # How will the data be shared?
 
