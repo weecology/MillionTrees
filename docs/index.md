@@ -11,6 +11,8 @@ title: A Benchmark Dataset for Airborne Machine Learning
 
 The MillionTrees seeks to collect a million tree locations to create a global benchmark for machine learning models for airborne tree prediction. Machine learning models need large amounts of data to generate realistic predictions. Existing benchmarks often have small amounts of data, often less than 10,000 trees, from single geographic locations and resolutions. The MillionTrees will cover a range of backgrounds, taxa, focal views and resolutions. To make this possible, we need your help!
 
+<iframe width="100%" height="450" frameborder="0" title="Felt Map" src="https://felt.com/embed/map/Untitled-Map-Yd9AtJpd7QKi9BOdGlAugfpC?loc=35.21,20.22,3z"></iframe>
+
 ## Contact
 
 * Ben Weinstein, Research Scientist, Weecology Lab, University of Florida.
@@ -26,21 +28,21 @@ Forests underlie many ecosystem services, agricultural systems and urban plannin
 
 * We are sensitive to the contributions and efforts of the hundreds of field researchers that make data collection possible. Authorship will be extended to any team with unpublished data. 
 
-* The spatial location of the points will be destroyed, such that the point locations will only be relative to the image crop. This will prevent any user from being able to use the data for analysis outside of the benchmark. All species, DBH and other metadata will be removed.
+* The spatial location of the points will be destroyed, such that the point locations will only be relative to the image crop. This will prevent any user from being able to use the data for analysis outside of the benchmark. All species, DBH and other metadata will be removed. For the images, if the geospatial location is the problem, as is it with many datasets, let the provider know that we are destroying the geospatial position, such that we crop images into pieces and remove the coordinate reference system and make any tree annotations relative to the 0,0 image origin, this way we are not releasing any geolocated data that might have privacy issues.
 
 # What does a successful dataset look like?
 
-We welcome any geometric representation of trees in airborne imagery. Usually we ask for a shapefile or text coordinates of trees and a corresponding .tif geospatial file of airborne imagery. When you overlay the two, the data should look coherent. There has been a narrow view of the task that has been overly constrained by off-the-shelf architectures, rather than the essential nature of the task. Tree localization, counting, and crown detection are all interrelated tasks using geometric representations of trees. We should not design benchmarks around current model architectures, we should put the problem first and build architectures that meet that need.
+We welcome any geometric representation of trees in airborne imagery. Points, polygons, or boxes. Usually we ask for a shapefile or text coordinates of trees and a corresponding .tif geospatial file of airborne imagery. When you overlay the two, the data should look coherent. There has been a narrow view of the task that has been overly constrained by off-the-shelf architectures, rather than the essential nature of the task. Tree localization, counting, and crown detection are all interrelated tasks using geometric representations of trees. We should not design benchmarks around current model architectures, we should put the problem first and build architectures that meet that need.
 
 <div style="display: flex; justify-content: space-between;">
-    <div style="flex-basis: 30%;">
-        <img src="public/street_trees.png" alt="Image Placeholder" width="100%">
+    <div style="flex-basis: 33%;">
+        <img src="public/street_trees.png" alt="Image Placeholder" width="110%">
     </div>
-    <div style="flex-basis: 30%;">
-        <img src="public/polygon_example.png" alt="Image Placeholder" width="100%">
+    <div style="flex-basis: 33%;">
+        <img src="public/polygon_example.png" alt="Image Placeholder" width="110%">
     </div>
-    <div style="flex-basis: 30%;">
-        <img src="public/HARV_037.png" alt="Image Placeholder" width="100%">
+    <div style="flex-basis: 33%;">
+        <img src="public/HARV_037.png" alt="Image Placeholder" width="110%">
     </div>
 </div>
 
