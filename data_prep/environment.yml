@@ -1,0 +1,11 @@
+name: MillionTrees
+channels:
+  - conda-forge
+dependencies:
+  - geopandas
+  - rasterio
+  - scipy
+  - pip:
+    - DeepForest
+    - rasterstats
+
