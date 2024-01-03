@@ -1,69 +1,186 @@
-from src.utilities import *
+from utilities import *
 import random
 import glob
 from scipy.io import loadmat
 import geopandas as gpd
 import rasterio
-from deepforest.utilities import shapefile_to_annotations
+from deepforest.utilities import shapefile_to_annotations, xml_to_annotations, crop_raster, geo_to_image_coordinates, read_file
 from deepforest.preprocess import split_raster
-from shapely.geometry import Point
+from shapely.geometry import Point, box
 import CHM
 import os
+import pandas as pd
+import shutil
 
 def Beloiu_2023():
-    annotations = read_Beloiu_2023()
+    xmls = glob.glob("/blue/ewhite/DeepForest/Beloiu_2023/labels/*")
+    annotations = []
+    for path in xmls:
+        df = read_xml_Beloiu(path)
+        gdf = read_file(df)
+        annotations.append(gdf)
+
+    annotations = pd.concat(annotations)
     annotations["label"] = "Tree"
+    annotations["source"] = "Beloiu et al. 2023"
     print("There are {} annotations in {} images".format(annotations.shape[0], len(annotations.image_path.unique())))
     images = annotations.image_path.unique()
+
+    # Convert projected tiff to png
+    for image in images:
+        with rasterio.open(os.path.join("/blue/ewhite/DeepForest/Beloiu_2023/images",image)) as src:
+            bounds = src.bounds
+            res = src.res[0]
+
+        # read tif and save as png
+        filename = crop_raster(
+            bounds=bounds,
+            rgb_path=os.path.join("/blue/ewhite/DeepForest/Beloiu_2023/images",image),
+            savedir="/blue/ewhite/DeepForest/Beloiu_2023/pngs/",
+            filename=os.path.splitext(os.path.basename(image))[0],
+            driver="PNG"
+            )
+
+    #Set image path to png
+    annotations["image_path"] = annotations.image_path.apply(lambda x: os.path.splitext(os.path.basename(x))[0] + ".png")
     random.shuffle(images)
     train_images = images[0:int(len(images)*0.9)]
     train = annotations[annotations.image_path.isin(train_images)]
     test = annotations[~(annotations.image_path.isin(train_images))]
+    
     train.to_csv("/blue/ewhite/DeepForest/Beloiu_2023/images/train.csv")
     test.to_csv("/blue/ewhite/DeepForest/Beloiu_2023/images/test.csv")
 
-def Siberia():
-    annotations = read_Siberia()
-    print("There are {} annotations in {} images".format(annotations.shape[0], len(annotations.image_path.unique())))
+    # Move all data to the common images dir
+    for image_path in annotations.image_path.unique():
+        src = os.path.join("/blue/ewhite/DeepForest/Beloiu_2023/pngs/", image_path)
+        dst = os.path.join("/blue/ewhite/DeepForest/MillionTrees/images/", image_path)
+        shutil.copy(src, dst)
+    
+    train.to_csv("/blue/ewhite/DeepForest/MillionTrees/annotations/Beloiu_2023_train.csv")
+    test.to_csv("/blue/ewhite/DeepForest/MillionTrees/annotations/Beloiu_2023_test.csv")
+
+def Siberia_polygons():
+    shps = glob.glob("/blue/ewhite/DeepForest/Siberia/vanGeffen-etal_2021b_shapefiles_allfiles/vanGeffen_et_al_SiDroForest_Individual_Polygon_Labelled/*.shp")
+    annotations = []
+    cropped_images = []
+    # There were several .tif files that did not have the correct crs compared to the .shp, read them in and covert them to the correct crs
+    for path in shps:
+        print(path)
+        ID = os.path.basename(path).split("_")[0]
+        rgb_path = "/blue/ewhite/DeepForest/Siberia/orthos/{}_RGB_orthomosaic.tif".format(ID)
+        df = gpd.read_file(path)
+        df["image_path"] = rgb_path
+        df["label"] = "Tree"
+        df = read_file(input=df)
+        src = rasterio.open(rgb_path)
+
+        if src.count == 4:
+            # Remove alpha channel
+            new_rgb_path = "/blue/ewhite/DeepForest/Siberia/orthos/{}_RGB_orthomosaic_corrected.tif".format(ID)
+            with rasterio.open(rgb_path) as src:
+                kwargs = src.meta.copy()
+                kwargs.update(count=3)
+                with rasterio.open(new_rgb_path, 'w', **kwargs) as dst:
+                    dst.write(src.read()[:3,:,:])
+        elif src.crs != df.crs:
+            dst_crs = df.crs
+            new_rgb_path = "/blue/ewhite/DeepForest/Siberia/orthos/{}_RGB_orthomosaic_corrected.tif".format(ID)
+
+            with rasterio.open(rgb_path) as src:
+                transform, width, height = calculate_default_transform(
+                    src.crs, dst_crs, src.width, src.height, *src.bounds)
+                kwargs = src.meta.copy()
+                kwargs.update({
+                    'crs': dst_crs,
+                    'transform': transform,
+                    'width': width,
+                    'height': height
+                })
+
+                with rasterio.open(new_rgb_path, 'w', **kwargs) as dst:
+                    for i in range(1, src.count + 1):
+                        reproject(
+                            source=rasterio.band(src, i),
+                            destination=rasterio.band(dst, i),
+                            src_transform=src.transform,
+                            src_crs=src.crs,
+                            dst_transform=transform,
+                            dst_crs=dst_crs,
+                            resampling=Resampling.nearest)
+        else:
+            new_rgb_path = rgb_path
+            
+        
+        df = df[df.Type=="Tree"]
+        if df.empty:
+            continue
+        df["source"] = "Kruse et al. 2021"
+        df["original_image"] = new_rgb_path
+
+        # Crop to bounded area with a small buffer
+        buffered_bounds = box(*df.total_bounds).bounds
+
+        # Translate to crop coordinates, destroys the CRS
+        df.geometry = df.geometry.translate(xoff=-buffered_bounds[0], yoff=-buffered_bounds[1])
+        filename = cropped_raster = crop_raster(
+            bounds=buffered_bounds,
+            rgb_path=new_rgb_path,
+            savedir="/blue/ewhite/DeepForest/Siberia/images/",
+            filename=ID,
+            driver="PNG"
+            )
+        df["image_path"] = os.path.basename(filename)
+        cropped_images.append(cropped_raster)
+        df.crs = None
+        
+        annotations.append(df)
+
+    annotations = pd.concat(annotations)
     images = annotations.image_path.unique()
-    random.shuffle(images)
-    train_images = annotations.image_path.drop_duplicates().sample(frac=0.8).values()
+    train_images = images[0:int(len(images)*0.8)]
     test_images = [x for x in images if x not in train_images]
-    split_train_annotations = []
-    for x in train_images:
-        selected_annotations = split_train_annotations[split_train_annotations.image_path==x]
-        split_annotations = split_raster(
-            annotations_file=selected_annotations,
-            path_to_raster=x,
-            patch_size=600,
-            save_dir="/blue/ewhite/DeepForest/Siberia/images")
-    split_train_annotations = pd.concat(split_train_annotations)
+    split_train_annotations = annotations[annotations.image_path.isin(train_images)]
+    split_test_annotations = annotations[~(annotations.image_path.isin(train_images))]
 
-    split_test_annotations = []
-    for x in test_images:
-        selected_annotations = split_test_annotations[split_test_annotations.image_path==x]
-        split_annotations = split_raster(
-            annotations_file=selected_annotations,
-            path_to_raster=x,
-            patch_size=600,
-            save_dir="/blue/ewhite/DeepForest/Siberia/images")
-    split_test_annotations = pd.concat(split_test_annotations)
-
-    #Cut into pieces 
     split_train_annotations.to_csv("/blue/ewhite/DeepForest/Siberia/images/train.csv")
     split_test_annotations.to_csv("/blue/ewhite/DeepForest/Siberia/images/test.csv")
 
+    # Move all data to the common images dir
+    for image_path in split_test_annotations.image_path.unique():
+        src = os.path.join("/blue/ewhite/DeepForest/Siberia/images/", image_path)
+        dst = os.path.join("/blue/ewhite/DeepForest/MillionTrees/images/", image_path)
+        shutil.copy(src, dst)
+    
+    for image_path in split_train_annotations.image_path.unique():
+        src = os.path.join("/blue/ewhite/DeepForest/Siberia/images/", image_path)
+        dst = os.path.join("/blue/ewhite/DeepForest/MillionTrees/images/", image_path)
+        shutil.copy(src, dst)
+
+    split_train_annotations.to_csv("/blue/ewhite/DeepForest/MillionTrees/annotations/Siberia_train.csv")
+    split_test_annotations.to_csv("/blue/ewhite/DeepForest/MillionTrees/annotations/Siberia_test.csv")
+
 def justdiggit():
-    annotations = read_justdiggit("/blue/ewhite/DeepForest/justdiggit-drone/label_sample/Annotations_trees_only.json")
+    with open("/blue/ewhite/DeepForest/justdiggit-drone/label_sample/Annotations_trees_only.json") as jsonfile:
+        data = json.load(jsonfile)    
+        ids = [x["id"] for x in data["images"]]
+        image_paths = [x["file_name"] for x in data["images"]]
+        id_df = pd.DataFrame({"id":ids,"image_path":image_paths})
+        annotation_df = []
+        for row in data["annotations"]:
+            b = {"id":row["id"],"xmin":row["bbox"][0],"ymin":row["bbox"][1],"xmax":row["bbox"][2],"ymax":row["bbox"][3]}
+            annotation_df.append(b)
+    annotation_df = pd.DataFrame(annotation_df)
+    annotations = annotation_df.merge(id_df)
+    annotations["label"] = "Tree"
+    annotations["source"] = "Justdiggit et al. 2023"
+
     print("There are {} annotations in {} images".format(annotations.shape[0], len(annotations.image_path.unique())))
     images = annotations.image_path.unique()
     random.shuffle(images)
     train_images = images[0:int(len(images)*0.8)]
     train = annotations[annotations.image_path.isin(train_images)]
-    test = annotations[~(annotations.image_path.isin(train_images))]
-
-    train["label"] = "Tree"
-    test["label"] = "Tree"
+    test = annotations[~(annotations.image_path.isin(train_images))]    
 
     train.to_csv("/blue/ewhite/DeepForest/justdiggit-drone/label_sample/train.csv")
     test.to_csv("/blue/ewhite/DeepForest/justdiggit-drone/label_sample/test.csv")
@@ -81,6 +198,7 @@ def Treeformer():
         points = f["image_info"][0][0][0][0][0]
         df = pd.DataFrame(points,columns=["x","y"])
         df["label"] = "Tree"
+        df["source"] = "Amirkolaee et al. 2023"
         image_path = "_".join(os.path.splitext(os.path.basename(x))[0].split("_")[1:])
         image_path = "{}.jpg".format(image_path)
         image_dir = os.path.dirname(os.path.dirname(x))
@@ -112,6 +230,26 @@ def Treeformer():
     train_ground_truth.to_csv("/blue/ewhite/DeepForest/TreeFormer/all_images/train.csv")
     val_ground_truth.to_csv("/blue/ewhite/DeepForest/TreeFormer/all_images/validation.csv")
 
+    # Copy to MillionTrees folder
+    for image_path in test_ground_truth.image_path.unique():
+        src = os.path.join("/blue/ewhite/DeepForest/TreeFormer/test_data/images/", image_path)
+        dst = os.path.join("/blue/ewhite/DeepForest/MillionTrees/images/", image_path)
+        shutil.copy(src, dst)
+    
+    for image_path in train_ground_truth.image_path.unique():
+        src = os.path.join("/blue/ewhite/DeepForest/TreeFormer/train_data/images/", image_path)
+        dst = os.path.join("/blue/ewhite/DeepForest/MillionTrees/images/", image_path)
+        shutil.copy(src, dst)
+    
+    for image_path in val_ground_truth.image_path.unique():
+        src = os.path.join("/blue/ewhite/DeepForest/TreeFormer/valid_data/images/", image_path)
+        dst = os.path.join("/blue/ewhite/DeepForest/MillionTrees/images/", image_path)
+        shutil.copy(src, dst)
+    
+    test_ground_truth.to_csv("/blue/ewhite/DeepForest/MillionTrees/annotations/TreeFormer_test.csv")
+    train_ground_truth.to_csv("/blue/ewhite/DeepForest/MillionTrees/annotations/TreeFormer_train.csv")
+    val_ground_truth.to_csv("/blue/ewhite/DeepForest/MillionTrees/annotations/TreeFormer_validation.csv")
+
 def Ventura():
     """In the current conception, using all Ventura data and not comparing against the train-test split"""
     all_csvs = glob.glob("/blue/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/csv/*.csv")
@@ -137,6 +275,7 @@ def Ventura():
 
 def Cloutier2023():
     # Zone 3 is test, Zone 1 and 2 is train. Intentionally vary window size.
+
     drone_flights = glob.glob("/blue/ewhite/DeepForest/Cloutier2023/**/*.tif",recursive=True)
     zone1 = "/blue/ewhite/DeepForest/Cloutier2023/quebec_trees_dataset_2021-06-17/Z1_polygons.gpkg"
     zone2 = "/blue/ewhite/DeepForest/Cloutier2023/quebec_trees_dataset_2021-06-17/Z2_polygons.gpkg"
@@ -160,6 +299,45 @@ def Cloutier2023():
     test.to_csv("/blue/ewhite/DeepForest/Cloutier2023/images/test.csv")
     train.to_csv("/blue/ewhite/DeepForest/Cloutier2023/images/train.csv")
 
+def Jansen_2023():
+    shps = glob.glob("/blue/ewhite/DeepForest/Jansen_2023/images/*.shp")
+    images = "/blue/ewhite/DeepForest/Jansen_2023/*.tif"
+
+    for image in images:
+        basename = os.path.splitext(os.path.basename(image))[0]
+        matching_shp = [x for x in shps if basename in shps]
+        annotations = shapefile_to_annotations(matching_shp, rgb=image)
+        split_annotations_1 = split_raster(
+            annotations,
+            path_to_raster=image,
+            patch_size=1000,
+            allow_empty=False,
+            base_dir="/blue/ewhite/DeepForest/Hickman2021/images/")
+        
+        split_annotations_1.to_csv("/blue/ewhite/DeepForest/Hickman2021/images/train.csv")
+        
+
+def Hickman2021():
+    rgb = "/blue/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop1.tif"
+    shp = "/blue/ewhite/DeepForest/Hickman2021/manual_crowns_sepilok.shp"
+    
+    annotations = shapefile_to_annotations(shp, rgb=rgb)
+    split_annotations_1 = split_raster(
+        annotations,
+        path_to_raster="RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop1.tif",
+        patch_size=2000,
+        allow_empty=False,
+        base_dir="/blue/ewhite/DeepForest/Hickman2021/images/")
+    
+    rgb = "/blue/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop1.tif"
+    annotations = shapefile_to_annotations(shp, rgb=rgb)
+    split_annotations_1 = split_raster(
+        annotations,
+        path_to_raster="RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop1.tif",
+        patch_size=2000,
+        allow_empty=False,
+        base_dir="/blue/ewhite/DeepForest/Hickman2021/images/")
+    
 def HemmingSchroeder():
     annotations = gpd.read_file("/blue/ewhite/DeepForest/HemmingSchroeder/data/training/trees_2017_training_filtered_labeled.shp")
     # There a many small plots, each with a handful of annotations
@@ -186,7 +364,7 @@ def HemmingSchroeder():
                 basename = "{}_{}".format(sampleid, year)
                 year_annotation = sample_annotations.copy()
                 year_annotation["image_path"] = basename
-                crop(
+                crop_raster(
                     bounds=plot_location.bounds,
                     sensor_path=rgb_path,
                     savedir="/blue/ewhite/DeepForest/HemmingSchroeder/data/training/images/",
@@ -212,8 +390,8 @@ def HemmingSchroeder():
 #    #Split into iamges. 
 #    shapefile_to_annotations()
    
-
-def generate_benchmark(BENCHMARK_PATH):
+def generate_NEON_benchmark():
+    BENCHMARK_PATH = "/orange/idtrees-collab/NeonTreeEvaluation/"
     tifs = glob.glob(BENCHMARK_PATH + "evaluation/RGB/*.tif")
     xmls = [os.path.splitext(os.path.basename(x))[0] for x in tifs] 
     xmls = [os.path.join(BENCHMARK_PATH, "annotations", x) + ".xml" for x in xmls] 
@@ -222,11 +400,112 @@ def generate_benchmark(BENCHMARK_PATH):
     annotation_list = []   
     for xml_path in xmls:
         try:
-            annotation = utilities.xml_to_annotations(xml_path)
+            annotation = xml_to_annotations(xml_path)
         except:
             continue
         annotation_list.append(annotation)
-    benchmark_annotations = pd.concat(annotation_list, ignore_index=True)      
+    benchmark_annotations = pd.concat(annotation_list, ignore_index=True)
+
+    benchmark_annotations["source"] = "NEON_benchmark"
+    for image_path in benchmark_annotations.image_path.unique():
+        dst = os.path.join(BENCHMARK_PATH, "evaluation/RGB/", image_path)
+        shutil.copy(dst, "/blue/ewhite/DeepForest/NEON_benchmark/images/")
+
+    benchmark_annotations.to_csv("/blue/ewhite/DeepForest/NEON_benchmark/images/test.csv")
+
+    # Copy images to test location
+    benchmark_annotations["source"] = "NEON_benchmark"
+    for image_path in benchmark_annotations.image_path.unique():
+        dst = os.path.join(BENCHMARK_PATH, "evaluation/RGB/", image_path)
+        shutil.copy(dst, "/blue/ewhite/DeepForest/NEON_benchmark/images/")
+
+  
+    ## Train annotations ##
+
+    BASE_PATH = "/orange/ewhite/b.weinstein/NeonTreeEvaluation/hand_annotations/"
+    #convert hand annotations from xml into retinanet format
+    xmls = glob.glob(BENCHMARK_PATH + "annotations/" + "*.xml")
+    annotation_list = []
+    for xml in xmls:
+        #check if it is in the directory
+        image_name = "{}.tif".format(os.path.splitext(os.path.basename(xml))[0])
+        if os.path.exists(os.path.join(BASE_PATH,image_name)):
+            print(xml)
+            annotation = xml_to_annotations(xml)
+            annotation_list.append(annotation)
+        
+    #Collect hand annotations
+    annotations = pd.concat(annotation_list, ignore_index=True)      
+    
+    #collect shapefile annotations
+    shps = glob.glob(BASE_PATH + "*.shp")
+    shps_tifs = glob.glob(BASE_PATH + "*.tif")
+    shp_results = []
+    for shp in shps: 
+        print(shp)
+        rgb = "{}.tif".format(os.path.splitext(shp)[0])
+        shp_df = shapefile_to_annotations(shp, rgb)
+        shp_df = pd.DataFrame(shp_df)        
+        shp_results.append(shp_df)
+    
+    shp_results = pd.concat(shp_results,ignore_index=True)
+    annotations = pd.concat([annotations,shp_results])
+    
+    #force dtype
+    annotations.xmin = annotations.xmin.astype(int)
+    annotations.ymin = annotations.ymin.astype(int)
+    annotations.xmax = annotations.xmax.astype(int)
+    annotations.ymax = annotations.ymax.astype(int)
+    
+    annotations.to_csv(BASE_PATH + "hand_annotations.csv",index=False)
+    
+    #Collect tiles
+    xmls = glob.glob(BASE_PATH + "*.xml")
+    xmls = [os.path.splitext(os.path.basename(x))[0] for x in xmls] 
+    raster_list = [BASE_PATH + x + ".tif" for x in xmls] 
+    raster_list = raster_list + shps_tifs 
+    
+    cropped_annotations = [ ]
+    
+    for raster in raster_list:
+        try:
+            annotations_df= split_raster(path_to_raster=raster,
+                                            annotations_file=BASE_PATH + "hand_annotations.csv",
+                                            save_dir=BASE_PATH + "crops/",
+                                            patch_size=400,
+                                            patch_overlap=0.05)
+        except ValueError:
+            continue
+        cropped_annotations.append(annotations_df)
+    
+    ##Gather annotation files into a single file
+    train_annotations = pd.concat(cropped_annotations, ignore_index=True)   
+    
+    #Ensure column order
+    train_annotations.to_csv("/blue/ewhite/DeepForest/NEON_benchmark/images/train.csv",index=False, header=True)
+   
+    train_annotations["source"] = "NEON_benchmark"
+    for image_path in train_annotations.image_path.unique():
+        dst = os.path.join(BASE_PATH, "crops", image_path)
+        shutil.copy(dst, "/blue/ewhite/DeepForest/NEON_benchmark/images/")
+
+def Ryoungseob_2023():
+    xmls = glob.glob("/blue/ewhite/DeepForest/Ryoungseob_2023/train_datasets/annotations/*.xml")
+    
+    #Load and format xmls
+    annotation_list = []   
+    for xml_path in xmls:
+        try:
+            annotation = xml_to_annotations(xml_path)
+        except:
+            continue
+        annotation_list.append(annotation)
+    annotations = pd.concat(annotation_list, ignore_index=True)      
+    annotations["label"] = "Tree"
+    annotations["source"] = "Kwon et al. 2023"  
+    
+    # Train only
+    annotations.to_csv("/blue/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv")
 
 def NEON_Trees():
     """Transform raw NEON data into clean shapefile   
@@ -313,7 +592,7 @@ def NEON_Trees():
         bounds = bounds.to_crs(epsg).total_bounds
         try:
             sensor_path = find_sensor_path(bounds=list(bounds), lookup_pool=rgb_pool)
-            crop(
+            crop_raster(
                 bounds=bounds,
                 sensor_path=sensor_path,
                 savedir="/blue/ewhite/DeepForest/NEON_Trees/images/",
@@ -330,7 +609,7 @@ def NEON_Trees():
 
 # Uncomment to regenerate each dataset
 #Beloiu_2023()
-#Siberia()
+Siberia_polygons()
 #justdiggit()
 #ReForestTree()
 #Treeformer()
@@ -338,5 +617,7 @@ def NEON_Trees():
 #Cloutier2023()
 #HemmingSchroeder()
 #ForestGEO()
-NEON_Trees()
-
+#NEON_Trees()
+#Ryoungseob_2023()
+#Hickman2021()
+#generate_NEON_benchmark()
