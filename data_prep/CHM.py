@@ -1,7 +1,7 @@
 #CHM height module. Given a x,y location and a pool of CHM images, find the matching location and extract the crown level CHM measurement
 import glob
 import numpy as np 
-from src.utilities import find_sensor_path
+from utilities import find_sensor_path
 import rasterstats
 import geopandas as gpd
 import pandas as pd

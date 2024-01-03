@@ -13,6 +13,8 @@ import rasterio
 import rasterstats
 import math
 import numpy as np
+from rasterio.warp import calculate_default_transform, reproject, Resampling
+
 
 def read_config(config_path):
     """Read config yaml file"""
@@ -78,18 +80,8 @@ def read_xml_Beloiu(path):
 
     return df
 
-def read_Beloiu_2023():
-    xmls = glob.glob("/blue/ewhite/DeepForest/Beloiu_2023/labels/*")
-    annotations = []
-    for path in xmls:
-        df = read_xml_Beloiu(path)
-        annotations.append(df)
-    annotations = pd.concat(annotations)
-    
-    return annotations
-    #split into train and test 
 
-def read_Siberia():
+def read_Siberia_points():
     shps = glob.glob("/blue/ewhite/DeepForest/Siberia/labels/*.shp")
     annotations = []
     for path in shps:
@@ -99,23 +91,10 @@ def read_Siberia():
             rgb="/blue/ewhite/DeepForest/Siberia/orthos/{}_RGB_orthomosaic.tif".format(ID))
         annotations.append(df)
     annotations = pd.concat(annotations)
+
+    annotations["source"] = "Kruse et al. 2021"
     
     return annotations
-
-def read_justdiggit(path):
-    with open(path) as jsonfile:
-        data = json.load(jsonfile)    
-    ids = [x["id"] for x in data["images"]]
-    image_paths = [x["file_name"] for x in data["images"]]
-    id_df = pd.DataFrame({"id":ids,"image_path":image_paths})
-    annotation_df = []
-    for row in data["annotations"]:
-        b = {"id":row["id"],"xmin":row["bbox"][0],"ymin":row["bbox"][1],"xmax":row["bbox"][2],"ymax":row["bbox"][3]}
-        annotation_df.append(b)
-    annotation_df = pd.DataFrame(annotation_df)
-    annotation_df = annotation_df.merge(id_df)
-
-    return annotation_df
 
 def bounds_to_geoindex(bounds):
     """Convert an extent into NEONs naming schema
@@ -170,32 +149,4 @@ def find_sensor_path(lookup_pool, shapefile=None, bounds=None, geo_index=None, a
     
 def year_from_tile(path):
     return path.split("/")[-8]
-
-def crop(bounds, sensor_path=None, savedir = None, basename = None, rasterio_src=None, as_numpy=False):
-    """Given a 4 pointed bounding box, crop sensor data"""
-    left, bottom, right, top = bounds 
-    if rasterio_src is None:
-        src = rasterio.open(sensor_path)
-    else:
-        src = rasterio_src
-    img = src.read(window=rasterio.windows.from_bounds(left, bottom, right, top, transform=src.transform)) 
-    if img.size == 0:
-        raise ValueError("Bounds {} does not create a valid crop for source {}".format(bounds, src.transform))    
-    if (img==-9999).any():
-        raise ValueError("Crown has no data value of -9999")
-    if savedir:
-        if as_numpy:
-            filename = "{}/{}.npy".format(savedir, basename)            
-            np.save(filename, img)
-        else:
-            res = src.res[0]
-            height = (top - bottom)/res
-            width = (right - left)/res                 
-            filename = "{}/{}.tif".format(savedir, basename)
-            with rasterio.open(filename, "w", driver="GTiff",height=height, width=width, count = img.shape[0], dtype=img.dtype) as dst:
-                dst.write(img)
-    if savedir:
-        return filename
-    else:
-        return img   
     
