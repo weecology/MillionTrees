@@ -81,4 +81,8 @@ The working document describing technical details of evaluation is still in its 
 | Boxes           | No                     | Ecuador                       | 2cm              | 80m        | 4665        | https://arxiv.org/pdf/2201.11192.pdf                                             | Reiersen et al. 2023                                                   |
 | Polygons        |                        | Siberia, Russia               | 1cm              |            | 18942       | https://doi.org/10.1594/PANGAEA.933263                                           | Kruse et al. 2022                                                      |
 | Points          | Yes                    | California, USA               | 60cm             | 150m       | 24563       | https://github.com/jonathanventura/urban-tree-detection                          | [(Ventura et al., 2022)](https://www.zotero.org/google-docs/?oiAnbW)   |
+<<<<<<< HEAD
 
+=======
+| Box             | Yes                    | Suwon, South Korea            | 25cm             | 625m       | 3828        | \-                                                                               | [(Kwon et al., 2023)](https://www.zotero.org/google-docs/?egZBIv)      |
+>>>>>>> a53df94 (adding wilds format)
