@@ -28,6 +28,20 @@ Forests underlie many ecosystem services, agricultural systems and urban plannin
 
 * The spatial location of the points will be destroyed, such that the point locations will only be relative to the image crop. This will prevent any user from being able to use the data for analysis outside of the benchmark. All species, DBH and other metadata will be removed. For the images, if the geospatial location is the problem, as is it with many datasets, let the provider know that we are destroying the geospatial position, such that we crop images into pieces and remove the coordinate reference system and make any tree annotations relative to the 0,0 image origin, this way we are not releasing any geolocated data that might have privacy issues.
 
+### Removing spatial data projection
+We are always happy to help assist in data curation. No actions are needed before sharing data. All data will be treated confidentially and shared according to the bullets above. However, If you prefer to remove the spatial projection before sharing the data, [here is a sample code to convert projected data into unprojected data](https://github.com/weecology/MillionTrees/blob/main/data_prep/destroy_geo.py).
+
+
+<div style="display: flex; justify-content: space-between;">
+    <div style="flex-basis: 50%;">
+        <img src="public/with_projection.png" alt="Before" width="50%">
+    </div>
+    <div style="flex-basis: 50%;">
+        <img src="public/without_projection.png" alt="After" width="50%">
+    </div>
+</div>
+
+
 # What does a successful dataset look like?
 
 We welcome any geometric representation of trees in airborne imagery. Points, polygons, or boxes. Usually we ask for a shapefile or text coordinates of trees and a corresponding .tif geospatial file of airborne imagery. When you overlay the two, the data should look coherent. There has been a narrow view of the task that has been overly constrained by off-the-shelf architectures, rather than the essential nature of the task. Tree localization, counting, and crown detection are all interrelated tasks using geometric representations of trees. We should not design benchmarks around current model architectures, we should put the problem first and build architectures that meet that need.
@@ -67,3 +81,4 @@ The working document describing technical details of evaluation is still in its 
 | Boxes           | No                     | Ecuador                       | 2cm              | 80m        | 4665        | https://arxiv.org/pdf/2201.11192.pdf                                             | Reiersen et al. 2023                                                   |
 | Polygons        |                        | Siberia, Russia               | 1cm              |            | 18942       | https://doi.org/10.1594/PANGAEA.933263                                           | Kruse et al. 2022                                                      |
 | Points          | Yes                    | California, USA               | 60cm             | 150m       | 24563       | https://github.com/jonathanventura/urban-tree-detection                          | [(Ventura et al., 2022)](https://www.zotero.org/google-docs/?oiAnbW)   |
+
