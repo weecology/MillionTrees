@@ -11,10 +11,6 @@ title: A Benchmark Dataset for Airborne Machine Learning
 
 The MillionTrees seeks to collect a million tree locations to create a global benchmark for machine learning models for airborne tree prediction. Machine learning models need large amounts of data to generate realistic predictions. Existing benchmarks often have small amounts of data, often less than 10,000 trees, from single geographic locations and resolutions. The MillionTrees will cover a range of backgrounds, taxa, focal views and resolutions. To make this possible, we need your help!
 
-<iframe width="130%" height="500" frameborder="0" title="Felt Map" src="https://felt.com/embed/map/Untitled-Map-Yd9AtJpd7QKi9BOdGlAugfpC?loc=35.21,20.22,3z"></iframe>
-
-Edit the map using [Felt](https://felt.com/map/MillionTrees-Yd9AtJpd7QKi9BOdGlAugfpC?loc=35.36,17.67,3z&share=1).
-
 ## Contact
 
 * Ben Weinstein, Research Scientist, Weecology Lab, University of Florida.
