@@ -34,10 +34,10 @@ We are always happy to help assist in data curation. No actions are needed befor
 
 <div style="display: flex; justify-content: space-between;">
     <div style="flex-basis: 50%;">
-        <img src="public/with_projection.png" alt="Before" width="50%">
+        <img src="public/with_projection.png" alt="Before" width="100%">
     </div>
     <div style="flex-basis: 50%;">
-        <img src="public/without_projection.png" alt="After" width="50%">
+        <img src="public/without_projection.png" alt="After" width="100%">
     </div>
 </div>
 
