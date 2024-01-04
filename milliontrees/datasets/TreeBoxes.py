@@ -13,35 +13,43 @@ from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
 
 
-class IWildCamDataset(milliontreesDataset):
+class TreeBoxes(milliontreesDataset):
     """
-        The iWildCam2020 dataset.
-        This is a modified version of the original iWildCam2020 competition dataset.
+        The TreeBoxes dataset is a collection of tree annotations annotated as four pointed bounding boxes.
+        The dataset is comprised of many sources from across the world. There are 5 splits:
+            - Random: 80% of the data randomly split into train and 20% in test
+            - location: 80% of the locations randomly split into train and 20% in test
         Supported `split_scheme`:
-            - 'official'
+            - 'Random'
+            - 'location'
         Input (x):
             RGB images from camera traps
         Label (y):
-            y is one of 186 classes corresponding to animal species
+            y is a n x 4-dimensional vector where each line represents a box coordinate (x_min, y_min, x_max, y_max)
         Metadata:
-            Each image is annotated with the ID of the location (camera trap) it came from.
+            Each image is annotated with the following metadata
+                - location (int): location id
+                - source (int): source id
+                - resolution (int): resolution of image
+                - focal view (int): focal view of image
+
         Website:
-            https://www.kaggle.com/c/iwildcam-2020-fgvc7
+            https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
         Original publication:
-            @article{beery2020iwildcam,
-            title={The iWildCam 2020 Competition Dataset},
-            author={Beery, Sara and Cole, Elijah and Gjoka, Arvi},
-            journal={arXiv preprint arXiv:2004.10340},
-                    year={2020}
+            @article{Weinstein2020,
+            title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
+            author={Weinstein BG, Graves SJ, Marconi S, Singh A, Zare A, Stewart D, et al.},
+            journal={PLoS Comput Biol},
+                    year={2021},
+            doi={10.1371/journal.pcbi.1009180}
             }
         License:
-            This dataset is distributed under Community Data License Agreement – Permissive – Version 1.0
-            https://cdla.io/permissive-1-0/
+            This dataset is distributed under Creative Commons Attribution License
         """
-    _dataset_name = 'iwildcam'
+    _dataset_name = 'TreeBoxes'
     _versions_dict = {
-        '2.0': {
-            'download_url': 'https://worksheets.codalab.org/rest/bundles/0x6313da2b204647e79a14b468131fcd64/contents/blob/',
+        '0.0': {
+            'download_url': 'https://zenodo.org/record/10456914',
             'compressed_size': 11_957_420_032}}
 
 
@@ -81,26 +89,12 @@ class IWildCamDataset(milliontreesDataset):
         self._n_groups = n_groups
         assert len(np.unique(df['location_remapped'])) == self._n_groups
 
-        # Sequence info
-        n_sequences = max(df['sequence_remapped']) + 1
-        self._n_sequences = n_sequences
-        assert len(np.unique(df['sequence_remapped'])) == self._n_sequences
-
-        # Extract datetime subcomponents and include in metadata
-        df['datetime_obj'] = df['datetime'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
-        df['year'] = df['datetime_obj'].apply(lambda x: int(x.year))
-        df['month'] = df['datetime_obj'].apply(lambda x: int(x.month))
-        df['day'] = df['datetime_obj'].apply(lambda x: int(x.day))
-        df['hour'] = df['datetime_obj'].apply(lambda x: int(x.hour))
-        df['minute'] = df['datetime_obj'].apply(lambda x: int(x.minute))
-        df['second'] = df['datetime_obj'].apply(lambda x: int(x.second))
-
         self._metadata_array = torch.tensor(np.stack([df['location_remapped'].values,
                             df['sequence_remapped'].values,
                             df['year'].values, df['month'].values, df['day'].values,
                             df['hour'].values, df['minute'].values, df['second'].values,
                             self.y_array], axis=1))
-        self._metadata_fields = ['location', 'sequence', 'year', 'month', 'day', 'hour', 'minute', 'second', 'y']
+        self._metadata_fields = ['location', 'year', 'y']
 
         # eval grouper
         self._eval_grouper = CombinatorialGrouper(
@@ -151,8 +145,7 @@ class IWildCamDataset(milliontreesDataset):
         Output:
             - x (Tensor): Input features of the idx-th data point
         """
-
-        # All images are in the train folder
+        # All images are in the images folder
         img_path = self.data_dir / 'train' / self._input_array[idx]
         img = Image.open(img_path)
 
