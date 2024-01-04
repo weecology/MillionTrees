@@ -9,6 +9,10 @@ The following is the skeleton of this README inspired by the Wilds Benchmark.
 
 ## Installation
 
+```
+pip install MillionTrees
+```
+
 ### Requirements
 
 ### Example script requirements
