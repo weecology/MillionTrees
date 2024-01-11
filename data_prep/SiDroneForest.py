@@ -93,3 +93,18 @@ def Siberia_polygons():
         src = os.path.join("/blue/ewhite/DeepForest/Siberia/images/", image_path)
         dst = os.path.join("/blue/ewhite/DeepForest/MillionTrees/images/", image_path)
         shutil.copy(src, dst) 
+
+def read_Siberia_points():
+    shps = glob.glob("/blue/ewhite/DeepForest/Siberia/labels/*.shp")
+    annotations = []
+    for path in shps:
+        ID = os.path.basename(path).split("_")[0]
+        df = read_file(
+            path,
+            rgb="/blue/ewhite/DeepForest/Siberia/orthos/{}_RGB_orthomosaic.tif".format(ID))
+        annotations.append(df)
+    annotations = pd.concat(annotations)
+
+    annotations["source"] = "Kruse et al. 2021"
+    
+    return annotations
