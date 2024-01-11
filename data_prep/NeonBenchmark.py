@@ -61,10 +61,9 @@ def generate_NEON_benchmark():
         rgb = "{}.tif".format(os.path.splitext(shp)[0])
         gdf = gpd.read_file(shp)
         gdf["label"] = "Tree"
-        shp_df = shapefile_to_annotations(gdf, rgb)
+        shp_df = read_file(gdf, root_dir=BASE_PATH)
         shp_df = pd.DataFrame(shp_df)        
         shp_results.append(shp_df)
-    
     
     shp_results = pd.concat(shp_results,ignore_index=True)
     annotations = pd.concat([annotations,shp_results])

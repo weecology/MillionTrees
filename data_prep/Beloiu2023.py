@@ -92,7 +92,8 @@ def Beloiu_2023():
     train["split"] = "train"
     test["split"] = "test"
 
-    to_save = pd.concat([train,test]).to_csv("/blue/ewhite/DeepForest/Beloiu_2023/annotations.csv")
+    to_save = pd.concat([train,test])
+    to_save.to_csv("/blue/ewhite/DeepForest/Beloiu_2023/annotations.csv")
     to_save.to_csv("/blue/ewhite/DeepForest/Beloiu_2023/pngs/annotations.csv")
 
     # Move all data to the common images dir
