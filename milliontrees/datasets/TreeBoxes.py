@@ -13,7 +13,7 @@ from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
 
 
-class TreeBoxes(milliontreesDataset):
+class TreeBoxesDataset(milliontreesDataset):
     """
         The TreeBoxes dataset is a collection of tree annotations annotated as four pointed bounding boxes.
         The dataset is comprised of many sources from across the world. There are 5 splits:

@@ -4,9 +4,9 @@ import time
 import torch
 import numpy as np
 
-class WILDSDataset:
+class MillionTreesDataset:
     """
-    Shared dataset class for all WILDS datasets.
+    Shared dataset class for all MillionTrees datasets.
     Each data point in the dataset is an (x, y, metadata) tuple, where:
     - x is the input features
     - y is the target
@@ -64,7 +64,7 @@ class WILDSDataset:
                             Used for fast development on a small dataset.
             - transform (function): Any data transformations to be applied to the input x.
         Output:
-            - subset (WILDSSubset): A (potentially subsampled) subset of the WILDSDataset.
+            - subset (MillionTreesSubset): A (potentially subsampled) subset of the WILDSDataset.
         """
         if split not in self.split_dict:
             raise ValueError(f"Split {split} not found in dataset's split_dict.")
@@ -77,7 +77,7 @@ class WILDSDataset:
             num_to_retain = int(np.round(float(len(split_idx)) * frac))
             split_idx = np.sort(np.random.permutation(split_idx)[:num_to_retain])
 
-        return WILDSSubset(self, split_idx, transform)
+        return MillionTreesSubset(self, split_idx, transform)
 
     def _add_coarse_domain_metadata(self):
         """
@@ -215,7 +215,7 @@ class WILDSDataset:
         e.g., {'train': 0, 'val': 1, 'test': 2}.
         Keys should match up with split_names.
         """
-        return getattr(self, '_split_dict', WILDSDataset.DEFAULT_SPLITS)
+        return getattr(self, '_split_dict', MillionTreesDataset.DEFAULT_SPLITS)
 
     @property
     def split_names(self):
@@ -224,14 +224,14 @@ class WILDSDataset:
         e.g., {'train': 'Train', 'val': 'Validation', 'test': 'Test'}.
         Keys should match up with split_dict.
         """
-        return getattr(self, '_split_names', WILDSDataset.DEFAULT_SPLIT_NAMES)
+        return getattr(self, '_split_names', MillionTreesDataset.DEFAULT_SPLIT_NAMES)
 
     @property
     def source_domain_splits(self):
         """
         List of split IDs that are from the source domain.
         """
-        return getattr(self, '_source_domain_splits', WILDSDataset.DEFAULT_SOURCE_DOMAIN_SPLITS)
+        return getattr(self, '_source_domain_splits', MillionTreesDataset.DEFAULT_SOURCE_DOMAIN_SPLITS)
 
     @property
     def split_array(self):
@@ -344,8 +344,7 @@ class WILDSDataset:
     def dataset_exists_locally(self, data_dir, version_file):
         download_url = self.versions_dict[self.version]['download_url']
         # There are two ways to download a dataset:
-        # 1. Automatically through the WILDS package
-        # 2. From a third party (e.g. OGB-MolPCBA is downloaded through the OGB package)
+        # 1. Automatically through the MillionTrees package
         # Datasets downloaded from a third party need not have a download_url and RELEASE text file.
         return (
             os.path.exists(data_dir) and (
@@ -371,9 +370,8 @@ class WILDSDataset:
                 f'This might take some time for large datasets.'
             )
 
-        from wilds.datasets.download_utils import download_and_extract_archive
+        from milliontrees.datasets.download_utils import download_and_extract_archive
         print(f'Downloading dataset to {data_dir}...')
-        print(f'You can also download the dataset manually at https://wilds.stanford.edu/downloads.')
 
         try:
             start_time = time.time()
@@ -404,7 +402,6 @@ class WILDSDataset:
                 f'You are currently using version {self.version}.\n'
                 f'We highly recommend updating the dataset by not specifying the older version in the '
                 f'command-line argument or dataset constructor.\n'
-                f'See https://wilds.stanford.edu/changelog for changes.\n'
                 f'*****************************\n')
         elif latest_minor_version > current_minor_version:
             print(
@@ -412,7 +409,6 @@ class WILDSDataset:
                 f'{self.dataset_name} has been updated to version {self.latest_version}.\n'
                 f'You are currently using version {self.version}.\n'
                 f'Please consider updating the dataset.\n'
-                f'See https://wilds.stanford.edu/changelog for changes.\n'
                 f'*****************************\n')
 
     @staticmethod
@@ -470,7 +466,7 @@ class WILDSDataset:
         return results, results_str
 
 
-class WILDSSubset(WILDSDataset):
+class MillionTreesSubset(MillionTreesDataset):
     def __init__(self, dataset, indices, transform, do_transform_y=False):
         """
         This acts like `torch.utils.data.Subset`, but on `WILDSDatasets`.

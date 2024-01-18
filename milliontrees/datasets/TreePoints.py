@@ -13,7 +13,7 @@ from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
 
 
-class TreePoints(milliontreesDataset):
+class TreePointsDataset(milliontreesDataset):
     """
         The TreePoints dataset is a collection of tree annotations annotated as x,y locations.
         The dataset is comprised of many sources from across the world. There are 5 splits:
