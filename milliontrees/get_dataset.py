@@ -23,11 +23,25 @@ def get_dataset(dataset: str, version: Optional[str] = None, unlabeled: bool = F
     if unlabeled and dataset not in milliontrees.unlabeled_datasets:
         raise ValueError(f'Unlabeled data is not available for {dataset}. Must be one of {milliontrees.unlabeled_datasets}.')
 
-    elif dataset == 'iwildcam':
+    elif dataset == 'TreePoints':
         if unlabeled:
-            from milliontrees.datasets.unlabeled.iwildcam_unlabeled_dataset import IWildCamUnlabeledDataset
-            return IWildCamUnlabeledDataset(version=version, **dataset_kwargs)
+            from milliontrees.datasets.unlabeled.TreePointsUnlabeled import TreePoints_Unlabeled_Dataset
+            return TreePoints_Unlabeled_Dataset(version=version, **dataset_kwargs)
         else:
-            from milliontrees.datasets.iwildcam_dataset import IWildCamDataset # type:ignore
-            return IWildCamDataset(version=version, **dataset_kwargs)
+            from milliontrees.datasets.TreePoints import TreePointsDataset # type:ignore
+            return TreePointsDataset(version=version, **dataset_kwargs)
 
+    elif dataset == 'TreePolygons':
+        if unlabeled:
+            from milliontrees.datasets.unlabeled.TreePolygonsUnlabeled import TreePolygons_Unlabeled_Dataset
+            return TreePolygons_Unlabeled_Dataset(version=version, **dataset_kwargs)
+        else:
+            from milliontrees.datasets.TreePolygons import TreePolygonsDataset # type:ignore
+            return TreePolygonsDataset(version=version, **dataset_kwargs)
+    elif dataset == 'TreeBoxes':
+        if unlabeled:
+            from milliontrees.datasets.unlabeled.TreeBoxesUnlabeled import TreeBoxes_Unlabeled_Dataset
+            return TreeBoxes_Unlabeled_Dataset(version=version, **dataset_kwargs)
+        else:
+            from milliontrees.datasets.TreeBoxes import TreeBoxesDataset # type:ignore
+            return TreeBoxesDataset(version=version, **dataset_kwargs)

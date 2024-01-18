@@ -22,7 +22,7 @@ def HemmingSchroeder():
     # Find RGB images for each plot location
     rgb_pool = glob.glob("/orange/ewhite/NeonData/*/DP3.30010.001/**/Camera/**/*.tif", recursive=True)
     plot_locations = gpd.read_file("/blue/ewhite/DeepForest/HemmingSchroeder/data/training/training_sample_sites.shp")
-    plot_locations = plot_locations[plot_locations.sample_id.isin(annotations.sampleid)].head(10)
+    plot_locations = plot_locations[plot_locations.sample_id.isin(annotations.sampleid)]
     
     # Generate images and annotations for each plot location
     year_annotations = []
@@ -38,9 +38,15 @@ def HemmingSchroeder():
             year_annotation = sample_annotations.copy()
             year_annotation["image_path"] = "{}.tif".format(basename)
             
+            left, bottom, right, top = plot_location.bounds
+            left = left - 5
+            bottom = bottom - 5
+            right = right + 5 
+            top = top + 5
+
             # Crop the raster based on plot location
             raster_path = crop_raster(
-                bounds=plot_location.bounds,
+                bounds=(left, bottom, right, top),
                 rgb_path=rgb_path,
                 savedir="/blue/ewhite/DeepForest/HemmingSchroeder/data/training/images/",
                 filename=basename
@@ -50,7 +56,7 @@ def HemmingSchroeder():
             src = rio.open(raster_path)
             
             # Convert the annotation coordinates from geographic to image coordinates
-            image_coordinates = geo_to_image_coordinates(year_annotation, src.crs, src.res)
+            image_coordinates = geo_to_image_coordinates(year_annotation, src.bounds, src.res[0])
             year_annotations.append(image_coordinates)
 
     year_annotations = pd.concat(year_annotations)

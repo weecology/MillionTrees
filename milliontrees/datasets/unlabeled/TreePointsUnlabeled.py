@@ -13,7 +13,7 @@ from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
 
 
-class IWildCamUnlabeledDataset(milliontreesUnlabeledDataset):
+class TreePoints_Unlabeled_Dataset(milliontreesUnlabeledDataset):
     """
     The unlabeled iWildCam2020-milliontrees dataset.
     This is a modified version of the original iWildCam2020 competition dataset.
@@ -34,11 +34,11 @@ class IWildCamUnlabeledDataset(milliontreesUnlabeledDataset):
         https://cdla.io/permissive-1-0/
     """
 
-    _dataset_name = "iwildcam_unlabeled"
+    _dataset_name = "TreePoints_unlabeled"
     _versions_dict = {
         "1.0": {
-            "download_url": "https://worksheets.codalab.org/rest/bundles/0xff56ea50fbf64aabbc4d09b2e8d50e18/contents/blob/",
-            "compressed_size": 41_016_937_676,
+            "download_url": "",
+            "compressed_size": 0,
         }
     }
 
