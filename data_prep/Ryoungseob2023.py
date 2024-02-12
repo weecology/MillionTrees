@@ -18,5 +18,9 @@ def Ryoungseob_2023():
     annotations["source"] = "Kwon et al. 2023"  
     annotations["split"] = "train"
     
-    # Train only
+    # Add full path to images
+    annotations["image_path"] = annotations.image_path.apply(lambda x: "/blue/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/{}".format(x))
     annotations.to_csv("/blue/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv")
+
+if __name__ == "__main__":
+    Ryoungseob_2023()

@@ -8,12 +8,12 @@ import numpy as np
 import torch
 import json
 
-from milliontrees.datasets.milliontrees_dataset import milliontreesDataset
+from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
 
 
-class TreePolygonsDataset(milliontreesDataset):
+class TreePolygonsDataset(MillionTreesDataset):
     """
         The TreePolygons dataset is a collection of tree annotations annotated as multi-point polygons locations.
         The dataset is comprised of many sources from across the world. There are 5 splits:

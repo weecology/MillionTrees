@@ -8,12 +8,12 @@ import numpy as np
 import torch
 import json
 
-from milliontrees.datasets.milliontrees_dataset import milliontreesDataset
+from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
 
 
-class TreePointsDataset(milliontreesDataset):
+class TreePointsDataset(MillionTreesDataset):
     """
         The TreePoints dataset is a collection of tree annotations annotated as x,y locations.
         The dataset is comprised of many sources from across the world. There are 5 splits:
@@ -50,10 +50,10 @@ class TreePointsDataset(milliontreesDataset):
         License:
             This dataset is distributed under Creative Commons Attribution License
         """
-    _dataset_name = 'TreeBoxes'
+    _dataset_name = 'TreePoints'
     _versions_dict = {
         '0.0': {
-            'download_url': 'https://zenodo.org/record/10456914',
+            'download_url': '',
             'compressed_size': 11_957_420_032}}
 
 

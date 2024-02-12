@@ -12,33 +12,33 @@ def Ventura2022():
 
     df = []
     for x in all_csvs:
-        points = read_file(x)
-        points["image_path"] = os.path.splitext(os.path.basename(x))[0]
+        pointdf = pd.read_csv(x)
+        pointdf["image_path"] = "{}.tif".format(os.path.splitext(os.path.basename(x))[0])
+        points = read_file(pointdf)
         df.append(points)
     annotations = pd.concat(df)
     annotations["label"] = "Tree"
     annotations["source"] = "Ventura et al. 2022" 
 
-    annotations.loc[annotations.image_path.isin(train_images),"split"] = "train"
-    annotations.loc[annotations.image_path.isin(test_images),"split"] = "test"
-    annotations.loc[annotations.image_path.isin(val_images),"split"] = "val"
+    annotations.loc[annotations.image_path.apply(lambda x: os.path.splitext(x)[0]).isin(train_images),"split"] = "train"
+    annotations.loc[annotations.image_path.apply(lambda x: os.path.splitext(x)[0]).isin(test_images),"split"] = "test"
+    annotations.loc[annotations.image_path.apply(lambda x: os.path.splitext(x)[0]).isin(val_images),"split"] = "val"
 
+    # Split into x and y
+    annotations["x"] = annotations.geometry.apply(lambda x: x.x)
+    annotations["y"] = annotations.geometry.apply(lambda x: x.y)
+    
+    annotations["image_path"] = annotations["image_path"].apply(lambda x: os.path.join("/blue/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images",x))
     annotations.to_csv("/blue/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv")
 
     #split
-    train = annotations[annotations.image_path.isin(train_images)]
-    test = annotations[annotations.image_path.isin(test_images)]
-    val = annotations[annotations.image_path.isin(val_images)]
+    train = annotations[annotations.split=="train"]
+    test = annotations[annotations.split=="test"]
+    val = annotations[annotations.split=="val"]
               
     train.to_csv("/blue/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/train.csv")
     test.to_csv("/blue/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/test.csv")
     val.to_csv("/blue/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/val.csv")
-
-    # Copy to MillionTrees folder
-    for image_path in annotations.image_path.unique():
-        src = os.path.join("/blue/ewhite/DeepForest/TreeFormer/test_data/images/", image_path)
-        dst = os.path.join("/blue/ewhite/DeepForest/MillionTrees/images/", image_path)
-        shutil.copy(src, dst)
 
 if __name__ == "__main__":
     Ventura2022()

@@ -5,7 +5,7 @@ from typing import Dict, List, Union
 import numpy as np
 import torch
 from milliontrees.common.utils import get_counts
-from milliontrees.datasets.milliontrees_dataset import milliontreesDataset, milliontreesSubset
+from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset, MillionTreesSubset
 import warnings
 
 class Grouper:
@@ -76,21 +76,21 @@ class CombinatorialGrouper(Grouper):
         If groupby_fields is None, then all data points are assigned to group 0.
 
         Args:
-            - dataset (milliontreesDataset or list of milliontreesDataset)
+            - dataset (MillionTreesDataset or list of MillionTreesDataset)
             - groupby_fields (list of str)
         """
         if isinstance(dataset, list):
             if len(dataset) == 0:
                 raise ValueError("At least one dataset must be defined for Grouper.")
-            datasets: List[milliontreesDataset] = dataset
+            datasets: List[MillionTreesDataset] = dataset
         else:
-            datasets: List[milliontreesDataset] = [dataset]
+            datasets: List[MillionTreesDataset] = [dataset]
 
         metadata_fields: List[str] = datasets[0].metadata_fields
         # Build the largest metadata_map to see to check if all the metadata_maps are subsets of each other
         largest_metadata_map: Dict[str, Union[List, np.ndarray]] = copy.deepcopy(datasets[0].metadata_map)
         for i, dataset in enumerate(datasets):
-            if isinstance(dataset, milliontreesSubset):
+            if isinstance(dataset, MillionTreesSubset):
                 raise ValueError("Grouper should be defined with full dataset(s) and not subset(s).")
 
             # The first dataset was used to get the metadata_fields and initial metadata_map
