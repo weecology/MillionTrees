@@ -8,6 +8,7 @@ import rasterio as rio
 from rasterio.plot import show
 from matplotlib import pyplot as plt
 from shapely.geometry import box
+import shutil
 
 def Jansen_2023():
     shps = glob.glob("/blue/ewhite/DeepForest/Jansen_2023/images/*.shp")
@@ -34,7 +35,7 @@ def Jansen_2023():
         split_annotations_1 = split_raster(
             annotations,
             path_to_raster=image,
-            patch_size=3000,
+            patch_size=2000,
             allow_empty=False, 
             base_dir="/blue/ewhite/DeepForest/Jansen_2023/pngs"
         )
@@ -43,6 +44,9 @@ def Jansen_2023():
     split_annotations = pd.concat(split_annotations)
     split_annotations = split_annotations[~(split_annotations.geometry.geom_type=="MultiPolygon")]
     
+    # Add full path to images
+    split_annotations["image_path"] = split_annotations.image_path.apply(lambda x: "/blue/ewhite/DeepForest/Jansen_2023/pngs/{}".format(x))
+
     # Split train test based on image path
     split_images = split_annotations.image_path.unique()
     train_images = split_images[0:int(len(split_images) * 0.8)]

@@ -14,7 +14,8 @@ def Treeformer():
         image_path = "_".join(os.path.splitext(os.path.basename(x))[0].split("_")[1:])
         image_path = "{}.jpg".format(image_path)
         image_dir = os.path.dirname(os.path.dirname(x))
-        df["image_path"] = image_path
+        df["image_path"] = "{}/images/{}".format(image_dir, image_path)
+        
         return df
 
     test_gt = glob.glob("/blue/ewhite/DeepForest/TreeFormer/test_data/ground_truth/*.mat")
@@ -46,14 +47,8 @@ def Treeformer():
     test_ground_truth["split"] = "test"
     train_ground_truth["split"] = "train"
     val_ground_truth["split"] = "validation"
-    annotations = pd.concat([test_ground_truth, train_ground_truth, val_ground_truth]).to_csv("/blue/ewhite/DeepForest/TreeFormer/all_images/annotations.csv")
+    annotations = pd.concat([test_ground_truth, train_ground_truth, val_ground_truth])
+    annotations.to_csv("/blue/ewhite/DeepForest/TreeFormer/all_images/annotations.csv")
 
-    # Copy to MillionTrees folder
-    for image_path in annotations.image_path.unique():
-        src = os.path.join("/blue/ewhite/DeepForest/TreeFormer/test_data/images/", image_path)
-        dst = os.path.join("/blue/ewhite/DeepForest/MillionTrees/images/", image_path)
-        shutil.copy(src, dst)
-    
-    test_ground_truth.to_csv("/blue/ewhite/DeepForest/MillionTrees/annotations/TreeFormer_test.csv")
-    train_ground_truth.to_csv("/blue/ewhite/DeepForest/MillionTrees/annotations/TreeFormer_train.csv")
-    val_ground_truth.to_csv("/blue/ewhite/DeepForest/MillionTrees/annotations/TreeFormer_validation.csv")
+if __name__ == "__main__":
+    Treeformer()

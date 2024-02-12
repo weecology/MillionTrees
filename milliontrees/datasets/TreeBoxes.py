@@ -8,12 +8,12 @@ import numpy as np
 import torch
 import json
 
-from milliontrees.datasets.milliontrees_dataset import milliontreesDataset
+from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
 
 
-class TreeBoxesDataset(milliontreesDataset):
+class TreeBoxesDataset(MillionTreesDataset):
     """
         The TreeBoxes dataset is a collection of tree annotations annotated as four pointed bounding boxes.
         The dataset is comprised of many sources from across the world. There are 5 splits:
@@ -48,9 +48,7 @@ class TreeBoxesDataset(milliontreesDataset):
         """
     _dataset_name = 'TreeBoxes'
     _versions_dict = {
-        '0.0': {
-            'download_url': 'https://zenodo.org/record/10456914',
-            'compressed_size': 11_957_420_032}}
+        '0.0': {'download_url': '','compressed_size': ""}}
 
 
     def __init__(self, version=None, root_dir='data', download=False, split_scheme='official'):
@@ -64,7 +62,7 @@ class TreeBoxesDataset(milliontreesDataset):
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
 
         # Load splits
-        df = pd.read_csv(self._data_dir / 'metadata.csv')
+        df = pd.read_csv(self._data_dir / 'annotations.csv')
 
         # Splits
         self._split_dict = {'train': 0, 'val': 1, 'test': 2, 'id_val': 3, 'id_test': 4}

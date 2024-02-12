@@ -83,7 +83,7 @@ def Beloiu_2023():
             )
 
     #Set image path to png
-    annotations["image_path"] = annotations.image_path.apply(lambda x: os.path.splitext(os.path.basename(x))[0] + ".png")
+    annotations["image_path"] = annotations.image_path.apply(lambda x: os.path.join("/blue/ewhite/DeepForest/Beloiu_2023/pngs/", os.path.splitext(os.path.basename(x))[0] + ".png"))
     random.shuffle(images)
     train_images = images[0:int(len(images)*0.9)]
     train = annotations[annotations.image_path.isin(train_images)]
@@ -95,12 +95,6 @@ def Beloiu_2023():
     to_save = pd.concat([train,test])
     to_save.to_csv("/blue/ewhite/DeepForest/Beloiu_2023/annotations.csv")
     to_save.to_csv("/blue/ewhite/DeepForest/Beloiu_2023/pngs/annotations.csv")
-
-    # Move all data to the common images dir
-    for image_path in annotations.image_path.unique():
-        src = os.path.join("/blue/ewhite/DeepForest/Beloiu_2023/pngs/", image_path)
-        dst = os.path.join("/blue/ewhite/DeepForest/MillionTrees/images/", image_path)
-        shutil.copy(src, dst)
 
 if __name__ == "__main__":
     Beloiu_2023()
