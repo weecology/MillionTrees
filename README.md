@@ -19,7 +19,7 @@ pip install MillionTrees
 
 # Datasets
 
-# Using the WILDS package
+# Using the MillionTrees package
 
 ### Data
 
