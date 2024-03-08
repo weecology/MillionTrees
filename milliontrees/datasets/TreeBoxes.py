@@ -99,7 +99,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._n_groups = n_groups
         assert len(np.unique(df['location'])) == self._n_groups
 
-        self._metadata_array = torch.tensor(np.stack([df['location'].values,df['resolution'].values]))
+        self._metadata_array = torch.tensor(np.stack([df['location'].values,df['resolution'].values], axis=1))
         self._metadata_fields = ['location','resolution']
 
         # eval grouper
@@ -158,4 +158,5 @@ class TreeBoxesDataset(MillionTreesDataset):
         img = torch.from_numpy(img)
         img = img.permute(2, 0, 1)
    
+
         return img
