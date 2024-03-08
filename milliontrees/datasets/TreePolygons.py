@@ -50,7 +50,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         License:
             This dataset is distributed under Creative Commons Attribution License
         """
-    _dataset_name = 'TreeBoxes'
+    _dataset_name = 'TreePolygons'
     _versions_dict = {
         '0.0': {
             'download_url': 'https://zenodo.org/record/10456914',
