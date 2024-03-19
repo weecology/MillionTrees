@@ -2,11 +2,12 @@ from datetime import datetime
 from pathlib import Path
 import os
 
-from PIL import Image
+
 import pandas as pd
 import numpy as np
 import torch
 import json
+import cv2
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
@@ -16,12 +17,12 @@ from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
 class TreeBoxesDataset(MillionTreesDataset):
     """
         The TreeBoxes dataset is a collection of tree annotations annotated as four pointed bounding boxes.
-        The dataset is comprised of many sources from across the world. There are 5 splits:
-            - Random: 80% of the data randomly split into train and 20% in test
-            - location: 80% of the locations randomly split into train and 20% in test
+        The dataset is comprised of many sources from across the world. There are 2 splits:
+            - Official: 80% of the data randomly split into train and 20% in test
+            - Random: 80% of the locations randomly split into train and 20% in test
         Supported `split_scheme`:
+            - 'Official'
             - 'Random'
-            - 'location'
         Input (x):
             RGB images from camera traps
         Label (y):
@@ -29,13 +30,22 @@ class TreeBoxesDataset(MillionTreesDataset):
         Metadata:
             Each image is annotated with the following metadata
                 - location (int): location id
-                - source (int): source id
                 - resolution (int): resolution of image
                 - focal view (int): focal view of image
 
         Website:
             https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
         Original publication:
+            The following publications are included in this dataset
+            @article{Weinstein2020,
+            title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
+            author={Weinstein BG, Graves SJ, Marconi S, Singh A, Zare A, Stewart D, et al.},
+            journal={PLoS Comput Biol},
+                    year={2021},
+            doi={10.1371/journal.pcbi.1009180}
+            }
+        Original publication:
+            The following publications are included in this dataset
             @article{Weinstein2020,
             title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
             author={Weinstein BG, Graves SJ, Marconi S, Singh A, Zare A, Stewart D, et al.},
@@ -52,17 +62,16 @@ class TreeBoxesDataset(MillionTreesDataset):
 
 
     def __init__(self, version=None, root_dir='data', download=False, split_scheme='official'):
-
         self._version = version
         self._split_scheme = split_scheme
-        if self._split_scheme != 'official':
+        if self._split_scheme not in ['official','random']:
             raise ValueError(f'Split scheme {self._split_scheme} not recognized')
 
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
 
         # Load splits
-        df = pd.read_csv(self._data_dir / 'annotations.csv')
+        df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
 
         # Splits
         self._split_dict = {'train': 0, 'val': 1, 'test': 2, 'id_val': 3, 'id_test': 4}
@@ -76,23 +85,22 @@ class TreeBoxesDataset(MillionTreesDataset):
         # Filenames
         self._input_array = df['filename'].values
 
-        # Labels
-        self._y_array = torch.tensor(df['y'].values)
-        self._n_classes = max(df['y']) + 1
-        self._y_size = 1
-        assert len(np.unique(df['y'])) == self._n_classes
+        # Box labels
+        self._y_array = torch.tensor(df[["xmin", "ymin", "xmax","ymax"]].values.astype(float))
+        
+        # Labels -> just 'Tree'
+        self._n_classes = 1
+
+        # Length of targets
+        self._y_size = 4
 
         # Location/group info
-        n_groups = max(df['location_remapped']) + 1
+        n_groups = max(df['location']) + 1
         self._n_groups = n_groups
-        assert len(np.unique(df['location_remapped'])) == self._n_groups
+        assert len(np.unique(df['location'])) == self._n_groups
 
-        self._metadata_array = torch.tensor(np.stack([df['location_remapped'].values,
-                            df['sequence_remapped'].values,
-                            df['year'].values, df['month'].values, df['day'].values,
-                            df['hour'].values, df['minute'].values, df['second'].values,
-                            self.y_array], axis=1))
-        self._metadata_fields = ['location', 'year', 'y']
+        self._metadata_array = torch.tensor(np.stack([df['location'].values,df['resolution'].values], axis=1))
+        self._metadata_fields = ['location','resolution']
 
         # eval grouper
         self._eval_grouper = CombinatorialGrouper(
@@ -144,7 +152,11 @@ class TreeBoxesDataset(MillionTreesDataset):
             - x (Tensor): Input features of the idx-th data point
         """
         # All images are in the images folder
-        img_path = self.data_dir / 'train' / self._input_array[idx]
-        img = Image.open(img_path)
+        img_path = os.path.join(self.data_dir / 'images' / self._input_array[idx])
+        img = cv2.imread(img_path)
+        # Channels first input
+        img = torch.from_numpy(img)
+        img = img.permute(2, 0, 1)
+   
 
         return img
