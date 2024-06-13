@@ -2,7 +2,6 @@ from datetime import datetime
 from pathlib import Path
 import os
 
-
 import pandas as pd
 import numpy as np
 import torch
@@ -12,7 +11,6 @@ import cv2
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
-
 
 class TreeBoxesDataset(MillionTreesDataset):
     """
