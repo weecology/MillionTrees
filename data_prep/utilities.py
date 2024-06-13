@@ -37,8 +37,6 @@ def read_config(config_path):
         
     return config
 
-
-
 def read_Siberia_points():
     shps = glob.glob("/blue/ewhite/DeepForest/Siberia/labels/*.shp")
     annotations = []
