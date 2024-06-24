@@ -54,7 +54,7 @@ def read_xml_Beloiu(path):
 
 
 def Beloiu_2023():
-    xmls = glob.glob("/blue/ewhite/DeepForest/Beloiu_2023/labels/*")
+    xmls = glob.glob("/orange/ewhite/DeepForest/Beloiu_2023/labels/*")
     annotations = []
     for path in xmls:
         df = read_xml_Beloiu(path)
@@ -69,21 +69,21 @@ def Beloiu_2023():
 
     # Convert projected tiff to png
     for image in images:
-        with rio.open(os.path.join("/blue/ewhite/DeepForest/Beloiu_2023/images",image)) as src:
+        with rio.open(os.path.join("/orange/ewhite/DeepForest/Beloiu_2023/images",image)) as src:
             bounds = src.bounds
             res = src.res[0]
 
         # read tif and save as png
         filename = crop_raster(
             bounds=bounds,
-            rgb_path=os.path.join("/blue/ewhite/DeepForest/Beloiu_2023/images",image),
-            savedir="/blue/ewhite/DeepForest/Beloiu_2023/pngs/",
+            rgb_path=os.path.join("/orange/ewhite/DeepForest/Beloiu_2023/images",image),
+            savedir="/orange/ewhite/DeepForest/Beloiu_2023/pngs/",
             filename=os.path.splitext(os.path.basename(image))[0],
             driver="PNG"
             )
 
     #Set image path to png
-    annotations["image_path"] = annotations.image_path.apply(lambda x: os.path.join("/blue/ewhite/DeepForest/Beloiu_2023/pngs/", os.path.splitext(os.path.basename(x))[0] + ".png"))
+    annotations["image_path"] = annotations.image_path.apply(lambda x: os.path.join("/orange/ewhite/DeepForest/Beloiu_2023/pngs/", os.path.splitext(os.path.basename(x))[0] + ".png"))
     random.shuffle(images)
     train_images = images[0:int(len(images)*0.9)]
     train = annotations[annotations.image_path.isin(train_images)]
@@ -93,8 +93,8 @@ def Beloiu_2023():
     test["split"] = "test"
 
     to_save = pd.concat([train,test])
-    to_save.to_csv("/blue/ewhite/DeepForest/Beloiu_2023/annotations.csv")
-    to_save.to_csv("/blue/ewhite/DeepForest/Beloiu_2023/pngs/annotations.csv")
+    to_save.to_csv("/orange/ewhite/DeepForest/Beloiu_2023/annotations.csv")
+    to_save.to_csv("/orange/ewhite/DeepForest/Beloiu_2023/pngs/annotations.csv")
 
 if __name__ == "__main__":
     Beloiu_2023()

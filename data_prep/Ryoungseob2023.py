@@ -3,7 +3,7 @@ import pandas as pd
 from deepforest.utilities import read_file
 
 def Ryoungseob_2023():
-    xmls = glob.glob("/blue/ewhite/DeepForest/Ryoungseob_2023/train_datasets/annotations/*.xml")
+    xmls = glob.glob("/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/annotations/*.xml")
 
     #Load and format xmls
     annotation_list = []   
@@ -19,8 +19,8 @@ def Ryoungseob_2023():
     annotations["split"] = "train"
     
     # Add full path to images
-    annotations["image_path"] = annotations.image_path.apply(lambda x: "/blue/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/{}".format(x))
-    annotations.to_csv("/blue/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv")
+    annotations["image_path"] = annotations.image_path.apply(lambda x: "/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/{}".format(x))
+    annotations.to_csv("/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv")
 
 if __name__ == "__main__":
     Ryoungseob_2023()
