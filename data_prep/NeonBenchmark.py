@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import shutil
 import geopandas as gpd
-from deepforest.utilities import read_file, shapefile_to_annotations
+from utilities import read_file
 from deepforest.preprocess import split_raster
 
 def generate_NEON_benchmark():
@@ -25,18 +25,13 @@ def generate_NEON_benchmark():
     benchmark_annotations["source"] = "NEON_benchmark"
     for image_path in benchmark_annotations.image_path.unique():
         dst = os.path.join(BENCHMARK_PATH, "evaluation/RGB/", image_path)
-        shutil.copy(dst, "/blue/ewhite/DeepForest/NEON_benchmark/images/")
-
-    benchmark_annotations.to_csv("/blue/ewhite/DeepForest/NEON_benchmark/images/test.csv")
+        shutil.copy(dst, "/orange/ewhite/DeepForest/NEON_benchmark/images/")
+    benchmark_annotations.to_csv("/orange/ewhite/DeepForest/NEON_benchmark/images/test.csv")
 
     # Copy images to test location
     benchmark_annotations["source"] = "NEON_benchmark"
-    for image_path in benchmark_annotations.image_path.unique():
-        dst = os.path.join(BENCHMARK_PATH, "evaluation/RGB/", image_path)
-        shutil.copy(dst, "/blue/ewhite/DeepForest/NEON_benchmark/images/")
 
     ## Train annotations ##
-
     BASE_PATH = "/orange/ewhite/b.weinstein/NeonTreeEvaluation/hand_annotations/"
     #convert hand annotations from xml into retinanet format
     xmls = glob.glob(BENCHMARK_PATH + "annotations/" + "*.xml")
@@ -93,25 +88,10 @@ def generate_NEON_benchmark():
     train_annotations = pd.concat(cropped_annotations, ignore_index=True)   
     
     #Ensure column order
-    train_annotations.to_csv("/blue/ewhite/DeepForest/NEON_benchmark/images/train.csv",index=False, header=True)
-   
+    train_annotations.to_csv("/orange/ewhite/DeepForest/NEON_benchmark/images/train.csv",index=False, header=True)
     train_annotations["source"] = "NEON_benchmark"
-    for image_path in train_annotations.image_path.unique():
-        dst = os.path.join(BASE_PATH, "crops", image_path)
-        shutil.copy(dst, "/blue/ewhite/DeepForest/NEON_benchmark/images/")
-
-    # Copy to main dir
-    for image_path in train_annotations.image_path.unique():
-        dst = os.path.join(BASE_PATH, "crops", image_path)
-        shutil.copy(dst, "/blue/ewhite/DeepForest/MillionTrees/images/")
-    
-    train_annotations.to_csv("/blue/ewhite/DeepForest/MillionTrees/annotations/NEON_benchmark_train.csv")
-
-    for image_path in benchmark_annotations.image_path.unique():
-        dst = os.path.join("/blue/ewhite/DeepForest/NEON_benchmark/images/", image_path)
-        shutil.copy(dst, "/blue/ewhite/DeepForest/MillionTrees/images/")
-    
-    benchmark_annotations.to_csv("/blue/ewhite/DeepForest/MillionTrees/annotations/NEON_benchmark_test.csv")
+    train_annotations.to_csv("/orange/ewhite/DeepForest/MillionTrees/annotations/NEON_benchmark_train.csv")
+    benchmark_annotations.to_csv("/orange/ewhite/DeepForest/MillionTrees/annotations/NEON_benchmark_test.csv")
 
 if __name__ == "__main__":
     generate_NEON_benchmark()

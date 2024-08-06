@@ -1,24 +1,24 @@
 import glob
 import geopandas as gpd
-from deepforest.utilities import shapefile_to_annotations, xml_to_annotations, crop_raster, geo_to_image_coordinates, read_file
+from deepforest.utilities import shapefile_to_annotations 
 from deepforest.preprocess import split_raster
 from shapely.geometry import Point
-import CHM
 import os
 import pandas as pd
-import shutil
 import yaml
 import argparse
 import math
 import numpy as np
 import re
+from utilities import crop_raster, geo_to_image_coordinates, read_file
+import json
 
 def NEON_Trees():
     """Transform raw NEON data into clean shapefile   
     Args:
         config: DeepTreeAttention config dict, see config.yml
     """
-    field = pd.read_csv("/blue/ewhite/DeepForest/NEON_Trees/vst_nov_2023.csv")
+    field = pd.read_csv("/orange/ewhite/DeepForest/NEON_Trees/vst_nov_2023.csv")
     field["individual"] = field["individualID"]
     field = field[~field.growthForm.isin(["liana","small shrub"])]
     field = field[~field.growthForm.isnull()]
@@ -83,11 +83,13 @@ def NEON_Trees():
     shp["subID"] = shp["plotID"] + "_" + shp["subplotID"].astype(int).astype("str") 
 
     # For each subplot crop image and gather annotations
-    plot_shp = gpd.read_file("/blue/ewhite/DeepForest/NEON_Trees/All_Neon_TOS_Polygon_V4.shp")
+    plot_shp = gpd.read_file("/orange/ewhite/DeepForest/NEON_Trees/All_Neon_TOS_Polygon_V4.shp")
     annotations = []
     for plot in shp.plotID:
         subplot_annotations = shp[shp.plotID==plot]
         bounds = plot_shp[plot_shp.plotID==plot]
+        if bounds.empty:
+            continue
         utmZone = bounds.utmZone.unique()[0] 
         if utmZone == "6N":
             epsg = 32606
@@ -98,11 +100,12 @@ def NEON_Trees():
         bounds = bounds.to_crs(epsg).total_bounds
         try:
             sensor_path = find_sensor_path(bounds=list(bounds), lookup_pool=rgb_pool)
+            year = year_from_tile(sensor_path)
             crop_raster(
                 bounds=bounds,
-                sensor_path=sensor_path,
-                savedir="/blue/ewhite/DeepForest/NEON_Trees/images/",
-                basename=plot)
+                rgb_path=sensor_path,
+                savedir="/orange/ewhite/DeepForest/NEON_Trees/images/",
+                filename="{}_{}".format(plot, year))
         except:
             continue
         annotations.append(subplot_annotations)
@@ -188,3 +191,10 @@ def find_sensor_path(lookup_pool, shapefile=None, bounds=None, geo_index=None, a
 def year_from_tile(path):
     return path.split("/")[-8]
     
+def main():
+    config = read_config("/home/b.weinstein/DeepTreeAttention/config.yml")
+    shp = NEON_Trees()
+    shp.to_file("NEON_Trees.shp")
+
+if __name__ == "__main__":
+    main()

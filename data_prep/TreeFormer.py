@@ -53,5 +53,6 @@ def Treeformer():
     annotations["geometry"] = annotations.apply(lambda x: "POINT ({} {})".format(x.x, x.y), axis=1)
     annotations.to_csv("/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv")
 
+
 if __name__ == "__main__":
     Treeformer()

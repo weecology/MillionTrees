@@ -100,7 +100,7 @@ def generate_box_dataset(image_dir):
     image_files = [os.path.join(image_dir, 'image1.jpg'), os.path.join(image_dir, 'image2.jpg'), os.path.join(image_dir, 'image3.jpg')]
 
     # Create a pandas DataFrame
-    df = pd.DataFrame({'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax, 'filename': image_files,"location":locations, "resolution":resolution})
+    df = pd.DataFrame({'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax, 'filename': image_files,"source":locations, "resolution":resolution})
 
     # Create images and save them to disk within image_dir
     for i, row in df.iterrows():
@@ -145,7 +145,7 @@ def generate_point_dataset(image_dir):
     image_files = [os.path.join(image_dir, 'image1.jpg'), os.path.join(image_dir, 'image2.jpg'), os.path.join(image_dir, 'image3.jpg')]
 
     # Create a pandas DataFrame
-    df = pd.DataFrame({'x': x, 'y': y, 'filename': image_files,"location":locations,"resolution":resolution})
+    df = pd.DataFrame({'x': x, 'y': y, 'filename': image_files,"source":locations,"resolution":resolution})
 
     # Create images and save them to disk within image_dir
     for i, row in df.iterrows():
