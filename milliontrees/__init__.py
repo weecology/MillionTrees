@@ -3,7 +3,7 @@ from .get_dataset import get_dataset
 
 benchmark_datasets = [
     'TreePoints',
-    'TreeBoxes'
+    'TreeBoxes',
     'TreePolygons',
 ]
 

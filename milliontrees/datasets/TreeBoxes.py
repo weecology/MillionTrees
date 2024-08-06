@@ -83,7 +83,6 @@ class TreeBoxesDataset(MillionTreesDataset):
         # Filenames
         self._input_array = df['filename'].values
 
-        # Box labels
         self._y_array = torch.tensor(df[["xmin", "ymin", "xmax","ymax"]].values.astype(float))
         
         # Labels -> just 'Tree'
@@ -92,18 +91,21 @@ class TreeBoxesDataset(MillionTreesDataset):
         # Length of targets
         self._y_size = 4
 
-        # Location/group info
-        n_groups = max(df['location']) + 1
-        self._n_groups = n_groups
-        assert len(np.unique(df['location'])) == self._n_groups
+        # Create source locations with a numeric ID
+        df["source_id"] = df.source.astype('category').cat.codes
 
-        self._metadata_array = torch.tensor(np.stack([df['location'].values,df['resolution'].values], axis=1))
-        self._metadata_fields = ['location','resolution']
+        # Location/group info
+        n_groups = max(df['source_id']) + 1
+        self._n_groups = n_groups
+        assert len(np.unique(df['source_id'])) == self._n_groups
+
+        self._metadata_array = torch.tensor(np.stack([df['source_id'].values], axis=1))
+        self._metadata_fields = ['source_id']
 
         # eval grouper
         self._eval_grouper = CombinatorialGrouper(
             dataset=self,
-            groupby_fields=(['location']))
+            groupby_fields=(['source_id']))
 
         super().__init__(root_dir, download, split_scheme)
 

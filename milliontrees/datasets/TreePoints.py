@@ -68,7 +68,7 @@ class TreePointsDataset(MillionTreesDataset):
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
 
         # Load splits
-        df = pd.read_csv(self._data_dir / 'metadata.csv')
+        df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
 
         # Splits
         self._split_dict = {'train': 0, 'val': 1, 'test': 2, 'id_val': 3, 'id_test': 4}
@@ -82,23 +82,22 @@ class TreePointsDataset(MillionTreesDataset):
         # Filenames
         self._input_array = df['filename'].values
 
-        # Labels
-        self._y_array = torch.tensor(df['y'].values)
-        self._n_classes = max(df['y']) + 1
-        self._y_size = 1
-        assert len(np.unique(df['y'])) == self._n_classes
+        # Point labels
+        self._y_array = torch.tensor(df[["x", "y"]].values.astype(float))
+        
+        # Labels -> just 'Tree'
+        self._n_classes = 1
+
+        # Length of targets
+        self._y_size = 2
 
         # Location/group info
-        n_groups = max(df['location_remapped']) + 1
+        n_groups = max(df['location']) + 1
         self._n_groups = n_groups
-        assert len(np.unique(df['location_remapped'])) == self._n_groups
+        assert len(np.unique(df['location'])) == self._n_groups
 
-        self._metadata_array = torch.tensor(np.stack([df['location_remapped'].values,
-                            df['sequence_remapped'].values,
-                            df['year'].values, df['month'].values, df['day'].values,
-                            df['hour'].values, df['minute'].values, df['second'].values,
-                            self.y_array], axis=1))
-        self._metadata_fields = ['location', 'year', 'y']
+        self._metadata_array = torch.tensor(np.stack([df['location'].values,df['resolution'].values], axis=1))
+        self._metadata_fields = ['location','resolution']
 
         # eval grouper
         self._eval_grouper = CombinatorialGrouper(
