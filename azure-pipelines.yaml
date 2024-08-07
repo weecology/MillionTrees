@@ -27,11 +27,11 @@ jobs:
   - script: |
       python -m pip install --upgrade pip
       pip install .
-    displayName: 'Create Conda environment for MillionTrees'
+    displayName: 'Create environment for MillionTrees'
 
   - script: |
       pip install pytest tensorboard pytest-azurepipelines yapf
-      pytest -v
+      pytest -vå
     displayName: 'Pytests'
 
   - bash: |

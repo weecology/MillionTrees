@@ -26,7 +26,6 @@ TreeBoxes_datasets = TreeBoxes_datasets.rename(columns={"image_path":"filename"}
 # Make xmin, ymin, xmax, ymax columns from geometry
 TreeBoxes_datasets[["xmin","ymin","xmax","ymax"]] = gpd.GeoSeries.from_wkt(TreeBoxes_datasets["geometry"]).bounds
 
-
 # Combine point datasets
 TreePoints_datasets = []
 for dataset in TreePoints:
@@ -91,3 +90,8 @@ TreePoints_datasets.filename = "/orange/ewhite/DeepForest/MillionTrees/TreePoint
 #TreePolygons_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/official.csv", index=False)
 TreePoints_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0/official.csv", index=False)
 TreeBoxes_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0/official.csv", index=False)
+
+
+# Zip the files
+shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0", 'zip', "/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0")
+shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0", 'zip', "/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0")
