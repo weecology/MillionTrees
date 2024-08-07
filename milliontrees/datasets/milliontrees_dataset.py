@@ -271,13 +271,6 @@ class MillionTreesDataset:
         return getattr(self, '_n_classes', None)
 
     @property
-    def is_classification(self):
-        """
-        Boolean. True if the task is classification, and false otherwise.
-        """
-        return getattr(self, '_is_classification', (self.n_classes is not None))
-
-    @property
     def is_detection(self):
         """
         Boolean. True if the task is detection, and false otherwise.
@@ -488,15 +481,15 @@ class MillionTreesSubset(MillionTreesDataset):
             if hasattr(dataset, attr_name):
                 setattr(self, attr_name, getattr(dataset, attr_name))
         self.transform = transform
-        self.do_transform_y = do_transform_y
 
     def __getitem__(self, idx):
         x, y, metadata = self.dataset[self.indices[idx]]
         if self.transform is not None:
-            if self.do_transform_y:
-                x, y = self.transform(x, y)
-            else:
-                x = self.transform(x)
+                augmented = self.transform(image=x, bboxes=y, category_ids=metadata['source_id'])
+                x = augmented['image']
+                y = augmented['bboxes']
+                metadata['source_id'] = augmented['category_ids']
+                
         return x, y, metadata
 
     def __len__(self):

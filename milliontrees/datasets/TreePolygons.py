@@ -6,7 +6,7 @@ from PIL import Image
 import pandas as pd
 import numpy as np
 import torch
-import json
+import cv2
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
@@ -53,8 +53,8 @@ class TreePolygonsDataset(MillionTreesDataset):
     _dataset_name = 'TreePolygons'
     _versions_dict = {
         '0.0': {
-            'download_url': 'https://zenodo.org/record/10456914',
-            'compressed_size': 11_957_420_032}}
+            'download_url': '',
+            'compressed_size': ''}}
 
 
     def __init__(self, version=None, root_dir='data', download=False, split_scheme='official'):
@@ -63,12 +63,11 @@ class TreePolygonsDataset(MillionTreesDataset):
         self._split_scheme = split_scheme
         if self._split_scheme != 'official':
             raise ValueError(f'Split scheme {self._split_scheme} not recognized')
-
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
 
         # Load splits
-        df = pd.read_csv(self._data_dir / 'metadata.csv')
+        df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
 
         # Splits
         self._split_dict = {'train': 0, 'val': 1, 'test': 2, 'id_val': 3, 'id_test': 4}
@@ -82,28 +81,29 @@ class TreePolygonsDataset(MillionTreesDataset):
         # Filenames
         self._input_array = df['filename'].values
 
-        # Labels
-        self._y_array = torch.tensor(df['y'].values)
-        self._n_classes = max(df['y']) + 1
-        self._y_size = 1
-        assert len(np.unique(df['y'])) == self._n_classes
+        self._y_array = torch.tensor(df[["xmin", "ymin", "xmax","ymax"]].values.astype(float))
+        
+        # Labels -> just 'Tree'
+        self._n_classes = 1
+
+        # Length of targets
+        self._y_size = 4
+
+        # Create source locations with a numeric ID
+        df["source_id"] = df.source.astype('category').cat.codes
 
         # Location/group info
-        n_groups = max(df['location_remapped']) + 1
+        n_groups = max(df['source_id']) + 1
         self._n_groups = n_groups
-        assert len(np.unique(df['location_remapped'])) == self._n_groups
+        assert len(np.unique(df['source_id'])) == self._n_groups
 
-        self._metadata_array = torch.tensor(np.stack([df['location_remapped'].values,
-                            df['sequence_remapped'].values,
-                            df['year'].values, df['month'].values, df['day'].values,
-                            df['hour'].values, df['minute'].values, df['second'].values,
-                            self.y_array], axis=1))
-        self._metadata_fields = ['location', 'year', 'y']
+        self._metadata_array = torch.tensor(np.stack([df['source_id'].values], axis=1))
+        self._metadata_fields = ['source_id']
 
         # eval grouper
         self._eval_grouper = CombinatorialGrouper(
             dataset=self,
-            groupby_fields=(['location']))
+            groupby_fields=(['source_id']))
 
         super().__init__(root_dir, download, split_scheme)
 
@@ -150,7 +150,12 @@ class TreePolygonsDataset(MillionTreesDataset):
             - x (Tensor): Input features of the idx-th data point
         """
         # All images are in the images folder
-        img_path = self.data_dir / 'train' / self._input_array[idx]
-        img = Image.open(img_path)
+        img_path = os.path.join(self.data_dir / 'images' / self._input_array[idx])
+        img = cv2.imread(img_path)
+        # Channels first input
+        img = torch.from_numpy(img)
+        img = img.permute(2, 0, 1)
+   
 
         return img
+

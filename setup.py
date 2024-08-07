@@ -33,6 +33,7 @@ setuptools.setup(
         'tqdm>=4.53.0',
         'scikit-learn>=0.20.0',
         'scipy>=1.5.4'
+        'albumentations>=0.5.2',
     ],
     license='MIT',
     packages=setuptools.find_packages(exclude=['data_prep', 'examples']),
