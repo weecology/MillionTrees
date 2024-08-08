@@ -42,14 +42,17 @@ class TreePolygons_Unlabeled_Dataset(milliontreesUnlabeledDataset):
         }
     }
 
-    def __init__(
-        self, version=None, root_dir="data", download=False, split_scheme="official"
-    ):
+    def __init__(self,
+                 version=None,
+                 root_dir="data",
+                 download=False,
+                 split_scheme="official"):
 
         self._version = version
         self._split_scheme = split_scheme
         if self._split_scheme != "official":
-            raise ValueError(f"Split scheme {self._split_scheme} not recognized")
+            raise ValueError(
+                f"Split scheme {self._split_scheme} not recognized")
 
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
@@ -80,27 +83,21 @@ class TreePolygons_Unlabeled_Dataset(milliontreesUnlabeledDataset):
         ## Extract datetime subcomponents and include in metadata
         df["datetime_obj"] = df["datetime"].apply(get_date)
         df["year"] = df["datetime_obj"].apply(
-            lambda x: int(x.year) if isinstance(x, datetime) else -1
-        )
+            lambda x: int(x.year) if isinstance(x, datetime) else -1)
         df["month"] = df["datetime_obj"].apply(
-            lambda x: int(x.month) if isinstance(x, datetime) else -1
-        )
-        df["day"] = df["datetime_obj"].apply(
-            lambda x: int(x.day) if isinstance(x, datetime) else -1
-        )
+            lambda x: int(x.month) if isinstance(x, datetime) else -1)
+        df["day"] = df["datetime_obj"].apply(lambda x: int(x.day)
+                                             if isinstance(x, datetime) else -1)
         df["hour"] = df["datetime_obj"].apply(
-            lambda x: int(x.hour) if isinstance(x, datetime) else -1
-        )
+            lambda x: int(x.hour) if isinstance(x, datetime) else -1)
         df["minute"] = df["datetime_obj"].apply(
-            lambda x: int(x.minute) if isinstance(x, datetime) else -1
-        )
+            lambda x: int(x.minute) if isinstance(x, datetime) else -1)
         df["second"] = df["datetime_obj"].apply(
-            lambda x: int(x.second) if isinstance(x, datetime) else -1
-        )
+            lambda x: int(x.second) if isinstance(x, datetime) else -1)
 
-        df["y"] = df["y"].apply( # filter out "bad" labels (-1 means the category was not in iwildcam_v2.0; 99999 means the category was unknown). map all to -100.
-            lambda x: x if ((x != -1) and (x != 99999)) else -100
-        )
+        df["y"] = df[
+            "y"].apply(  # filter out "bad" labels (-1 means the category was not in iwildcam_v2.0; 99999 means the category was unknown). map all to -100.
+                lambda x: x if ((x != -1) and (x != 99999)) else -100)
         self._y_array = torch.LongTensor(df['y'].values)
 
         self._metadata_array = torch.tensor(
@@ -117,8 +114,7 @@ class TreePolygons_Unlabeled_Dataset(milliontreesUnlabeledDataset):
                     df["y"],
                 ],
                 axis=1,
-            )
-        )
+            ))
         self._metadata_fields = [
             "location",
             "sequence",
@@ -132,9 +128,8 @@ class TreePolygons_Unlabeled_Dataset(milliontreesUnlabeledDataset):
         ]
 
         # eval grouper
-        self._eval_grouper = CombinatorialGrouper(
-            dataset=self, groupby_fields=(["location"])
-        )
+        self._eval_grouper = CombinatorialGrouper(dataset=self,
+                                                  groupby_fields=(["location"]))
 
         super().__init__(root_dir, download, split_scheme)
 
