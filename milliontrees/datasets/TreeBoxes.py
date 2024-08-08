@@ -11,6 +11,7 @@ from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
 from PIL import Image
 
+
 class TreeBoxesDataset(MillionTreesDataset):
     """
         The TreeBoxes dataset is a collection of tree annotations annotated as four pointed bounding boxes.
