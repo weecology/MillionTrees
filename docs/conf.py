@@ -17,22 +17,12 @@ copyright = '2024, Ben Weinstein'
 author = 'Ben Weinstein'
 release = '0.y.z'
 
-master_doc = 'landing'
+master_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['myst_parser', 'sphinx.ext.autodoc']
-
-# -- Options for autodoc -----------------------------------------------------
-autodoc_default_options = {
-    'members': True,
-    'undoc-members': True,
-    'private-members': True,
-    'special-members': True,
-    'inherited-members': True,
-    'show-inheritance': True,
-}
+extensions = ['myst_parser', 'sphinx.ext.autodoc',"sphinx.ext.napoleon"]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
@@ -42,3 +32,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'furo'
 html_static_path = ['_static']
+
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
+}
