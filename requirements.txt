@@ -8,3 +8,7 @@ pytest
 scikit-learn
 bumpversion
 yapf
+sphinx
+furo
+sphinx_markdown_tables
+myst_parser

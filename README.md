@@ -19,11 +19,31 @@ There has been a tremendous number of tree crown detection benchmarks, but a lac
 pip install MillionTrees
 ```
 
-### Requirements
+### Dev Requirements
 
-### Example script requirements
+To build from the GitHub source and install the required dependencies, follow these instructions:
 
-# Datasets
+1. Clone the GitHub repository:
+    ```
+    git clone https://github.com/username/repo.git
+    ```
+
+2. Change to the repository directory:
+    ```
+    cd repo
+    ```
+
+3. Install the required dependencies using pip:
+    ```
+    pip install -r requirements.txt
+    ```
+
+4. (Optional) Build and install the package:
+    ```
+    python setup.py install
+    ```
+
+Once the installation is complete, you can use the MillionTrees package in your Python projects.
 
 # Datasets
 
@@ -41,40 +61,16 @@ Many datasets have been cleaned or altered to fit the desired data format. Here 
 
 # Using the MillionTrees package
 
-### Data
-### Domain information
-### Data loading
-### Evaluators
-
-# Using the MillionTrees package
-
-### Data
-
-### Domain information
-
-### Data loading
-
-### Evaluators
-
-# Getting Started
-
 ## Downloading and training on the MillionTrees datasets
 
 ## Algorithms
 
-### Evaluating trained models
+## Evaluation
 
 ### Reproducibility
 
-# Leaderboard
-
-| Name | Citation | Official Split | Random Split |
-|------|----------|----------------|--------------|
-|       |            |                  |                |
-|       |            |                  |                |
-|       |            |                  |                |
-
 # Citing MillionTrees
+
 
 ## Acknowledgements
 The design of the MillionTrees benchmark was inspired by the [WILDS benchmark](https://github.com/p-lambda/wilds), and we are grateful to their work, as well as Sara Beery for suggesting the use of this template.
