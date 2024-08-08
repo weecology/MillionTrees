@@ -1,7 +1,9 @@
+[![Github Actions](https://github.com/weecology/MillionTrees/actions/workflows/python-package.yml/badge.svg)](https://github.com/weecology/MillionTrees/actions/workflows/python-package.yml)
 
+[![Documentation Status](https://readthedocs.org/projects/MillionTrees/badge/?version=latest)](http://MillionTrees.readthedocs.io/en/latest/?badge=latest)
+[![Version](https://img.shields.io/pypi/v/MillionTrees.svg)](https://pypi.python.org/pypi/MillionTrees)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/MillionTrees)](https://pypi.python.org/pypi/MillionTrees)
 
-[![PyPI](https://img.shields.io/pypi/v/wilds)](https://pypi.org/project/wilds/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/p-lambda/wilds/blob/master/LICENSE)
 
 # Overview
 

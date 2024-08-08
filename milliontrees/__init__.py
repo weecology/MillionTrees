@@ -7,8 +7,7 @@ benchmark_datasets = [
     'TreePolygons',
 ]
 
-additional_datasets = [
-]
+additional_datasets = []
 
 supported_datasets = benchmark_datasets + additional_datasets
 
@@ -17,8 +16,5 @@ unlabeled_datasets = [
 ]
 
 unlabeled_splits = [
-    'train_unlabeled',
-    'val_unlabeled',
-    'test_unlabeled',
-    'extra_unlabeled'
+    'train_unlabeled', 'val_unlabeled', 'test_unlabeled', 'extra_unlabeled'
 ]
