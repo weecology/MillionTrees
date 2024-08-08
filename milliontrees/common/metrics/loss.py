@@ -2,7 +2,9 @@ import torch
 from milliontrees.common.utils import avg_over_groups, maximum
 from milliontrees.common.metrics.metric import ElementwiseMetric, Metric, MultiTaskMetric
 
+
 class Loss(Metric):
+
     def __init__(self, loss_fn, name=None):
         self.loss_fn = loss_fn
         if name is None:
@@ -30,7 +32,9 @@ class Loss(Metric):
         """
         return maximum(metrics)
 
+
 class ElementwiseLoss(ElementwiseMetric):
+
     def __init__(self, loss_fn, name=None):
         self.loss_fn = loss_fn
         if name is None:
@@ -58,9 +62,11 @@ class ElementwiseLoss(ElementwiseMetric):
         """
         return maximum(metrics)
 
+
 class MultiTaskLoss(MultiTaskMetric):
+
     def __init__(self, loss_fn, name=None):
-        self.loss_fn = loss_fn # should be elementwise
+        self.loss_fn = loss_fn  # should be elementwise
         if name is None:
             name = 'loss'
         super().__init__(name=name)

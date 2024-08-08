@@ -1,0 +1,10 @@
+numpy
+pandas
+pillow
+torch
+torchvision
+tqdm
+pytest
+scikit-learn
+bumpversion
+yapf

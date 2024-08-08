@@ -2,9 +2,9 @@ import pytest
 import os
 import tempfile
 import shutil
-import cv2
 import pandas as pd
 import numpy as np
+from PIL import Image
 
 """
 The goal of this module is to create a reproducible example of how datasets are structured. Each has an images folder, and multiple train/test splits.
@@ -109,7 +109,8 @@ def generate_box_dataset(image_dir):
 
         # Save the image within image_dir
         image_path = os.path.join(image_dir, row['filename'])
-        cv2.imwrite(image_path, img)
+        img = Image.fromarray(img)
+        img.save(image_path)
 
     return df
 
@@ -131,7 +132,8 @@ def generate_polygon_dataset(image_dir):
 
         # Save the image within image_dir
         image_path = os.path.join(image_dir, row['filename'])
-        cv2.imwrite(image_path, img)
+        img = Image.fromarray(img)
+        img.save(image_path)
 
     return df
 
@@ -154,6 +156,10 @@ def generate_point_dataset(image_dir):
 
         # Save the image within image_dir
         image_path = os.path.join(image_dir, row['filename'])
-        cv2.imwrite(image_path, img)
+        # Convert the numpy array to PIL Image
+        pil_img = Image.fromarray(img)
+
+        # Save the image within image_dir
+        pil_img.save(image_path)
 
     return df

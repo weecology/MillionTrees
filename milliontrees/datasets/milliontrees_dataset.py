@@ -4,6 +4,7 @@ import time
 import torch
 import numpy as np
 
+
 class MillionTreesDataset:
     """
     Shared dataset class for all MillionTrees datasets.
@@ -14,7 +15,11 @@ class MillionTreesDataset:
       For convenience, metadata also contains y.
     """
     DEFAULT_SPLITS = {'train': 0, 'val': 1, 'test': 2}
-    DEFAULT_SPLIT_NAMES = {'train': 'Train', 'val': 'Validation', 'test': 'Test'}
+    DEFAULT_SPLIT_NAMES = {
+        'train': 'Train',
+        'val': 'Validation',
+        'test': 'Test'
+    }
     DEFAULT_SOURCE_DOMAIN_SPLITS = [0]
 
     def __init__(self, root_dir, download, split_scheme):
@@ -67,7 +72,8 @@ class MillionTreesDataset:
             - subset (MillionTreesSubset): A (potentially subsampled) subset of the WILDSDataset.
         """
         if split not in self.split_dict:
-            raise ValueError(f"Split {split} not found in dataset's split_dict.")
+            raise ValueError(
+                f"Split {split} not found in dataset's split_dict.")
 
         split_mask = self.split_array == self.split_dict[split]
         split_idx = np.where(split_mask)[0]
@@ -75,7 +81,8 @@ class MillionTreesDataset:
         if frac < 1.0:
             # Randomly sample a fraction of the split
             num_to_retain = int(np.round(float(len(split_idx)) * frac))
-            split_idx = np.sort(np.random.permutation(split_idx)[:num_to_retain])
+            split_idx = np.sort(
+                np.random.permutation(split_idx)[:num_to_retain])
 
         return MillionTreesSubset(self, split_idx, transform)
 
@@ -86,39 +93,42 @@ class MillionTreesDataset:
         if hasattr(self, '_metadata_map'):
             self._metadata_map['from_source_domain'] = [False, True]
         self._metadata_fields.append('from_source_domain')
-        from_source_domain = torch.as_tensor(
-            [1 if split in self.source_domain_splits else 0 for split in self.split_array],
-            dtype=torch.int64
-        ).unsqueeze(dim=1)
+        from_source_domain = torch.as_tensor([
+            1 if split in self.source_domain_splits else 0
+            for split in self.split_array
+        ],
+                                             dtype=torch.int64).unsqueeze(dim=1)
         self._metadata_array = torch.cat(
-            [self._metadata_array, from_source_domain],
-            dim=1
-        )
+            [self._metadata_array, from_source_domain], dim=1)
 
     def check_init(self):
         """
         Convenience function to check that the WILDSDataset is properly configured.
         """
-        required_attrs = ['_dataset_name', '_data_dir',
-                          '_split_scheme', '_split_array',
-                          '_y_array', '_y_size',
-                          '_metadata_fields', '_metadata_array']
+        required_attrs = [
+            '_dataset_name', '_data_dir', '_split_scheme', '_split_array',
+            '_y_array', '_y_size', '_metadata_fields', '_metadata_array'
+        ]
         for attr_name in required_attrs:
-            assert hasattr(self, attr_name), f'WILDSDataset is missing {attr_name}.'
+            assert hasattr(self,
+                           attr_name), f'WILDSDataset is missing {attr_name}.'
 
         # Check that data directory exists
         if not os.path.exists(self.data_dir):
             raise ValueError(
-                f'{self.data_dir} does not exist yet. Please generate the dataset first.')
+                f'{self.data_dir} does not exist yet. Please generate the dataset first.'
+            )
 
         # Check splits
-        assert self.split_dict.keys()==self.split_names.keys()
+        assert self.split_dict.keys() == self.split_names.keys()
         assert 'train' in self.split_dict
         assert 'val' in self.split_dict
 
         # Check the form of the required arrays
-        assert (isinstance(self.y_array, torch.Tensor) or isinstance(self.y_array, list))
-        assert isinstance(self.metadata_array, torch.Tensor), 'metadata_array must be a torch.Tensor'
+        assert (isinstance(self.y_array, torch.Tensor) or
+                isinstance(self.y_array, list))
+        assert isinstance(self.metadata_array,
+                          torch.Tensor), 'metadata_array must be a torch.Tensor'
 
         # Check that dimensions match
         assert len(self.y_array) == len(self.metadata_array)
@@ -128,21 +138,19 @@ class MillionTreesDataset:
         assert len(self.metadata_array.shape) == 2
         assert len(self.metadata_fields) == self.metadata_array.shape[1]
 
-        # Check that it is not both classification and detection
-        assert not (self.is_classification and self.is_detection)
-
         # For convenience, include y in metadata_fields if y_size == 1
         if self.y_size == 1:
             assert 'y' in self.metadata_fields
 
     @property
     def latest_version(cls):
+
         def is_later(u, v):
             """Returns true if u is a later version than v."""
             u_major, u_minor = tuple(map(int, u.split('.')))
             v_major, v_minor = tuple(map(int, v.split('.')))
-            if (u_major > v_major) or (
-                (u_major == v_major) and (u_minor > v_minor)):
+            if (u_major > v_major) or ((u_major == v_major) and
+                                       (u_minor > v_minor)):
                 return True
             else:
                 return False
@@ -224,14 +232,16 @@ class MillionTreesDataset:
         e.g., {'train': 'Train', 'val': 'Validation', 'test': 'Test'}.
         Keys should match up with split_dict.
         """
-        return getattr(self, '_split_names', MillionTreesDataset.DEFAULT_SPLIT_NAMES)
+        return getattr(self, '_split_names',
+                       MillionTreesDataset.DEFAULT_SPLIT_NAMES)
 
     @property
     def source_domain_splits(self):
         """
         List of split IDs that are from the source domain.
         """
-        return getattr(self, '_source_domain_splits', MillionTreesDataset.DEFAULT_SOURCE_DOMAIN_SPLITS)
+        return getattr(self, '_source_domain_splits',
+                       MillionTreesDataset.DEFAULT_SOURCE_DOMAIN_SPLITS)
 
     @property
     def split_array(self):
@@ -326,7 +336,8 @@ class MillionTreesDataset:
         self.check_version()
 
         os.makedirs(root_dir, exist_ok=True)
-        data_dir = os.path.join(root_dir, f'{self.dataset_name}_v{self.version}')
+        data_dir = os.path.join(root_dir,
+                                f'{self.dataset_name}_v{self.version}')
         version_file = os.path.join(data_dir, f'RELEASE_v{self.version}.txt')
 
         # If the dataset exists at root_dir, then don't download.
@@ -339,12 +350,9 @@ class MillionTreesDataset:
         # There are two ways to download a dataset:
         # 1. Automatically through the MillionTrees package
         # Datasets downloaded from a third party need not have a download_url and RELEASE text file.
-        return (
-            os.path.exists(data_dir) and (
-                os.path.exists(version_file) or
-                (len(os.listdir(data_dir)) > 0 and download_url is None)
-            )
-        )
+        return (os.path.exists(data_dir) and
+                (os.path.exists(version_file) or
+                 (len(os.listdir(data_dir)) > 0 and download_url is None)))
 
     def download_dataset(self, data_dir, download_flag):
         version_dict = self.versions_dict[self.version]
@@ -353,41 +361,49 @@ class MillionTreesDataset:
 
         # Check that download_url exists.
         if download_url is None:
-            raise ValueError(f'{self.dataset_name} cannot be automatically downloaded. Please download it manually.')
+            raise ValueError(
+                f'{self.dataset_name} cannot be automatically downloaded. Please download it manually.'
+            )
 
         # Check that the download_flag is set to true.
         if not download_flag:
             raise FileNotFoundError(
                 f'The {self.dataset_name} dataset could not be found in {data_dir}. Initialize the dataset with '
                 f'download=True to download the dataset. If you are using the example script, run with --download. '
-                f'This might take some time for large datasets.'
-            )
+                f'This might take some time for large datasets.')
 
         from milliontrees.datasets.download_utils import download_and_extract_archive
         print(f'Downloading dataset to {data_dir}...')
 
         try:
             start_time = time.time()
-            download_and_extract_archive(
-                url=download_url,
-                download_root=data_dir,
-                filename='archive.tar.gz',
-                remove_finished=True,
-                size=compressed_size)
+            download_and_extract_archive(url=download_url,
+                                         download_root=data_dir,
+                                         filename='archive.tar.gz',
+                                         remove_finished=True,
+                                         size=compressed_size)
             download_time_in_minutes = (time.time() - start_time) / 60
-            print(f"\nIt took {round(download_time_in_minutes, 2)} minutes to download and uncompress the dataset.\n")
+            print(
+                f"\nIt took {round(download_time_in_minutes, 2)} minutes to download and uncompress the dataset.\n"
+            )
         except Exception as e:
-            print(f"\n{os.path.join(data_dir, 'archive.tar.gz')} may be corrupted. Please try deleting it and rerunning this command.\n")
+            print(
+                f"\n{os.path.join(data_dir, 'archive.tar.gz')} may be corrupted. Please try deleting it and rerunning this command.\n"
+            )
             print(f"Exception: ", e)
 
     def check_version(self):
         # Check that the version is valid.
         if self.version not in self.versions_dict:
-            raise ValueError(f'Version {self.version} not supported. Must be in {self.versions_dict.keys()}.')
+            raise ValueError(
+                f'Version {self.version} not supported. Must be in {self.versions_dict.keys()}.'
+            )
 
         # Check that the specified version is the latest version. Otherwise, warn.
-        current_major_version, current_minor_version = tuple(map(int, self.version.split('.')))
-        latest_major_version, latest_minor_version = tuple(map(int, self.latest_version.split('.')))
+        current_major_version, current_minor_version = tuple(
+            map(int, self.version.split('.')))
+        latest_major_version, latest_minor_version = tuple(
+            map(int, self.latest_version.split('.')))
         if latest_major_version > current_major_version:
             print(
                 f'*****************************\n'
@@ -419,12 +435,16 @@ class MillionTreesDataset:
             **metric.compute(y_pred, y_true),
         }
         results_str = (
-            f"Average {metric.name}: {results[metric.agg_metric_field]:.3f}\n"
-        )
+            f"Average {metric.name}: {results[metric.agg_metric_field]:.3f}\n")
         return results, results_str
 
     @staticmethod
-    def standard_group_eval(metric, grouper, y_pred, y_true, metadata, aggregate=True):
+    def standard_group_eval(metric,
+                            grouper,
+                            y_pred,
+                            y_true,
+                            metadata,
+                            aggregate=True):
         """
         Args:
             - metric (Metric): Metric to use for eval
@@ -441,7 +461,8 @@ class MillionTreesDataset:
             results.update(metric.compute(y_pred, y_true))
             results_str += f"Average {metric.name}: {results[metric.agg_metric_field]:.3f}\n"
         g = grouper.metadata_to_group(metadata)
-        group_results = metric.compute_group_wise(y_pred, y_true, g, grouper.n_groups)
+        group_results = metric.compute_group_wise(y_pred, y_true, g,
+                                                  grouper.n_groups)
         for group_idx in range(grouper.n_groups):
             group_str = grouper.group_field_str(group_idx)
             group_metric = group_results[metric.group_metric_field(group_idx)]
@@ -453,13 +474,16 @@ class MillionTreesDataset:
             results_str += (
                 f'  {grouper.group_str(group_idx)}  '
                 f"[n = {group_results[metric.group_count_field(group_idx)]:6.0f}]:\t"
-                f"{metric.name} = {group_results[metric.group_metric_field(group_idx)]:5.3f}\n")
-        results[f'{metric.worst_group_metric_field}'] = group_results[f'{metric.worst_group_metric_field}']
+                f"{metric.name} = {group_results[metric.group_metric_field(group_idx)]:5.3f}\n"
+            )
+        results[f'{metric.worst_group_metric_field}'] = group_results[
+            f'{metric.worst_group_metric_field}']
         results_str += f"Worst-group {metric.name}: {group_results[metric.worst_group_metric_field]:.3f}\n"
         return results, results_str
 
 
 class MillionTreesSubset(MillionTreesDataset):
+
     def __init__(self, dataset, indices, transform, do_transform_y=False):
         """
         This acts like `torch.utils.data.Subset`, but on `WILDSDatasets`.
@@ -473,10 +497,11 @@ class MillionTreesSubset(MillionTreesDataset):
         """
         self.dataset = dataset
         self.indices = indices
-        inherited_attrs = ['_dataset_name', '_data_dir', '_collate',
-                           '_split_scheme', '_split_dict', '_split_names',
-                           '_y_size', '_n_classes',
-                           '_metadata_fields', '_metadata_map']
+        inherited_attrs = [
+            '_dataset_name', '_data_dir', '_collate', '_split_scheme',
+            '_split_dict', '_split_names', '_y_size', '_n_classes',
+            '_metadata_fields', '_metadata_map'
+        ]
         for attr_name in inherited_attrs:
             if hasattr(dataset, attr_name):
                 setattr(self, attr_name, getattr(dataset, attr_name))
@@ -485,11 +510,13 @@ class MillionTreesSubset(MillionTreesDataset):
     def __getitem__(self, idx):
         x, y, metadata = self.dataset[self.indices[idx]]
         if self.transform is not None:
-                augmented = self.transform(image=x, bboxes=y, category_ids=metadata['source_id'])
-                x = augmented['image']
-                y = augmented['bboxes']
-                metadata['source_id'] = augmented['category_ids']
-                
+            augmented = self.transform(image=x,
+                                       bboxes=y,
+                                       category_ids=metadata['source_id'])
+            x = augmented['image']
+            y = augmented['bboxes']
+            metadata['source_id'] = augmented['category_ids']
+
         return x, y, metadata
 
     def __len__(self):
