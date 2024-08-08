@@ -39,8 +39,7 @@ setuptools.setup(
     classifiers=[
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Intended Audience :: Science/Research',
-        "Programming Language :: Python :: 3",
-        "License :: GNU License",
+        "Programming Language :: Python :: 3"
     ],
     python_requires='>=3.6',
 )
