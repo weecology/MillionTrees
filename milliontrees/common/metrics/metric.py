@@ -4,17 +4,15 @@ import torch
 
 
 class Metric:
-    """
-    Parent class for metrics.
-    """
+    """Parent class for metrics."""
 
     def __init__(self, name):
         self._name = name
 
     def _compute(self, y_pred, y_true):
-        """
-        Helper function for computing the metric.
-        Subclasses should implement this.
+        """Helper function for computing the metric. Subclasses should
+        implement this.
+
         Args:
             - y_pred (Tensor): Predicted targets or model output
             - y_true (Tensor): True targets
@@ -24,8 +22,9 @@ class Metric:
         return NotImplementedError
 
     def worst(self, metrics):
-        """
-        Given a list/numpy array/Tensor of metrics, computes the worst-case metric
+        """Given a list/numpy array/Tensor of metrics, computes the worst-case
+        metric.
+
         Args:
             - metrics (Tensor, numpy array, or list): Metrics
         Output:
@@ -35,46 +34,42 @@ class Metric:
 
     @property
     def name(self):
-        """
-        Metric name.
-        Used to name the key in the results dictionaries returned by the metric.
+        """Metric name.
+
+        Used to name the key in the results dictionaries returned by the
+        metric.
         """
         return self._name
 
     @property
     def agg_metric_field(self):
-        """
-        The name of the key in the results dictionary returned by Metric.compute().
-        This should correspond to the aggregate metric computed on all of y_pred and y_true,
-        in contrast to a group-wise evaluation.
+        """The name of the key in the results dictionary returned by
+        Metric.compute().
+
+        This should correspond to the aggregate metric computed on all
+        of y_pred and y_true, in contrast to a group-wise evaluation.
         """
         return f'{self.name}_all'
 
     def group_metric_field(self, group_idx):
-        """
-        The name of the keys corresponding to individual group evaluations
-        in the results dictionary returned by Metric.compute_group_wise().
-        """
+        """The name of the keys corresponding to individual group evaluations
+        in the results dictionary returned by Metric.compute_group_wise()."""
         return f'{self.name}_group:{group_idx}'
 
     @property
     def worst_group_metric_field(self):
-        """
-        The name of the keys corresponding to the worst-group metric
-        in the results dictionary returned by Metric.compute_group_wise().
-        """
+        """The name of the keys corresponding to the worst-group metric in the
+        results dictionary returned by Metric.compute_group_wise()."""
         return f'{self.name}_wg'
 
     def group_count_field(self, group_idx):
-        """
-        The name of the keys corresponding to each group's count
-        in the results dictionary returned by Metric.compute_group_wise().
-        """
+        """The name of the keys corresponding to each group's count in the
+        results dictionary returned by Metric.compute_group_wise()."""
         return f'count_group:{group_idx}'
 
     def compute(self, y_pred, y_true, return_dict=True):
-        """
-        Computes metric. This is a wrapper around _compute.
+        """Computes metric. This is a wrapper around _compute.
+
         Args:
             - y_pred (Tensor): Predicted targets or model output
             - y_true (Tensor): True targets
@@ -98,8 +93,8 @@ class Metric:
             return agg_metric
 
     def compute_group_wise(self, y_pred, y_true, g, n_groups, return_dict=True):
-        """
-        Computes metrics for each group. This is a wrapper around _compute.
+        """Computes metrics for each group. This is a wrapper around _compute.
+
         Args:
             - y_pred (Tensor): Predicted targets or model output
             - y_true (Tensor): True targets
@@ -146,13 +141,12 @@ class Metric:
 
 
 class ElementwiseMetric(Metric):
-    """
-    Averages.
-    """
+    """Averages."""
 
     def _compute_element_wise(self, y_pred, y_true):
-        """
-        Helper for computing element-wise metric, implemented for each metric
+        """Helper for computing element-wise metric, implemented for each
+        metric.
+
         Args:
             - y_pred (Tensor): Predicted targets or model output
             - y_true (Tensor): True targets
@@ -162,8 +156,9 @@ class ElementwiseMetric(Metric):
         raise NotImplementedError
 
     def worst(self, metrics):
-        """
-        Given a list/numpy array/Tensor of metrics, computes the worst-case metric
+        """Given a list/numpy array/Tensor of metrics, computes the worst-case
+        metric.
+
         Args:
             - metrics (Tensor, numpy array, or list): Metrics
         Output:
@@ -172,8 +167,8 @@ class ElementwiseMetric(Metric):
         raise NotImplementedError
 
     def _compute(self, y_pred, y_true):
-        """
-        Helper function for computing the metric.
+        """Helper function for computing the metric.
+
         Args:
             - y_pred (Tensor): Predicted targets or model output
             - y_true (Tensor): True targets
@@ -193,14 +188,13 @@ class ElementwiseMetric(Metric):
 
     @property
     def agg_metric_field(self):
-        """
-        The name of the key in the results dictionary returned by Metric.compute().
-        """
+        """The name of the key in the results dictionary returned by
+        Metric.compute()."""
         return f'{self.name}_avg'
 
     def compute_element_wise(self, y_pred, y_true, return_dict=True):
-        """
-        Computes element-wise metric
+        """Computes element-wise metric.
+
         Args:
             - y_pred (Tensor): Predicted targets or model output
             - y_true (Tensor): True targets

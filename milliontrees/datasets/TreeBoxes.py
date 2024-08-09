@@ -13,47 +13,48 @@ from PIL import Image
 
 
 class TreeBoxesDataset(MillionTreesDataset):
-    """
-        The TreeBoxes dataset is a collection of tree annotations annotated as four pointed bounding boxes.
-        The dataset is comprised of many sources from across the world. There are 2 splits:
-            - Official: 80% of the data randomly split into train and 20% in test
-            - Random: 80% of the locations randomly split into train and 20% in test
-        Supported `split_scheme`:
-            - 'Official'
-            - 'Random'
-        Input (x):
-            RGB images from camera traps
-        Label (y):
-            y is a n x 4-dimensional vector where each line represents a box coordinate (x_min, y_min, x_max, y_max)
-        Metadata:
-            Each image is annotated with the following metadata
-                - location (int): location id
-                - resolution (int): resolution of image
-                - focal view (int): focal view of image
+    """The TreeBoxes dataset is a collection of tree annotations annotated as
+    four pointed bounding boxes.
 
-        Website:
-            https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
-        Original publication:
-            The following publications are included in this dataset
-            @article{Weinstein2020,
-            title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
-            author={Weinstein BG, Graves SJ, Marconi S, Singh A, Zare A, Stewart D, et al.},
-            journal={PLoS Comput Biol},
-                    year={2021},
-            doi={10.1371/journal.pcbi.1009180}
-            }
-        Original publication:
-            The following publications are included in this dataset
-            @article{Weinstein2020,
-            title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
-            author={Weinstein BG, Graves SJ, Marconi S, Singh A, Zare A, Stewart D, et al.},
-            journal={PLoS Comput Biol},
-                    year={2021},
-            doi={10.1371/journal.pcbi.1009180}
-            }
-        License:
-            This dataset is distributed under Creative Commons Attribution License
-        """
+    The dataset is comprised of many sources from across the world. There are 2 splits:
+        - Official: 80% of the data randomly split into train and 20% in test
+        - Random: 80% of the locations randomly split into train and 20% in test
+    Supported `split_scheme`:
+        - 'Official'
+        - 'Random'
+    Input (x):
+        RGB images from camera traps
+    Label (y):
+        y is a n x 4-dimensional vector where each line represents a box coordinate (x_min, y_min, x_max, y_max)
+    Metadata:
+        Each image is annotated with the following metadata
+            - location (int): location id
+            - resolution (int): resolution of image
+            - focal view (int): focal view of image
+
+    Website:
+        https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
+    Original publication:
+        The following publications are included in this dataset
+        @article{Weinstein2020,
+        title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
+        author={Weinstein BG, Graves SJ, Marconi S, Singh A, Zare A, Stewart D, et al.},
+        journal={PLoS Comput Biol},
+                year={2021},
+        doi={10.1371/journal.pcbi.1009180}
+        }
+    Original publication:
+        The following publications are included in this dataset
+        @article{Weinstein2020,
+        title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
+        author={Weinstein BG, Graves SJ, Marconi S, Singh A, Zare A, Stewart D, et al.},
+        journal={PLoS Comput Biol},
+                year={2021},
+        doi={10.1371/journal.pcbi.1009180}
+        }
+    License:
+        This dataset is distributed under Creative Commons Attribution License
+    """
     _dataset_name = 'TreeBoxes'
     _versions_dict = {'0.0': {'download_url': '', 'compressed_size': ""}}
 
@@ -125,8 +126,8 @@ class TreeBoxesDataset(MillionTreesDataset):
         super().__init__(root_dir, download, split_scheme)
 
     def eval(self, y_pred, y_true, metadata, prediction_fn=None):
-        """
-        Computes all evaluation metrics.
+        """Computes all evaluation metrics.
+
         Args:
             - y_pred (Tensor): Predictions from a model. By default, they are predicted labels (LongTensor).
                                But they can also be other model outputs such that prediction_fn(y_pred)

@@ -12,8 +12,8 @@ def get_train_loader(loader,
                      distinct_groups=True,
                      n_groups_per_batch=None,
                      **loader_kwargs):
-    """
-    Constructs and returns the data loader for training.
+    """Constructs and returns the data loader for training.
+
     Args:
         - loader (str): Loader type. 'standard' for standard loaders and 'group' for group loaders,
                         which first samples groups and then samples a fixed number of examples belonging
@@ -87,8 +87,8 @@ def get_train_loader(loader,
 
 
 def get_eval_loader(loader, dataset, batch_size, grouper=None, **loader_kwargs):
-    """
-    Constructs and returns the data loader for evaluation.
+    """Constructs and returns the data loader for evaluation.
+
     Args:
         - loader (str): Loader type. 'standard' for standard loaders.
         - dataset (milliontreesDataset or milliontreesSubset): Data
@@ -108,10 +108,10 @@ def get_eval_loader(loader, dataset, batch_size, grouper=None, **loader_kwargs):
 
 
 class GroupSampler:
-    """
-        Constructs batches by first sampling groups,
-        then sampling data from those groups.
-        It drops the last batch if it's incomplete.
+    """Constructs batches by first sampling groups, then sampling data from
+    those groups.
+
+    It drops the last batch if it's incomplete.
     """
 
     def __init__(self, group_ids, batch_size, n_groups_per_batch,
