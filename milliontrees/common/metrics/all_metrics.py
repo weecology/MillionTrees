@@ -25,10 +25,8 @@ def binary_logits_to_score(logits):
 
 
 def multiclass_logits_to_pred(logits):
-    """
-    Takes multi-class logits of size (batch_size, ..., n_classes) and returns predictions
-    by taking an argmax at the last dimension
-    """
+    """Takes multi-class logits of size (batch_size, ..., n_classes) and
+    returns predictions by taking an argmax at the last dimension."""
     assert logits.dim() > 1
     return logits.argmax(-1)
 
@@ -326,7 +324,8 @@ class MSE(ElementwiseLoss):
 
 
 class PrecisionAtRecall(Metric):
-    """Given a specific model threshold, determine the precision score achieved"""
+    """Given a specific model threshold, determine the precision score
+    achieved."""
 
     def __init__(self, threshold, score_fn=None, name=None):
         self.score_fn = score_fn
@@ -346,8 +345,9 @@ class PrecisionAtRecall(Metric):
 
 
 class DummyMetric(Metric):
-    """
-    For testing purposes. This Metric always returns -1.
+    """For testing purposes.
+
+    This Metric always returns -1.
     """
 
     def __init__(self, prediction_fn=None, name=None):
@@ -370,10 +370,8 @@ class DummyMetric(Metric):
 
 
 class DetectionAccuracy(ElementwiseMetric):
-    """
-    Given a specific Intersection over union threshold,
-    determine the accuracy achieved for a one-class detector
-    """
+    """Given a specific Intersection over union threshold, determine the
+    accuracy achieved for a one-class detector."""
 
     def __init__(self, iou_threshold=0.5, score_threshold=0.5, name=None):
         self.iou_threshold = iou_threshold
