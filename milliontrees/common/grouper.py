@@ -10,10 +10,10 @@ import warnings
 
 
 class Grouper:
-    """
-    Groupers group data points together based on their metadata.
-    They are used for training and evaluation,
-    e.g., to measure the accuracies of different groups of data.
+    """Groupers group data points together based on their metadata.
+
+    They are used for training and evaluation, e.g., to measure the
+    accuracies of different groups of data.
     """
 
     def __init__(self):
@@ -21,9 +21,7 @@ class Grouper:
 
     @property
     def n_groups(self):
-        """
-        The number of groups defined by this Grouper.
-        """
+        """The number of groups defined by this Grouper."""
         return self._n_groups
 
     def metadata_to_group(self, metadata, return_counts=False):
