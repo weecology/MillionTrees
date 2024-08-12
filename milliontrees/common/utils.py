@@ -62,11 +62,11 @@ def split_into_groups(g):
 
 
 def get_counts(g, n_groups):
-    """
-    This differs from split_into_groups in how it handles missing groups.
-    get_counts always returns a count Tensor of length n_groups,
-    whereas split_into_groups returns a unique_counts Tensor
-    whose length is the number of unique groups present in g.
+    """This differs from split_into_groups in how it handles missing groups.
+    get_counts always returns a count Tensor of length n_groups, whereas
+    split_into_groups returns a unique_counts Tensor whose length is the number
+    of unique groups present in g.
+
     Args:
         - g (Tensor): Vector of groups
     Returns:
@@ -138,8 +138,11 @@ def shuffle_arr(arr, seed=None):
 
 
 def threshold_at_recall(y_pred, y_true, global_recall=60):
-    """ Calculate the model threshold to use to achieve a desired global_recall level. Assumes that
-    y_true is a vector of the true binary labels."""
+    """Calculate the model threshold to use to achieve a desired global_recall
+    level.
+
+    Assumes that y_true is a vector of the true binary labels.
+    """
     return np.percentile(y_pred[y_true == 1], 100 - global_recall)
 
 

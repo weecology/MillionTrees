@@ -129,7 +129,7 @@ def download_url(url: str,
 
 
 def list_dir(root: str, prefix: bool = False) -> List[str]:
-    """List all directories at a given root
+    """List all directories at a given root.
 
     Args:
         root (str): Path to directory whose folders need to be listed
@@ -146,7 +146,7 @@ def list_dir(root: str, prefix: bool = False) -> List[str]:
 
 
 def list_files(root: str, suffix: str, prefix: bool = False) -> List[str]:
-    """List all files ending with a suffix at a given root
+    """List all files ending with a suffix at a given root.
 
     Args:
         root (str): Path to directory whose folders need to be listed
