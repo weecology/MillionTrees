@@ -7,8 +7,8 @@ def get_dataset(dataset: str,
                 version: Optional[str] = None,
                 unlabeled: bool = False,
                 **dataset_kwargs):
-    """
-    Returns the appropriate milliontrees dataset class.
+    """Returns the appropriate milliontrees dataset class.
+
     Input:
         dataset (str): Name of the dataset
         version (Union[str, None]): Dataset version number, e.g., '1.0'.

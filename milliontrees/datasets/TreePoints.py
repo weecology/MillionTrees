@@ -13,42 +13,43 @@ from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
 
 
 class TreePointsDataset(MillionTreesDataset):
+    """The TreePoints dataset is a collection of tree annotations annotated as
+    x,y locations.
+
+    The dataset is comprised of many sources from across the world. There are 5 splits:
+        - Random: 80% of the data randomly split into train and 20% in test
+        - location: 80% of the locations randomly split into train and 20% in test
+    Supported `split_scheme`:
+        - 'Random'
+        - 'location'
+    Input (x):
+        RGB images from camera traps
+    Label (y):
+        y is a n x 2-dimensional vector where each line represents a point coordinate (x, y)
+    Metadata:
+        Each image is annotated with the following metadata
+            - location (int): location id
+            - source (int): source id
+            - resolution (int): resolution of image
+            - focal view (int): focal view of image
+
+    Website:
+        https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
+    Original publication:
+        # Ventura et al. 2022
+        @article{ventura2022individual,
+        title={Individual tree detection in large-scale urban environments using high-resolution multispectral imagery},
+        author={Ventura, Jonathan and Pawlak, Camille and Honsberger, Milo and Gonsalves, Cameron and Rice, Julian and Love, Natalie LR and Han, Skyler and Nguyen, Viet and Sugano, Keilana and Doremus, Jacqueline and others},
+        journal={arXiv preprint arXiv:2208.10607},
+        year={2022}
+        }
+        # TreeFormer
+        #etc....
+
+
+    License:
+        This dataset is distributed under Creative Commons Attribution License
     """
-        The TreePoints dataset is a collection of tree annotations annotated as x,y locations.
-        The dataset is comprised of many sources from across the world. There are 5 splits:
-            - Random: 80% of the data randomly split into train and 20% in test
-            - location: 80% of the locations randomly split into train and 20% in test
-        Supported `split_scheme`:
-            - 'Random'
-            - 'location'
-        Input (x):
-            RGB images from camera traps
-        Label (y):
-            y is a n x 2-dimensional vector where each line represents a point coordinate (x, y)
-        Metadata:
-            Each image is annotated with the following metadata
-                - location (int): location id
-                - source (int): source id
-                - resolution (int): resolution of image
-                - focal view (int): focal view of image
-
-        Website:
-            https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
-        Original publication:
-            # Ventura et al. 2022
-            @article{ventura2022individual,
-            title={Individual tree detection in large-scale urban environments using high-resolution multispectral imagery},
-            author={Ventura, Jonathan and Pawlak, Camille and Honsberger, Milo and Gonsalves, Cameron and Rice, Julian and Love, Natalie LR and Han, Skyler and Nguyen, Viet and Sugano, Keilana and Doremus, Jacqueline and others},
-            journal={arXiv preprint arXiv:2208.10607},
-            year={2022}
-            }
-            # TreeFormer
-            #etc....
-            
-
-        License:
-            This dataset is distributed under Creative Commons Attribution License
-        """
     _dataset_name = 'TreePoints'
     _versions_dict = {
         '0.0': {
@@ -124,8 +125,8 @@ class TreePointsDataset(MillionTreesDataset):
         super().__init__(root_dir, download, split_scheme)
 
     def eval(self, y_pred, y_true, metadata, prediction_fn=None):
-        """
-        Computes all evaluation metrics.
+        """Computes all evaluation metrics.
+
         Args:
             - y_pred (Tensor): Predictions from a model. By default, they are predicted labels (LongTensor).
                                But they can also be other model outputs such that prediction_fn(y_pred)
