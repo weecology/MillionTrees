@@ -117,13 +117,13 @@ def generate_box_dataset(image_dir):
 def generate_polygon_dataset(image_dir):
     # Generate the polygon dataset logic here
     # Assuming you have a list of polygon coordinates and corresponding image file paths
-    polygon_coords = [[(10, 15), (50, 15), (50, 55), (10, 55)], [(20, 25), (60, 25), (60, 65), (20, 65)], [(30, 35), (70, 35), (70, 75), (30, 75)]]
+    polygon_wkt = ["POLYGON((10 15, 50 15, 50 55, 10 55, 10 15))", "POLYGON((20 25, 60 25, 60 65, 20 65, 20 25))", "POLYGON((30 35, 70 35, 70 75, 30 75, 30 35))"]
     locations = [0,0,1]
     resolution = [1,1,10]
     image_files = [os.path.join(image_dir, 'image1.jpg'), os.path.join(image_dir, 'image2.jpg'), os.path.join(image_dir, 'image3.jpg')]
 
     # Create a pandas DataFrame
-    df = pd.DataFrame({'polygon_coords': polygon_coords, 'filename': image_files, "location":locations,"resolution":resolution})
+    df = pd.DataFrame({'polygon': polygon_wkt, 'filename': image_files, "source":locations,"resolution":resolution})
 
     # Create images and save them to disk within image_dir
     for i, row in df.iterrows():

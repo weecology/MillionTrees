@@ -2,11 +2,11 @@ from datetime import datetime
 from pathlib import Path
 import os
 
-from PIL import Image
+from PIL import Image, ImageDraw
 import pandas as pd
 import numpy as np
 import torch
-
+from shapely import from_wkt
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
@@ -92,14 +92,15 @@ class TreePolygonsDataset(MillionTreesDataset):
         # Filenames
         self._input_array = df['filename'].values
 
-        self._y_array = torch.tensor(df[["xmin", "ymin", "xmax",
-                                         "ymax"]].values.astype(float))
+        # Convert each polygon to shapely objects
+        for i in range(len(df)):
+            df.loc[i, 'polygon'] = from_wkt(df.loc[i, 'polygon'])
+
+        self._y_array = list(df['polygon'].values)
 
         # Labels -> just 'Tree'
         self._n_classes = 1
-
-        # Length of targets
-        self._y_size = 4
+        self._y_size = 2
 
         # Create source locations with a numeric ID
         df["source_id"] = df.source.astype('category').cat.codes
@@ -119,6 +120,43 @@ class TreePolygonsDataset(MillionTreesDataset):
                                                                   ]))
 
         super().__init__(root_dir, download, split_scheme)
+
+    def __getitem__(self, idx):
+        # Any transformations are handled by the WILDSSubset
+        # since different subsets (e.g., train vs test) might have different transforms
+        x = self.get_input(idx)
+        y_polygon = self._y_array[idx]
+        y = self.create_polygon_mask(x.shape[-2:], y_polygon)
+        metadata = self.metadata_array[idx]
+
+        return x, y, metadata
+    
+    def create_polygon_mask(self, image_size, vertices):
+        """
+        Create a grayscale image with a white polygonal area on a black background.
+
+        Parameters:
+        - image_size (tuple): A tuple representing the dimensions (width, height) of the image.
+        - vertices (list): A list of tuples, each containing the x, y coordinates of a vertex
+                            of the polygon. Vertices should be in clockwise or counter-clockwise order.
+
+        Returns:
+        - PIL.Image.Image: A PIL Image object containing the polygonal mask.
+        """
+        # Create a new black image with the given dimensions
+        mask_img = Image.new('L', image_size, 0)
+        
+        # Draw the polygon on the image. The area inside the polygon will be white (255).
+        # Get the coordinates of the polygon vertices
+        polygon_coords = [(int(vertex[0]), int(vertex[1])) for vertex in vertices.exterior.coords._coords]
+
+        # Draw the polygon on the image. The area inside the polygon will be white (255).
+        ImageDraw.Draw(mask_img, 'L').polygon(polygon_coords, fill=(255))
+
+        # Return the image with the drawn polygon as numpy array
+        mask_img = np.array(mask_img)
+
+        return mask_img
 
     def eval(self, y_pred, y_true, metadata, prediction_fn=None):
         """Computes all evaluation metrics.
