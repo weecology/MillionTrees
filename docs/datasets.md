@@ -24,6 +24,11 @@ Location: Southern California, United States
 
 ## Boxes
 
+### Velasquez-Camacho et al. 2023
+
+https://zenodo.org/records/10246449
+
+Location: Spain
 
 ### Kwon et al. 2023
 
@@ -37,3 +42,32 @@ Location: Suwon, South Korea
 
 ## Polygons
 
+### Jansen et al. 2022
+
+Location: Northern Australia
+
+https://zenodo.org/records/7094916
+
+### Cloutier et al. 2023
+
+https://zenodo.org/records/8148479
+
+Location: Quebec, Canada
+
+### Troles et al. 2024
+
+https://www.mdpi.com/2072-4292/16/11/1935
+
+Location: Bamberg, Germany
+
+### Firoze et al. 2023
+
+https://openaccess.thecvf.com/content/CVPR2023/papers/Firoze_Tree_Instance_Segmentation_With_Temporal_Contour_Graph_CVPR_2023_paper.pdf
+
+Location: Indiana, United States
+
+#### Ball et al. 2023
+
+https://zenodo.org/records/8136161
+
+Location: Danum, Malaysia
