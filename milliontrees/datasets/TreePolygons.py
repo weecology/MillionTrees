@@ -130,7 +130,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         metadata = self.metadata_array[idx]
 
         return x, y, metadata
-    
+
     def create_polygon_mask(self, image_size, vertices):
         """
         Create a grayscale image with a white polygonal area on a black background.
@@ -145,10 +145,11 @@ class TreePolygonsDataset(MillionTreesDataset):
         """
         # Create a new black image with the given dimensions
         mask_img = Image.new('L', image_size, 0)
-        
+
         # Draw the polygon on the image. The area inside the polygon will be white (255).
         # Get the coordinates of the polygon vertices
-        polygon_coords = [(int(vertex[0]), int(vertex[1])) for vertex in vertices.exterior.coords._coords]
+        polygon_coords = [(int(vertex[0]), int(vertex[1]))
+                          for vertex in vertices.exterior.coords._coords]
 
         # Draw the polygon on the image. The area inside the polygon will be white (255).
         ImageDraw.Draw(mask_img, 'L').polygon(polygon_coords, fill=(255))
