@@ -6,6 +6,7 @@ torchvision
 tqdm
 pytest
 scikit-learn
+shapely
 bumpversion
 yapf
 sphinx

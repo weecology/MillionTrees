@@ -32,7 +32,8 @@ setuptools.setup(
         'torchvision',
         'tqdm',
         'scikit-learn',
-        'scipy'
+        'scipy',
+        'shapely'
     ],
     license='MIT',
     packages=setuptools.find_packages(exclude=['data_prep', 'examples']),
