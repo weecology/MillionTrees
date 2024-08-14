@@ -1,4 +1,6 @@
-# Data Format
+# Datasets
+
+There are three datasets within the MillionTrees package, TreeBoxes, TreePoints, TreePolygons. Those datasets contain many source datasets from dozens of papers and research efforts. Below, each source is briefly described.
 
 ## Points
 
@@ -22,15 +24,6 @@ Location: Southern California, United States
 
 ## Boxes
 
-### Beloiu et al. 2023
-
-Reference: https://www.mdpi.com/2072-4292/15/5/1463, https://zenodo.org/records/7528566
-
-Citation: Beloiu, M.; Heinzmann, L.; Rehush, N.; Gessler, A.; Griess, V.C. Individual Tree-Crown Detection and Species Identification in Heterogeneous Forests Using Aerial RGB Imagery and Deep Learning. Remote Sens. 2023, 15, 1463. https://doi.org/10.3390/rs15051463
-
-Location: Switzerland
-
-![sample_image]()
 
 ### Kwon et al. 2023
 
