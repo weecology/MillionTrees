@@ -40,6 +40,12 @@ Location: Suwon, South Korea
 
 ![sample_image]()
 
+### Zamboni et al. 2022
+
+https://github.com/pedrozamboni/individual_urban_tree_crown_detection
+
+Location: Mato Grosso do Sul, Brazil
+
 ## Polygons
 
 ### Jansen et al. 2022
@@ -71,3 +77,9 @@ Location: Indiana, United States
 https://zenodo.org/records/8136161
 
 Location: Danum, Malaysia
+
+## Wagner et al. 2023
+
+https://www.mdpi.com/2504-446X/7/3/155
+
+Location: Australia
