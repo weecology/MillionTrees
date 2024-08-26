@@ -53,8 +53,8 @@ class TreePointsDataset(MillionTreesDataset):
     _dataset_name = 'TreePoints'
     _versions_dict = {
         '0.0': {
-            'download_url': '',
-            'compressed_size': 11_957_420_032
+            'download_url': 'https://www.dropbox.com/scl/fi/csqdtsps3thltrmbc2amx/TreePoints_v0.0.zip?rlkey=s8ycx5ssh14u2a5amiz0dx3ks&dl=0',
+            'compressed_size': '523312564'
         }
     }
 
