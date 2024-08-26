@@ -51,7 +51,14 @@ class TreePolygonsDataset(MillionTreesDataset):
         This dataset is distributed under Creative Commons Attribution License
     """
     _dataset_name = 'TreePolygons'
-    _versions_dict = {'0.0': {'download_url': 'https://www.dropbox.com/scl/fi/81ost5jvsp7cb8br02mm4/TreePolygons_v0.0.zip?rlkey=cu1u1r6s1qftvedkgl3wo7bji&dl=0', 'compressed_size': '17112645'}}
+    _versions_dict = {
+        '0.0': {
+            'download_url':
+                'https://www.dropbox.com/scl/fi/81ost5jvsp7cb8br02mm4/TreePolygons_v0.0.zip?rlkey=cu1u1r6s1qftvedkgl3wo7bji&dl=0',
+            'compressed_size':
+                '17112645'
+        }
+    }
 
     def __init__(self,
                  version=None,
