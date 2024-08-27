@@ -56,7 +56,7 @@ class TreePolygonsDataset(MillionTreesDataset):
             'download_url':
                 'https://www.dropbox.com/scl/fi/81ost5jvsp7cb8br02mm4/TreePolygons_v0.0.zip?rlkey=cu1u1r6s1qftvedkgl3wo7bji&dl=0',
             'compressed_size':
-                '17112645'
+                17112645
         }
     }
 

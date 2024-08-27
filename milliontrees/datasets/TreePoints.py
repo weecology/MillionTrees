@@ -56,7 +56,7 @@ class TreePointsDataset(MillionTreesDataset):
             'download_url':
                 'https://www.dropbox.com/scl/fi/csqdtsps3thltrmbc2amx/TreePoints_v0.0.zip?rlkey=s8ycx5ssh14u2a5amiz0dx3ks&dl=0',
             'compressed_size':
-                '523312564'
+                523312564
         }
     }
 
