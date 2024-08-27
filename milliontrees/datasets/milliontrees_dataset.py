@@ -370,7 +370,7 @@ class MillionTreesDataset:
             start_time = time.time()
             download_and_extract_archive(url=download_url,
                                          download_root=data_dir,
-                                         filename='archive.tar.gz',
+                                         filename='archive.zip',
                                          remove_finished=True,
                                          size=compressed_size)
             download_time_in_minutes = (time.time() - start_time) / 60
@@ -379,7 +379,7 @@ class MillionTreesDataset:
             )
         except Exception as e:
             print(
-                f"\n{os.path.join(data_dir, 'archive.tar.gz')} may be corrupted. Please try deleting it and rerunning this command.\n"
+                f"\n{os.path.join(data_dir, 'archive.zip')} may be corrupted. Please try deleting it and rerunning this command.\n"
             )
             print(f"Exception: ", e)
 

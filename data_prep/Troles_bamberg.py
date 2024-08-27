@@ -1,5 +1,4 @@
 import pandas as pd
-import globox
 from deepforest.utilities import xml_to_annotations
 from deepforest import get_data
 import glob
@@ -14,40 +13,17 @@ test_set2 = "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/insta
 import os
 import shutil
 
-def copy_images(source_dir, target_dir, extensions=('.jpg', '.png', '.jpeg')):
-    """
-    Recursively copy images from source_dir to target_dir.
+target_dir = "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/images"
+
+if not os.path.exists(target_dir):
+    os.makedirs(target_dir)
+    image_files = glob.glob("/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/**/*.tif", recursive=True)
     
-    Parameters:
-    - source_dir: Path to the source directory.
-    - target_dir: Path to the target directory.
-    - extensions: A tuple of file extensions to consider as images.
-    """
-    if not os.path.exists(target_dir):
-        os.makedirs(target_dir)
+    for file in image_files:
+        shutil.copy(file, target_dir)
+else:
+    print("Target directory already exists.")
     
-    for root, dirs, files in os.walk(source_dir):
-        for file in files:
-            if file.lower().endswith(extensions):
-                source_file_path = os.path.join(root, file)
-                target_file_path = os.path.join(target_dir, file)
-                
-                # Ensure the target directory exists
-                os.makedirs(os.path.dirname(target_file_path), exist_ok=True)
-                
-                # Copy the file
-                shutil.copy2(source_file_path, target_file_path)
-                print(f"Copied: {source_file_path} to {target_file_path}")
-
-# Example usage
-source_directory = "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048"
-target_directory = "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/images"
-
-# If source dir exists, don't run
-if not os.path.exists(target_directory):
-    print("Copying images...")
-    copy_images(source_directory, target_directory, extensions=(".tif"))
-
 """
 # If we wanted just the bounding boxes
     coco_train = globox.AnnotationSet.from_coco(train_set)
