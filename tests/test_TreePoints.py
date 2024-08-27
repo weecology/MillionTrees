@@ -66,4 +66,3 @@ def test_TreePoints_download(tmpdir):
         assert label.shape == (2,)
         assert len(metadata) == 2
         break
-
