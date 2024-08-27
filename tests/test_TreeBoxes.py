@@ -52,8 +52,7 @@ def test_TreeBoxes_release():
         assert len(metadata) == 2
         break
 
-@pytest.mark.skipif(not on_hipergator, reason="Do not run on github actions")
-def test_TreeBoxes_release(tmpdir):
+def test_TreeBoxes_download(tmpdir):
     dataset = TreeBoxesDataset(download=True, root_dir=tmpdir)
     transform = transforms.Compose([
         transforms.Resize((448, 448)),
