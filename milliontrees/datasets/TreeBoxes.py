@@ -61,7 +61,7 @@ class TreeBoxesDataset(MillionTreesDataset):
             'download_url':
                 'https://www.dropbox.com/scl/fi/1qv5ymx54r89qw54nj49k/TreeBoxes_v0.0.zip?rlkey=64dxo9y7wmdq9vehs7odakavy&dl=0',
             'compressed_size':
-                "5940337"
+                5940337
         }
     }
 
