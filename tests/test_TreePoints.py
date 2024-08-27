@@ -50,3 +50,20 @@ def test_TreePoints_hipergator():
         assert label.shape == (2,)
         assert len(metadata) == 2
         break
+
+def test_TreePoints_download(tmpdir):
+    dataset = TreePointsDataset(download=True, root_dir=tmpdir)
+    transform = transforms.Compose([
+        transforms.Resize((448, 448)),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ToTensor()
+    ])
+
+    train_dataset = dataset.get_subset("train", transform=transform)
+     
+    for image, label, metadata in train_dataset:
+        assert image.shape == (3, 448, 448)
+        assert label.shape == (2,)
+        assert len(metadata) == 2
+        break
+

@@ -51,3 +51,19 @@ def test_TreeBoxes_release():
         assert label.shape == (4,)
         assert len(metadata) == 2
         break
+
+@pytest.mark.skipif(not on_hipergator, reason="Do not run on github actions")
+def test_TreeBoxes_release(tmpdir):
+    dataset = TreeBoxesDataset(download=True, root_dir=tmpdir)
+    transform = transforms.Compose([
+        transforms.Resize((448, 448)),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ToTensor()
+    ])
+    train_dataset = dataset.get_subset("train", transform=transform)
+     
+    for image, label, metadata in train_dataset:
+        assert image.shape == (3, 448, 448)
+        assert label.shape == (4,)
+        assert len(metadata) == 2
+        break

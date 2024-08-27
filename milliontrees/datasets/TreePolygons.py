@@ -54,7 +54,7 @@ class TreePolygonsDataset(MillionTreesDataset):
     _versions_dict = {
         '0.0': {
             'download_url':
-                'https://www.dropbox.com/scl/fi/81ost5jvsp7cb8br02mm4/TreePolygons_v0.0.zip?rlkey=cu1u1r6s1qftvedkgl3wo7bji&dl=0',
+                'https://www.dropbox.com/scl/fi/81ost5jvsp7cb8br02mm4/TreePolygons_v0.0.zip?rlkey=cu1u1r6s1qftvedkgl3wo7bji&dl=1',
             'compressed_size':
                 17112645
         }
