@@ -59,7 +59,7 @@ class TreeBoxesDataset(MillionTreesDataset):
     _versions_dict = {
         '0.0': {
             'download_url':
-                'https://www.dropbox.com/scl/fi/1qv5ymx54r89qw54nj49k/TreeBoxes_v0.0.zip?rlkey=64dxo9y7wmdq9vehs7odakavy&dl=0',
+                'https://github.com/weecology/MillionTrees/releases/download/0.0.0-alpha/TreeBoxes_v0.0.zip',
             'compressed_size':
                 5940337
         }

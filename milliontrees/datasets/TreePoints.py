@@ -54,7 +54,7 @@ class TreePointsDataset(MillionTreesDataset):
     _versions_dict = {
         '0.0': {
             'download_url':
-                'https://www.dropbox.com/scl/fi/csqdtsps3thltrmbc2amx/TreePoints_v0.0.zip?rlkey=s8ycx5ssh14u2a5amiz0dx3ks&dl=0',
+                'https://github.com/weecology/MillionTrees/releases/download/0.0.0-alpha/TreePoints_v0.0.zip',
             'compressed_size':
                 523312564
         }
