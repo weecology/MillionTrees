@@ -77,17 +77,15 @@ for image in TreePoints_datasets.filename.unique():
     if not os.path.exists(destination + os.path.basename(image)):
         shutil.copy(image, destination)
 
-"""
 for image in TreePolygons_datasets.filename.unique():
     destination = "/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/images/"
     if not os.path.exists(destination + os.path.basename(image)):
         shutil.copy(image, destination)
-"""
 
-# change filenames to correct absolute path
-TreeBoxes_datasets.filename = "/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0/images/" + TreeBoxes_datasets.filename.str.split("/").str[-1]
-TreePoints_datasets.filename = "/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0/images/" + TreePoints_datasets.filename.str.split("/").str[-1]
-TreePolygons_datasets.filename = "/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/images/" + TreePolygons_datasets.filename.str.split("/").str[-1]
+# change filenames to relative path
+TreeBoxes_datasets["filename"] = TreeBoxes_datasets["filename"].apply(os.path.basename)
+TreePoints_datasets["filename"] = TreePoints_datasets["filename"].apply(os.path.basename)
+TreePolygons_datasets["filename"] = TreePolygons_datasets["filename"].apply(os.path.basename)
 
 # Save splits
 TreePolygons_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/official.csv", index=False)
