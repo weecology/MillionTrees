@@ -10,7 +10,7 @@ Citation: Amirkolaee, Hamed Amini, Miaojing Shi, and Mark Mulligan. "TreeFormer:
 
 Location: London, England
 
-![sample_image]()
+<img src="public/TreeFormer.jpg" alt="sample_image" style="width:300px; height:auto;">
 
 ### Ventura et al. 2022
 
@@ -20,7 +20,7 @@ J. Ventura, C. Pawlak, M. Honsberger, C. Gonsalves, J. Rice, N.L.R. Love, S. Han
 
 Location: Southern California, United States
 
-![sample_image]()
+<img src="public/Ventura.png" alt="sample_image" style="width:300px; height:auto;">
 
 ## Boxes
 
@@ -38,8 +38,6 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023,
 
 Location: Suwon, South Korea
 
-![sample_image]()
-
 ### Zamboni et al. 2022
 
 https://github.com/pedrozamboni/individual_urban_tree_crown_detection
@@ -49,6 +47,8 @@ Location: Mato Grosso do Sul, Brazil
 ## Polygons
 
 ### Jansen et al. 2022
+
+<img src="public/Jansen.png" alt="sample_image" style="width:300px; height:auto;">
 
 Location: Northern Australia
 
@@ -62,9 +62,9 @@ Location: Quebec, Canada
 
 ### Troles et al. 2024
 
-https://www.mdpi.com/2072-4292/16/11/1935
-
 Location: Bamberg, Germany
+
+<img src="public/Troles.png" alt="sample_image" style="width:300px; height:auto;">
 
 ### Firoze et al. 2023
 
@@ -78,8 +78,9 @@ https://zenodo.org/records/8136161
 
 Location: Danum, Malaysia
 
-## Wagner et al. 2023
+### Wagner et al. 2023
 
 https://www.mdpi.com/2504-446X/7/3/155
 
 Location: Australia
+https://www.mdpi.com/2072-4292/16/11/1935

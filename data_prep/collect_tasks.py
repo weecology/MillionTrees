@@ -88,6 +88,17 @@ TreePoints_datasets["filename"] = TreePoints_datasets["filename"].apply(os.path.
 TreePolygons_datasets["filename"] = TreePolygons_datasets["filename"].apply(os.path.basename)
 
 # Save splits
+
+# Clean the columns
+Boxes_columns = ["xmin","ymin","xmax","ymax","filename","split","source","resolution"]
+TreeBoxes_datasets = TreeBoxes_datasets[Boxes_columns]
+
+Polygons_columns = ["polygon","filename","split","source","resolution"]
+TreePolygons_datasets = TreePolygons_datasets[Polygons_columns]
+
+Points_columns = ["x","y","filename","split","source","resolution"]
+TreePoints_datasets = TreePoints_datasets[Points_columns]
+
 TreePolygons_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/official.csv", index=False)
 TreePoints_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0/official.csv", index=False)
 TreeBoxes_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0/official.csv", index=False)
