@@ -96,3 +96,71 @@ TreeBoxes_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0
 shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0", 'zip', "/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0")
 shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0", 'zip', "/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0")
 shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0", 'zip', "/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0")
+
+
+# Create github test versions by taking one image and annotation from each dataset
+# Create directories for mini datasets
+# Delete directories if they already exist
+if os.path.exists("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images"):
+    shutil.rmtree("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images")
+if os.path.exists("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images"):
+    shutil.rmtree("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images")
+if os.path.exists("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images"):
+    shutil.rmtree("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images")
+    
+os.makedirs("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images", exist_ok=True)
+os.makedirs("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images", exist_ok=True)
+os.makedirs("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images", exist_ok=True)
+
+# Create mini versions of the datasets
+mini_TreeBoxes_datasets = TreeBoxes_datasets.sample(n=1)
+mini_TreePoints_datasets = TreePoints_datasets.sample(n=1)
+mini_TreePolygons_datasets = TreePolygons_datasets.sample(n=1)
+
+# Get the filenames from the mini datasets
+mini_TreeBoxes_filenames = mini_TreeBoxes_datasets["filename"].tolist()
+mini_TreePoints_filenames = mini_TreePoints_datasets["filename"].tolist()
+mini_TreePolygons_filenames = mini_TreePolygons_datasets["filename"].tolist()
+
+# Select all annotations from the mini datasets
+mini_TreeBoxes_annotations = TreeBoxes_datasets[TreeBoxes_datasets["filename"].isin(mini_TreeBoxes_filenames)]
+mini_TreePoints_annotations = TreePoints_datasets[TreePoints_datasets["filename"].isin(mini_TreePoints_filenames)]
+mini_TreePolygons_annotations = TreePolygons_datasets[TreePolygons_datasets["filename"].isin(mini_TreePolygons_filenames)]
+
+# Create release txt for mini datasets
+with open("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/RELEASE_v0.0.txt", "w") as outfile:
+    outfile.write("Initial debug")
+
+# Create release txt for mini datasets
+with open("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/RELEASE_v0.0.txt", "w") as outfile:
+    outfile.write("Initial debug")
+
+# Create release txt for mini datasets
+with open("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/RELEASE_v0.0.txt", "w") as outfile:
+    outfile.write("Initial debug")
+
+# Create zip files for mini datasets
+mini_TreeBoxes_annotations.to_csv("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/official.csv", index=False)
+mini_TreePoints_annotations.to_csv("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/official.csv", index=False)
+mini_TreePolygons_annotations.to_csv("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/official.csv", index=False)
+
+# Copy images for mini datasets
+for image in mini_TreeBoxes_filenames:
+    destination = "/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images/"
+    if not os.path.exists(destination + os.path.basename(image)):
+        shutil.copy("/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0/images/" + image, destination)
+
+for image in mini_TreePoints_filenames:
+    destination = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images/"
+    if not os.path.exists(destination + os.path.basename(image)):
+        shutil.copy("/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0/images/" + image, destination)
+
+for image in mini_TreePolygons_filenames:
+    destination = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/"
+    if not os.path.exists(destination + os.path.basename(image)):
+        shutil.copy("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/images/" + image, destination)
+
+
+shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0", 'zip', "/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0")
+shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0", 'zip', "/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0")
+shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0", 'zip', "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0")
