@@ -22,7 +22,6 @@ Location: Southern California, United States
 
 <img src="public/Ventura.png" alt="sample_image" style="width:300px; height:auto;">
 
-
 ## Boxes
 
 ### Velasquez-Camacho et al. 2023
@@ -79,7 +78,7 @@ https://zenodo.org/records/8136161
 
 Location: Danum, Malaysia
 
-## Wagner et al. 2023
+### Wagner et al. 2023
 
 https://www.mdpi.com/2504-446X/7/3/155
 
