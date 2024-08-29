@@ -20,8 +20,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         - Random: 80% of the data randomly split into train and 20% in test
         - location: 80% of the locations randomly split into train and 20% in test
     Supported `split_scheme`:
-        - 'Random'
-        - 'location'
+        - 'official'
     Input (x):
         RGB images from camera traps
     Label (y):

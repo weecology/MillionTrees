@@ -90,13 +90,13 @@ TreePolygons_datasets["filename"] = TreePolygons_datasets["filename"].apply(os.p
 # Save splits
 
 # Clean the columns
-Boxes_columns = ["xmin","ymin","xmax","ymax","filename","split","source","resolution"]
+Boxes_columns = ["xmin","ymin","xmax","ymax","filename","split","source"]
 TreeBoxes_datasets = TreeBoxes_datasets[Boxes_columns]
 
-Polygons_columns = ["polygon","filename","split","source","resolution"]
+Polygons_columns = ["polygon","filename","split","source"]
 TreePolygons_datasets = TreePolygons_datasets[Polygons_columns]
 
-Points_columns = ["x","y","filename","split","source","resolution"]
+Points_columns = ["x","y","filename","split","source"]
 TreePoints_datasets = TreePoints_datasets[Points_columns]
 
 TreePolygons_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/official.csv", index=False)
@@ -169,7 +169,6 @@ for image in mini_TreePolygons_filenames:
     destination = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/"
     if not os.path.exists(destination + os.path.basename(image)):
         shutil.copy("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/images/" + image, destination)
-
 
 shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0", 'zip', "/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0")
 shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0", 'zip', "/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0")
