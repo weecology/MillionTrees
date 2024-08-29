@@ -97,7 +97,6 @@ shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0", 'zi
 shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0", 'zip', "/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0")
 shutil.make_archive("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0", 'zip', "/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0")
 
-
 # Create github test versions by taking one image and annotation from each dataset
 # Create directories for mini datasets
 # Delete directories if they already exist
