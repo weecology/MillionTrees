@@ -20,7 +20,8 @@ J. Ventura, C. Pawlak, M. Honsberger, C. Gonsalves, J. Rice, N.L.R. Love, S. Han
 
 Location: Southern California, United States
 
-<img src="public/Ventura.png" alt="sample_image" style="width:300px; height:auto;">
+![sample_image](public/Ventura.png)
+
 
 ## Boxes
 
