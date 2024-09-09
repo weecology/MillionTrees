@@ -10,7 +10,7 @@ Citation: Amirkolaee, Hamed Amini, Miaojing Shi, and Mark Mulligan. "TreeFormer:
 
 Location: London, England
 
-<img src="public/TreeFormer.jpg" alt="sample_image" style="width:300px; height:auto;">
+![sample_image](public/TreeFormer.jpg)
 
 ### Ventura et al. 2022
 
@@ -21,7 +21,6 @@ J. Ventura, C. Pawlak, M. Honsberger, C. Gonsalves, J. Rice, N.L.R. Love, S. Han
 Location: Southern California, United States
 
 ![sample_image](public/Ventura.png)
-
 
 ## Boxes
 
@@ -49,7 +48,7 @@ Location: Mato Grosso do Sul, Brazil
 
 ### Jansen et al. 2022
 
-<img src="public/Jansen.png" alt="sample_image" style="width:300px; height:auto;">
+![sample_image](public/Jansen.png)
 
 Location: Northern Australia
 
@@ -65,7 +64,7 @@ Location: Quebec, Canada
 
 Location: Bamberg, Germany
 
-<img src="public/Troles.png" alt="sample_image" style="width:300px; height:auto;">
+![sample_image](public/Troles.png")
 
 ### Firoze et al. 2023
 
