@@ -6,7 +6,7 @@ import numpy as np
 import os
 
 def clean_up_rgb():
-    rgb = "/blue/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop1.tif"
+    rgb = "/orange/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop1.tif"
     src = rasterio.open(rgb)
     r = src.read()
     print(r.shape)
@@ -22,10 +22,10 @@ def clean_up_rgb():
     meta.update(dtype=rasterio.uint8)
     meta.update(nodata=0)
 
-    with rasterio.open("/blue/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop1_rgb_corrected.tif", 'w', **meta) as dst:
+    with rasterio.open("/orange/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop1_rgb_corrected.tif", 'w', **meta) as dst:
         dst.write(r)
 
-    rgb = "/blue/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop2.tif"
+    rgb = "/orange/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop2.tif"
     src = rasterio.open(rgb)
     r = src.read()
     print(r.shape)
@@ -40,12 +40,12 @@ def clean_up_rgb():
     meta.update(dtype=rasterio.uint8)
     meta.update(nodata=0)
 
-    with rasterio.open("/blue/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop2_rgb_corrected.tif", 'w', **meta) as dst:
+    with rasterio.open("/orange/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop2_rgb_corrected.tif", 'w', **meta) as dst:
         dst.write(r)
 
 def Hickman2021():
-    rgb = "/blue/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop1_rgb_corrected.tif"
-    shp = "/blue/ewhite/DeepForest/Hickman2021/manual_crowns_sepilok.shp"
+    rgb = "/orange/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop1_rgb_corrected.tif"
+    shp = "/orange/ewhite/DeepForest/Hickman2021/manual_crowns_sepilok.shp"
     gdf = gpd.read_file(shp)
     gdf["image_path"] = rgb
     gdf["label"] = "Tree"
@@ -55,23 +55,25 @@ def Hickman2021():
     train_annotations = split_raster(
         annotations,
         path_to_raster=rgb,
-        patch_size=1000,
+        patch_size=1500,
         allow_empty=False,
-        base_dir="/blue/ewhite/DeepForest/Hickman2021/pngs/")
+        base_dir="/orange/ewhite/DeepForest/Hickman2021/pngs/")
     
-    rgb = "/blue/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop2_rgb_corrected.tif"
+    rgb = "/orange/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop2_rgb_corrected.tif"
     annotations["image_path"] = os.path.basename(rgb)
     test_annotations = split_raster(
         annotations,
         path_to_raster=rgb,
-        patch_size=1000,
+        patch_size=1500,
         allow_empty=False,  
-        base_dir="/blue/ewhite/DeepForest/Hickman2021/pngs/")
+        base_dir="/orange/ewhite/DeepForest/Hickman2021/pngs/")
 
     test_annotations["split"] = "test"
     train_annotations["split"] = "train"
     annotations = pd.concat([test_annotations, train_annotations])
-    annotations.to_csv("/blue/ewhite/DeepForest/Hickman2021/annotations.csv")
+    # Make full path
+    annotations["image_path"] = "/orange/ewhite/DeepForest/Hickman2021/pngs/" + annotations["image_path"]
+    annotations.to_csv("/orange/ewhite/DeepForest/Hickman2021/annotations.csv")
 
 if __name__ == "__main__":
     #clean_up_rgb()

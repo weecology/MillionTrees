@@ -2,6 +2,30 @@
 
 There are three datasets within the MillionTrees package, TreeBoxes, TreePoints, TreePolygons. Those datasets contain many source datasets from dozens of papers and research efforts. Below, each source is briefly described.
 
+## Boxes
+
+### Kwon et al. 2023
+
+Citation: Ryoungseob Kwon, Youngryel Ryu, Tackang Yang, Zilong Zhong, Jungho Im,
+Merging multiple sensing platforms and deep learning empowers individual tree mapping and species detection at the city scale,
+ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023,
+
+Location: Suwon, South Korea
+
+### Velasquez-Camacho et al. 2023
+
+![sample_image]("../public/Velasquez-Camacho et al. 2023.png")
+
+https://zenodo.org/records/10246449
+
+Location: Spain
+
+### Zamboni et al. 2022
+
+https://github.com/pedrozamboni/individual_urban_tree_crown_detection
+
+Location: Mato Grosso do Sul, Brazil
+
 ## Points
 
 ### Amirkolaee et al. 2023
@@ -22,29 +46,31 @@ Location: Southern California, United States
 
 <img src="public/Ventura.png" alt="sample_image" style="width:300px; height:auto;">
 
-## Boxes
-
-### Velasquez-Camacho et al. 2023
-
-https://zenodo.org/records/10246449
-
-Location: Spain
-
-### Kwon et al. 2023
-
-Citation: Ryoungseob Kwon, Youngryel Ryu, Tackang Yang, Zilong Zhong, Jungho Im,
-Merging multiple sensing platforms and deep learning empowers individual tree mapping and species detection at the city scale,
-ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023,
-
-Location: Suwon, South Korea
-
-### Zamboni et al. 2022
-
-https://github.com/pedrozamboni/individual_urban_tree_crown_detection
-
-Location: Mato Grosso do Sul, Brazil
-
 ## Polygons
+
+### Hickman et al. 2021
+
+https://zenodo.org/records/5515408
+
+Sabah, Malaysia
+
+### Ball et al. 2023
+
+https://zenodo.org/records/8136161
+
+Danum, Malaysia
+
+### Cloutier et al. 2023
+
+https://zenodo.org/records/8148479
+
+Location: Quebec, Canada
+
+### Firoze et al. 2023
+
+https://openaccess.thecvf.com/content/CVPR2023/papers/Firoze_Tree_Instance_Segmentation_With_Temporal_Contour_Graph_CVPR_2023_paper.pdf
+
+Indiana, United States
 
 ### Jansen et al. 2022
 
@@ -54,33 +80,15 @@ Location: Northern Australia
 
 https://zenodo.org/records/7094916
 
-### Cloutier et al. 2023
-
-https://zenodo.org/records/8148479
-
-Location: Quebec, Canada
-
 ### Troles et al. 2024
 
 Location: Bamberg, Germany
 
 <img src="public/Troles.png" alt="sample_image" style="width:300px; height:auto;">
 
-### Firoze et al. 2023
-
-https://openaccess.thecvf.com/content/CVPR2023/papers/Firoze_Tree_Instance_Segmentation_With_Temporal_Contour_Graph_CVPR_2023_paper.pdf
-
-Location: Indiana, United States
-
-#### Ball et al. 2023
-
-https://zenodo.org/records/8136161
-
-Location: Danum, Malaysia
-
 ### Wagner et al. 2023
 
 https://www.mdpi.com/2504-446X/7/3/155
 
-Location: Australia
+Australia
 https://www.mdpi.com/2072-4292/16/11/1935
