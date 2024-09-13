@@ -34,7 +34,7 @@ Citation: Amirkolaee, Hamed Amini, Miaojing Shi, and Mark Mulligan. "TreeFormer:
 
 Location: London, England
 
-<img src="public/TreeFormer.jpg" alt="sample_image" style="width:300px; height:auto;">
+![sample_image](public/TreeFormer.jpg)
 
 ### Ventura et al. 2022
 
@@ -44,7 +44,7 @@ J. Ventura, C. Pawlak, M. Honsberger, C. Gonsalves, J. Rice, N.L.R. Love, S. Han
 
 Location: Southern California, United States
 
-<img src="public/Ventura.png" alt="sample_image" style="width:300px; height:auto;">
+![sample_image](public/Ventura.png)
 
 ## Polygons
 
@@ -74,7 +74,7 @@ Indiana, United States
 
 ### Jansen et al. 2022
 
-<img src="public/Jansen.png" alt="sample_image" style="width:300px; height:auto;">
+![sample_image](public/Jansen.png)
 
 Location: Northern Australia
 
@@ -84,7 +84,7 @@ https://zenodo.org/records/7094916
 
 Location: Bamberg, Germany
 
-<img src="public/Troles.png" alt="sample_image" style="width:300px; height:auto;">
+![sample_image](public/Troles.png")
 
 ### Wagner et al. 2023
 
