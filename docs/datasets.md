@@ -6,6 +6,7 @@ There are three datasets within the MillionTrees package, TreeBoxes, TreePoints,
 
 ### Kwon et al. 2023
 
+![sample_image](public/Kwon_et_al_2023.png)
 Citation: Ryoungseob Kwon, Youngryel Ryu, Tackang Yang, Zilong Zhong, Jungho Im,
 Merging multiple sensing platforms and deep learning empowers individual tree mapping and species detection at the city scale,
 ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023,
@@ -14,13 +15,15 @@ Location: Suwon, South Korea
 
 ### Velasquez-Camacho et al. 2023
 
-![sample_image]("../public/Velasquez-Camacho et al. 2023.png")
+![sample_image](public/Velasquez-Camacho_et_al._2023.png)
 
 https://zenodo.org/records/10246449
 
 Location: Spain
 
 ### Zamboni et al. 2022
+
+![sample_image](public/Zamboni_et_al._2021.png)
 
 https://github.com/pedrozamboni/individual_urban_tree_crown_detection
 
@@ -44,7 +47,7 @@ J. Ventura, C. Pawlak, M. Honsberger, C. Gonsalves, J. Rice, N.L.R. Love, S. Han
 
 Location: Southern California, United States
 
-![sample_image](public/Ventura.png)
+![sample_image](docs/public/Ventura_et_al._2022.png)
 
 ## Polygons
 

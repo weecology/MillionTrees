@@ -185,23 +185,30 @@ mini_TreeBoxes_annotations["label"] = "Tree"
 mini_TreePoints_annotations["label"] = "Tree"
 mini_TreePolygons_annotations["label"] = "Tree"
 
+mini_TreeBoxes_annotations["score"] = None
+mini_TreePoints_annotations["score"] = None
+mini_TreePolygons_annotations["score"] = None
+
 for source, group in mini_TreeBoxes_annotations.groupby("source"):
     group["image_path"] = group["filename"]
     group = read_file(group, root_dir="/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images/")
     group.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images/"
+    # remove any spaces in source
+    source = source.replace(" ", "_")
     plot_results(results=group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source)
 
 for source, group in mini_TreePoints_annotations.groupby("source"):
     group["image_path"] = group["filename"]
     group = read_file(group, root_dir="/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images/")
     group.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images/"
+    source = source.replace(" ", "_")
     plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source)
 
-for source, group in mini_TreePolygons_annotations.groupby("source"):
-    group["image_path"] = group["filename"]
-    group = read_file(group, root_dir="/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/")
-    group.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/"
-    plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source)
+#for source, group in mini_TreePolygons_annotations.groupby("source"):
+ #   group["image_path"] = group["filename"]
+  #  group = read_file(group, root_dir="/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/")
+  #  group.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/"
+  #  plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source, height=)
 
 # Zip the files
 def zip_directory(folder_path, zip_path):
