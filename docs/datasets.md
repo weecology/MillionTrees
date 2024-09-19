@@ -1,6 +1,6 @@
 # Datasets
 
-There are three datasets within the MillionTrees package, TreeBoxes, TreePoints, TreePolygons. Those datasets contain many source datasets from dozens of papers and research efforts. Below, each source is briefly described.
+There are three datasets within the MillionTrees package, TreeBoxes, TreePoints, TreePolygons. Those datasets contain many source datasets from dozens of papers and research efforts. Below, each source is briefly described. The images for each dataset are generated directly from the dataloaders to allow rapid verification of the annotation status and are regenerated automatically when a new dataset is released or updated.
 
 ## Boxes
 
@@ -37,7 +37,7 @@ Citation: Amirkolaee, Hamed Amini, Miaojing Shi, and Mark Mulligan. "TreeFormer:
 
 Location: London, England
 
-![sample_image](public/TreeFormer.jpg)
+![sample_image](public/Amirkolaee_et_al._2023.png)
 
 ### Ventura et al. 2022
 
@@ -47,7 +47,7 @@ J. Ventura, C. Pawlak, M. Honsberger, C. Gonsalves, J. Rice, N.L.R. Love, S. Han
 
 Location: Southern California, United States
 
-![sample_image](docs/public/Ventura_et_al._2022.png)
+![sample_image](public/Ventura_et_al._2022.png)
 
 ## Polygons
 
@@ -65,6 +65,7 @@ Danum, Malaysia
 
 ### Cloutier et al. 2023
 
+![sample_image](public/Cloutier_et_al._2023.png)
 https://zenodo.org/records/8148479
 
 Location: Quebec, Canada
@@ -75,9 +76,11 @@ https://openaccess.thecvf.com/content/CVPR2023/papers/Firoze_Tree_Instance_Segme
 
 Indiana, United States
 
+![sample_image](public/Firoze_et_al._2023.png)
+
 ### Jansen et al. 2022
 
-![sample_image](public/Jansen.png)
+![sample_image](public/Jansen_et_al._2023.png)
 
 Location: Northern Australia
 
@@ -87,7 +90,7 @@ https://zenodo.org/records/7094916
 
 Location: Bamberg, Germany
 
-![sample_image](public/Troles.png")
+![sample_image](public/Troles_et_al._2024.png)
 
 ### Wagner et al. 2023
 

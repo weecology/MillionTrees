@@ -9,19 +9,11 @@ def HemmingSchroeder():
     """Polygon annotations over TEAK NEON sites"""
     
     # Read the polygon annotations from the shapefile
-    annotations = gpd.read_file("/blue/ewhite/DeepForest/HemmingSchroeder/data/training/trees_2017_training_filtered_labeled.shp")
+    annotations = gpd.read_file("/orange/ewhite/DeepForest/HemmingSchroeder/data/training/trees_2017_training_filtered_labeled.shp")
     
-    # Get unique plot IDs
-    plots = annotations.sampleid.unique()
-    
-    # Split the plots into training and test sets
-    train_plots = annotations.sampleid.drop_duplicates().sample(frac=0.9)
-    train = annotations[annotations.sampleid.isin(train_plots)]
-    test = annotations[~(annotations.sampleid.isin(train_plots))]
-
     # Find RGB images for each plot location
     rgb_pool = glob.glob("/orange/ewhite/NeonData/*/DP3.30010.001/**/Camera/**/*.tif", recursive=True)
-    plot_locations = gpd.read_file("/blue/ewhite/DeepForest/HemmingSchroeder/data/training/training_sample_sites.shp")
+    plot_locations = gpd.read_file("/orange/ewhite/DeepForest/HemmingSchroeder/data/training/training_sample_sites.shp")
     plot_locations = plot_locations[plot_locations.sample_id.isin(annotations.sampleid)]
     
     # Generate images and annotations for each plot location
@@ -63,21 +55,11 @@ def HemmingSchroeder():
     
     # Remove basenames with FullSite
     year_annotations = year_annotations[~(year_annotations.image_path.str.contains("FullSite"))]
-    
-    # Split the annotations into training and test sets
-    train_annotations = year_annotations[year_annotations.sampleid.isin(train.sampleid)]
-    test_annotations = year_annotations[year_annotations.sampleid.isin(test.sampleid)]
 
-    # Save the training and test annotations to CSV files
-    train_annotations.to_csv("/blue/ewhite/DeepForest/HemmingSchroeder/train.csv")
-    test_annotations.to_csv("/blue/ewhite/DeepForest/HemmingSchroeder/test.csv")
 
-    # Add a 'split' column to indicate the split (train or test) for each annotation
-    train_annotations["split"] = "train"
-    test_annotations["split"] = "test"
-    
     # Concatenate the training and test annotations and save to a CSV file
-    pd.concat([train_annotations, test_annotations]).to_csv("/blue/ewhite/DeepForest/HemmingSchroeder/annotations.csv")
+    year_annotations["image_path"] = "images/" + year_annotations["image_path"]
+    year_annotations.to_csv("/orange/ewhite/DeepForest/HemmingSchroeder/annotations.csv")
 
 if __name__ == "__main__":
     HemmingSchroeder()
