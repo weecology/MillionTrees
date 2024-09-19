@@ -1,9 +1,12 @@
 from deepforest.preprocess import split_raster, read_file
+from deepforest.visualize import plot_results
 import pandas as pd
 import geopandas as gpd
 import rasterio
 import numpy as np
+import random
 import os
+import cv2
 
 def clean_up_rgb():
     rgb = "/orange/ewhite/DeepForest/Hickman2021/RCD105_MA14_21_orthomosaic_20141023_reprojected_full_res_crop1.tif"
@@ -52,6 +55,8 @@ def Hickman2021():
     annotations = read_file(gdf)
     annotations = annotations[annotations.is_valid]
     annotations["image_path"] = os.path.basename(rgb)
+    annotations = read_file(annotations, root_dir="/orange/ewhite/DeepForest/Hickman2021/")
+
     train_annotations = split_raster(
         annotations,
         path_to_raster=rgb,
@@ -73,8 +78,23 @@ def Hickman2021():
     annotations = pd.concat([test_annotations, train_annotations])
     # Make full path
     annotations["image_path"] = "/orange/ewhite/DeepForest/Hickman2021/pngs/" + annotations["image_path"]
+    annotations["source"] = "Hickman 2021"
     annotations.to_csv("/orange/ewhite/DeepForest/Hickman2021/annotations.csv")
+
+    return annotations
 
 if __name__ == "__main__":
     #clean_up_rgb()
-    Hickman2021()
+    annotations_base_path = Hickman2021()    
+    annotations_base_path["image_path"] = annotations_base_path["image_path"].apply(lambda x: os.path.basename(x))
+    annotations_base_path.root_dir = "/orange/ewhite/DeepForest/Hickman2021/pngs/"
+
+    # plot 5 samples in a panel  
+    images_to_plot = random.sample(annotations_base_path.image_path.unique().tolist(), 5)
+    for image in images_to_plot:
+        df_to_plot = annotations_base_path[annotations_base_path.image_path == image]
+        df_to_plot = read_file(df_to_plot)
+        df_to_plot.root_dir = "/orange/ewhite/DeepForest/Hickman2021/pngs/"
+        df_to_plot["score"] =1 
+        height, width, channels = cv2.imread(df_to_plot.root_dir + df_to_plot.image_path.iloc[0]).shape
+        plot_results(df_to_plot, height=height,width=width)

@@ -6,17 +6,24 @@ import geopandas as gpd
 import zipfile
 from deepforest.visualize import plot_results
 from deepforest.utilities import read_file
+import cv2
 
 TreeBoxes = [
     "/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
     "/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
-    '/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv']
+    '/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
+    '/orange/ewhite/DeepForest/ReForestTree/images/train.csv']
 
 TreePoints = ["/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv","/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv"]
 TreePolygons = [
     "/orange/ewhite/DeepForest/Jansen_2023/pngs/annotations.csv",
     "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
-    "/orange/ewhite/DeepForest/Hickman2021/annotations.csv"]
+    "/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
+    "/orange/ewhite/DeepForest/Firoze2023/annotations.csv"
+    ]
+
+# Current errors
+# Hickman
 
 # Combine box datasets
 TreeBoxes_datasets = []
@@ -128,9 +135,9 @@ os.makedirs("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images",
 os.makedirs("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images", exist_ok=True)
 
 # Create mini versions of the datasets
-mini_TreeBoxes_datasets = TreeBoxes_datasets.sample(n=1)
-mini_TreePoints_datasets = TreePoints_datasets.sample(n=1)
-mini_TreePolygons_datasets = TreePolygons_datasets.sample(n=1)
+mini_TreeBoxes_datasets = TreeBoxes_datasets.groupby("source").first().reset_index(drop=True)
+mini_TreePoints_datasets = TreePoints_datasets.groupby("source").first().reset_index(drop=True)
+mini_TreePolygons_datasets = TreePolygons_datasets.groupby("source").first().reset_index(drop=True)
 
 # Get the filenames from the mini datasets
 mini_TreeBoxes_filenames = mini_TreeBoxes_datasets["filename"].tolist()
@@ -204,11 +211,13 @@ for source, group in mini_TreePoints_annotations.groupby("source"):
     source = source.replace(" ", "_")
     plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source)
 
-#for source, group in mini_TreePolygons_annotations.groupby("source"):
- #   group["image_path"] = group["filename"]
-  #  group = read_file(group, root_dir="/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/")
-  #  group.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/"
-  #  plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source, height=)
+for source, group in mini_TreePolygons_annotations.groupby("source"):
+    group["image_path"] = group["filename"]
+    group = read_file(group, root_dir="/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/")
+    group.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/"
+    height, width, channels = cv2.imread("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/" + group.image_path.iloc[0]).shape
+    source = source.replace(" ", "_")
+    plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source, height=height, width=width)
 
 # Zip the files
 def zip_directory(folder_path, zip_path):
