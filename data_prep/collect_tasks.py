@@ -19,7 +19,8 @@ TreePolygons = [
     "/orange/ewhite/DeepForest/Jansen_2023/pngs/annotations.csv",
     "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
     "/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
-    "/orange/ewhite/DeepForest/Firoze2023/annotations.csv"
+    "/orange/ewhite/DeepForest/Firoze2023/annotations.csv",
+    "/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv"
     ]
 
 # Current errors
@@ -183,7 +184,6 @@ for image in mini_TreePolygons_filenames:
         shutil.copy("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/images/" + image, destination)
 
 # Write examples from the mini datasets to the MillionTrees doc folder
-
 mini_TreeBoxes_annotations.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images/"
 mini_TreePoints_annotations.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images/"
 mini_TreePolygons_annotations.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/"

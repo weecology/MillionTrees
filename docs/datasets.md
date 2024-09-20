@@ -98,3 +98,5 @@ https://www.mdpi.com/2504-446X/7/3/155
 
 Australia
 https://www.mdpi.com/2072-4292/16/11/1935
+
+![sample_image](public/Wagner_et_al._2023.png)
