@@ -52,7 +52,7 @@ Location: Southern California, United States
 
 [Courtesy of Alejandro Miranda](http://www.lepfor.ufro.cl/)
 
-[<img src="public/Alejandro_Miranda.png" width="250"/>](public/Alejandro_Miranda.png)
+![sample_image](public/Alejandro_Miranda.png)
 
 ### Hickman et al. 2021
 
