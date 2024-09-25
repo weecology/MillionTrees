@@ -1,5 +1,4 @@
 # Datasets
-
 There are three datasets within the MillionTrees package, TreeBoxes, TreePoints, TreePolygons. Those datasets contain many source datasets from dozens of papers and research efforts. Below, each source is briefly described. The images for each dataset are generated directly from the dataloaders to allow rapid verification of the annotation status and are regenerated automatically when a new dataset is released or updated.
 
 ## Boxes
@@ -17,7 +16,7 @@ Location: Suwon, South Korea
 
 ![sample_image](public/Velasquez-Camacho_et_al._2023.png)
 
-https://zenodo.org/records/10246449
+[https://zenodo.org/records/10246449](https://zenodo.org/records/10246449)
 
 Location: Spain
 
@@ -25,7 +24,7 @@ Location: Spain
 
 ![sample_image](public/Zamboni_et_al._2021.png)
 
-https://github.com/pedrozamboni/individual_urban_tree_crown_detection
+[https://github.com/pedrozamboni/individual_urban_tree_crown_detection](https://github.com/pedrozamboni/individual_urban_tree_crown_detection)
 
 Location: Mato Grosso do Sul, Brazil
 
@@ -33,17 +32,15 @@ Location: Mato Grosso do Sul, Brazil
 
 ### Amirkolaee et al. 2023
 
-Citation: Amirkolaee, Hamed Amini, Miaojing Shi, and Mark Mulligan. "TreeFormer: a Semi-Supervised Transformer-based Framework for Tree Counting from a Single High Resolution Image." IEEE Transactions on Geoscience and Remote Sensing (2023). https://github.com/HAAClassic/TreeFormer
+Amirkolaee, Hamed Amini, Miaojing Shi, and Mark Mulligan. "TreeFormer: a Semi-Supervised Transformer-based Framework for Tree Counting from a Single High Resolution Image." IEEE Transactions on Geoscience and Remote Sensing (2023). [https://github.com/HAAClassic/TreeFormer](https://github.com/HAAClassic/TreeFormer)
 
-Location: London, England
+London, England
 
 ![sample_image](public/Amirkolaee_et_al._2023.png)
 
 ### Ventura et al. 2022
 
-Citation: 
-
-J. Ventura, C. Pawlak, M. Honsberger, C. Gonsalves, J. Rice, N.L.R. Love, S. Han, V. Nguyen, K. Sugano, J. Doremus, G.A. Fricker, J. Yost, and M. Ritter (2024). Individual Tree Detection in Large-Scale Urban Environments using High-Resolution Multispectral Imagery. International Journal of Applied Earth Observation and Geoinformation, 130, 103848. https://github.com/jonathanventura/urban-tree-detection-data
+J. Ventura, C. Pawlak, M. Honsberger, C. Gonsalves, J. Rice, N.L.R. Love, S. Han, V. Nguyen, K. Sugano, J. Doremus, G.A. Fricker, J. Yost, and M. Ritter (2024). Individual Tree Detection in Large-Scale Urban Environments using High-Resolution Multispectral Imagery. International Journal of Applied Earth Observation and Geoinformation, 130, 103848. [https://github.com/jonathanventura/urban-tree-detection-data](https://github.com/jonathanventura/urban-tree-detection-data)
 
 Location: Southern California, United States
 
@@ -51,28 +48,35 @@ Location: Southern California, United States
 
 ## Polygons
 
+### Miranda et al. 2024
+
+[Courtesy of Alejandro Miranda](http://www.lepfor.ufro.cl/)
+
+[<img src="public/Alejandro_Miranda.png" width="250"/>](public/Alejandro_Miranda.png)
+
 ### Hickman et al. 2021
 
-https://zenodo.org/records/5515408
+[https://zenodo.org/records/5515408](https://zenodo.org/records/5515408)
 
 Sabah, Malaysia
 
+
 ### Ball et al. 2023
 
-https://zenodo.org/records/8136161
+[https://zenodo.org/records/8136161](https://zenodo.org/records/8136161)
 
 Danum, Malaysia
 
 ### Cloutier et al. 2023
 
 ![sample_image](public/Cloutier_et_al._2023.png)
-https://zenodo.org/records/8148479
+[https://zenodo.org/records/8148479](https://zenodo.org/records/8148479)
 
 Location: Quebec, Canada
 
 ### Firoze et al. 2023
 
-https://openaccess.thecvf.com/content/CVPR2023/papers/Firoze_Tree_Instance_Segmentation_With_Temporal_Contour_Graph_CVPR_2023_paper.pdf
+[https://openaccess.thecvf.com/content/CVPR2023/papers/Firoze_Tree_Instance_Segmentation_With_Temporal_Contour_Graph_CVPR_2023_paper.pdf](https://openaccess.thecvf.com/content/CVPR2023/papers/Firoze_Tree_Instance_Segmentation_With_Temporal_Contour_Graph_CVPR_2023_paper.pdf)
 
 Indiana, United States
 
@@ -82,9 +86,9 @@ Indiana, United States
 
 ![sample_image](public/Jansen_et_al._2023.png)
 
-Location: Northern Australia
+[https://zenodo.org/records/7094916](https://zenodo.org/records/7094916)
 
-https://zenodo.org/records/7094916
+Location: Northern Australia
 
 ### Troles et al. 2024
 
@@ -94,9 +98,9 @@ Location: Bamberg, Germany
 
 ### Wagner et al. 2023
 
-https://www.mdpi.com/2504-446X/7/3/155
+[https://www.mdpi.com/2504-446X/7/3/155](https://www.mdpi.com/2504-446X/7/3/155)
 
 Australia
-https://www.mdpi.com/2072-4292/16/11/1935
+[https://www.mdpi.com/2072-4292/16/11/1935](https://www.mdpi.com/2072-4292/16/11/1935)
 
 ![sample_image](public/Wagner_et_al._2023.png)
