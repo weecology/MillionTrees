@@ -21,7 +21,8 @@ TreePolygons = [
     "/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
     "/orange/ewhite/DeepForest/Firoze2023/annotations.csv",
     "/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
-    "/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv"
+    "/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
+    "/orange/ewhite/DeepForest/UrbanLondon/annotations.csv"
     ]
 
 # Current errors
