@@ -48,6 +48,12 @@ Location: Southern California, United States
 
 ## Polygons
 
+### Zúñiga-González et al. 2023
+
+[https://zenodo.org/records/8113842](https://zenodo.org/records/8113842)
+
+![sample_image](public/Zuniga-Gonzalez_et_al._2023.png)
+
 ### Miranda et al. 2024
 
 [Courtesy of Alejandro Miranda](http://www.lepfor.ufro.cl/)
