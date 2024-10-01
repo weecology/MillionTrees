@@ -12,6 +12,7 @@ TreeBoxes = [
     "/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
     "/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
     '/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
+    '/orange/ewhite/DeepForest/Radogoshi_Sweden/annotations.csv',
     '/orange/ewhite/DeepForest/ReForestTree/images/train.csv']
 
 TreePoints = [
