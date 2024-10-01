@@ -13,6 +13,14 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 
 **Location:** Suwon, South Korea
 
+### Ragadoshi_Sweden
+
+![sample_image](public/Radogoshi_et_al._2021.png)
+
+**Link:** [https://lila.science/datasets/forest-damages-larch-casebearer/](https://lila.science/datasets/forest-damages-larch-casebearer/)
+
+**Location:** Sweden
+
 ### Velasquez-Camacho et al. 2023
 
 ![sample_image](public/Velasquez-Camacho_et_al._2023.png)
@@ -106,6 +114,8 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 **Location:** Northern Australia
 
 ### Safonova et al. 2021
+
+![sample_image](public/Safonova_et_al._2021.png)
 
 **Link:** [https://www.mdpi.com/1424-8220/21/5/1617](https://www.mdpi.com/1424-8220/21/5/1617)
 
