@@ -37,6 +37,12 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 
 **Location:** Mato Grosso do Sul, Brazil
 
+### World Resources Institute 
+
+NAIP Imagery from across the United States
+
+![sample_image](public/World_Resources_Institute.png)
+
 ## Points
 
 ### Amirkolaee et al. 2023
