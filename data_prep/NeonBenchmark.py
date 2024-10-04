@@ -7,26 +7,6 @@ from utilities import read_file
 from deepforest.preprocess import split_raster
 
 def generate_NEON_benchmark():
-    BENCHMARK_PATH = "/orange/idtrees-collab/NeonTreeEvaluation/"
-    tifs = glob.glob(BENCHMARK_PATH + "evaluation/RGB/*.tif")
-    xmls = [os.path.splitext(os.path.basename(x))[0] for x in tifs] 
-    xmls = [os.path.join(BENCHMARK_PATH, "annotations", x) + ".xml" for x in xmls] 
-    
-    #Load and format xmls, not every RGB image has an annotation
-    annotation_list = []   
-    for xml_path in xmls:
-        try:
-            annotation = read_file(xml_path)
-        except:
-            continue
-        annotation_list.append(annotation)
-    benchmark_annotations = pd.concat(annotation_list, ignore_index=True)
-
-    benchmark_annotations["source"] = "NEON_benchmark"
-    for image_path in benchmark_annotations.image_path.unique():
-        dst = os.path.join(BENCHMARK_PATH, "evaluation/RGB/", image_path)
-        shutil.copy(dst, "/orange/ewhite/DeepForest/NEON_benchmark/images/")
-    benchmark_annotations.to_csv("/orange/ewhite/DeepForest/NEON_benchmark/images/test.csv")
 
     # Copy images to test location
     benchmark_annotations["source"] = "NEON_benchmark"
