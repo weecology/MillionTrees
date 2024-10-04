@@ -14,6 +14,8 @@ TreeBoxes = [
     '/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
     '/orange/ewhite/DeepForest/Radogoshi_Sweden/annotations.csv',
     "/orange/ewhite/DeepForest/WRI/WRI-labels-opensource/annotations.csv",
+    "/orange/ewhite/DeepForest/Guangzhou2022/annotations.csv",
+    "/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
     '/orange/ewhite/DeepForest/ReForestTree/images/train.csv']
 
 TreePoints = [
