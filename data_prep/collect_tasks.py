@@ -21,7 +21,8 @@ TreeBoxes = [
 
 TreePoints = [
     "/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv",
-    "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv"]
+    "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
+    "/orange/ewhite/MillionTrees/NEON_points/annotations.csv"]
 
 TreePolygons = [
     "/orange/ewhite/DeepForest/Jansen_2023/pngs/annotations.csv",
@@ -31,7 +32,8 @@ TreePolygons = [
     "/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
     "/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
     "/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",
-    "/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv"
+    "/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
+    "/orange/ewhite/DeepForest/Araujo_2020/annotations.csv"
     ]
 
 # Current errors

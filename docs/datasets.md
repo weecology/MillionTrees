@@ -51,6 +51,10 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 
 **Location** [NEON sites](https://www.neonscience.org/field-sites/explore-field-sites) within the United States
 
+An extension of this published resource was made by the Weecology Lab at the University of Florida
+
+![sample_image](public/Weecology_University_Florida.png)
+
 ### World Resources Institute 
 
 NAIP Imagery from across the United States
