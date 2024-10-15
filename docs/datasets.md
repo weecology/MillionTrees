@@ -89,6 +89,14 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 ## Polygons
 
+### Araujo et al. 2020
+
+![sample_image](public/Araujo_et_al._2020.png)
+
+**Link:** [https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0243079][https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0243079]
+
+**Location:** Manuas, Brazil
+
 ### Zúñiga-González et al. 2023
 
 ![sample_image](public/Zuniga-Gonzalez_et_al._2023.png)
