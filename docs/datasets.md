@@ -13,12 +13,6 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 
 **Location:** Suwon, South Korea
 
-### Sun et al. 2022
-
-![sample_image](public/Sun_et_al._2022.png)
-
-**Link:** [https://www.sciencedirect.com/science/article/pii/S030324342100369X](https://www.sciencedirect.com/science/article/pii/S030324342100369X)
-
 ### Ragadoshi_Sweden
 
 ![sample_image](public/Radogoshi_et_al._2021.png)
@@ -27,6 +21,12 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 
 **Location:** Sweden
 
+### Sun et al. 2022
+
+![sample_image](public/Sun_et_al._2022.png)
+
+**Link:** [https://www.sciencedirect.com/science/article/pii/S030324342100369X](https://www.sciencedirect.com/science/article/pii/S030324342100369X)
+
 ### Velasquez-Camacho et al. 2023
 
 ![sample_image](public/Velasquez-Camacho_et_al._2023.png)
@@ -34,14 +34,6 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 **Link:** [https://zenodo.org/records/10246449](https://zenodo.org/records/10246449)
 
 **Location:** Spain
-
-### Zamboni et al. 2022
-
-![sample_image](public/Zamboni_et_al._2021.png)
-
-**Link:** [https://github.com/pedrozamboni/individual_urban_tree_crown_detection](https://github.com/pedrozamboni/individual_urban_tree_crown_detection)
-
-**Location:** Mato Grosso do Sul, Brazil
 
 ### Weinstein et al. 2021
 
@@ -60,6 +52,14 @@ An extension of this published resource was made by the Weecology Lab at the Uni
 NAIP Imagery from across the United States
 
 ![sample_image](public/World_Resources_Institute.png)
+
+### Zamboni et al. 2022
+
+![sample_image](public/Zamboni_et_al._2021.png)
+
+**Link:** [https://github.com/pedrozamboni/individual_urban_tree_crown_detection](https://github.com/pedrozamboni/individual_urban_tree_crown_detection)
+
+**Location:** Mato Grosso do Sul, Brazil
 
 ## Points
 
@@ -97,24 +97,6 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 **Location:** Manuas, Brazil
 
-### Zúñiga-González et al. 2023
-
-![sample_image](public/Zuniga-Gonzalez_et_al._2023.png)
-
-**Link:** [https://zenodo.org/records/8113842](https://zenodo.org/records/8113842)
-
-### Miranda et al. 2024
-
-![sample_image](public/Alejandro_Miranda.png)
-
-**Link:** [Courtesy of Alejandro Miranda](http://www.lepfor.ufro.cl/)
-
-### Hickman et al. 2021
-
-**Link:** [https://zenodo.org/records/5515408](https://zenodo.org/records/5515408)
-
-**Location:** Sabah, Malaysia
-
 ### Ball et al. 2023
 
 **Link:** [https://zenodo.org/records/8136161](https://zenodo.org/records/8136161)
@@ -137,6 +119,12 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 **Location:** Indiana, United States
 
+### Hickman et al. 2021
+
+**Link:** [https://zenodo.org/records/5515408](https://zenodo.org/records/5515408)
+
+**Location:** Sabah, Malaysia
+
 ### Jansen et al. 2022
 
 ![sample_image](public/Jansen_et_al._2023.png)
@@ -144,6 +132,12 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 **Link:** [https://zenodo.org/records/7094916](https://zenodo.org/records/7094916)
 
 **Location:** Northern Australia
+
+### Miranda et al. 2024
+
+![sample_image](public/Alejandro_Miranda.png)
+
+**Link:** [Courtesy of Alejandro Miranda](http://www.lepfor.ufro.cl/)
 
 ### Safonova et al. 2021
 
