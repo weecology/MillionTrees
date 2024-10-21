@@ -22,7 +22,8 @@ TreeBoxes = [
 TreePoints = [
     "/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv",
     "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
-    "/orange/ewhite/MillionTrees/NEON_points/annotations.csv"]
+    "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
+    "/orange/ewhite/DeepForest/Tonga/annotations.csv"]
 
 TreePolygons = [
     "/orange/ewhite/DeepForest/Jansen_2023/pngs/annotations.csv",

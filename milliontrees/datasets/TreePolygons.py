@@ -29,8 +29,6 @@ class TreePolygonsDataset(MillionTreesDataset):
         Each image is annotated with the following metadata
             - location (int): location id
             - source (int): source id
-            - resolution (int): resolution of image
-            - focal view (int): focal view of image
 
     Website:
         https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
@@ -97,6 +95,7 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         # Filenames
         self._input_array = df['filename'].values
+        self._input_lookup = df.groupby('filename').apply(lambda x: x.index.values).to_dict()
 
         # Convert each polygon to shapely objects
         for i in range(len(df)):
@@ -116,8 +115,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         self._n_groups = n_groups
         assert len(np.unique(df['source_id'])) == self._n_groups
 
-        self._metadata_array = torch.tensor(
-            np.stack([df['source_id'].values], axis=1))
+        self._metadata_array = np.stack([df['source_id'].values], axis=1)
         self._metadata_fields = ['source_id']
 
         # eval grouper
@@ -132,6 +130,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         # since different subsets (e.g., train vs test) might have different transforms
         x = self.get_input(idx)
         y_polygon = self._y_array[idx]
+        
         y = self.create_polygon_mask(x.shape[-2:], y_polygon)
         metadata = self.metadata_array[idx]
 

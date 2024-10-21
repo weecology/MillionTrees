@@ -8,7 +8,7 @@ import torch
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
-from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
+from milliontrees.common.metrics.all_metrics import DetectionAccuracy
 from PIL import Image
 
 
@@ -29,8 +29,6 @@ class TreeBoxesDataset(MillionTreesDataset):
     Metadata:
         Each image is annotated with the following metadata
             - location (int): location id
-            - resolution (int): resolution of image
-            - focal view (int): focal view of image
 
     Website:
         https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
@@ -98,20 +96,25 @@ class TreeBoxesDataset(MillionTreesDataset):
             'id_test': 'Test (ID/Cis)'
         }
 
-        df['split_id'] = df['split'].apply(lambda x: self._split_dict[x])
-        self._split_array = df['split_id'].values
+        unique_files = df.drop_duplicates(subset=['filename'], inplace=False).reset_index(drop=True)
+        unique_files['split_id'] = unique_files['split'].apply(lambda x: self._split_dict[x])
+        self._split_array = unique_files['split_id'].values
 
         # Filenames
-        self._input_array = df['filename'].values
-
-        self._y_array = torch.tensor(df[["xmin", "ymin", "xmax",
-                                         "ymax"]].values.astype(float))
+        self._input_array = unique_files.filename
+        
+        # Create lookup table for which index to select for each filename
+        self._input_lookup = df.groupby('filename').apply(lambda x: x.index.values).to_dict()
+        self._y_array = df[["xmin", "ymin", "xmax", "ymax"]].values.astype("float32")
 
         # Labels -> just 'Tree'
         self._n_classes = 1
 
         # Length of targets
         self._y_size = 4
+
+        # Class labels
+        self.labels = np.zeros(df.shape[0])
 
         # Create source locations with a numeric ID
         df["source_id"] = df.source.astype('category').cat.codes
@@ -121,9 +124,11 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._n_groups = n_groups
         assert len(np.unique(df['source_id'])) == self._n_groups
 
-        self._metadata_array = torch.tensor(
-            np.stack([df['source_id'].values], axis=1))
+        self._metadata_array = np.stack([df['source_id'].values], axis=1)
         self._metadata_fields = ['source_id']
+
+        self._metric = DetectionAccuracy()
+        self._collate = TreeBoxesDataset._collate_fn
 
         # eval grouper
         self._eval_grouper = CombinatorialGrouper(dataset=self,
@@ -132,38 +137,28 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         super().__init__(root_dir, download, split_scheme)
 
-    def eval(self, y_pred, y_true, metadata, prediction_fn=None):
-        """Computes all evaluation metrics.
-
-        Args:
-            - y_pred (Tensor): Predictions from a model. By default, they are predicted labels (LongTensor).
-                               But they can also be other model outputs such that prediction_fn(y_pred)
-                               are predicted labels.
-            - y_true (LongTensor): Ground-truth labels
-            - metadata (Tensor): Metadata
-            - prediction_fn (function): A function that turns y_pred into predicted labels
-        Output:
-            - results (dictionary): Dictionary of evaluation metrics
-            - results_str (str): String summarizing the evaluation metrics
+    def eval(self, y_pred, y_true, metadata):
         """
-        metrics = [
-            Accuracy(prediction_fn=prediction_fn),
-            Recall(prediction_fn=prediction_fn, average='macro'),
-            F1(prediction_fn=prediction_fn, average='macro'),
-        ]
+        The main evaluation metric, detection_acc_avg_dom,
+        measures the simple average of the detection accuracies
+        of each domain.
+        """
+        results, results_str = self.standard_group_eval(
+            self._metric,
+            self._eval_grouper,
+            y_pred, y_true, metadata)
 
-        results = {}
-
-        for i in range(len(metrics)):
-            results.update({
-                **metrics[i].compute(y_pred, y_true),
-            })
-
-        results_str = (
-            f"Average acc: {results[metrics[0].agg_metric_field]:.3f}\n"
-            f"Recall macro: {results[metrics[1].agg_metric_field]:.3f}\n"
-            f"F1 macro: {results[metrics[2].agg_metric_field]:.3f}\n")
-
+        detection_accs = []
+        for k, v in results.items():
+            if k.startswith('detection_acc_source:'):
+                d = k.split(':')[1]
+                count = results[f'source:{d}']
+                if count > 0:
+                    detection_accs.append(v)
+        detection_acc_avg_dom = np.array(detection_accs).mean()
+        results['detection_acc_avg_dom'] = detection_acc_avg_dom
+        results_str = f'Average detection_acc across source: {detection_acc_avg_dom:.3f}\n' + results_str
+        
         return results, results_str
 
     def get_input(self, idx):
@@ -171,16 +166,26 @@ class TreeBoxesDataset(MillionTreesDataset):
         Args:
             - idx (int): Index of a data point
         Output:
-            - x (Tensor): Input features of the idx-th data point
+            - x (np.ndarray): Input features of the idx-th data point
         """
         # All images are in the images folder
-        img_path = os.path.join(self.data_dir / 'images' /
-                                self._input_array[idx])
+        img_path = os.path.join(self._data_dir / 'images' / self._input_array[idx])
         img = Image.open(img_path)
-        img = img.convert('RGB')
-        img = np.array(img)
-        # Channels first input
-        img = torch.from_numpy(img)
-        img = img.permute(2, 0, 1)
+        img = np.array(img.convert('RGB'))/255
+        img = np.array(img, dtype=np.float32)
 
         return img
+
+    @staticmethod
+    def _collate_fn(batch):
+        """
+        Stack x (batch[0]) and metadata (batch[2]), but not y.
+        originally, batch = (item1, item2, item3, item4)
+        after zip, batch = [(item1[0], item2[0], ..), ..]
+        """
+        batch = list(zip(*batch))
+        batch[1] = torch.stack(batch[1])
+        batch[0] = list(batch[0])
+        batch[2] = list(batch[2])
+        
+        return tuple(batch)

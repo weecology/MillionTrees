@@ -4,6 +4,8 @@ import time
 import torch
 import numpy as np
 
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 class MillionTreesDataset:
     """Shared dataset class for all MillionTrees datasets.
@@ -25,7 +27,6 @@ class MillionTreesDataset:
     def __init__(self, root_dir, download, split_scheme):
         if len(self._metadata_array.shape) == 1:
             self._metadata_array = self._metadata_array.unsqueeze(1)
-        self._add_coarse_domain_metadata()
         self.check_init()
 
     def __len__(self):
@@ -35,9 +36,12 @@ class MillionTreesDataset:
         # Any transformations are handled by the WILDSSubset
         # since different subsets (e.g., train vs test) might have different transforms
         x = self.get_input(idx)
-        y = self.y_array[idx]
-        metadata = self.metadata_array[idx]
-        return x, y, metadata
+        y_indices = self._input_lookup[self._input_array[idx]]
+        y = self.y_array[y_indices]
+        metadata = self.metadata_array[y_indices]
+        targets = {"boxes": y, "labels": np.zeros(len(y), dtype=int)}
+
+        return metadata, x, targets
 
     def get_input(self, idx):
         """
@@ -86,20 +90,6 @@ class MillionTreesDataset:
 
         return MillionTreesSubset(self, split_idx, transform)
 
-    def _add_coarse_domain_metadata(self):
-        """Update metadata fields, map and values with coarse-grained domain
-        information."""
-        if hasattr(self, '_metadata_map'):
-            self._metadata_map['from_source_domain'] = [False, True]
-        self._metadata_fields.append('from_source_domain')
-        from_source_domain = torch.as_tensor([
-            1 if split in self.source_domain_splits else 0
-            for split in self.split_array
-        ],
-                                             dtype=torch.int64).unsqueeze(dim=1)
-        self._metadata_array = torch.cat(
-            [self._metadata_array, from_source_domain], dim=1)
-
     def check_init(self):
         """Convenience function to check that the WILDSDataset is properly
         configured."""
@@ -109,7 +99,7 @@ class MillionTreesDataset:
         ]
         for attr_name in required_attrs:
             assert hasattr(self,
-                           attr_name), f'WILDSDataset is missing {attr_name}.'
+                           attr_name), f'MillionTreesDataset is missing {attr_name}.'
 
         # Check that data directory exists
         if not os.path.exists(self.data_dir):
@@ -123,14 +113,11 @@ class MillionTreesDataset:
         assert 'val' in self.split_dict
 
         # Check the form of the required arrays
-        assert (isinstance(self.y_array, torch.Tensor) or
-                isinstance(self.y_array, list))
-        assert isinstance(self.metadata_array,
-                          torch.Tensor), 'metadata_array must be a torch.Tensor'
+        assert isinstance(self.y_array, np.ndarray) or isinstance(self.y_array, list), 'y_array must be a numpy array or list'
+        assert isinstance(self.metadata_array, np.ndarray), 'metadata_array must be a numpy array'
 
         # Check that dimensions match
         assert len(self.y_array) == len(self.metadata_array)
-        assert len(self.split_array) == len(self.metadata_array)
 
         # Check metadata
         assert len(self.metadata_array.shape) == 2
@@ -364,6 +351,7 @@ class MillionTreesDataset:
                 f'This might take some time for large datasets.')
 
         from milliontrees.datasets.download_utils import download_and_extract_archive
+
         print(f'Downloading dataset to {data_dir}...')
 
         try:
@@ -475,15 +463,10 @@ class MillionTreesDataset:
 
 class MillionTreesSubset(MillionTreesDataset):
 
-    def __init__(self, dataset, indices, transform, do_transform_y=False):
-        """This acts like `torch.utils.data.Subset`, but on `WILDSDatasets`. We
+    def __init__(self, dataset, indices, transform=None):
+        """This acts like `torch.utils.data.Subset`, but on `milliontreesDatasets`. We
         pass in `transform` (which is used for data augmentation) explicitly
         because it can potentially vary on the training vs. test subsets.
-
-        `do_transform_y` (bool): When this is false (the default),
-                                 `self.transform ` acts only on  `x`.
-                                 Set this to true if `self.transform` should
-                                 operate on `(x,y)` instead of just `x`.
         """
         self.dataset = dataset
         self.indices = indices
@@ -495,19 +478,29 @@ class MillionTreesSubset(MillionTreesDataset):
         for attr_name in inherited_attrs:
             if hasattr(dataset, attr_name):
                 setattr(self, attr_name, getattr(dataset, attr_name))
-        self.transform = transform
+
+        if transform is None:
+            self.transform = A.Compose([
+            A.Resize(height=448, width=448, p=1.0),
+            ToTensorV2()
+            ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], clip=True))
+        else:
+            self.transform = transform
 
     def __getitem__(self, idx):
-        x, y, metadata = self.dataset[self.indices[idx]]
-        if self.transform is not None:
-            augmented = self.transform(image=x,
-                                       bboxes=y,
-                                       category_ids=metadata['source_id'])
-            x = augmented['image']
-            y = augmented['bboxes']
-            metadata['source_id'] = augmented['category_ids']
+        metadata, x, targets = self.dataset[self.indices[idx]]
+        augmented = self.transform(image=x,
+                                    bboxes=targets["boxes"],
+                                    labels=targets["labels"])
+        x = augmented['image']
+        boxes = torch.from_numpy(augmented["bboxes"]).float()
+        labels = torch.from_numpy(np.array(augmented["labels"]))
+        
+        targets = {"boxes": boxes, "labels": labels}
 
-        return x, y, metadata
+        metadata = torch.tensor(metadata)
+        
+        return metadata, x, targets
 
     def __len__(self):
         return len(self.indices)
