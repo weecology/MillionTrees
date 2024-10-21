@@ -99,9 +99,10 @@ class TreePointsDataset(MillionTreesDataset):
 
         # Filenames
         self._input_array = df['filename'].values
+        self._input_lookup = df.groupby('filename').apply(lambda x: x.index.values).to_dict()
 
         # Point labels
-        self._y_array = torch.tensor(df[["x", "y"]].values.astype(float))
+        self._y_array = df[["x", "y"]].values.astype(float)
 
         # Labels -> just 'Tree'
         self._n_classes = 1
@@ -115,8 +116,7 @@ class TreePointsDataset(MillionTreesDataset):
         self._n_groups = n_groups
         assert len(np.unique(df['source_id'])) == self._n_groups
 
-        self._metadata_array = torch.tensor(
-            np.stack([df['source_id'].values], axis=1))
+        self._metadata_array = np.stack([df['source_id'].values], axis=1)
         self._metadata_fields = ['source_id']
 
         # eval grouper
