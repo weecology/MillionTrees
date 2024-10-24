@@ -2,6 +2,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import WeightedRandomSampler, SubsetRandomSampler
 from milliontrees.common.utils import get_counts, split_into_groups
+from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 
 
 def get_train_loader(loader,
@@ -32,8 +33,11 @@ def get_train_loader(loader,
     Output:
         - data loader (DataLoader): Data loader.
     """
+    if isinstance(dataset, MillionTreesDataset):
+        print("Warning: You are loading the entire dataset. Consider using dataset.get_subset('train') for a portion of the dataset if intended.")
     if loader == 'standard':
         if uniform_over_groups is None or not uniform_over_groups:
+
             return DataLoader(
                 dataset,
                 shuffle=True,  # Shuffle training dataset
@@ -76,7 +80,7 @@ def get_train_loader(loader,
                                      n_groups_per_batch=n_groups_per_batch,
                                      uniform_over_groups=uniform_over_groups,
                                      distinct_groups=distinct_groups)
-
+        
         return DataLoader(dataset,
                           shuffle=None,
                           sampler=None,

@@ -91,13 +91,13 @@ def dataset():
 def generate_box_dataset(image_dir):
     # Generate the box dataset logic here
     # Assuming you have a list of xmin, xmax, ymin, ymax values and corresponding image file paths
-    xmin = [10, 20, 30]
-    xmax = [50, 60, 70]
-    ymin = [15, 25, 35]
-    ymax = [55, 65, 75]
-    locations = [0,0,1]
-    resolution = [1,1,10]
-    image_files = [os.path.join(image_dir, 'image1.jpg'), os.path.join(image_dir, 'image2.jpg'), os.path.join(image_dir, 'image3.jpg')]
+    xmin = [10, 20, 30, 15]
+    xmax = [50, 60, 70, 55]
+    ymin = [15, 25, 35, 20]
+    ymax = [55, 65, 75, 60]
+    locations = [0, 0, 1, 0]
+    resolution = [1, 1, 10, 1]
+    image_files = ['image1.jpg', 'image2.jpg', 'image3.jpg', 'image1.jpg']
 
     # Create a pandas DataFrame
     df = pd.DataFrame({'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax, 'filename': image_files,"source":locations, "resolution":resolution})
@@ -120,7 +120,7 @@ def generate_polygon_dataset(image_dir):
     polygon_wkt = ["POLYGON((10 15, 50 15, 50 55, 10 55, 10 15))", "POLYGON((20 25, 60 25, 60 65, 20 65, 20 25))", "POLYGON((30 35, 70 35, 70 75, 30 75, 30 35))"]
     locations = [0,0,1]
     resolution = [1,1,10]
-    image_files = [os.path.join(image_dir, 'image1.jpg'), os.path.join(image_dir, 'image2.jpg'), os.path.join(image_dir, 'image3.jpg')]
+    image_files = ['image1.jpg', 'image2.jpg', 'image3.jpg']
 
     # Create a pandas DataFrame
     df = pd.DataFrame({'polygon': polygon_wkt, 'filename': image_files, "source":locations,"resolution":resolution})
@@ -144,7 +144,7 @@ def generate_point_dataset(image_dir):
     y = [15, 25, 35]
     locations = [0,0,1]
     resolution = [1,1,10]
-    image_files = [os.path.join(image_dir, 'image1.jpg'), os.path.join(image_dir, 'image2.jpg'), os.path.join(image_dir, 'image3.jpg')]
+    image_files = ['image1.jpg', 'image2.jpg', 'image3.jpg']
 
     # Create a pandas DataFrame
     df = pd.DataFrame({'x': x, 'y': y, 'filename': image_files,"source":locations,"resolution":resolution})

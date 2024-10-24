@@ -35,12 +35,19 @@ def Cloutier2023():
     test["split"] = "test"
     combined = pd.concat([train,test])
     combined["source"] = "Cloutier et al. 2023"
+
+    
+    # Make full path
+    combined["image_path"] = "/orange/ewhite/DeepForest/Cloutier2023/images/" + combined["image_path"]
+
     combined.to_csv("/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv")
 
     # View one image
     sample_image_annotations = combined[combined.image_path==combined.image_path.unique()[0]] 
     sample_image = cv2.imread(os.path.join("/orange/ewhite/DeepForest/Cloutier2023/images/",sample_image_annotations.image_path.unique()[0]))
     plot_predictions(sample_image,patch_size=3000)
+
+
 
 if __name__ == "__main__":
     Cloutier2023()
