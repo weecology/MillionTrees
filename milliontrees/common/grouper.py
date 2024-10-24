@@ -134,15 +134,15 @@ class CombinatorialGrouper(Grouper):
                 raise ValueError(
                     'At least one group field not found in dataset.metadata_fields'
                 )
-
-            metadata_array = torch.cat(
+            metadata_array = np.concatenate(
                 [dataset.metadata_array for dataset in datasets])
+                
             grouped_metadata = metadata_array[:, self.groupby_field_indices]
-            if not isinstance(grouped_metadata, torch.LongTensor):
-                grouped_metadata_long = grouped_metadata.long()
-                if not torch.all(grouped_metadata == grouped_metadata_long):
+            if not np.issubdtype(grouped_metadata.dtype, np.integer):
+                grouped_metadata_long = grouped_metadata.astype(np.int64)
+                if not np.array_equal(grouped_metadata, grouped_metadata_long):
                     warnings.warn(
-                        f'CombinatorialGrouper: converting metadata with fields [{", ".join(groupby_fields)}] into long'
+                        f'CombinatorialGrouper: converting metadata with fields [{", ".join(groupby_fields)}] into int64'
                     )
                 grouped_metadata = grouped_metadata_long
 
@@ -160,13 +160,12 @@ class CombinatorialGrouper(Grouper):
             # We assume that the metadata fields are integers,
             # so we can measure the cardinality of each field by taking its max + 1.
             # Note that this might result in some empty groups.
-            assert grouped_metadata.min(
-            ) >= 0, "Group numbers cannot be negative."
-            self.cardinality = 1 + torch.max(grouped_metadata, dim=0)[0]
-            cumprod = torch.cumprod(self.cardinality, dim=0)
+            assert grouped_metadata.min() >= 0, "Group numbers cannot be negative."
+            self.cardinality = 1 + np.max(grouped_metadata, axis=0)
+            cumprod = np.cumprod(self.cardinality)
             self._n_groups = cumprod[-1].item()
             self.factors_np = np.concatenate(([1], cumprod[:-1]))
-            self.factors = torch.from_numpy(self.factors_np)
+            self.factors = self.factors_np
             self.metadata_map = largest_metadata_map
 
     def metadata_to_group(self, metadata, return_counts=False):

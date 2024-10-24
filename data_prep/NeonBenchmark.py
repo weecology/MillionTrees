@@ -1,97 +1,42 @@
 import glob
 import os
 import pandas as pd
-import shutil
-import geopandas as gpd
-from utilities import read_file
-from deepforest.preprocess import split_raster
+from deepforest.utilities import read_file
 
-def generate_NEON_benchmark():
-    BENCHMARK_PATH = "/orange/idtrees-collab/NeonTreeEvaluation/"
-    tifs = glob.glob(BENCHMARK_PATH + "evaluation/RGB/*.tif")
-    xmls = [os.path.splitext(os.path.basename(x))[0] for x in tifs] 
-    xmls = [os.path.join(BENCHMARK_PATH, "annotations", x) + ".xml" for x in xmls] 
-    
-    #Load and format xmls, not every RGB image has an annotation
-    annotation_list = []   
-    for xml_path in xmls:
-        try:
-            annotation = read_file(xml_path)
-        except:
-            continue
-        annotation_list.append(annotation)
-    benchmark_annotations = pd.concat(annotation_list, ignore_index=True)
+# Define the base path
+BASE_PATH = "/orange/ewhite/b.weinstein/NeonTreeEvaluation/hand_annotations/crops"
 
-    benchmark_annotations["source"] = "NEON_benchmark"
-    for image_path in benchmark_annotations.image_path.unique():
-        dst = os.path.join(BENCHMARK_PATH, "evaluation/RGB/", image_path)
-        shutil.copy(dst, "/orange/ewhite/DeepForest/NEON_benchmark/images/")
-    benchmark_annotations.to_csv("/orange/ewhite/DeepForest/NEON_benchmark/images/test.csv")
+# Load all CSV files in the specified directory
+csv_files = glob.glob(os.path.join(BASE_PATH, "*.csv"))
+csv_list = []
 
-    # Copy images to test location
-    benchmark_annotations["source"] = "NEON_benchmark"
+for csv_file in csv_files:
+    print(csv_file)
+    df = read_file(csv_file)
+    df["image_path"] = df["image_path"].apply(lambda x: os.path.join(BASE_PATH, x))
+    df["source"] = "Weecology_University_Florida"
+    df["label"] = "Tree"
+    csv_list.append(df)
 
-    ## Train annotations ##
-    BASE_PATH = "/orange/ewhite/b.weinstein/NeonTreeEvaluation/hand_annotations/"
-    #convert hand annotations from xml into retinanet format
-    xmls = glob.glob(BENCHMARK_PATH + "annotations/" + "*.xml")
-    annotation_list = []
-    for xml in xmls:
-        #check if it is in the directory
-        image_name = "{}.tif".format(os.path.splitext(os.path.basename(xml))[0])
-        if os.path.exists(os.path.join(BASE_PATH,image_name)):
-            print(xml)
-            annotation = read_file(xml)
-            annotation_list.append(annotation)
-        
-    #Collect hand annotations
-    annotations = pd.concat(annotation_list, ignore_index=True)      
-    
-    #collect shapefile annotations
-    shps = glob.glob(BASE_PATH + "*.shp")
-    shps_tifs = glob.glob(BASE_PATH + "*.tif")
-    shp_results = []
-    for shp in shps: 
-        print(shp)
-        rgb = "{}.tif".format(os.path.splitext(shp)[0])
-        gdf = gpd.read_file(shp)
-        gdf["label"] = "Tree"
-        shp_df = read_file(gdf, root_dir=BASE_PATH)
-        shp_df = pd.DataFrame(shp_df)        
-        shp_results.append(shp_df)
-    
-    shp_results = pd.concat(shp_results,ignore_index=True)
-    annotations = pd.concat([annotations,shp_results])
-    
-    annotations.to_csv(BASE_PATH + "hand_annotations.csv",index=False)
-    
-    #Collect tiles
-    xmls = glob.glob(BASE_PATH + "*.xml")
-    xmls = [os.path.splitext(os.path.basename(x))[0] for x in xmls] 
-    raster_list = [BASE_PATH + x + ".tif" for x in xmls] 
-    raster_list = raster_list + shps_tifs 
-    
-    cropped_annotations = [ ]
-    
-    for raster in raster_list:
-        try:
-            annotations_df= split_raster(path_to_raster=raster,
-                                            annotations_file=BASE_PATH + "hand_annotations.csv",
-                                            save_dir=BASE_PATH + "crops/",
-                                            patch_size=400,
-                                            patch_overlap=0.05)
-        except ValueError:
-            continue
-        cropped_annotations.append(annotations_df)
-    
-    ##Gather annotation files into a single file
-    train_annotations = pd.concat(cropped_annotations, ignore_index=True)   
-    
-    #Ensure column order
-    train_annotations.to_csv("/orange/ewhite/DeepForest/NEON_benchmark/images/train.csv",index=False, header=True)
-    train_annotations["source"] = "NEON_benchmark"
-    train_annotations.to_csv("/orange/ewhite/DeepForest/MillionTrees/annotations/NEON_benchmark_train.csv")
-    benchmark_annotations.to_csv("/orange/ewhite/DeepForest/MillionTrees/annotations/NEON_benchmark_test.csv")
+# Concatenate all CSV dataframes
+annotations = pd.concat(csv_list, ignore_index=True)
 
-if __name__ == "__main__":
-    generate_NEON_benchmark()
+# Save the combined annotations to a CSV file
+output_path = "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv"
+
+# Save the combined annotations to a CSV file
+annotations.to_csv(output_path, index=False)
+
+# Load the existing annotations file
+existing_annotations_path = "/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv"
+existing_annotations = pd.read_csv(existing_annotations_path)
+
+# Check for overlapping data based on a common column, e.g., 'image_path'
+overlapping_data = pd.merge(annotations, existing_annotations, on='image_path', how='inner')
+
+# Print the overlapping data
+print("Overlapping data:")
+print(overlapping_data)
+annotations.to_csv(output_path, index=False)
+
+
