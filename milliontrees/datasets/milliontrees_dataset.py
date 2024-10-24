@@ -489,6 +489,11 @@ class MillionTreesSubset(MillionTreesDataset):
 
     def __getitem__(self, idx):
         metadata, x, targets = self.dataset[self.indices[idx]]
+
+        # If image has no annotations, set zeros
+        if len(targets["boxes"]) == 0:
+            targets["boxes"] = np.zeros(4)
+            
         augmented = self.transform(image=x,
                                     bboxes=targets["boxes"],
                                     labels=targets["labels"])
