@@ -55,7 +55,7 @@ def test_get_train_dataloader(dataset, batch_size):
         break
 
 # Test structure with real annotation data to ensure format is correct
-# Do not run on github actions
+# Do not run on github actions, long running.
 @pytest.mark.skipif(not on_hipergator, reason="Do not run on github actions")
 def test_TreeBoxes_release():
     # Lookup size of the train dataset on disk
@@ -70,7 +70,6 @@ def test_TreeBoxes_release():
         assert image.min() >= 0.0 and image.max() <= 1.0
         assert boxes.shape[1] == 4
         assert metadata.shape[1] == 1
-        break
 
 def test_TreeBoxes_download(tmpdir):
     dataset = TreeBoxesDataset(download=True, root_dir=tmpdir)
@@ -84,3 +83,4 @@ def test_TreeBoxes_download(tmpdir):
         assert boxes.shape[1] == 4
         assert metadata.shape[1] == 1
         break
+        
