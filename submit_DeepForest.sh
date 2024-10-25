@@ -21,4 +21,4 @@ export COMET_WORKSPACE=bw4sz
 #Add to path
 export PYTHONPATH=$PYTHONPATH:/home/b.weinstein/MillionTrees
 
-python examples/DeepForest.py
+python DeepForest.py
