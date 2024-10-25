@@ -7,7 +7,7 @@ if os.path.basename(os.getcwd()) == 'examples':
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_train_loader
-from deepforest import main
+from deepforest.main import deepforest
 from pytorch_lightning.loggers import CometLogger
 
 def parse_args():
@@ -37,7 +37,8 @@ def main():
     train_dataset = dataset.get_subset("train")
     train_loader = get_train_loader("standard", train_dataset, batch_size=2)
 
-    m = main.deepforest(config_args=kwargs)
+    m = deepforest(config_args=kwargs)
+    m.config["train"]["csv_file"] ="<dummy file, existing dataloader>"
 
     # Load the pre-trained tree model
     m.load_model("Weecology/DeepForest-tree")

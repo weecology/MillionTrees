@@ -45,4 +45,5 @@ Forests underlie many ecosystem services, agricultural systems and urban plannin
    contributing
    developer
    source/modules.rst
+   examples/Datasets.ipynb
 
