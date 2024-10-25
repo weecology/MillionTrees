@@ -23,7 +23,7 @@ def test_TreeBoxes_generic(dataset):
         assert image.min() >= 0.0 and image.max() <= 1.0
         assert boxes.shape == (2, 4)
         assert labels.shape == (2,)
-        assert metadata.shape == (2,1)
+        assert metadata.shape == (2,2)
         break
 
     train_dataset = dataset.get_subset("train")
@@ -36,7 +36,7 @@ def test_TreeBoxes_generic(dataset):
         assert torch.is_tensor(boxes)
         assert boxes.shape == (2,4)
         assert len(labels) == 2
-        assert metadata.shape == (2,1)
+        assert metadata.shape == (2,2)
         break
 
 @pytest.mark.parametrize("batch_size", [1, 2])
@@ -69,7 +69,18 @@ def test_TreeBoxes_release():
         assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
         assert boxes.shape[1] == 4
-        assert metadata.shape[1] == 1
+        assert metadata.shape[1] == 2
+    
+    train_loader = get_train_loader('standard', train_dataset, batch_size=2)
+    for metadata, x, targets in train_loader:
+        y = targets[0]["boxes"]
+        assert torch.is_tensor(targets[0]["boxes"])
+        assert x.shape == (2, 3, 448, 448)
+        assert x.dtype == torch.float32
+        assert x.min() >= 0.0 and x.max() <= 1.0
+        assert y.shape[1] == 4
+        assert len(metadata) == 2
+        break
 
 def test_TreeBoxes_download(tmpdir):
     dataset = TreeBoxesDataset(download=True, root_dir=tmpdir)

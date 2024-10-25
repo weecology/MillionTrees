@@ -124,8 +124,8 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._n_groups = n_groups
         assert len(np.unique(df['source_id'])) == self._n_groups
 
-        self._metadata_array = np.stack([df['source_id'].values], axis=1)
-        self._metadata_fields = ['source_id']
+        self._metadata_array = np.stack([df['source_id'].values,df[["filename"]].values.squeeze(1)], axis=1)
+        self._metadata_fields = ['source_id','filename']
 
         self._metric = DetectionAccuracy()
         self._collate = TreeBoxesDataset._collate_fn
