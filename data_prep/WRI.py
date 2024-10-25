@@ -1,11 +1,12 @@
 import os
 import pandas as pd
 from deepforest import utilities
+from deepforest.preprocess import split_raster
 from PIL import Image
 
 # Define the root directory
 root_dir = "/orange/ewhite/DeepForest/WRI/WRI-labels-opensource"
-
+crop_dir = "/orange/ewhite/DeepForest/WRI/WRI-labels-opensource/crops"
 # Initialize an empty list to store dataframes
 dataframes = []
 
@@ -29,11 +30,13 @@ for filename in os.listdir(root_dir):
         df["ymax"] = (df["ymin"] + df["height"] * original_height).astype(int)
 
         # Add the image_path column
-        df["image_path"] = image_path
+        df["image_path"] = os.path.basename(image_path)
         
         # Append the dataframe to the list
         df = utilities.read_file(df, root_dir)
-        dataframes.append(df)
+        split_annoations = split_raster(df, path_to_raster=image_path, base_dir=crop_dir, patch_size=200, patch_overlap=0)
+
+        dataframes.append(split_annoations)
 
 # Concatenate all dataframes
 annotations_df = pd.concat(dataframes, ignore_index=True)
@@ -41,6 +44,9 @@ annotations_df = pd.concat(dataframes, ignore_index=True)
 # Add the 'label' and 'source' columns
 annotations_df["label"] = "Tree"
 annotations_df["source"] = "World Resources Institute"
+
+# Image path is the full path
+annotations_df["image_path"] = annotations_df["image_path"].apply(lambda x: os.path.join(crop_dir, x))
 
 # Save the concatenated dataframe to annotations.csv
 annotations_df.to_csv(os.path.join(root_dir, "annotations.csv"), index=False)

@@ -489,10 +489,6 @@ class MillionTreesSubset(MillionTreesDataset):
 
     def __getitem__(self, idx):
         metadata, x, targets = self.dataset[self.indices[idx]]
-
-        # If image has no annotations, set zeros
-        if len(targets["boxes"]) == 0:
-            targets["boxes"] = np.zeros(4)
             
         augmented = self.transform(image=x,
                                     bboxes=targets["boxes"],
@@ -501,9 +497,12 @@ class MillionTreesSubset(MillionTreesDataset):
         boxes = torch.from_numpy(augmented["bboxes"]).float()
         labels = torch.from_numpy(np.array(augmented["labels"]))
         
-        targets = {"boxes": boxes, "labels": labels}
+        # If image has no annotations, set zeros
+        if len(boxes) == 0:
+            boxes = torch.zeros(0,4)
 
-        metadata = torch.tensor(metadata)
+        targets = {"boxes": boxes, "labels": labels}
+        
         
         return metadata, x, targets
 
