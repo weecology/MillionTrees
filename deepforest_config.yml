@@ -45,7 +45,7 @@ train:
             eps: 1e-08
 
     # Print loss every n epochs
-    epochs: 1
+    epochs: 10
     # Useful debugging flag in pytorch lightning, set to True to get a single batch of training to test settings.
     fast_dev_run: False
     # pin images to GPU memory for fast training. This depends on GPU size and number of images.

@@ -16,16 +16,19 @@ def parse_args():
     return known_args, unknown_args
 
 def convert_unknown_args_to_dict(unknown_args):
+    def set_nested_dict(d, keys, value):
+        for key in keys[:-1]:
+            d = d.setdefault(key, {})
+        d[keys[-1]] = value
+
     kwargs = {}
+    key = None
     for arg in unknown_args:
         if arg.startswith('--'):
-            key = arg.lstrip('--')
-            kwargs[key] = None
+            key = arg.lstrip('--').split('.')
+            set_nested_dict(kwargs, key, None)
         else:
-            if kwargs[key] is None:
-                kwargs[key] = arg
-            else:
-                kwargs[key] += f" {arg}"
+            set_nested_dict(kwargs, key, arg)
     return kwargs
 
 
