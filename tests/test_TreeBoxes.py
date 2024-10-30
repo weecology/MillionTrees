@@ -23,7 +23,7 @@ def test_TreeBoxes_generic(dataset):
         assert image.min() >= 0.0 and image.max() <= 1.0
         assert boxes.shape == (2, 4)
         assert labels.shape == (2,)
-        assert metadata.shape == (2,2)
+        assert metadata.shape == (2,)
         break
 
     train_dataset = dataset.get_subset("train")
@@ -36,7 +36,7 @@ def test_TreeBoxes_generic(dataset):
         assert torch.is_tensor(boxes)
         assert boxes.shape == (2,4)
         assert len(labels) == 2
-        assert metadata.shape == (2,2)
+        assert metadata.shape == (2,)
         break
 
 @pytest.mark.parametrize("batch_size", [1, 2])
@@ -54,30 +54,57 @@ def test_get_train_dataloader(dataset, batch_size):
         assert len(metadata) == batch_size
         break
 
-def test_get_test_dataloader(dataset, batch_size):
+def test_get_test_dataloader(dataset):
     dataset = TreeBoxesDataset(download=False, root_dir=dataset) 
     test_dataset = dataset.get_subset("test")
     
     for metadata, image, targets in test_dataset:
         boxes, labels = targets["boxes"], targets["labels"]
-        assert image.shape == (100, 100, 3)
-        assert image.dtype == np.float32
+        assert image.shape == (3,448, 448)
+        assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
         assert boxes.shape == (2, 4)
         assert labels.shape == (2,)
-        assert metadata.shape == (2,2)
+        assert metadata.shape == (2,)
         break
+    
+    # Assert that test_dataset[0] == "image3.jpg"
+    metadata, image, targets = test_dataset[0]
+    assert metadata[1] == 1
+    assert metadata[0] == "image3.jpg"
 
-    test_loader = get_eval_loader('standard', test_dataset, batch_size=batch_size)
+    test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
     for metadata, x, targets in test_loader:
         y = targets[0]["boxes"]
         assert torch.is_tensor(targets[0]["boxes"])
-        assert x.shape == (batch_size, 3, 448, 448)
+        assert x.shape == (2, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
         assert y.shape[1] == 4
-        assert len(metadata) == batch_size
+        assert len(metadata) == 2
         break
+
+def test_TreeBoxes_eval(dataset):
+    dataset = TreeBoxesDataset(download=False, root_dir=dataset) 
+    test_dataset = dataset.get_subset("test")
+    test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
+
+    all_y_pred = []
+    all_y_true = []
+    all_metadata = []
+    # Get predictions for the full test set
+    for metadata, x, y_true in test_loader:
+        y_pred = [{'boxes': torch.tensor([[30, 70, 35, 75]]), 'label': torch.tensor([0]), 'score': torch.tensor([0.54])} for _ in range(x.shape[0])]
+        # Accumulate y_true, y_pred, metadata
+        all_y_pred.append(y_pred)
+        all_y_true.append(y_true)
+        all_metadata.append(metadata)
+
+    # Evaluate
+    eval_results, eval_string = dataset.eval(all_y_pred, all_y_true, all_metadata)
+
+    assert len(eval_results) 
+    assert "detection_acc_avg" in eval_results.keys()
 
 # Test structure with real annotation data to ensure format is correct
 # Do not run on github actions, long running.
@@ -94,7 +121,7 @@ def test_TreeBoxes_release():
         assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
         assert boxes.shape[1] == 4
-        assert metadata.shape[1] == 2
+        assert metadata.shape[0] == 2
     
     train_loader = get_train_loader('standard', train_dataset, batch_size=2)
     for metadata, x, targets in train_loader:
@@ -117,5 +144,5 @@ def test_TreeBoxes_download(tmpdir):
         assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
         assert boxes.shape[1] == 4
-        assert metadata.shape[1] == 1
+        assert metadata.shape[0] == 2
         break
