@@ -38,7 +38,7 @@ class MillionTreesDataset:
         x = self.get_input(idx)
         y_indices = self._input_lookup[self._input_array[idx]]
         y = self.y_array[y_indices]
-        metadata = self.metadata_array[y_indices]
+        metadata = self.metadata_array[idx]
         targets = {"boxes": y, "labels": np.zeros(len(y), dtype=int)}
 
         return metadata, x, targets
@@ -117,7 +117,7 @@ class MillionTreesDataset:
         assert isinstance(self.metadata_array, np.ndarray), 'metadata_array must be a numpy array'
 
         # Check that dimensions match
-        assert len(self.y_array) == len(self.metadata_array)
+        assert len(self._input_array) == len(self.metadata_array)
 
         # Check metadata
         assert len(self.metadata_array.shape) == 2
