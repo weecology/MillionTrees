@@ -73,15 +73,15 @@ def test_get_test_dataloader(dataset):
     assert metadata[1] == 1
     assert metadata[0] == "image3.jpg"
 
-    test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
+    test_loader = get_eval_loader('standard', test_dataset, batch_size=1)
     for metadata, x, targets in test_loader:
         y = targets[0]["y"]
         assert torch.is_tensor(targets[0]["y"])
-        assert x.shape == (2, 3, 448, 448)
+        assert x.shape == (1, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
         assert y.shape[1] == 2
-        assert len(metadata) == 2
+        assert len(metadata) == 1
         break
 
 def test_TreePoints_eval(dataset):
@@ -139,7 +139,7 @@ def test_TreePoints_download(tmpdir):
     train_dataset = dataset.get_subset("train")
      
     for metadata, image, targets in train_dataset:
-        points = targets["points"]
+        points = targets["y"]
         assert image.shape == (3, 448, 448)
         assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0

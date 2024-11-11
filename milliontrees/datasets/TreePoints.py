@@ -198,4 +198,6 @@ class TreePointsDataset(MillionTreesDataset):
         self.transform = A.Compose([
             A.Resize(height=448, width=448, p=1.0),
             ToTensorV2()
-            ], bbox_params=A.KeypointParams(format='xy', label_fields=['labels'], clip=True))
+            ], keypoint_params=A.KeypointParams(format='xy', label_fields=['labels']))
+        
+        return self.transform

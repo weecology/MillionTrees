@@ -194,7 +194,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         
         return tuple(batch)
     
-    def _transform_():
+    def _transform_(self):
         transform = A.Compose([
             A.Resize(height=448, width=448, p=1.0),
             ToTensorV2()
