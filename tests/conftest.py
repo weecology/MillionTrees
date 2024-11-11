@@ -140,14 +140,14 @@ def generate_polygon_dataset(image_dir):
 def generate_point_dataset(image_dir):
     # Generate the point dataset logic here
     # Assuming you have a list of x, y coordinates and corresponding image file paths
-    x = [10, 20, 30]
-    y = [15, 25, 35]
-    locations = [0,0,1]
-    resolution = [1,1,10]
-    image_files = ['image1.jpg', 'image2.jpg', 'image3.jpg']
+    x = [10, 20, 30, 15, 35, 40]
+    y = [15, 25, 35, 20, 40, 45]
+    locations = [0, 0, 1, 0, 1, 1]
+    resolution = [1, 1, 10, 1, 10, 5]
+    image_files = ['image1.jpg', 'image2.jpg', 'image3.jpg', 'image1.jpg', 'image3.jpg', 'image4.jpg']
 
     # Create a pandas DataFrame
-    df = pd.DataFrame({'x': x, 'y': y, 'filename': image_files,"source":locations,"resolution":resolution})
+    df = pd.DataFrame({'x': x, 'y': y, 'filename': image_files, "source": locations, "resolution": resolution})
 
     # Create images and save them to disk within image_dir
     for i, row in df.iterrows():
@@ -156,10 +156,7 @@ def generate_point_dataset(image_dir):
 
         # Save the image within image_dir
         image_path = os.path.join(image_dir, row['filename'])
-        # Convert the numpy array to PIL Image
-        pil_img = Image.fromarray(img)
-
-        # Save the image within image_dir
-        pil_img.save(image_path)
+        img = Image.fromarray(img)
+        img.save(image_path)
 
     return df

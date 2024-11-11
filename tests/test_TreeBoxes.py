@@ -17,7 +17,7 @@ else:
 def test_TreeBoxes_generic(dataset):
     dataset = TreeBoxesDataset(download=False, root_dir=dataset) 
     for metadata, image, targets in dataset:
-        boxes, labels = targets["boxes"], targets["labels"]
+        boxes, labels = targets["y"], targets["labels"]
         assert image.shape == (100, 100, 3)
         assert image.dtype == np.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
@@ -29,7 +29,7 @@ def test_TreeBoxes_generic(dataset):
     train_dataset = dataset.get_subset("train")
      
     for metadata, image, targets in train_dataset:
-        boxes, labels = targets["boxes"], targets["labels"]
+        boxes, labels = targets["y"], targets["labels"]
         assert image.shape == (3, 448, 448)
         assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
@@ -45,8 +45,8 @@ def test_get_train_dataloader(dataset, batch_size):
     train_dataset = dataset.get_subset("train")
     train_loader = get_train_loader('standard', train_dataset, batch_size=batch_size)
     for metadata, x, targets in train_loader:
-        y = targets[0]["boxes"]
-        assert torch.is_tensor(targets[0]["boxes"])
+        y = targets[0]["y"]
+        assert torch.is_tensor(targets[0]["y"])
         assert x.shape == (batch_size, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
@@ -59,7 +59,7 @@ def test_get_test_dataloader(dataset):
     test_dataset = dataset.get_subset("test")
     
     for metadata, image, targets in test_dataset:
-        boxes, labels = targets["boxes"], targets["labels"]
+        boxes, labels = targets["y"], targets["labels"]
         assert image.shape == (3,448, 448)
         assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
@@ -75,8 +75,8 @@ def test_get_test_dataloader(dataset):
 
     test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
     for metadata, x, targets in test_loader:
-        y = targets[0]["boxes"]
-        assert torch.is_tensor(targets[0]["boxes"])
+        y = targets[0]["y"]
+        assert torch.is_tensor(targets[0]["y"])
         assert x.shape == (2, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
@@ -94,7 +94,7 @@ def test_TreeBoxes_eval(dataset):
     all_metadata = []
     # Get predictions for the full test set
     for metadata, x, y_true in test_loader:
-        y_pred = [{'boxes': torch.tensor([[30, 70, 35, 75]]), 'label': torch.tensor([0]), 'score': torch.tensor([0.54])} for _ in range(x.shape[0])]
+        y_pred = [{'y': torch.tensor([[30, 70, 35, 75]]), 'label': torch.tensor([0]), 'score': torch.tensor([0.54])} for _ in range(x.shape[0])]
         # Accumulate y_true, y_pred, metadata
         all_y_pred.append(y_pred)
         all_y_true.append(y_true)
@@ -115,7 +115,7 @@ def test_TreeBoxes_release():
     train_dataset = dataset.get_subset("train")
      
     for metadata, image, targets in train_dataset:
-        boxes = targets["boxes"]
+        boxes = targets["y"]
         labels = targets["labels"]
         assert image.shape == (3, 448, 448)
         assert image.dtype == torch.float32
@@ -125,8 +125,8 @@ def test_TreeBoxes_release():
     
     train_loader = get_train_loader('standard', train_dataset, batch_size=2)
     for metadata, x, targets in train_loader:
-        y = targets[0]["boxes"]
-        assert torch.is_tensor(targets[0]["boxes"])
+        y = targets[0]["y"]
+        assert torch.is_tensor(targets[0]["y"])
         assert x.shape == (2, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
@@ -139,7 +139,7 @@ def test_TreeBoxes_download(tmpdir):
     train_dataset = dataset.get_subset("train")
      
     for metadata, image, targets in train_dataset:
-        boxes = targets["boxes"]
+        boxes = targets["y"]
         assert image.shape == (3, 448, 448)
         assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
