@@ -38,8 +38,8 @@ class MillionTreesDataset:
         x = self.get_input(idx)
         y_indices = self._input_lookup[self._input_array[idx]]
         y = self.y_array[y_indices]
-        metadata = self.metadata_array[y_indices]
-        targets = {"boxes": y, "labels": np.zeros(len(y), dtype=int)}
+        metadata = self.metadata_array[idx]
+        targets = {"y": y, "labels": np.zeros(len(y), dtype=int)}
 
         return metadata, x, targets
 
@@ -117,7 +117,7 @@ class MillionTreesDataset:
         assert isinstance(self.metadata_array, np.ndarray), 'metadata_array must be a numpy array'
 
         # Check that dimensions match
-        assert len(self.y_array) == len(self.metadata_array)
+        assert len(self._input_array) == len(self.metadata_array)
 
         # Check metadata
         assert len(self.metadata_array.shape) == 2
@@ -479,26 +479,31 @@ class MillionTreesSubset(MillionTreesDataset):
             if hasattr(dataset, attr_name):
                 setattr(self, attr_name, getattr(dataset, attr_name))
 
-        if transform is None:
-            self.transform = A.Compose([
-            A.Resize(height=448, width=448, p=1.0),
-            ToTensorV2()
-            ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], clip=True))
-        else:
-            self.transform = transform
+        
+        self.transform = dataset._transform_()
 
     def __getitem__(self, idx):
         metadata, x, targets = self.dataset[self.indices[idx]]
+            
         augmented = self.transform(image=x,
-                                    bboxes=targets["boxes"],
+                                    bboxes=targets["y"],
                                     labels=targets["labels"])
         x = augmented['image']
-        boxes = torch.from_numpy(augmented["bboxes"]).float()
         labels = torch.from_numpy(np.array(augmented["labels"]))
         
-        targets = {"boxes": boxes, "labels": labels}
+        if self._dataset_name == 'TreeBoxes':
+            y = torch.from_numpy(augmented["bboxes"]).float()
+        elif self._dataset_name == 'TreePoints':
+            y = torch.from_numpy(augmented["keypoints"]).float
 
-        metadata = torch.tensor(metadata)
+        # If image has no annotations, set zeros
+        if len(y) == 0:
+            if self._dataset_name == 'TreeBoxes':
+                y = torch.zeros(0,4)
+            elif self._dataset_name == 'TreePoints':
+                y = torch.zeros(0,2)
+
+        targets = {"y": y, "labels": labels}
         
         return metadata, x, targets
 

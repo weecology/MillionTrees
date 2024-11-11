@@ -27,17 +27,30 @@ class Grouper:
     def metadata_to_group(self, metadata, return_counts=False):
         """
         Args:
-            - metadata (Tensor): An n x d matrix containing d metadata fields
-                                 for n different points.
+            - metadata (ndarray): An n x d matrix containing d metadata fields
+                                  for n different points.
             - return_counts (bool): If True, return group counts as well.
         Output:
-            - group (Tensor): An n-length vector of groups.
-            - group_counts (Tensor): Optional, depending on return_counts.
-                                     An n_group-length vector of integers containing the
-                                     numbers of data points in each group in the metadata.
+            - group (ndarray): An n-length vector of groups.
+            - group_counts (ndarray): Optional, depending on return_counts.
+                                      An n_group-length vector of integers containing the
+                                      numbers of data points in each group in the metadata.
         """
-        raise NotImplementedError
 
+        if self.groupby_fields is None:
+            groups = torch.zeros(metadata.shape[0], dtype=torch.long)
+        else:
+            # Create a stack of the selected metadata group
+            grouped_metadata = np.stack([image_metadata[self.groupby_field_indices] for batch in metadata for image_metadata in batch])
+
+            groups = grouped_metadata @ self.factors
+
+        if return_counts:
+            group_counts = get_counts(groups, self._n_groups)
+            return groups, group_counts
+        else:
+            return groups
+            
     def group_str(self, group):
         """
         Args:
@@ -167,19 +180,6 @@ class CombinatorialGrouper(Grouper):
             self.factors_np = np.concatenate(([1], cumprod[:-1]))
             self.factors = self.factors_np
             self.metadata_map = largest_metadata_map
-
-    def metadata_to_group(self, metadata, return_counts=False):
-        if self.groupby_fields is None:
-            groups = torch.zeros(metadata.shape[0], dtype=torch.long)
-        else:
-            groups = metadata[:,
-                              self.groupby_field_indices].long() @ self.factors
-
-        if return_counts:
-            group_counts = get_counts(groups, self._n_groups)
-            return groups, group_counts
-        else:
-            return groups
 
     def group_str(self, group):
         if self.groupby_fields is None:
