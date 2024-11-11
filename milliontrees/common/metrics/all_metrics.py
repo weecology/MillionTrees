@@ -384,10 +384,10 @@ class DetectionAccuracy(ElementwiseMetric):
         batch_results = []
         for target, batch_boxes_predictions in zip(y_true, y_pred):
             # concat all boxes and scores
-            pred_boxes = torch.cat([image_results["boxes"] for image_results in batch_boxes_predictions], dim=0)
+            pred_boxes = torch.cat([image_results["y"] for image_results in batch_boxes_predictions], dim=0)
             pred_scores = torch.cat([image_results["score"] for image_results in batch_boxes_predictions], dim=0)
             pred_boxes = pred_boxes[pred_scores > self.score_threshold]
-            src_boxes = torch.cat([image_results["boxes"] for image_results in target], dim=0)
+            src_boxes = torch.cat([image_results["y"] for image_results in target], dim=0)
 
             det_accuracy = torch.mean(
                 torch.stack([
