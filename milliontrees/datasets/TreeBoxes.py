@@ -5,12 +5,14 @@ import os
 import pandas as pd
 import numpy as np
 import torch
+import albumentations as A
+import torchvision.transforms as T
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import DetectionAccuracy
 from PIL import Image
-
+from albumentations.pytorch import ToTensorV2
 
 class TreeBoxesDataset(MillionTreesDataset):
     """The TreeBoxes dataset is a collection of tree annotations annotated as
@@ -191,3 +193,11 @@ class TreeBoxesDataset(MillionTreesDataset):
         batch[2] = list(batch[2])
         
         return tuple(batch)
+    
+    def _transform_():
+        transform = A.Compose([
+            A.Resize(height=448, width=448, p=1.0),
+            ToTensorV2()
+            ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], clip=True))
+        
+        return transform

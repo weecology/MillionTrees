@@ -10,7 +10,8 @@ from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import DetectionAccuracy
 from PIL import Image
-
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 class TreePointsDataset(MillionTreesDataset):
     """The TreePoints dataset is a collection of tree annotations annotated as
@@ -192,3 +193,9 @@ class TreePointsDataset(MillionTreesDataset):
         batch[2] = list(batch[2])
         
         return tuple(batch)
+    
+    def _transform_(self):
+        self.transform = A.Compose([
+            A.Resize(height=448, width=448, p=1.0),
+            ToTensorV2()
+            ], bbox_params=A.KeypointParams(format='xy', label_fields=['labels'], clip=True))
