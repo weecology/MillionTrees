@@ -6,7 +6,17 @@
 
 # Overview
 
-The MillionTrees benchmark is designed to provie *open*, *reproducible* and *rigorous* evaluation of tree detection algorithms. The dataset currently holds X images, X annotations and X train/test evaluation splits. This repo is the python package for rapid data sharing and evaluation.
+The MillionTrees benchmark is designed to provie *open*, *reproducible* and *rigorous* evaluation of tree detection algorithms. The dataset currently holds X images, X annotations and X train/test evaluation splits. This repo is the python package for rapid data sharing and evaluation. We anticipate the dataset will be ready by spring 2025. 
+
+## Current Status
+
+There are 3 datasets available for the MillionTrees benchmark:
+
+* TreeBoxes: A dataset of 282,288 tree crowns from 9 sources.
+
+* TreePolygons: A dataset of 362,751 tree crowns from 8 sources.
+
+* TreePoints: A dataset of 191,614 tree stems from 2 sources.
 
 ## Why MillionTrees?
 
@@ -54,19 +64,6 @@ The MillionTrees package has ingested many contributed datasets and formatted th
 | Polygon  |                 |                      |             |                  |
 | Box      |                 |                      |             |                  |
 
-## Underlying data contributions
-
-Many datasets have been cleaned or altered to fit the desired data format. Here is an incomplete list of the current contributions.
-
-# Using the MillionTrees package
-
-## Downloading and training on the MillionTrees datasets
-
-## Algorithms
-
-## Evaluation
-
-### Reproducibility
 
 # Citing MillionTrees
 
