@@ -5,12 +5,14 @@ import os
 import pandas as pd
 import numpy as np
 import torch
+import albumentations as A
+import torchvision.transforms as T
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import DetectionAccuracy
 from PIL import Image
-
+from albumentations.pytorch import ToTensorV2
 
 class TreeBoxesDataset(MillionTreesDataset):
     """The TreeBoxes dataset is a collection of tree annotations annotated as
@@ -124,8 +126,10 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._n_groups = n_groups
         assert len(np.unique(df['source_id'])) == self._n_groups
 
-        self._metadata_array = np.stack([df['source_id'].values], axis=1)
-        self._metadata_fields = ['source_id']
+        # Metadata is at the image level
+        unique_sources = df[['filename', 'source_id']].drop_duplicates(subset=['filename']).reset_index(drop=True)
+        self._metadata_array = unique_sources.values
+        self._metadata_fields = ['filename','source_id']
 
         self._metric = DetectionAccuracy()
         self._collate = TreeBoxesDataset._collate_fn
@@ -189,3 +193,11 @@ class TreeBoxesDataset(MillionTreesDataset):
         batch[2] = list(batch[2])
         
         return tuple(batch)
+    
+    def _transform_():
+        transform = A.Compose([
+            A.Resize(height=448, width=448, p=1.0),
+            ToTensorV2()
+            ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], clip=True))
+        
+        return transform

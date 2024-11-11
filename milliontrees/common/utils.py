@@ -63,41 +63,43 @@ def split_into_groups(g):
 
 def get_counts(g, n_groups):
     """This differs from split_into_groups in how it handles missing groups.
-    get_counts always returns a count Tensor of length n_groups, whereas
-    split_into_groups returns a unique_counts Tensor whose length is the number
+    get_counts always returns a count array of length n_groups, whereas
+    split_into_groups returns a unique_counts array whose length is the number
     of unique groups present in g.
 
     Args:
-        - g (Tensor): Vector of groups
+        - g (ndarray): Vector of groups
     Returns:
-        - counts (Tensor): A list of length n_groups, denoting the count of each group.
+        - counts (ndarray): An array of length n_groups, denoting the count of each group.
     """
-    unique_groups, unique_counts = torch.unique(g,
-                                                sorted=False,
-                                                return_counts=True)
-    counts = torch.zeros(n_groups, device=g.device)
-    counts[unique_groups] = unique_counts.float()
+    unique_groups, unique_counts = np.unique(g, return_counts=True)
+    counts = np.zeros(n_groups, dtype=float)
+    counts[int(unique_groups)] = unique_counts
+    
     return counts
 
 
 def avg_over_groups(v, g, n_groups):
     """
     Args:
-        v (Tensor): Vector containing the quantity to average over.
-        g (Tensor): Vector of the same length as v, containing group information.
+        v (ndarray): Vector containing the quantity to average over.
+        g (ndarray): Vector of the same length as v, containing group information.
     Returns:
-        group_avgs (Tensor): Vector of length num_groups
-        group_counts (Tensor)
+        group_avgs (ndarray): Vector of length n_groups
+        group_counts (ndarray)
     """
-    import torch_scatter
-    assert v.device == g.device
-    assert v.numel() == g.numel()
-    group_count = get_counts(g, n_groups)
-    group_avgs = torch_scatter.scatter(src=v,
-                                       index=g,
-                                       dim_size=n_groups,
-                                       reduce='mean')
-    return group_avgs, group_count
+
+    # Calculate group counts
+    group_counts = get_counts(g, n_groups)
+
+    # Calculate group sums
+    group_sums = np.zeros(n_groups, dtype=int)
+    np.add.at(group_sums, g.astype(int), v)
+
+    # Calculate group averages
+    group_avgs = group_sums / group_counts
+
+    return group_avgs, group_counts
 
 
 def map_to_id_array(df, ordered_map={}):
