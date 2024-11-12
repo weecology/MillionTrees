@@ -8,7 +8,7 @@ import torch
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
-from milliontrees.common.metrics.all_metrics import DetectionAccuracy
+from milliontrees.common.metrics.all_metrics import KeypointAccuracy
 from PIL import Image
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
@@ -131,7 +131,7 @@ class TreePointsDataset(MillionTreesDataset):
         self._metadata_array = unique_sources.values
         self._metadata_fields = ['filename','source_id']
 
-        self._metric = DetectionAccuracy()
+        self._metric = KeypointAccuracy()
         self._collate = TreePointsDataset._collate_fn
 
         # eval grouper
@@ -198,4 +198,6 @@ class TreePointsDataset(MillionTreesDataset):
         self.transform = A.Compose([
             A.Resize(height=448, width=448, p=1.0),
             ToTensorV2()
-            ], bbox_params=A.KeypointParams(format='xy', label_fields=['labels'], clip=True))
+            ], keypoint_params=A.KeypointParams(format='xy', label_fields=['labels']))
+        
+        return self.transform

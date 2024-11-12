@@ -384,10 +384,10 @@ class DetectionAccuracy(ElementwiseMetric):
         batch_results = []
         for target, batch_boxes_predictions in zip(y_true, y_pred):
             # concat all boxes and scores
-            pred_boxes = torch.cat([image_results["boxes"] for image_results in batch_boxes_predictions], dim=0)
+            pred_boxes = torch.cat([image_results["y"] for image_results in batch_boxes_predictions], dim=0)
             pred_scores = torch.cat([image_results["score"] for image_results in batch_boxes_predictions], dim=0)
             pred_boxes = pred_boxes[pred_scores > self.score_threshold]
-            src_boxes = torch.cat([image_results["boxes"] for image_results in target], dim=0)
+            src_boxes = torch.cat([image_results["y"] for image_results in target], dim=0)
 
             det_accuracy = torch.mean(
                 torch.stack([
@@ -407,6 +407,70 @@ class DetectionAccuracy(ElementwiseMetric):
                               iou_threshold,
                               allow_low_quality_matches=False)
             match_quality_matrix = box_iou(src_boxes, pred_boxes)
+            results = matcher(match_quality_matrix)
+            true_positive = torch.count_nonzero(results.unique() != -1)
+            matched_elements = results[results > -1]
+            # in Matcher, a pred element can be matched only twice
+            false_positive = (
+                torch.count_nonzero(results == -1) +
+                (len(matched_elements) - len(matched_elements.unique())))
+            false_negative = total_gt - true_positive
+            acc = true_positive / (true_positive + false_positive +
+                                   false_negative)
+            return true_positive / (true_positive + false_positive +
+                                    false_negative)
+        elif total_gt == 0:
+            if total_pred > 0:
+                return torch.tensor(0.)
+            else:
+                return torch.tensor(1.)
+        elif total_gt > 0 and total_pred == 0:
+            return torch.tensor(0.)
+
+    def worst(self, metrics):
+        return minimum(metrics)
+
+class KeypointAccuracy(ElementwiseMetric):
+    """Given a specific Intersection over union threshold, determine the
+    accuracy achieved for a one-class detector."""
+
+    def __init__(self, iou_threshold=0.5, score_threshold=0.5, name=None):
+        self.iou_threshold = iou_threshold
+        self.score_threshold = score_threshold
+        if name is None:
+            name = "keypoint_acc"
+        super().__init__(name=name)
+
+    def _compute_element_wise(self, y_pred, y_true):
+        batch_results = []
+        for target, batch_keypoints_predictions in zip(y_true, y_pred):
+            # concat all boxes and scores
+            pred_keypoints = torch.cat([image_results["y"] for image_results in batch_keypoints_predictions], dim=0)
+            pred_scores = torch.cat([image_results["score"] for image_results in batch_keypoints_predictions], dim=0)
+            pred_keypoints = pred_keypoints[pred_scores > self.score_threshold]
+            src_keypoints = torch.cat([image_results["y"] for image_results in target], dim=0)
+
+            det_accuracy = torch.mean(
+                torch.stack([
+                    self._accuracy(src_keypoints, pred_keypoints, iou_thr)
+                    for iou_thr in np.arange(0.5, 0.51, 0.05)
+                ]))
+            batch_results.append(det_accuracy)
+
+        return torch.tensor(batch_results)
+
+    def _point_iou(self, src_keypoints, pred_keypoints):
+        return torch.cdist(src_keypoints, pred_keypoints, p=2)
+
+    def _accuracy(self, src_keypoints, pred_keypoints, iou_threshold):
+        total_gt = len(src_keypoints)
+        total_pred = len(pred_keypoints)
+        if total_gt > 0 and total_pred > 0:
+            # Define the matcher and distance matrix based on iou
+            matcher = Matcher(iou_threshold,
+                              iou_threshold,
+                              allow_low_quality_matches=False)
+            match_quality_matrix = self._point_iou(src_keypoints, pred_keypoints)
             results = matcher(match_quality_matrix)
             true_positive = torch.count_nonzero(results.unique() != -1)
             matched_elements = results[results > -1]
