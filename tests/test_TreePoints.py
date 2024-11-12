@@ -94,7 +94,7 @@ def test_TreePoints_eval(dataset):
     all_metadata = []
     # Get predictions for the full test set
     for metadata, x, y_true in test_loader:
-        y_pred = [{'y': torch.tensor([[30.0, 70.0]]), 'label': torch.tensor([0]), 'score': torch.tensor([0.54])} for _ in range(x.shape[0])]
+        y_pred = [{'y': torch.tensor([[134.0, 156.0]]), 'label': torch.tensor([0]), 'score': torch.tensor([0.54])} for _ in range(x.shape[0])]
         # Accumulate y_true, y_pred, metadata
         all_y_pred.append(y_pred)
         all_y_true.append(y_true)
@@ -102,7 +102,7 @@ def test_TreePoints_eval(dataset):
 
     # Evaluate
     eval_results, eval_string = dataset.eval(all_y_pred, all_y_true, all_metadata)
-
+    eval_results["keypoint_acc_avg"] == 0.5
     assert len(eval_results) 
     assert "keypoint_acc_avg" in eval_results.keys()
 
