@@ -119,11 +119,10 @@ def generate_polygon_dataset(image_dir):
     # Assuming you have a list of polygon coordinates and corresponding image file paths
     polygon_wkt = ["POLYGON((10 15, 50 15, 50 55, 10 55, 10 15))", "POLYGON((20 25, 60 25, 60 65, 20 65, 20 25))", "POLYGON((30 35, 70 35, 70 75, 30 75, 30 35))"]
     locations = [0,0,1]
-    resolution = [1,1,10]
     image_files = ['image1.jpg', 'image2.jpg', 'image3.jpg']
 
     # Create a pandas DataFrame
-    df = pd.DataFrame({'polygon': polygon_wkt, 'filename': image_files, "source":locations,"resolution":resolution})
+    df = pd.DataFrame({'polygon': polygon_wkt, 'filename': image_files, "source":locations})
 
     # Create images and save them to disk within image_dir
     for i, row in df.iterrows():
