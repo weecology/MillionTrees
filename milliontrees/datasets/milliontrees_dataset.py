@@ -484,24 +484,31 @@ class MillionTreesSubset(MillionTreesDataset):
 
     def __getitem__(self, idx):
         metadata, x, targets = self.dataset[self.indices[idx]]
-            
-        augmented = self.transform(image=x,
-                                    bboxes=targets["y"],
-                                    labels=targets["labels"])
+        
+        if self._dataset_name == 'TreeBoxes':
+            augmented = self.transform(
+                image=x,
+                bboxes=targets["y"],
+                labels=targets["labels"]
+            )
+            y = torch.from_numpy(augmented["bboxes"]).float()
+        elif self._dataset_name == 'TreePoints':
+            augmented = self.transform(
+                image=x,
+                keypoints=targets["y"],
+                labels=targets["labels"]
+            )
+            y = torch.from_numpy(augmented["keypoints"]).float()
+
         x = augmented['image']
         labels = torch.from_numpy(np.array(augmented["labels"]))
         
-        if self._dataset_name == 'TreeBoxes':
-            y = torch.from_numpy(augmented["bboxes"]).float()
-        elif self._dataset_name == 'TreePoints':
-            y = torch.from_numpy(augmented["keypoints"]).float
-
         # If image has no annotations, set zeros
         if len(y) == 0:
             if self._dataset_name == 'TreeBoxes':
-                y = torch.zeros(0,4)
+                y = torch.zeros(0, 4)
             elif self._dataset_name == 'TreePoints':
-                y = torch.zeros(0,2)
+                y = torch.zeros(0, 2)
 
         targets = {"y": y, "labels": labels}
         
