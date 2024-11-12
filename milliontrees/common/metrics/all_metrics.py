@@ -434,7 +434,7 @@ class KeypointAccuracy(ElementwiseMetric):
     """Given a specific Intersection over union threshold, determine the
     accuracy achieved for a one-class detector."""
 
-    def __init__(self, distance_threshold=5, score_threshold=0.5, name=None):
+    def __init__(self, distance_threshold=5, score_threshold=5, name=None):
         self.distance_threshold = distance_threshold
         self.score_threshold = score_threshold
         if name is None:
