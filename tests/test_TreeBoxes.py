@@ -4,7 +4,6 @@ from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
 import torch
 import pytest
 import os
-import pandas as pd
 import numpy as np
 
 # Check if running on hipergator
