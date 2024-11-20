@@ -434,8 +434,8 @@ class KeypointAccuracy(ElementwiseMetric):
     """Given a specific Intersection over union threshold, determine the
     accuracy achieved for a one-class detector."""
 
-    def __init__(self, iou_threshold=0.5, score_threshold=0.5, name=None):
-        self.iou_threshold = iou_threshold
+    def __init__(self, distance_threshold=5, score_threshold=5, name=None):
+        self.distance_threshold = distance_threshold
         self.score_threshold = score_threshold
         if name is None:
             name = "keypoint_acc"
@@ -462,13 +462,13 @@ class KeypointAccuracy(ElementwiseMetric):
     def _point_iou(self, src_keypoints, pred_keypoints):
         return torch.cdist(src_keypoints, pred_keypoints, p=2)
 
-    def _accuracy(self, src_keypoints, pred_keypoints, iou_threshold):
+    def _accuracy(self, src_keypoints, pred_keypoints, distance_threshold):
         total_gt = len(src_keypoints)
         total_pred = len(pred_keypoints)
         if total_gt > 0 and total_pred > 0:
             # Define the matcher and distance matrix based on iou
-            matcher = Matcher(iou_threshold,
-                              iou_threshold,
+            matcher = Matcher(distance_threshold,
+                              distance_threshold,
                               allow_low_quality_matches=False)
             match_quality_matrix = self._point_iou(src_keypoints, pred_keypoints)
             results = matcher(match_quality_matrix)

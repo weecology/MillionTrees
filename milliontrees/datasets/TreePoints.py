@@ -30,26 +30,6 @@ class TreePointsDataset(MillionTreesDataset):
         Each image is annotated with the following metadata
             - location (int): location id
 
-    Website:
-        https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
-    Original publication:
-        The following publications are included in this dataset
-        @article{Weinstein2020,
-        title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
-        author={Weinstein BG, Graves SJ, Marconi S, Singh A, Zare A, Stewart D, et al.},
-        journal={PLoS Comput Biol},
-                year={2021},
-        doi={10.1371/journal.pcbi.1009180}
-        }
-    Original publication:
-        The following publications are included in this dataset
-        @article{Weinstein2020,
-        title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
-        author={Weinstein BG, Graves SJ, Marconi S, Singh A, Zare A, Stewart D, et al.},
-        journal={PLoS Comput Biol},
-                year={2021},
-        doi={10.1371/journal.pcbi.1009180}
-        }
     License:
         This dataset is distributed under Creative Commons Attribution License
     """
