@@ -5,12 +5,15 @@ import os
 from PIL import Image, ImageDraw
 import pandas as pd
 import numpy as np
-import torch
 from shapely import from_wkt
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
-
+from albumentations import A, ToTensorV2
+from torchvision.tv_tensors import BoundingBoxes, Mask
+import torchvision.transforms as transforms
+from torchvision.ops import masks_to_boxes
+import torch
 
 class TreePolygonsDataset(MillionTreesDataset):
     """The TreePolygons dataset is a collection of tree annotations annotated
@@ -29,20 +32,6 @@ class TreePolygonsDataset(MillionTreesDataset):
         Each image is annotated with the following metadata
             - location (int): location id
             - source (int): source id
-
-    Website:
-        https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
-    Original publication:
-        # Ventura et al. 2022
-        @article{ventura2022individual,
-        title={Individual tree detection in large-scale urban environments using high-resolution multispectral imagery},
-        author={Ventura, Jonathan and Pawlak, Camille and Honsberger, Milo and Gonsalves, Cameron and Rice, Julian and Love, Natalie LR and Han, Skyler and Nguyen, Viet and Sugano, Keilana and Doremus, Jacqueline and others},
-        journal={arXiv preprint arXiv:2208.10607},
-        year={2022}
-        }
-        # TreeFormer
-        #etc....
-
 
     License:
         This dataset is distributed under Creative Commons Attribution License
@@ -90,11 +79,17 @@ class TreePolygonsDataset(MillionTreesDataset):
             'id_test': 'Test (ID/Cis)'
         }
 
+        unique_files = df.drop_duplicates(subset=['filename'], inplace=False).reset_index(drop=True)
+        unique_files['split_id'] = unique_files['split'].apply(lambda x: self._split_dict[x])
+        self._split_array = unique_files['split_id'].values
+
         df['split_id'] = df['split'].apply(lambda x: self._split_dict[x])
         self._split_array = df['split_id'].values
-
+        
         # Filenames
-        self._input_array = df['filename'].values
+        self._input_array = unique_files.filename
+        
+        # Create lookup table for which index to select for each filename
         self._input_lookup = df.groupby('filename').apply(lambda x: x.index.values).to_dict()
 
         # Convert each polygon to shapely objects
@@ -105,7 +100,9 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         # Labels -> just 'Tree'
         self._n_classes = 1
-        self._y_size = 2
+
+        # Not clear what this is, since we have a polygon, unknown size
+        self._y_size = 4
 
         # Create source locations with a numeric ID
         df["source_id"] = df.source.astype('category').cat.codes
@@ -129,12 +126,16 @@ class TreePolygonsDataset(MillionTreesDataset):
         # Any transformations are handled by the WILDSSubset
         # since different subsets (e.g., train vs test) might have different transforms
         x = self.get_input(idx)
-        y_polygon = self._y_array[idx]
-        
-        y = self.create_polygon_mask(x.shape[-2:], y_polygon)
-        metadata = self.metadata_array[idx]
+        y_indices = self._input_lookup[self._input_array[idx]]
+        y_polygons = [self._y_array[i] for i in y_indices]
+        mask_imgs = [self.create_polygon_mask(x.shape[-2:], y_polygon) for y_polygon in y_polygons]
+        masks = torch.concat([Mask(transforms.PILToTensor()(mask_img), dtype=torch.bool) for mask_img in mask_imgs])
+        bboxes = BoundingBoxes(data=masks_to_boxes(masks), format='xyxy', canvas_size=x.size[::-1])
 
-        return x, y, metadata
+        metadata = self.metadata_array[idx]
+        targets = {"y": masks, "bboxes": bboxes, "labels": np.zeros(len(masks), dtype=int)}
+
+        return metadata, x, targets
 
     def create_polygon_mask(self, image_size, vertices):
         """
@@ -198,18 +199,26 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         return results, results_str
 
+
     def get_input(self, idx):
         """
         Args:
             - idx (int): Index of a data point
         Output:
-            - x (Tensor): Input features of the idx-th data point
+            - x (np.ndarray): Input features of the idx-th data point
         """
         # All images are in the images folder
-        img_path = os.path.join(self.data_dir / 'images' /
-                                self._input_array[idx])
+        img_path = os.path.join(self._data_dir / 'images' / self._input_array[idx])
         img = Image.open(img_path)
-        # Channels first input
-        img = torch.tensor(np.array(img)).permute(2, 0, 1)
+        img = np.array(img.convert('RGB'))/255
+        img = np.array(img, dtype=np.float32)
 
         return img
+    
+    def _transform_(self):
+        self.transform = A.Compose([
+            A.Resize(height=448, width=448, p=1.0),
+            ToTensorV2()
+            ])
+        
+        return self.transform
