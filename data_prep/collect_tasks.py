@@ -35,7 +35,8 @@ TreePolygons = [
     "/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",
     "/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
     "/orange/ewhite/DeepForest/Araujo_2020/annotations.csv",
-    "/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv"
+    "/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv",
+    "/orange/ewhite/DeepForest/DetectTree2/annotations.csv"
     ]
 
 # Current errors
