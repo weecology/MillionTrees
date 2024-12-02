@@ -1,13 +1,8 @@
-import os
-import sys
 import argparse
-
-if os.path.basename(os.getcwd()) == 'examples':
-    sys.path.append("../")
-
-from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_train_loader
+from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
 from deepforest.main import deepforest
+
 from pytorch_lightning.loggers import CometLogger
 
 def parse_args():
@@ -36,7 +31,7 @@ def main():
     args, unknown_args = parse_args()
     kwargs = convert_unknown_args_to_dict(unknown_args)
 
-    dataset = get_dataset("TreeBoxes", root_dir="/orange/ewhite/DeepForest/MillionTrees/")
+    dataset = TreeBoxesDataset(download=False, root_dir="/orange/ewhite/DeepForest/MillionTrees/", geometry_name="boxes") 
     train_dataset = dataset.get_subset("train")
     train_loader = get_train_loader("standard", train_dataset, batch_size=2)
 
