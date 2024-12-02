@@ -47,9 +47,12 @@ class TreePointsDataset(MillionTreesDataset):
                  version=None,
                  root_dir='data',
                  download=False,
-                 split_scheme='official'):
+                 split_scheme='official',
+                 geometry_name='y'):
         self._version = version
         self._split_scheme = split_scheme
+        self.geometry_name = geometry_name
+        
         if self._split_scheme not in ['official', 'random']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')

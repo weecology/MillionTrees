@@ -4,9 +4,6 @@ import time
 import torch
 import numpy as np
 
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
-
 class MillionTreesDataset:
     """Shared dataset class for all MillionTrees datasets.
 
@@ -39,7 +36,7 @@ class MillionTreesDataset:
         y_indices = self._input_lookup[self._input_array[idx]]
         y = self.y_array[y_indices]
         metadata = self.metadata_array[idx]
-        targets = {"y": y, "labels": np.zeros(len(y), dtype=int)}
+        targets = {self.geometry_name: y, "labels": np.zeros(len(y), dtype=int)}
 
         return metadata, x, targets
 
@@ -88,7 +85,7 @@ class MillionTreesDataset:
             split_idx = np.sort(
                 np.random.permutation(split_idx)[:num_to_retain])
 
-        return MillionTreesSubset(self, split_idx, transform)
+        return MillionTreesSubset(self, split_idx, transform, self.geometry_name)
 
     def check_init(self):
         """Convenience function to check that the WILDSDataset is properly
@@ -463,13 +460,14 @@ class MillionTreesDataset:
 
 class MillionTreesSubset(MillionTreesDataset):
 
-    def __init__(self, dataset, indices, transform=None):
+    def __init__(self, dataset, indices, transform=None, geometry_name="y"):
         """This acts like `torch.utils.data.Subset`, but on `milliontreesDatasets`. We
         pass in `transform` (which is used for data augmentation) explicitly
         because it can potentially vary on the training vs. test subsets.
         """
         self.dataset = dataset
         self.indices = indices
+        self.geometry_name = geometry_name
         inherited_attrs = [
             '_dataset_name', '_data_dir', '_collate', '_split_scheme',
             '_split_dict', '_split_names', '_y_size', '_n_classes',
@@ -488,14 +486,14 @@ class MillionTreesSubset(MillionTreesDataset):
         if self._dataset_name == 'TreeBoxes':
             augmented = self.transform(
                 image=x,
-                bboxes=targets["y"],
+                bboxes=targets[self.geometry_name],
                 labels=targets["labels"]
             )
             y = torch.from_numpy(augmented["bboxes"]).float()
         elif self._dataset_name == 'TreePoints':
             augmented = self.transform(
                 image=x,
-                keypoints=targets["y"],
+                keypoints=targets[self.geometry_name],
                 labels=targets["labels"]
             )
             y = torch.from_numpy(augmented["keypoints"]).float()
@@ -510,7 +508,7 @@ class MillionTreesSubset(MillionTreesDataset):
             elif self._dataset_name == 'TreePoints':
                 y = torch.zeros(0, 2)
 
-        targets = {"y": y, "labels": labels}
+        targets = {self.geometry_name: y, "labels": labels}
         
         return metadata, x, targets
 
