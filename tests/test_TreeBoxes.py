@@ -42,10 +42,27 @@ def test_TreeBoxes_generic(dataset):
 def test_get_dataset_with_geometry_name(dataset):
     dataset = TreeBoxesDataset(download=False, root_dir=dataset, geometry_name="boxes") 
     train_dataset = dataset.get_subset("train")
-    
+
     for metadata, image, targets in train_dataset:
         boxes, labels = targets["boxes"], targets["labels"]
         break
+
+    # Test the dataloader
+    train_loader = get_train_loader('standard', train_dataset, batch_size=2)
+
+    all_y_pred = []
+    all_y_true = []
+    all_metadata = []
+    for batch in train_loader:
+        metadata, image, targets  = batch 
+        y_pred = [{'boxes': torch.tensor([[30, 70, 35, 75]]), 'label': torch.tensor([0]), 'score': torch.tensor([0.54])} for _ in range(image.shape[0])]
+        assert "boxes" in targets[0]
+        all_metadata.append(metadata)
+        all_y_true.append(targets)
+        all_y_pred.append(y_pred)
+
+    # Confirm naming is passed to evaluation, toy data
+    eval_results, eval_string = dataset.eval(all_y_pred, all_y_true, all_metadata)
 
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_get_train_dataloader(dataset, batch_size):
