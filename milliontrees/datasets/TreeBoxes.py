@@ -133,7 +133,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._metadata_array = unique_sources.values
         self._metadata_fields = ['filename','source_id']
 
-        self._metric = DetectionAccuracy()
+        self._metric = DetectionAccuracy(geometry_name=self.geometry_name)
         self._collate = TreeBoxesDataset._collate_fn
 
         # eval grouper

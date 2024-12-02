@@ -1,8 +1,15 @@
 import argparse
+import os
+import numpy as np
+import torch
+from PIL import Image
+
 from milliontrees.common.data_loaders import get_train_loader
 from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
-from deepforest.main import deepforest
+from milliontrees import get_dataset
+from milliontrees.common.data_loaders import get_eval_loader
 
+from deepforest.main import deepforest
 from pytorch_lightning.loggers import CometLogger
 
 def parse_args():
@@ -44,8 +51,28 @@ def main():
     # Create a trainer 
     comet_logger = CometLogger()
 
-    m.create_trainer(logger=comet_logger)
+    m.create_trainer(logger=comet_logger, fast_dev_run=True)
     m.trainer.fit(m, train_loader)
+
+    ## Evaluate the model
+    box_dataset = get_dataset("TreeBoxes", root_dir="/orange/ewhite/DeepForest/MillionTrees/")
+    box_test_data = box_dataset.get_subset("test")
+    test_loader = get_eval_loader("standard", box_test_data, batch_size=16)
+
+    # Get predictions for the full test set
+    all_y_pred = []
+    all_y_true = []
+    all_metadata = []
+
+    for batch in test_loader:
+        metadata, images, targets  = batch
+        for image in images:
+            y_pred = m.predict_tile(image=image.permute(1, 2, 0))
+            all_y_pred.append(y_pred)
+            all_y_true.append(targets)
+
+    # Evaluate
+    box_dataset.eval(all_y_pred, all_y_true, all_metadata)
 
 if __name__ == "__main__":
     main()

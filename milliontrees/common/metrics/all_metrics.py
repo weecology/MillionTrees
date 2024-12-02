@@ -373,9 +373,11 @@ class DetectionAccuracy(ElementwiseMetric):
     """Given a specific Intersection over union threshold, determine the
     accuracy achieved for a one-class detector."""
 
-    def __init__(self, iou_threshold=0.5, score_threshold=0.5, name=None):
+    def __init__(self, iou_threshold=0.5, score_threshold=0.5, name=None,  geometry_name="y"):
         self.iou_threshold = iou_threshold
         self.score_threshold = score_threshold
+        self.geometry_name = geometry_name
+
         if name is None:
             name = "detection_acc"
         super().__init__(name=name)
@@ -384,10 +386,10 @@ class DetectionAccuracy(ElementwiseMetric):
         batch_results = []
         for target, batch_boxes_predictions in zip(y_true, y_pred):
             # concat all boxes and scores
-            pred_boxes = torch.cat([image_results["y"] for image_results in batch_boxes_predictions], dim=0)
+            pred_boxes = torch.cat([image_results[self.geometry_name] for image_results in batch_boxes_predictions], dim=0)
             pred_scores = torch.cat([image_results["score"] for image_results in batch_boxes_predictions], dim=0)
             pred_boxes = pred_boxes[pred_scores > self.score_threshold]
-            src_boxes = torch.cat([image_results["y"] for image_results in target], dim=0)
+            src_boxes = torch.cat([image_results[self.geometry_name] for image_results in target], dim=0)
 
             det_accuracy = torch.mean(
                 torch.stack([
