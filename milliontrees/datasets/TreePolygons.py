@@ -9,10 +9,11 @@ from shapely import from_wkt
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
-from albumentations import A, ToTensorV2
 from torchvision.tv_tensors import BoundingBoxes, Mask
 import torchvision.transforms as transforms
 from torchvision.ops import masks_to_boxes
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 import torch
 
 class TreePolygonsDataset(MillionTreesDataset):
@@ -50,10 +51,13 @@ class TreePolygonsDataset(MillionTreesDataset):
                  version=None,
                  root_dir='data',
                  download=False,
-                 split_scheme='official'):
+                 split_scheme='official',
+                 geometry_name='y'):
 
         self._version = version
         self._split_scheme = split_scheme
+        self.geometry_name = geometry_name
+        
         if self._split_scheme != 'official':
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')

@@ -38,6 +38,15 @@ def test_TreeBoxes_generic(dataset):
         assert metadata.shape == (2,)
         break
 
+# confirm that we can change target name is needed
+def test_get_dataset_with_geometry_name(dataset):
+    dataset = TreeBoxesDataset(download=False, root_dir=dataset, geometry_name="boxes") 
+    train_dataset = dataset.get_subset("train")
+    
+    for metadata, image, targets in train_dataset:
+        boxes, labels = targets["boxes"], targets["labels"]
+        break
+
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_get_train_dataloader(dataset, batch_size):
     dataset = TreeBoxesDataset(download=False, root_dir=dataset) 
