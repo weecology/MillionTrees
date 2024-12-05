@@ -103,6 +103,7 @@ class TreePointsDataset(MillionTreesDataset):
 
         # Create source locations with a numeric ID
         df["source_id"] = df.source.astype('category').cat.codes
+        df["filename_id"] = df.filename.astype('category').cat.codes
 
         # Location/group info
         n_groups = max(df['source_id']) + 1
@@ -110,9 +111,9 @@ class TreePointsDataset(MillionTreesDataset):
         assert len(np.unique(df['source_id'])) == self._n_groups
 
         # Metadata is at the image level
-        unique_sources = df[['filename', 'source_id']].drop_duplicates(subset=['filename']).reset_index(drop=True)
-        self._metadata_array = unique_sources.values
-        self._metadata_fields = ['filename','source_id']
+        unique_sources = df[['filename_id', 'source_id']]
+        self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
+        self._metadata_fields = ['filename_id','source_id']
 
         self._metric = KeypointAccuracy()
         self._collate = TreePointsDataset._collate_fn
