@@ -10,6 +10,7 @@ from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
 
 from deepforest.main import deepforest
+from deepforest.visualize import plot_results
 from pytorch_lightning.loggers import CometLogger
 
 def parse_args():
@@ -58,18 +59,32 @@ def main():
     box_dataset = get_dataset("TreeBoxes", root_dir="/orange/ewhite/DeepForest/MillionTrees/")
     box_test_data = box_dataset.get_subset("test")
     test_loader = get_eval_loader("standard", box_test_data, batch_size=16)
-
+    
     # Get predictions for the full test set
     all_y_pred = []
     all_y_true = []
     all_metadata = []
 
+    batch_index = 0
     for batch in test_loader:
         metadata, images, targets  = batch
-        for image in images:
-            y_pred = m.predict_tile(image=image.permute(1, 2, 0))
-            all_y_pred.append(y_pred)
+        for image_metadata, image in zip(metadata,images):
+            image_path = os.path.join(box_dataset._data_dir._str, "images",image_metadata[0])
+            pred = m.predict_image(path=image_path)
+            # Reformat to million trees format
+            y_pred = {}
+            y_pred["y"] = torch.tensor(pred[["xmin", "ymin", "xmax","ymax"]].values.astype("float32"))
+            y_pred["labels"] = torch.tensor(pred.label.apply(
+                    lambda x: m.label_dict[x]).values.astype(np.int64))
+            y_pred["score"] = torch.tensor(pred.score.values.astype("float32"))
+
+            if batch_index % 100 == 0:
+                plot_results(pred)
+            
+            all_y_pred.append([y_pred])
             all_y_true.append(targets)
+            all_metadata.append(metadata)
+            batch_index += 1
 
     # Evaluate
     box_dataset.eval(all_y_pred, all_y_true, all_metadata)

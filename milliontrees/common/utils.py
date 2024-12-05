@@ -72,34 +72,37 @@ def get_counts(g, n_groups):
     Returns:
         - counts (ndarray): An array of length n_groups, denoting the count of each group.
     """
-    unique_groups, unique_counts = np.unique(g, return_counts=True)
-    counts = np.zeros(n_groups, dtype=float)
-    counts[int(unique_groups)] = unique_counts
+    unique_groups, unique_counts = torch.unique(g, sorted=False, return_counts=True)
+    counts = torch.zeros(n_groups, device=g.device)
+    counts[unique_groups] = unique_counts.float()
     
     return counts
-
 
 def avg_over_groups(v, g, n_groups):
     """
     Args:
-        v (ndarray): Vector containing the quantity to average over.
-        g (ndarray): Vector of the same length as v, containing group information.
+        v (Tensor): Vector containing the quantity to average over.
+        g (Tensor): Vector of the same length as v, containing group information.
     Returns:
-        group_avgs (ndarray): Vector of length n_groups
-        group_counts (ndarray)
+        group_avgs (Tensor): Vector of length num_groups
+        group_counts (Tensor)
     """
+    assert v.device == g.device
+    assert v.numel() == g.numel()
+    
+    group_count = get_counts(g, n_groups)
+    group_sum = torch.zeros(n_groups, device=v.device)
+    
+    for i in range(n_groups):
+        mask = (g == i)
+        if mask.any():
+            group_sum[i] = v[mask].sum()
+    
+    group_avgs = group_sum / group_count
+    group_avgs[group_count == 0] = float('nan')
+    
+    return group_avgs, group_count
 
-    # Calculate group counts
-    group_counts = get_counts(g, n_groups)
-
-    # Calculate group sums
-    group_sums = np.zeros(n_groups, dtype=int)
-    np.add.at(group_sums, g.astype(int), v)
-
-    # Calculate group averages
-    group_avgs = group_sums / group_counts
-
-    return group_avgs, group_counts
 
 
 def map_to_id_array(df, ordered_map={}):

@@ -52,17 +52,20 @@ def test_get_dataset_with_geometry_name(dataset):
 
     all_y_pred = []
     all_y_true = []
-    all_metadata = []
-    for batch in train_loader:
-        metadata, image, targets  = batch 
-        y_pred = [{'boxes': torch.tensor([[30, 70, 35, 75]]), 'label': torch.tensor([0]), 'score': torch.tensor([0.54])} for _ in range(image.shape[0])]
-        assert "boxes" in targets[0]
-        all_metadata.append(metadata)
-        all_y_true.append(targets)
-        all_y_pred.append(y_pred)
+    # Get predictions for the full test set
+    for metadata, x, y_true in train_loader:
+        labels = torch.zeros(x.shape[0])
+        pred_tensor = [[30, 70, 35, 75]]
+        scores = torch.stack([torch.tensor(0.54) for x in range(len(pred_tensor))])
+        y_pred = [{'boxes': torch.tensor(pred_tensor), 'label': labels, 'scores': scores} for _ in range(x.shape[0])]
+        all_y_true.extend(y_true)
+        all_y_pred.extend(y_pred)
+
+    # Concat and Evaluate
+    eval_results, eval_string = dataset.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=train_dataset.metadata_array)
 
     # Confirm naming is passed to evaluation, toy data
-    eval_results, eval_string = dataset.eval(all_y_pred, all_y_true, all_metadata)
+    eval_results, eval_string = dataset.eval(all_y_pred, all_y_true, dataset.metadata_array)
 
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_get_train_dataloader(dataset, batch_size):
@@ -96,7 +99,7 @@ def test_get_test_dataloader(dataset):
     # Assert that test_dataset[0] == "image3.jpg"
     metadata, image, targets = test_dataset[0]
     assert metadata[1] == 1
-    assert metadata[0] == "image3.jpg"
+    assert dataset._filename_id_to_code[int(metadata[0])] == "image3.jpg"
 
     test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
     for metadata, x, targets in test_loader:
@@ -106,27 +109,26 @@ def test_get_test_dataloader(dataset):
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
         assert y.shape[1] == 4
-        assert len(metadata) == 2
+        assert metadata.shape[0] == 2
         break
-
-def test_TreeBoxes_eval(dataset):
+@pytest.mark.parametrize("pred_tensor", [[[30, 70, 35, 75]], [[30, 70, 35, 75],[30, 20, 35, 55]]], ids=["single", "multiple"])
+def test_TreeBoxes_eval(dataset, pred_tensor):
     dataset = TreeBoxesDataset(download=False, root_dir=dataset) 
     test_dataset = dataset.get_subset("test")
     test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
 
     all_y_pred = []
     all_y_true = []
-    all_metadata = []
     # Get predictions for the full test set
     for metadata, x, y_true in test_loader:
-        y_pred = [{'y': torch.tensor([[30, 70, 35, 75]]), 'label': torch.tensor([0]), 'score': torch.tensor([0.54])} for _ in range(x.shape[0])]
-        # Accumulate y_true, y_pred, metadata
-        all_y_pred.append(y_pred)
-        all_y_true.append(y_true)
-        all_metadata.append(metadata)
+        labels = torch.zeros(x.shape[0])
+        scores = torch.stack([torch.tensor(0.54) for x in range(len(pred_tensor))])
+        y_pred = [{'y': torch.tensor(pred_tensor), 'label': labels, 'scores': scores} for _ in range(x.shape[0])]
+        all_y_true.extend(y_true)
+        all_y_pred.extend(y_pred)
 
-    # Evaluate
-    eval_results, eval_string = dataset.eval(all_y_pred, all_y_true, all_metadata)
+    # Concat and Evaluate
+    eval_results, eval_string = dataset.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=test_dataset.metadata_array)
 
     assert len(eval_results) 
     assert "detection_acc_avg" in eval_results.keys()

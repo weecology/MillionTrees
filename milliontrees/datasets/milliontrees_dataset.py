@@ -34,8 +34,8 @@ class MillionTreesDataset:
         # since different subsets (e.g., train vs test) might have different transforms
         x = self.get_input(idx)
         y_indices = self._input_lookup[self._input_array[idx]]
-        y = self.y_array[y_indices]
-        metadata = self.metadata_array[idx]
+        y = torch.tensor(self.y_array[y_indices])
+        metadata = torch.tensor(self.metadata_array[idx])
         targets = {self.geometry_name: y, "labels": np.zeros(len(y), dtype=int)}
 
         return metadata, x, targets
@@ -111,10 +111,10 @@ class MillionTreesDataset:
 
         # Check the form of the required arrays
         assert isinstance(self.y_array, np.ndarray) or isinstance(self.y_array, list), 'y_array must be a numpy array or list'
-        assert isinstance(self.metadata_array, np.ndarray), 'metadata_array must be a numpy array'
+        assert isinstance(self.metadata_array, torch.Tensor), 'metadata_array must be a torch tensor'
 
         # Check that dimensions match
-        assert len(self._input_array) == len(self.metadata_array)
+        assert len(self.y_array) == len(self.metadata_array)
 
         # Check metadata
         assert len(self.metadata_array.shape) == 2
@@ -521,11 +521,11 @@ class MillionTreesSubset(MillionTreesDataset):
 
     @property
     def y_array(self):
-        return self.dataset._y_array[self.indices]
+        return torch.tensor(self.dataset._y_array[self.indices])
 
     @property
     def metadata_array(self):
-        return self.dataset.metadata_array[self.indices]
+        return torch.tensor(self.dataset.metadata_array[self.indices])
 
     def eval(self, y_pred, y_true, metadata):
         return self.dataset.eval(y_pred, y_true, metadata)
