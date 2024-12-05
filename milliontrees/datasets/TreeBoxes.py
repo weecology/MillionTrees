@@ -129,14 +129,14 @@ class TreeBoxesDataset(MillionTreesDataset):
         # Create dictionary for codes to names
         self._source_id_to_code = df.set_index('source_id')['source'].to_dict()
         self._filename_id_to_code = df.set_index('filename_id')['filename'].to_dict()
-        
+
         # Location/group info
         n_groups = max(df['source_id']) + 1
         self._n_groups = n_groups
         assert len(np.unique(df['source_id'])) == self._n_groups
 
         # Metadata is at the image level
-        unique_sources = df[['filename_id', 'source_id']]
+        unique_sources = df[['filename_id', 'source_id']].drop_duplicates(subset="filename_id", inplace=False).reset_index(drop=True)
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
         self._metadata_fields = ['filename_id','source_id']
 

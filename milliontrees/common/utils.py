@@ -104,7 +104,6 @@ def avg_over_groups(v, g, n_groups):
     return group_avgs, group_count
 
 
-
 def map_to_id_array(df, ordered_map={}):
     maps = {}
     array = np.zeros(df.shape)
