@@ -64,8 +64,6 @@ def test_get_dataset_with_geometry_name(dataset):
     # Concat and Evaluate
     eval_results, eval_string = dataset.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=train_dataset.metadata_array)
 
-    # Confirm naming is passed to evaluation, toy data
-    eval_results, eval_string = dataset.eval(all_y_pred, all_y_true, dataset.metadata_array)
 
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_get_train_dataloader(dataset, batch_size):
@@ -111,6 +109,7 @@ def test_get_test_dataloader(dataset):
         assert y.shape[1] == 4
         assert metadata.shape[0] == 2
         break
+    
 @pytest.mark.parametrize("pred_tensor", [[[30, 70, 35, 75]], [[30, 70, 35, 75],[30, 20, 35, 55]]], ids=["single", "multiple"])
 def test_TreeBoxes_eval(dataset, pred_tensor):
     dataset = TreeBoxesDataset(download=False, root_dir=dataset) 

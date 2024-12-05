@@ -114,7 +114,7 @@ class MillionTreesDataset:
         assert isinstance(self.metadata_array, torch.Tensor), 'metadata_array must be a torch tensor'
 
         # Check that dimensions match
-        assert len(self.y_array) == len(self.metadata_array)
+        assert len(self._input_array) == len(self.metadata_array)
 
         # Check metadata
         assert len(self.metadata_array.shape) == 2

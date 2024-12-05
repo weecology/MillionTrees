@@ -101,9 +101,14 @@ class TreePointsDataset(MillionTreesDataset):
         # Class labels
         self.labels = np.zeros(df.shape[0])
 
+        # Create dictionary for codes to names
         # Create source locations with a numeric ID
         df["source_id"] = df.source.astype('category').cat.codes
+
+        # Create filename numeric ID
         df["filename_id"] = df.filename.astype('category').cat.codes
+        self._source_id_to_code = df.set_index('source_id')['source'].to_dict()
+        self._filename_id_to_code = df.set_index('filename_id')['filename'].to_dict()
 
         # Location/group info
         n_groups = max(df['source_id']) + 1
@@ -111,7 +116,7 @@ class TreePointsDataset(MillionTreesDataset):
         assert len(np.unique(df['source_id'])) == self._n_groups
 
         # Metadata is at the image level
-        unique_sources = df[['filename_id', 'source_id']]
+        unique_sources = df[['filename_id', 'source_id']].drop_duplicates(subset="filename_id", inplace=False).reset_index(drop=True)
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
         self._metadata_fields = ['filename_id','source_id']
 
@@ -167,13 +172,13 @@ class TreePointsDataset(MillionTreesDataset):
     @staticmethod
     def _collate_fn(batch):
         """
-        Stack x (batch[0]) and metadata (batch[2]), but not y.
+        Stack x (batch[1]) and metadata (batch[0]), but not y.
         originally, batch = (item1, item2, item3, item4)
         after zip, batch = [(item1[0], item2[0], ..), ..]
         """
         batch = list(zip(*batch))
         batch[1] = torch.stack(batch[1])
-        batch[0] = list(batch[0])
+        batch[0] = torch.stack(batch[0])
         batch[2] = list(batch[2])
         
         return tuple(batch)

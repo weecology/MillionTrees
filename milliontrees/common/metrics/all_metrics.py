@@ -434,27 +434,24 @@ class KeypointAccuracy(ElementwiseMetric):
     """Given a specific Intersection over union threshold, determine the
     accuracy achieved for a one-class detector."""
 
-    def __init__(self, distance_threshold=5, score_threshold=5, name=None):
+    def __init__(self, distance_threshold=5, score_threshold=5, name=None, geometry_name="y"):
         self.distance_threshold = distance_threshold
         self.score_threshold = score_threshold
+        self.geometry_name = geometry_name
+
         if name is None:
             name = "keypoint_acc"
         super().__init__(name=name)
 
     def _compute_element_wise(self, y_pred, y_true):
         batch_results = []
-        for target, batch_keypoints_predictions in zip(y_true, y_pred):
-            # concat all boxes and scores
-            pred_keypoints = torch.cat([image_results["y"] for image_results in batch_keypoints_predictions], dim=0)
-            pred_scores = torch.cat([image_results["score"] for image_results in batch_keypoints_predictions], dim=0)
-            pred_keypoints = pred_keypoints[pred_scores > self.score_threshold]
-            src_keypoints = torch.cat([image_results["y"] for image_results in target], dim=0)
+        for gt, target in zip(y_true, y_pred):
+            target_boxes = target[self.geometry_name]
+            target_scores = target["scores"]
 
-            det_accuracy = torch.mean(
-                torch.stack([
-                    self._accuracy(src_keypoints, pred_keypoints, iou_thr)
-                    for iou_thr in np.arange(0.5, 0.51, 0.05)
-                ]))
+            gt_boxes = gt[self.geometry_name]
+            pred_boxes = target_boxes[target_scores > self.score_threshold]
+            det_accuracy = torch.mean(torch.stack([ self._accuracy(gt_boxes,pred_boxes,iou_thr) for iou_thr in np.arange(0.5,0.51,0.05)]))
             batch_results.append(det_accuracy)
 
         return torch.tensor(batch_results)

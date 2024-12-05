@@ -71,7 +71,7 @@ def test_get_test_dataloader(dataset):
     # Assert that test_dataset[0] == "image3.jpg"
     metadata, image, targets = test_dataset[0]
     assert metadata[1] == 1
-    assert metadata[0] == "image3.jpg"
+    assert dataset._filename_id_to_code[int(metadata[0])] == "image3.jpg"
 
     test_loader = get_eval_loader('standard', test_dataset, batch_size=1)
     for metadata, x, targets in test_loader:
@@ -83,28 +83,24 @@ def test_get_test_dataloader(dataset):
         assert y.shape[1] == 2
         assert len(metadata) == 1
         break
-
-def test_TreePoints_eval(dataset):
+@pytest.mark.parametrize("pred_tensor", [[[30, 70]], [[30, 70],[35, 55]]], ids=["single", "multiple"])
+def test_TreePoints_eval(dataset, pred_tensor):
     dataset = TreePointsDataset(download=False, root_dir=dataset) 
     test_dataset = dataset.get_subset("test")
     test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
 
     all_y_pred = []
     all_y_true = []
-    all_metadata = []
     # Get predictions for the full test set
     for metadata, x, y_true in test_loader:
-        # Make one point close and one point far
-        y_pred = [{'y': torch.tensor([[133.0, 155.0], [100.0, 190.0]]), 'label': torch.tensor([0]), 'score': torch.tensor([0.54, 0.75])} for _ in range(x.shape[0])]
-        # Accumulate y_true, y_pred, metadata
-        all_y_pred.append(y_pred)
-        all_y_true.append(y_true)
-        all_metadata.append(metadata)
+        labels = torch.zeros(x.shape[0])
+        scores = torch.stack([torch.tensor(0.54) for x in range(len(pred_tensor))])
+        y_pred = [{'y': torch.tensor(pred_tensor), 'label': labels, 'scores': scores} for _ in range(x.shape[0])]
+        all_y_true.extend(y_true)
+        all_y_pred.extend(y_pred)
 
     # Evaluate
-    eval_results, eval_string = dataset.eval(all_y_pred, all_y_true, all_metadata)
-    eval_results["keypoint_acc_avg"] == 0.5
-    assert len(eval_results) 
+    eval_results, eval_string = dataset.eval(all_y_pred, all_y_true, test_dataset.metadata_array)
     assert "keypoint_acc_avg" in eval_results.keys()
 
 # Test structure with real annotation data to ensure format is correct
