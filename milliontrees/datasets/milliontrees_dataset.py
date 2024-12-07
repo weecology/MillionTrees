@@ -477,8 +477,10 @@ class MillionTreesSubset(MillionTreesDataset):
             if hasattr(dataset, attr_name):
                 setattr(self, attr_name, getattr(dataset, attr_name))
 
-        
-        self.transform = dataset._transform_()
+        if transform is None:
+            self.transform = dataset._transform_()
+        else: 
+            self.transform = transform
 
     def __getitem__(self, idx):
         metadata, x, targets = self.dataset[self.indices[idx]]

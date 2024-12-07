@@ -3,6 +3,7 @@ import os
 import numpy as np
 import torch
 from PIL import Image
+import pandas as pd
 
 from milliontrees.common.data_loaders import get_train_loader
 from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
@@ -11,6 +12,7 @@ from milliontrees.common.data_loaders import get_eval_loader
 
 from deepforest.main import deepforest
 from deepforest.visualize import plot_results
+from deepforest.utilities import read_file
 from pytorch_lightning.loggers import CometLogger
 
 def parse_args():
@@ -58,36 +60,51 @@ def main():
     ## Evaluate the model
     box_dataset = get_dataset("TreeBoxes", root_dir="/orange/ewhite/DeepForest/MillionTrees/")
     box_test_data = box_dataset.get_subset("test")
+
     test_loader = get_eval_loader("standard", box_test_data, batch_size=16)
-    
+
+    # Print the length of the test loader
+    print("There are {} batches in the test loader".format(len(test_loader)))
+
     # Get predictions for the full test set
     all_y_pred = []
     all_y_true = []
-    all_metadata = []
 
     batch_index = 0
     for batch in test_loader:
         metadata, images, targets  = batch
-        for image_metadata, image in zip(metadata,images):
-            image_path = os.path.join(box_dataset._data_dir._str, "images",image_metadata[0])
-            pred = m.predict_image(path=image_path)
-            # Reformat to million trees format
-            y_pred = {}
-            y_pred["y"] = torch.tensor(pred[["xmin", "ymin", "xmax","ymax"]].values.astype("float32"))
-            y_pred["labels"] = torch.tensor(pred.label.apply(
-                    lambda x: m.label_dict[x]).values.astype(np.int64))
-            y_pred["score"] = torch.tensor(pred.score.values.astype("float32"))
+        for image_metadata, image, image_targets in zip(metadata,images, targets):
+            basename = box_dataset._filename_id_to_code[int(image_metadata[0])]
+            #image_path = os.path.join(box_dataset._data_dir._str, "images",basename)
+            # Deepforest likes 0-255 data, channels first
+            channels_first = image.permute(1, 2, 0).numpy() * 255
+            pred = m.predict_image(channels_first)
+            pred.root_dir = os.path.join(box_dataset._data_dir._str, "images")
+            if pred is None:
+                y_pred = {}
+                y_pred["y"] = torch.zeros(4)
+                y_pred["labels"] = torch.zeros(1)
+                y_pred["scores"] = torch.zeros(1)
+            else:
+                pred["image_path"] = basename
+                # Reformat to million trees format
+                y_pred = {}
+                y_pred["y"] = torch.tensor(pred[["xmin", "ymin", "xmax","ymax"]].values.astype("float32"))
+                y_pred["labels"] = torch.tensor(pred.label.apply(
+                        lambda x: m.label_dict[x]).values.astype(np.int64))
+                y_pred["scores"] = torch.tensor(pred.score.values.astype("float32"))
 
             if batch_index % 100 == 0:
-                plot_results(pred)
+                ground_truth = read_file(pd.DataFrame(image_targets["y"].numpy(),columns=["xmin","ymin","xmax","ymax"]))
+                ground_truth["label"] = "Tree"
+                plot_results(pred, ground_truth, image=channels_first.astype("int32"))
             
-            all_y_pred.append([y_pred])
-            all_y_true.append(targets)
-            all_metadata.append(metadata)
+            all_y_pred.extend([y_pred])
+            all_y_true.extend(targets)
             batch_index += 1
 
     # Evaluate
-    box_dataset.eval(all_y_pred, all_y_true, all_metadata)
+    box_dataset.eval(all_y_pred, all_y_true, box_test_data.metadata_array)
 
 if __name__ == "__main__":
     main()
