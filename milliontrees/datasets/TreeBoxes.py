@@ -70,7 +70,8 @@ class TreeBoxesDataset(MillionTreesDataset):
                  root_dir='data',
                  download=False,
                  split_scheme='official',
-                 geometry_name='y'):
+                 geometry_name='y',
+                 eval_score_threshold=0.1):
         self._version = version
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name
@@ -140,7 +141,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
         self._metadata_fields = ['filename_id','source_id']
 
-        self._metric = DetectionAccuracy(geometry_name=self.geometry_name)
+        self._metric = DetectionAccuracy(geometry_name=self.geometry_name, score_threshold=eval_score_threshold)
         self._collate = TreeBoxesDataset._collate_fn
 
         # eval grouper

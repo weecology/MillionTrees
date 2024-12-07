@@ -374,7 +374,7 @@ class DetectionAccuracy(ElementwiseMetric):
     determine the accuracy achieved for a one-class detector
     """
 
-    def __init__(self, iou_threshold=0.5, score_threshold=0.5, name=None, geometry_name="boxes"):
+    def __init__(self, iou_threshold=0.5, score_threshold=0.1, name=None, geometry_name="boxes"):
         self.iou_threshold = iou_threshold
         self.score_threshold = score_threshold
         self.geometry_name = geometry_name
