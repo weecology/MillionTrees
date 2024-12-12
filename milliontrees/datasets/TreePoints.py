@@ -90,7 +90,7 @@ class TreePointsDataset(MillionTreesDataset):
         self._input_lookup = df.groupby('filename').apply(lambda x: x.index.values).to_dict()
 
         # Point labels
-        self._y_array = df[["x", "y"]].values.astype(float)
+        self._y_array = df[["x", "y"]].values.astype(int)
 
         # Labels -> just 'Tree'
         self._n_classes = 1

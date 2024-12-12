@@ -390,7 +390,7 @@ class DetectionAccuracy(ElementwiseMetric):
 
             gt_boxes = gt[self.geometry_name]
             pred_boxes = target_boxes[target_scores > self.score_threshold]
-            det_accuracy = torch.mean(torch.stack([ self._accuracy(gt_boxes,pred_boxes,iou_thr) for iou_thr in np.arange(0.5,0.51,0.05)]))
+            det_accuracy = torch.mean(torch.stack([ self._accuracy(gt_boxes,pred_boxes,iou_thr) for iou_thr in np.arange(0.4,0.41,0.05)]))
             batch_results.append(det_accuracy)
 
         return torch.tensor(batch_results)
