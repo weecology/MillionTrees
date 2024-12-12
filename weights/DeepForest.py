@@ -59,7 +59,7 @@ def main():
 
     ## Evaluate the model
     box_dataset = get_dataset("TreeBoxes", root_dir="/orange/ewhite/DeepForest/MillionTrees/")
-    box_test_data = box_dataset.get_subset("test")
+    box_test_data = box_dataset.get_subset("test",frac=0.1)
 
     test_loader = get_eval_loader("standard", box_test_data, batch_size=16)
 
@@ -75,7 +75,6 @@ def main():
         metadata, images, targets  = batch
         for image_metadata, image, image_targets in zip(metadata,images, targets):
             basename = box_dataset._filename_id_to_code[int(image_metadata[0])]
-            #image_path = os.path.join(box_dataset._data_dir._str, "images",basename)
             # Deepforest likes 0-255 data, channels first
             channels_first = image.permute(1, 2, 0).numpy() * 255
             pred = m.predict_image(channels_first)
