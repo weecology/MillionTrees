@@ -75,6 +75,8 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._version = version
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name
+        self.eval_score_threshold = eval_score_threshold
+
         if self._split_scheme not in ['official', 'random']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
@@ -141,8 +143,12 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
         self._metadata_fields = ['filename_id','source_id']
 
-        self._metric = DetectionAccuracy(geometry_name=self.geometry_name, score_threshold=eval_score_threshold)
         self._collate = TreeBoxesDataset._collate_fn
+
+        self.metrics = {
+        "accuracy":DetectionAccuracy(geometry_name=self.geometry_name, score_threshold=self.eval_score_threshold, metric="accuracy"),
+        "recall":DetectionAccuracy(geometry_name=self.geometry_name, score_threshold=self.eval_score_threshold, metric="recall"),
+        }
 
         # eval grouper
         self._eval_grouper = CombinatorialGrouper(dataset=self,
@@ -157,16 +163,19 @@ class TreeBoxesDataset(MillionTreesDataset):
         measures the simple average of the detection accuracies
         of each domain.
         """
-        results, results_str = self.standard_group_eval(
-            self._metric,
-            self._eval_grouper,
-            y_pred, y_true, metadata)
+
+        results= {}
+        results_str = ''
+        for metric in self.metrics:  
+            result, result_str = self.standard_group_eval(self.metrics[metric], self._eval_grouper, y_pred, y_true, metadata)
+            results[metric] = result
+            results_str += result_str
 
         detection_accs = []
-        for k, v in results.items():
+        for k, v in results["accuracy"].items():
             if k.startswith('detection_acc_source:'):
                 d = k.split(':')[1]
-                count = results[f'source:{d}']
+                count = results["accuracy"][f'source:{d}']
                 if count > 0:
                     detection_accs.append(v)
         detection_acc_avg_dom = np.array(detection_accs).mean()

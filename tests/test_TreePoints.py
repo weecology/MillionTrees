@@ -83,7 +83,7 @@ def test_get_test_dataloader(dataset):
         assert y.shape[1] == 2
         assert len(metadata) == 1
         break
-@pytest.mark.parametrize("pred_tensor", [[[30, 70]], [[30, 70],[35, 55]]], ids=["single", "multiple"])
+@pytest.mark.parametrize("pred_tensor", [[[134, 156]], [[30, 70],[35, 55]]], ids=["single", "multiple"])
 def test_TreePoints_eval(dataset, pred_tensor):
     dataset = TreePointsDataset(download=False, root_dir=dataset) 
     test_dataset = dataset.get_subset("test")
