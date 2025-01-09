@@ -48,10 +48,12 @@ class TreePointsDataset(MillionTreesDataset):
                  root_dir='data',
                  download=False,
                  split_scheme='official',
-                 geometry_name='y'):
+                 geometry_name='y',
+                 distance_threshold=0.1):
         self._version = version
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name
+        self.distance_threshold = distance_threshold
         
         if self._split_scheme not in ['official', 'random']:
             raise ValueError(
@@ -120,7 +122,7 @@ class TreePointsDataset(MillionTreesDataset):
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
         self._metadata_fields = ['filename_id','source_id']
 
-        self._metric = KeypointAccuracy()
+        self._metric = KeypointAccuracy(distance_threshold=distance_threshold)
         self._collate = TreePointsDataset._collate_fn
 
         # eval grouper
