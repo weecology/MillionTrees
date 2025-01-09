@@ -110,7 +110,7 @@ def test_get_test_dataloader(dataset):
         assert metadata.shape[0] == 2
         break
     
-@pytest.mark.parametrize("pred_tensor", [[[30, 70, 35, 75]], [[30, 70, 35, 75],[30, 20, 35, 55]]], ids=["single", "multiple"])
+@pytest.mark.parametrize("pred_tensor", [[[134, 156, 313, 336]], [[30, 70, 35, 75],[30, 20, 35, 55]]], ids=["single", "multiple"])
 def test_TreeBoxes_eval(dataset, pred_tensor):
     dataset = TreeBoxesDataset(download=False, root_dir=dataset) 
     test_dataset = dataset.get_subset("test")
@@ -128,6 +128,10 @@ def test_TreeBoxes_eval(dataset, pred_tensor):
 
     # Concat and Evaluate
     eval_results, eval_string = dataset.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=test_dataset.metadata_array)
+
+    if pred_tensor == [[134, 156, 313, 336]]:
+        # One image is blank, and in the other one of the boxes is correct, the other is not. Averaged over 2 images = 0.25
+        assert eval_results["detection_acc_avg"] == 0.25
 
     assert len(eval_results) 
     assert "detection_acc_avg" in eval_results.keys()

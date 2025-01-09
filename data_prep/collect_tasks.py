@@ -36,7 +36,6 @@ TreePolygons = [
     "/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
     "/orange/ewhite/DeepForest/Araujo_2020/annotations.csv",
     "/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv",
-    "/orange/ewhite/DeepForest/DetectTree2/annotations.csv"
     ]
 
 # Current errors
@@ -88,6 +87,16 @@ train = TreePolygons_datasets[TreePolygons_datasets.split=="train"]
 test = TreePolygons_datasets[TreePolygons_datasets.split=="test"]
 TreePolygons_datasets = TreePolygons_datasets.rename(columns={"image_path":"filename"})
 
+
+# Assert that none of the geometry columns have bounds greater than 20,000, checking for non-geographic coordinates
+assert TreeBoxes_datasets.xmin.max() < 20000
+assert TreeBoxes_datasets.ymin.max() < 20000
+assert TreeBoxes_datasets.xmax.max() < 20000
+assert TreeBoxes_datasets.ymax.max() < 20000
+
+assert TreePoints_datasets.x.max() < 20000
+assert TreePoints_datasets.y.max() < 30000
+
 # Create release txt
 with open("/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0/RELEASE_v0.0.txt", "w") as outfile:
     outfile.write("Initial debug")
@@ -132,6 +141,11 @@ TreePolygons_datasets = TreePolygons_datasets[Polygons_columns]
 
 Points_columns = ["x","y","filename","split","source"]
 TreePoints_datasets = TreePoints_datasets[Points_columns]
+
+# Make sure there are no duplicates
+TreeBoxes_datasets = TreeBoxes_datasets.drop_duplicates()
+TreePolygons_datasets = TreePolygons_datasets.drop_duplicates()
+TreePoints_datasets = TreePoints_datasets.drop_duplicates()
 
 TreePolygons_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/official.csv", index=False)
 TreePoints_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0/official.csv", index=False)

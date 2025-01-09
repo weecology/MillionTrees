@@ -374,12 +374,13 @@ class DetectionAccuracy(ElementwiseMetric):
     determine the accuracy achieved for a one-class detector
     """
 
-    def __init__(self, iou_threshold=0.5, score_threshold=0.1, name=None, geometry_name="boxes"):
+    def __init__(self, iou_threshold=0.3, score_threshold=0.1, name=None, geometry_name="boxes", metric="accuracy"):
         self.iou_threshold = iou_threshold
         self.score_threshold = score_threshold
         self.geometry_name = geometry_name
+        self.metric = metric
         if name is None:
-            name = "detection_acc"
+            name = "detection_{}".format(metric)
         super().__init__(name=name)
 
     def _compute_element_wise(self, y_pred, y_true):
@@ -387,15 +388,41 @@ class DetectionAccuracy(ElementwiseMetric):
         for gt, target in zip(y_true, y_pred):
             target_boxes = target[self.geometry_name]
             target_scores = target["scores"]
-
             gt_boxes = gt[self.geometry_name]
             pred_boxes = target_boxes[target_scores > self.score_threshold]
-            det_accuracy = torch.mean(torch.stack([ self._accuracy(gt_boxes,pred_boxes,iou_thr) for iou_thr in np.arange(0.4,0.41,0.05)]))
+            if self.metric == "accuracy":
+                det_accuracy = self._accuracy(gt_boxes, pred_boxes, self.iou_threshold)
+            elif self.metric == "recall":
+                det_accuracy = self._recall(gt_boxes, pred_boxes, self.iou_threshold)
             batch_results.append(det_accuracy)
 
         return torch.tensor(batch_results)
 
-    def _accuracy(self, src_boxes,pred_boxes ,  iou_threshold):
+    def _recall(self, src_boxes, pred_boxes,  iou_threshold):
+        total_gt = len(src_boxes)
+        total_pred = len(pred_boxes)
+        if total_gt > 0 and total_pred > 0:
+            # Define the matcher and distance matrix based on iou
+            matcher = Matcher(
+                iou_threshold,
+                iou_threshold,
+                allow_low_quality_matches=False)
+            match_quality_matrix = box_iou(
+                src_boxes,
+                pred_boxes)
+            results = matcher(match_quality_matrix)
+            true_positive = torch.count_nonzero(results.unique() != -1)
+            return true_positive / total_gt
+        
+        elif total_gt == 0:
+            if total_pred > 0:
+                return torch.tensor(0.)
+            else:
+                return torch.tensor(1.)
+        elif total_gt > 0 and total_pred == 0:
+            return torch.tensor(0.)
+
+    def _accuracy(self, src_boxes, pred_boxes,  iou_threshold):
         total_gt = len(src_boxes)
         total_pred = len(pred_boxes)
         if total_gt > 0 and total_pred > 0:
