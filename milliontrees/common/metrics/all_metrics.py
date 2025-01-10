@@ -444,7 +444,7 @@ class DetectionAccuracy(ElementwiseMetric):
             )
             false_negative = total_gt - true_positive
             acc = true_positive / ( true_positive + false_positive + false_negative )
-            return true_positive / ( true_positive + false_positive + false_negative )
+            return acc
         elif total_gt == 0:
             if total_pred > 0:
                 return torch.tensor(0.)
@@ -510,8 +510,7 @@ class KeypointAccuracy(ElementwiseMetric):
             false_negative = total_gt - true_positive
             acc = true_positive / (true_positive + false_positive +
                                    false_negative)
-            return true_positive / (true_positive + false_positive +
-                                    false_negative)
+            return acc
         elif total_gt == 0:
             if total_pred > 0:
                 return torch.tensor(0.)
