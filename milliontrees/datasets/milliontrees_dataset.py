@@ -496,7 +496,7 @@ class MillionTreesSubset(MillionTreesDataset):
             augmented = self.transform(
                 image=x,
                 keypoints=targets[self.geometry_name],
-                labels=targets["labels"]
+                labels=targets["labels"],
             )
             y = torch.from_numpy(augmented["keypoints"]).float()
 
