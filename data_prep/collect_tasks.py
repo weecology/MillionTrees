@@ -17,7 +17,8 @@ TreeBoxes = [
     "/orange/ewhite/DeepForest/Guangzhou2022/annotations.csv",
     "/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
     "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
-    '/orange/ewhite/DeepForest/ReForestTree/images/train.csv']
+    '/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
+    "/orange/ewhite/DeepForest/Santos2019/annotations.csv"]
 
 TreePoints = [
     "/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv",
@@ -36,7 +37,8 @@ TreePolygons = [
     "/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
     "/orange/ewhite/DeepForest/Araujo_2020/annotations.csv",
     "/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv",
-    "/orange/ewhite/DeepForest/BCI/BCI_50ha_2020_08_01_crownmap_raw/annotations.csv"
+    "/orange/ewhite/DeepForest/BCI/BCI_50ha_2020_08_01_crownmap_raw/annotations.csv",
+    "/orange/ewhite/DeepForest/BCI/BCI_50ha_2022_09_29_crownmap_raw/annotations.csv"
     ]
 
 # Current errors
