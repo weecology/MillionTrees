@@ -27,6 +27,29 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 
 **Link:** [https://www.sciencedirect.com/science/article/pii/S030324342100369X](https://www.sciencedirect.com/science/article/pii/S030324342100369X)
 
+### Vasquez et al. 2023
+
+![sample_image](public/Santos_et_al._2019.png)
+
+**Link:** [Dataset Ninja](https://datasetninja.com/tree-species-detection)  
+
+@Article{s19163595,
+  AUTHOR = {Santos, Anderson Aparecido dos and Marcato Junior, José and Araújo, Márcio Santos and Di Martini, David Robledo and Tetila, Everton Castelão and Siqueira, Henrique Lopes and Aoki, Camila and Eltner, Anette and Matsubara, Edson Takashi and Pistori, Hemerson and Feitosa, Raul Queiroz and Liesenberg, Veraldo and Gonçalves, Wesley Nunes},
+  TITLE = {Assessment of CNN-Based Methods for Individual Tree Detection on Images Captured by RGB Cameras Attached to UAVs},
+  JOURNAL = {Sensors},
+  VOLUME = {19},
+  YEAR = {2019},
+  NUMBER = {16},
+  ARTICLE-NUMBER = {3595},
+  URL = {https://www.mdpi.com/1424-8220/19/16/3595},
+  PubMedID = {31426597},
+  ISSN = {1424-8220},
+  ABSTRACT = {Detection and classification of tree species from remote sensing data were performed using mainly multispectral and hyperspectral images and Light Detection And Ranging (LiDAR) data. Despite the comparatively lower cost and higher spatial resolution, few studies focused on images captured by Red-Green-Blue (RGB) sensors. Besides, the recent years have witnessed an impressive progress of deep learning methods for object detection. Motivated by this scenario, we proposed and evaluated the usage of Convolutional Neural Network (CNN)-based methods combined with Unmanned Aerial Vehicle (UAV) high spatial resolution RGB imagery for the detection of law protected tree species. Three state-of-the-art object detection methods were evaluated: Faster Region-based Convolutional Neural Network (Faster R-CNN), YOLOv3 and RetinaNet. A dataset was built to assess the selected methods, comprising 392 RBG images captured from August 2018 to February 2019, over a forested urban area in midwest Brazil. The target object is an important tree species threatened by extinction known as Dipteryx alata Vogel (Fabaceae). The experimental analysis delivered average precision around 92% with an associated processing times below 30 miliseconds.},
+DOI = {10.3390/s19163595}
+}
+
+**Location:** Barro Colorado Island, Panama
+
 ### Velasquez-Camacho et al. 2023
 
 ![sample_image](public/Velasquez-Camacho_et_al._2023.png)
@@ -151,6 +174,16 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 **Location:** Northern Australia
 
+### JustDiggit
+
+![sample_image](public/Justdiggit_2023.png)
+
+**Link:** [JustDigIt](https://justdiggit.org/news/machine-learning-model-to-track-trees/)
+
+**Location:** Tanzania
+
+Citation status uncertain, contact Tjomme Dooper fruit punch AI.
+
 ### Miranda et al. 2024
 
 ![sample_image](public/Alejandro_Miranda.png)
@@ -179,3 +212,14 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 [https://www.mdpi.com/2072-4292/16/11/1935](https://www.mdpi.com/2072-4292/16/11/1935)
 
 **Location:** Australia
+
+### Vasquez et al. 2023
+
+![sample_image](public/Vasquez_et_al._2023_-_training.png)
+![sample_image](public/Vasquez_et_al._2023.png)
+
+**Link:** [Figshare](https://smithsonian.figshare.com/articles/dataset/Barro_Colorado_Island_50-ha_plot_crown_maps_manually_segmented_and_instance_segmented_/24784053?file=43684731)  
+
+**Location:** Barro Colorado Island, Panama
+
+There is also a training-only portion of this that was used in conjuction with a model to predict labels that were then verified. 
