@@ -12,11 +12,11 @@ Current Status
 
 There are 3 datasets available for the MillionTrees benchmark:
  
-* TreeBoxes: A dataset of 282,288 tree crowns from 9 sources.
+* TreeBoxes: A dataset of 251,047 tree crowns from 10 sources.
 
-* TreePolygons: A dataset of 362,751 tree crowns from 8 sources.
+* TreePolygons: A dataset of 394,155 tree crowns from 12 sources.
 
-* TreePoints: A dataset of 191,614 tree stems from 2 sources.
+* TreePoints: A dataset of 256,185 tree stems from 4 sources.
 
 Contact
 -------
