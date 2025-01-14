@@ -27,7 +27,7 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 
 **Link:** [https://www.sciencedirect.com/science/article/pii/S030324342100369X](https://www.sciencedirect.com/science/article/pii/S030324342100369X)
 
-### Vasquez et al. 2023
+### Santos et al. 2019
 
 ![sample_image](public/Santos_et_al._2019.png)
 
@@ -42,9 +42,6 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
   NUMBER = {16},
   ARTICLE-NUMBER = {3595},
   URL = {https://www.mdpi.com/1424-8220/19/16/3595},
-  PubMedID = {31426597},
-  ISSN = {1424-8220},
-  ABSTRACT = {Detection and classification of tree species from remote sensing data were performed using mainly multispectral and hyperspectral images and Light Detection And Ranging (LiDAR) data. Despite the comparatively lower cost and higher spatial resolution, few studies focused on images captured by Red-Green-Blue (RGB) sensors. Besides, the recent years have witnessed an impressive progress of deep learning methods for object detection. Motivated by this scenario, we proposed and evaluated the usage of Convolutional Neural Network (CNN)-based methods combined with Unmanned Aerial Vehicle (UAV) high spatial resolution RGB imagery for the detection of law protected tree species. Three state-of-the-art object detection methods were evaluated: Faster Region-based Convolutional Neural Network (Faster R-CNN), YOLOv3 and RetinaNet. A dataset was built to assess the selected methods, comprising 392 RBG images captured from August 2018 to February 2019, over a forested urban area in midwest Brazil. The target object is an important tree species threatened by extinction known as Dipteryx alata Vogel (Fabaceae). The experimental analysis delivered average precision around 92% with an associated processing times below 30 miliseconds.},
 DOI = {10.3390/s19163595}
 }
 
