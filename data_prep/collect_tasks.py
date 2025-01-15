@@ -250,6 +250,7 @@ for source, group in mini_TreePolygons_annotations.groupby("source"):
     group.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/"
     height, width, channels = cv2.imread("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/" + group.image_path.iloc[0]).shape
     source = source.replace(" ", "_")
+    # Flip BGR and RGB order
     plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source, height=height, width=width)
 
 # Zip the files
