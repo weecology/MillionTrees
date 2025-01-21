@@ -97,8 +97,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         self._input_lookup = df.groupby('filename').apply(lambda x: x.index.values).to_dict()
 
         # Convert each polygon to shapely objects
-        for i in range(len(df)):
-            df.loc[i, 'polygon'] = from_wkt(df.loc[i, 'polygon'])
+        df['polygon'] = df['polygon'].apply(from_wkt)
 
         self._y_array = list(df['polygon'].values)
 
