@@ -492,6 +492,7 @@ class MillionTreesSubset(MillionTreesDataset):
                 labels=targets["labels"]
             )
             y = torch.from_numpy(augmented["bboxes"]).float()
+
         elif self._dataset_name == 'TreePoints':
             augmented = self.transform(
                 image=x,
@@ -499,6 +500,18 @@ class MillionTreesSubset(MillionTreesDataset):
                 labels=targets["labels"],
             )
             y = torch.from_numpy(augmented["keypoints"]).float()
+
+        else:
+            masks = [mask for mask in targets[self.geometry_name]]
+            augmented = self.transform(
+                image=x,
+                masks=masks,
+                bboxes=targets["bboxes"],
+                labels=targets["labels"])
+            
+            y = augmented['masks']
+            y = torch.stack(y, dim=0)
+            bboxes = augmented['bboxes']
 
         x = augmented['image']
         labels = torch.from_numpy(np.array(augmented["labels"]))
@@ -509,8 +522,13 @@ class MillionTreesSubset(MillionTreesDataset):
                 y = torch.zeros(0, 4)
             elif self._dataset_name == 'TreePoints':
                 y = torch.zeros(0, 2)
+            else:
+                bboxes = torch.zeros(0, 4)
 
-        targets = {self.geometry_name: y, "labels": labels}
+        if self._dataset_name == 'TreePolygons':
+            targets = {self.geometry_name: y, "labels": labels,"bboxes": bboxes}
+        else:
+            targets = {self.geometry_name: y, "labels": labels}
         
         return metadata, x, targets
 

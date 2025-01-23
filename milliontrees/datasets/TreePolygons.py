@@ -10,7 +10,6 @@ from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
 from torchvision.tv_tensors import BoundingBoxes, Mask
-import torchvision.transforms as transforms
 from torchvision.ops import masks_to_boxes
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
@@ -52,11 +51,13 @@ class TreePolygonsDataset(MillionTreesDataset):
                  root_dir='data',
                  download=False,
                  split_scheme='official',
-                 geometry_name='y'):
+                 geometry_name='y',
+                 image_size=448):
 
         self._version = version
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name
+        self.image_size = image_size
         
         if self._split_scheme != 'official':
             raise ValueError(
@@ -110,32 +111,51 @@ class TreePolygonsDataset(MillionTreesDataset):
         # Create source locations with a numeric ID
         df["source_id"] = df.source.astype('category').cat.codes
 
+        # Create filename numeric ID
+        df["filename_id"] = df.filename.astype('category').cat.codes
+
+        # Create dictionary for codes to names
+        self._source_id_to_code = df.set_index('source_id')['source'].to_dict()
+        self._filename_id_to_code = df.set_index('filename_id')['filename'].to_dict()
+
         # Location/group info
         n_groups = max(df['source_id']) + 1
         self._n_groups = n_groups
         assert len(np.unique(df['source_id'])) == self._n_groups
 
-        self._metadata_array = np.stack([df['source_id'].values], axis=1)
-        self._metadata_fields = ['source_id']
+        # Metadata is at the image level
+        unique_sources = df[['filename_id', 'source_id']].drop_duplicates(subset="filename_id", inplace=False).reset_index(drop=True)
+        self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
+        self._metadata_fields = ['filename_id','source_id']
 
         # eval grouper
         self._eval_grouper = CombinatorialGrouper(dataset=self,
-                                                  groupby_fields=(['source_id'
-                                                                  ]))
+                                                  groupby_fields=(['source_id']))
 
         super().__init__(root_dir, download, split_scheme)
-
+    
     def __getitem__(self, idx):
-        # Any transformations are handled by the WILDSSubset
-        # since different subsets (e.g., train vs test) might have different transforms
+        """
+        Args:
+            - idx (int): Index of a data point
+
+        Output:
+            - metadata (Tensor): Metadata of the idx-th data point
+            - x (np.ndarray): Input features of the idx-th data point
+            - targets (dict): Dictionary containing:
+                - "y" (Tensor): Masks of the polygons
+                - "bboxes" (BoundingBoxes): Bounding boxes of the polygons
+                - "labels" (np.ndarray): Labels for each mask (all zeros in this case)
+        """
         x = self.get_input(idx)
         y_indices = self._input_lookup[self._input_array[idx]]
         y_polygons = [self._y_array[i] for i in y_indices]
-        mask_imgs = [self.create_polygon_mask(x.shape[-2:], y_polygon) for y_polygon in y_polygons]
-        masks = torch.concat([Mask(transforms.PILToTensor()(mask_img), dtype=torch.bool) for mask_img in mask_imgs])
-        bboxes = BoundingBoxes(data=masks_to_boxes(masks), format='xyxy', canvas_size=x.size[::-1])
+        mask_imgs = [self.create_polygon_mask(x.shape[:2], y_polygon) for y_polygon in y_polygons]
+        masks = torch.stack([Mask(mask_img) for mask_img in mask_imgs])
+        bboxes = BoundingBoxes(data=masks_to_boxes(masks), format='xyxy', canvas_size=x.shape[:2])
+        masks = np.stack([mask.numpy() for mask in masks])
 
-        metadata = self.metadata_array[idx]
+        metadata = self._metadata_array[idx]
         targets = {"y": masks, "bboxes": bboxes, "labels": np.zeros(len(masks), dtype=int)}
 
         return metadata, x, targets
@@ -150,7 +170,7 @@ class TreePolygonsDataset(MillionTreesDataset):
                             of the polygon. Vertices should be in clockwise or counter-clockwise order.
 
         Returns:
-        - PIL.Image.Image: A PIL Image object containing the polygonal mask.
+        - mask_img (np.ndarray): A numpy array representing the image with the drawn polygon.
         """
         # Create a new black image with the given dimensions
         mask_img = Image.new('L', image_size, 0)
@@ -219,9 +239,9 @@ class TreePolygonsDataset(MillionTreesDataset):
         return img
     
     def _transform_(self):
-        self.transform = A.Compose([
-            A.Resize(height=448, width=448, p=1.0),
+        transform = A.Compose([
+            A.Resize(height=self.image_size, width=self.image_size, p=1.0),
             ToTensorV2()
-            ])
+            ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], clip=True))
         
-        return self.transform
+        return transform

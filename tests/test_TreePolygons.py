@@ -17,25 +17,30 @@ else:
 def test_TreePolygons_generic(dataset):
     dataset = TreePolygonsDataset(download=False, root_dir=dataset) 
     for metadata, image, targets in dataset:
-        polygons, labels = targets["y"], targets["labels"]
+        masks = targets["y"]
+        labels = targets["labels"]
+        boxes = targets["bboxes"]
         assert image.shape == (100, 100, 3)
         assert image.dtype == np.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
-        assert polygons.shape == (2, 2)
-        assert labels.shape == (2,)
+        assert masks.shape == (1, 100, 100)
+        assert len(labels) == 1
+        assert boxes.shape == (1,4)
         assert metadata.shape == (2,)
         break
 
     train_dataset = dataset.get_subset("train")
      
     for metadata, image, targets in train_dataset:
-        polygons, labels = targets["y"], targets["labels"]
+        masks = targets["y"]
+        boxes = targets["bboxes"]
+        labels = targets["labels"]
         assert image.shape == (3, 448, 448)
         assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
-        assert torch.is_tensor(polygons)
-        assert polygons.shape == (2, 2)
-        assert len(labels) == 2
+        assert masks.shape == (1,448, 448)
+        assert len(labels) == 1
+        assert boxes.shape == (1,4)
         assert metadata.shape == (2,)
         break
 
@@ -45,12 +50,13 @@ def test_get_train_dataloader(dataset, batch_size):
     train_dataset = dataset.get_subset("train")
     train_loader = get_train_loader('standard', train_dataset, batch_size=batch_size)
     for metadata, x, targets in train_loader:
-        y = targets[0]["y"]
-        assert torch.is_tensor(targets[0]["y"])
+        masks = targets["y"]
+        boxes = targets["bboxes"]
         assert x.shape == (batch_size, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
-        assert y.shape[1] == 2
+        assert masks.shape == (batch_size, 1,448, 448)
+        assert boxes.shape == (batch_size, 1, 4)
         assert len(metadata) == batch_size
         break
 
@@ -59,28 +65,31 @@ def test_get_test_dataloader(dataset):
     test_dataset = dataset.get_subset("test")
     
     for metadata, image, targets in test_dataset:
-        polygons, labels = targets["y"], targets["labels"]
+        masks = targets["y"]
+        boxes = targets["bboxes"]
+        labels = targets["labels"]
+
+        assert boxes.shape == torch.Size([1, 4])
         assert image.shape == (3,448, 448)
         assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
-        assert polygons.shape == (2, 2)
-        assert labels.shape == (2,)
-        assert metadata.shape == (2,)
+        assert masks.shape == (1,448, 448)
+        assert labels.shape == torch.Size([1])
+        assert metadata.shape == torch.Size([2])
         break
     
     # Assert that test_dataset[0] == "image3.jpg"
     metadata, image, targets = test_dataset[0]
     assert metadata[1] == 1
-    assert metadata[0] == "image3.jpg"
+    assert dataset._filename_id_to_code[int(metadata[0])] == "image3.jpg"
 
     test_loader = get_eval_loader('standard', test_dataset, batch_size=1)
     for metadata, x, targets in test_loader:
-        y = targets[0]["y"]
-        assert torch.is_tensor(targets[0]["y"])
+        masks = targets["y"]
         assert x.shape == (1, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
-        assert y.shape[1] == 2
+        assert masks.shape == (1,1,448, 448)
         assert len(metadata) == 1
         break
 
@@ -115,22 +124,21 @@ def test_TreePolygons_release():
     train_dataset = dataset.get_subset("train")
      
     for metadata, image, targets in train_dataset:
-        polygons = targets["y"]
+        y = targets["y"]
         labels = targets["labels"]
         assert image.shape == (3, 448, 448)
         assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
-        assert polygons.shape[1] == 2
+        assert y[0].shape == (448, 448)
         assert metadata.shape[0] == 2
     
     train_loader = get_train_loader('standard', train_dataset, batch_size=2)
     for metadata, x, targets in train_loader:
-        y = targets[0]["y"]
-        assert torch.is_tensor(targets[0]["y"])
+        y = targets["y"]
         assert x.shape == (2, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
-        assert y.shape[1] == 2
+        assert y[0].shape == (1,448, 448)
         assert len(metadata) == 2
         break
 
@@ -139,10 +147,10 @@ def test_TreePolygons_download(tmpdir):
     train_dataset = dataset.get_subset("train")
      
     for metadata, image, targets in train_dataset:
-        polygons = targets["y"]
+        masks = targets["y"]
         assert image.shape == (3, 448, 448)
         assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
-        assert polygons.shape[1] == 2
+        assert masks[0].shape == (448, 448)
         assert metadata.shape[0] == 2
         break

@@ -71,12 +71,14 @@ class TreeBoxesDataset(MillionTreesDataset):
                  download=False,
                  split_scheme='official',
                  geometry_name='y',
-                 eval_score_threshold=0.1):
+                 eval_score_threshold=0.1,
+                 image_size=448):
         self._version = version
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name
         self.eval_score_threshold = eval_score_threshold
-
+        self.image_size = image_size
+        
         if self._split_scheme not in ['official', 'random']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
@@ -215,7 +217,7 @@ class TreeBoxesDataset(MillionTreesDataset):
     
     def _transform_(self):
         transform = A.Compose([
-            A.Resize(height=448, width=448, p=1.0),
+            A.Resize(height=self.image_size, width=self.image_size, p=1.0),
             ToTensorV2()
             ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], clip=True))
         
