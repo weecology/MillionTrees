@@ -8,42 +8,44 @@ from deepforest.visualize import plot_results
 from deepforest.utilities import read_file
 import cv2
 
+version = "v0.1"
+base_dir = "/orange/ewhite/web/public/"
+
 TreeBoxes = [
-    "/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
-    "/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
-    '/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
+    #"/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
+    #"/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
+    #'/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
     '/orange/ewhite/DeepForest/Radogoshi_Sweden/annotations.csv',
-    "/orange/ewhite/DeepForest/WRI/WRI-labels-opensource/annotations.csv",
-    "/orange/ewhite/DeepForest/Guangzhou2022/annotations.csv",
-    "/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
-    "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
-    '/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
-    "/orange/ewhite/DeepForest/Santos2019/annotations.csv"]
+   # "/orange/ewhite/DeepForest/WRI/WRI-labels-opensource/annotations.csv",
+    #"/orange/ewhite/DeepForest/Guangzhou2022/annotations.csv",
+   # "/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
+   # "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
+   # '/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
+   # "/orange/ewhite/DeepForest/Santos2019/annotations.csv"
+   ]
 
 TreePoints = [
     "/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv",
-    "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
-    "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
-    "/orange/ewhite/DeepForest/Tonga/annotations.csv"]
-
-TreePolygons = [
-    "/orange/ewhite/DeepForest/Jansen_2023/pngs/annotations.csv",
-    "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
-    "/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
-    "/orange/ewhite/DeepForest/Firoze2023/annotations.csv",
-    "/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
-    "/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
-    "/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",
-    "/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
-    "/orange/ewhite/DeepForest/Araujo_2020/annotations.csv",
-    "/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv",
-    "/orange/ewhite/DeepForest/BCI/BCI_50ha_2020_08_01_crownmap_raw/annotations.csv",
-    "/orange/ewhite/DeepForest/BCI/BCI_50ha_2022_09_29_crownmap_raw/annotations.csv",
-    "/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv",
+    #"/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
+    #"/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
+    #"/orange/ewhite/DeepForest/Tonga/annotations.csv"
     ]
 
-# Current errors
-# Hickman
+TreePolygons = [
+    #"/orange/ewhite/DeepForest/Jansen_2023/pngs/annotations.csv",
+    "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
+    #"/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
+    #"/orange/ewhite/DeepForest/Firoze2023/annotations.csv",
+    #"/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
+    #"/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
+    #"/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",
+    #"/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
+    #"/orange/ewhite/DeepForest/Araujo_2020/annotations.csv",
+    #"/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv",
+    #"/orange/ewhite/DeepForest/BCI/BCI_50ha_2020_08_01_crownmap_raw/annotations.csv",
+    #"/orange/ewhite/DeepForest/BCI/BCI_50ha_2022_09_29_crownmap_raw/annotations.csv",
+    #"/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv",
+    ]
 
 # Combine box datasets
 TreeBoxes_datasets = []
@@ -100,32 +102,37 @@ assert TreeBoxes_datasets.ymax.max() < 20000
 
 assert TreePoints_datasets.x.max() < 20000
 assert TreePoints_datasets.y.max() < 30000
+# Create directories if they do not exist
+
+os.makedirs(f"{base_dir}TreeBoxes_{version}/images", exist_ok=True)
+os.makedirs(f"{base_dir}TreePoints_{version}/images", exist_ok=True)
+os.makedirs(f"{base_dir}TreePolygons_{version}/images", exist_ok=True)
 
 # Create release txt
-with open("/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0/RELEASE_v0.0.txt", "w") as outfile:
+with open(f"{base_dir}TreeBoxes_{version}/RELEASE_{version}.txt", "w") as outfile:
     outfile.write("Initial debug")
 
 # Create release txt
-with open("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/RELEASE_v0.0.txt", "w") as outfile:
+with open(f"{base_dir}TreePolygons_{version}/RELEASE_{version}.txt", "w") as outfile:
     outfile.write("Initial debug")
 
 # Create release txt
-with open("/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0/RELEASE_v0.0.txt", "w") as outfile:
+with open(f"{base_dir}TreePoints_{version}/RELEASE_{version}.txt", "w") as outfile:
     outfile.write("Initial debug")
 
 # Copy images
 for image in TreeBoxes_datasets.filename.unique():
-    destination = "/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0/images/"
+    destination = f"{base_dir}TreeBoxes_{version}/images/"
     if not os.path.exists(destination + os.path.basename(image)):
         shutil.copy(image, destination)
 
 for image in TreePoints_datasets.filename.unique():
-    destination = "/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0/images/"
+    destination = f"{base_dir}TreePoints_{version}/images/"
     if not os.path.exists(destination + os.path.basename(image)):
         shutil.copy(image, destination)
 
 for image in TreePolygons_datasets.filename.unique():
-    destination = "/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/images/"
+    destination = f"{base_dir}TreePolygons_{version}/images/"
     if not os.path.exists(destination + os.path.basename(image)):
         shutil.copy(image, destination)
 
@@ -151,23 +158,23 @@ TreeBoxes_datasets = TreeBoxes_datasets.drop_duplicates()
 TreePolygons_datasets = TreePolygons_datasets.drop_duplicates()
 TreePoints_datasets = TreePoints_datasets.drop_duplicates()
 
-TreePolygons_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/official.csv", index=False)
-TreePoints_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0/official.csv", index=False)
-TreeBoxes_datasets.to_csv("/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0/official.csv", index=False)
+TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons_{version}/official.csv", index=False)
+TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}/official.csv", index=False)
+TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}/official.csv", index=False)
 
 # Create github test versions by taking one image and annotation from each dataset
 # Create directories for mini datasets
 # Delete directories if they already exist
-if os.path.exists("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images"):
-    shutil.rmtree("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images")
-if os.path.exists("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images"):
-    shutil.rmtree("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images")
-if os.path.exists("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images"):
-    shutil.rmtree("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images")
+if os.path.exists(f"{base_dir}MiniTreeBoxes_{version}/images"):
+    shutil.rmtree(f"{base_dir}MiniTreeBoxes_{version}/images")
+if os.path.exists(f"{base_dir}MiniTreePoints_{version}/images"):
+    shutil.rmtree(f"{base_dir}MiniTreePoints_{version}/images")
+if os.path.exists(f"{base_dir}MiniTreePolygons_{version}/images"):
+    shutil.rmtree(f"{base_dir}MiniTreePolygons_{version}/images")
     
-os.makedirs("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images", exist_ok=True)
-os.makedirs("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images", exist_ok=True)
-os.makedirs("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images", exist_ok=True)
+os.makedirs(f"{base_dir}MiniTreeBoxes_{version}/images", exist_ok=True)
+os.makedirs(f"{base_dir}MiniTreePoints_{version}/images", exist_ok=True)
+os.makedirs(f"{base_dir}MiniTreePolygons_{version}/images", exist_ok=True)
 
 # Create mini versions of the datasets
 mini_TreeBoxes_datasets = TreeBoxes_datasets.groupby("source").first().reset_index(drop=True)
@@ -185,42 +192,42 @@ mini_TreePoints_annotations = TreePoints_datasets[TreePoints_datasets["filename"
 mini_TreePolygons_annotations = TreePolygons_datasets[TreePolygons_datasets["filename"].isin(mini_TreePolygons_filenames)]
 
 # Create release txt for mini datasets
-with open("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/RELEASE_v0.0.txt", "w") as outfile:
+with open(f"{base_dir}MiniTreeBoxes_{version}/RELEASE_{version}.txt", "w") as outfile:
     outfile.write("Initial debug")
 
 # Create release txt for mini datasets
-with open("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/RELEASE_v0.0.txt", "w") as outfile:
+with open(f"{base_dir}MiniTreePolygons_{version}/RELEASE_{version}.txt", "w") as outfile:
     outfile.write("Initial debug")
 
 # Create release txt for mini datasets
-with open("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/RELEASE_v0.0.txt", "w") as outfile:
+with open(f"{base_dir}MiniTreePoints_{version}/RELEASE_{version}.txt", "w") as outfile:
     outfile.write("Initial debug")
 
 # Create zip files for mini datasets
-mini_TreeBoxes_annotations.to_csv("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/official.csv", index=False)
-mini_TreePoints_annotations.to_csv("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/official.csv", index=False)
-mini_TreePolygons_annotations.to_csv("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/official.csv", index=False)
+mini_TreeBoxes_annotations.to_csv(f"{base_dir}MiniTreeBoxes_{version}/official.csv", index=False)
+mini_TreePoints_annotations.to_csv(f"{base_dir}MiniTreePoints_{version}/official.csv", index=False)
+mini_TreePolygons_annotations.to_csv(f"{base_dir}MiniTreePolygons_{version}/official.csv", index=False)
 
 # Copy images for mini datasets
 for image in mini_TreeBoxes_filenames:
-    destination = "/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images/"
+    destination = f"{base_dir}MiniTreeBoxes_{version}/images/"
     if not os.path.exists(destination + os.path.basename(image)):
-        shutil.copy("/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0/images/" + image, destination)
+        shutil.copy(f"{base_dir}TreeBoxes_{version}/images/" + image, destination)
 
 for image in mini_TreePoints_filenames:
-    destination = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images/"
+    destination = f"{base_dir}MiniTreePoints_{version}/images/"
     if not os.path.exists(destination + os.path.basename(image)):
-        shutil.copy("/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0/images/" + image, destination)
+        shutil.copy(f"{base_dir}TreePoints_{version}/images/" + image, destination)
 
 for image in mini_TreePolygons_filenames:
-    destination = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/"
+    destination = f"{base_dir}MiniTreePolygons_{version}/images/"
     if not os.path.exists(destination + os.path.basename(image)):
-        shutil.copy("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0/images/" + image, destination)
+        shutil.copy(f"{base_dir}TreePolygons_{version}/images/" + image, destination)
 
 # Write examples from the mini datasets to the MillionTrees doc folder
-mini_TreeBoxes_annotations.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images/"
-mini_TreePoints_annotations.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images/"
-mini_TreePolygons_annotations.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/"
+mini_TreeBoxes_annotations.root_dir = f"{base_dir}MiniTreeBoxes_{version}/images/"
+mini_TreePoints_annotations.root_dir = f"{base_dir}MiniTreePoints_{version}/images/"
+mini_TreePolygons_annotations.root_dir = f"{base_dir}MiniTreePolygons_{version}/images/"
 
 mini_TreeBoxes_annotations["label"] = "Tree"
 mini_TreePoints_annotations["label"] = "Tree"
@@ -232,24 +239,24 @@ mini_TreePolygons_annotations["score"] = None
 
 for source, group in mini_TreeBoxes_annotations.groupby("source"):
     group["image_path"] = group["filename"]
-    group = read_file(group, root_dir="/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images/")
-    group.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0/images/"
+    group = read_file(group, root_dir=f"{base_dir}MiniTreeBoxes_{version}/images/")
+    group.root_dir = f"{base_dir}MiniTreeBoxes_{version}/images/"
     # remove any spaces in source
     source = source.replace(" ", "_")
     plot_results(results=group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source)
 
 for source, group in mini_TreePoints_annotations.groupby("source"):
     group["image_path"] = group["filename"]
-    group = read_file(group, root_dir="/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images/")
-    group.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0/images/"
+    group = read_file(group, root_dir=f"{base_dir}MiniTreePoints_{version}/images/")
+    group.root_dir = f"{base_dir}MiniTreePoints_{version}/images/"
     source = source.replace(" ", "_")
     plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source)
 
 for source, group in mini_TreePolygons_annotations.groupby("source"):
     group["image_path"] = group["filename"]
-    group = read_file(group, root_dir="/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/")
-    group.root_dir = "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/"
-    height, width, channels = cv2.imread("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0/images/" + group.image_path.iloc[0]).shape
+    group = read_file(group, root_dir=f"{base_dir}MiniTreePolygons_{version}/images/")
+    group.root_dir = f"{base_dir}MiniTreePolygons_{version}/images/"
+    height, width, channels = cv2.imread(f"{base_dir}MiniTreePolygons_{version}/images/" + group.image_path.iloc[0]).shape
     source = source.replace(" ", "_")
     # Flip BGR and RGB order
     plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source, height=height, width=width)
@@ -263,11 +270,10 @@ def zip_directory(folder_path, zip_path):
                             os.path.relpath(os.path.join(root, file), 
                                             os.path.join(folder_path, '..')))
 
-zip_directory("/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0", "/orange/ewhite/DeepForest/MillionTrees/TreeBoxes_v0.0.zip")
-zip_directory("/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0", "/orange/ewhite/DeepForest/MillionTrees/TreePoints_v0.0.zip")
-zip_directory("/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0", "/orange/ewhite/DeepForest/MillionTrees/TreePolygons_v0.0.zip")
+zip_directory(f"{base_dir}TreeBoxes_{version}", f"{base_dir}TreeBoxes_{version}.zip")
+zip_directory(f"{base_dir}TreePoints_{version}", f"{base_dir}TreePoints_{version}.zip")
+zip_directory(f"{base_dir}TreePolygons_{version}", f"{base_dir}TreePolygons_{version}.zip")
 
-
-zip_directory("/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0", "/orange/ewhite/DeepForest/MillionTrees/MiniTreeBoxes_v0.0.zip")
-zip_directory("/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0", "/orange/ewhite/DeepForest/MillionTrees/MiniTreePoints_v0.0.zip")
-zip_directory("/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0", "/orange/ewhite/DeepForest/MillionTrees/MiniTreePolygons_v0.0.zip")
+zip_directory(f"{base_dir}MiniTreeBoxes_{version}", f"{base_dir}MiniTreeBoxes_{version}.zip")
+zip_directory(f"{base_dir}MiniTreePoints_{version}", f"{base_dir}MiniTreePoints_{version}.zip")
+zip_directory(f"{base_dir}MiniTreePolygons_{version}", f"{base_dir}MiniTreePolygons_{version}.zip")

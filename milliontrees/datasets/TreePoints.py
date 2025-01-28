@@ -40,11 +40,15 @@ class TreePointsDataset(MillionTreesDataset):
                 'https://github.com/weecology/MillionTrees/releases/latest/download/TreePoints_v0.0.zip',
             'compressed_size':
                 523312564
+        },
+        "0.1":{
+            'download_url':"https://data.rc.ufl.edu/pub/ewhite/TreePoints_v0.1.zip",
+            'compressed_size': 170340
         }
     }
 
     def __init__(self,
-                 version=None,
+                 version='0.0',
                  root_dir='data',
                  download=False,
                  split_scheme='official',
