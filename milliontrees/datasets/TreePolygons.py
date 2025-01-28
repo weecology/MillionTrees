@@ -43,11 +43,15 @@ class TreePolygonsDataset(MillionTreesDataset):
                 'https://github.com/weecology/MillionTrees/releases/latest/download/TreePolygons_v0.0.zip',
             'compressed_size':
                 17112645
-        }
+        },
+        "0.1":{
+            'download_url':"https://data.rc.ufl.edu/pub/ewhite/TreePolygons_v0.1.zip",
+            'compressed_size': 40277152
+    }
     }
 
     def __init__(self,
-                 version=None,
+                 version='0.0',
                  root_dir='data',
                  download=False,
                  split_scheme='official',
