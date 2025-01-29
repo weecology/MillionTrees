@@ -146,12 +146,12 @@ class TreePolygonsDataset(MillionTreesDataset):
         self.metrics = {
             "accuracy":
                 MaskAccuracy(geometry_name=self.geometry_name,
-                                  score_threshold=self.eval_score_threshold,
-                                  metric="accuracy"),
+                             score_threshold=self.eval_score_threshold,
+                             metric="accuracy"),
             "recall":
                 MaskAccuracy(geometry_name=self.geometry_name,
-                                  score_threshold=self.eval_score_threshold,
-                                  metric="recall"),
+                             score_threshold=self.eval_score_threshold,
+                             metric="recall"),
         }
         self._eval_grouper = CombinatorialGrouper(dataset=self,
                                                   groupby_fields=(['source_id'
