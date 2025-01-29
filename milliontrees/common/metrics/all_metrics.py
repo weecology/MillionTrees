@@ -368,13 +368,17 @@ class DummyMetric(Metric):
     def worst(self, metrics):
         return minimum(metrics)
 
-class DetectionAccuracy(ElementwiseMetric):
-    """
-    Given a specific Intersection over union threshold,
-    determine the accuracy achieved for a one-class detector
-    """
 
-    def __init__(self, iou_threshold=0.3, score_threshold=0.1, name=None, geometry_name="boxes", metric="accuracy"):
+class DetectionAccuracy(ElementwiseMetric):
+    """Given a specific Intersection over union threshold, determine the
+    accuracy achieved for a one-class detector."""
+
+    def __init__(self,
+                 iou_threshold=0.3,
+                 score_threshold=0.1,
+                 name=None,
+                 geometry_name="boxes",
+                 metric="accuracy"):
         self.iou_threshold = iou_threshold
         self.score_threshold = score_threshold
         self.geometry_name = geometry_name
@@ -391,29 +395,28 @@ class DetectionAccuracy(ElementwiseMetric):
             gt_boxes = gt[self.geometry_name]
             pred_boxes = target_boxes[target_scores > self.score_threshold]
             if self.metric == "accuracy":
-                det_accuracy = self._accuracy(gt_boxes, pred_boxes, self.iou_threshold)
+                det_accuracy = self._accuracy(gt_boxes, pred_boxes,
+                                              self.iou_threshold)
             elif self.metric == "recall":
-                det_accuracy = self._recall(gt_boxes, pred_boxes, self.iou_threshold)
+                det_accuracy = self._recall(gt_boxes, pred_boxes,
+                                            self.iou_threshold)
             batch_results.append(det_accuracy)
 
         return torch.tensor(batch_results)
 
-    def _recall(self, src_boxes, pred_boxes,  iou_threshold):
+    def _recall(self, src_boxes, pred_boxes, iou_threshold):
         total_gt = len(src_boxes)
         total_pred = len(pred_boxes)
         if total_gt > 0 and total_pred > 0:
             # Define the matcher and distance matrix based on iou
-            matcher = Matcher(
-                iou_threshold,
-                iou_threshold,
-                allow_low_quality_matches=False)
-            match_quality_matrix = box_iou(
-                src_boxes,
-                pred_boxes)
+            matcher = Matcher(iou_threshold,
+                              iou_threshold,
+                              allow_low_quality_matches=False)
+            match_quality_matrix = box_iou(src_boxes, pred_boxes)
             results = matcher(match_quality_matrix)
             true_positive = torch.count_nonzero(results.unique() != -1)
             return true_positive / total_gt
-        
+
         elif total_gt == 0:
             if total_pred > 0:
                 return torch.tensor(0.)
@@ -422,28 +425,25 @@ class DetectionAccuracy(ElementwiseMetric):
         elif total_gt > 0 and total_pred == 0:
             return torch.tensor(0.)
 
-    def _accuracy(self, src_boxes, pred_boxes,  iou_threshold):
+    def _accuracy(self, src_boxes, pred_boxes, iou_threshold):
         total_gt = len(src_boxes)
         total_pred = len(pred_boxes)
         if total_gt > 0 and total_pred > 0:
             # Define the matcher and distance matrix based on iou
-            matcher = Matcher(
-                iou_threshold,
-                iou_threshold,
-                allow_low_quality_matches=False)
-            match_quality_matrix = box_iou(
-                src_boxes,
-                pred_boxes)
+            matcher = Matcher(iou_threshold,
+                              iou_threshold,
+                              allow_low_quality_matches=False)
+            match_quality_matrix = box_iou(src_boxes, pred_boxes)
             results = matcher(match_quality_matrix)
             true_positive = torch.count_nonzero(results.unique() != -1)
             matched_elements = results[results > -1]
             # in Matcher, a pred element can be matched only twice
             false_positive = (
                 torch.count_nonzero(results == -1) +
-                (len(matched_elements) - len(matched_elements.unique()))
-            )
+                (len(matched_elements) - len(matched_elements.unique())))
             false_negative = total_gt - true_positive
-            acc = true_positive / ( true_positive + false_positive + false_negative )
+            acc = true_positive / (true_positive + false_positive +
+                                   false_negative)
             return acc
         elif total_gt == 0:
             if total_pred > 0:
@@ -461,7 +461,11 @@ class KeypointAccuracy(ElementwiseMetric):
     """Given a specific Intersection over union threshold, determine the
     accuracy achieved for a one-class detector."""
 
-    def __init__(self, distance_threshold=0.1, score_threshold=0.1, name=None, geometry_name="y"):
+    def __init__(self,
+                 distance_threshold=0.1,
+                 score_threshold=0.1,
+                 name=None,
+                 geometry_name="y"):
         self.distance_threshold = distance_threshold
         self.score_threshold = score_threshold
         self.geometry_name = geometry_name
@@ -478,16 +482,19 @@ class KeypointAccuracy(ElementwiseMetric):
 
             gt_boxes = gt[self.geometry_name]
             pred_boxes = target_boxes[target_scores > self.score_threshold]
-            det_accuracy = self._accuracy(gt_boxes,pred_boxes,self.distance_threshold)
+            det_accuracy = self._accuracy(gt_boxes, pred_boxes,
+                                          self.distance_threshold)
             batch_results.append(det_accuracy)
 
         return torch.tensor(batch_results)
 
     def _point_nearness(self, src_keypoints, pred_keypoints):
-        distance = torch.cdist(src_keypoints, pred_keypoints, p=2)
+        distance = torch.cdist(src_keypoints.float(),
+                               pred_keypoints.float(),
+                               p=2)
 
         # Inverson of distance to get relative distance
-        relative_distance = 1/distance
+        relative_distance = 1 / distance
 
         return relative_distance
 
@@ -499,7 +506,8 @@ class KeypointAccuracy(ElementwiseMetric):
             matcher = Matcher(distance_threshold,
                               distance_threshold,
                               allow_low_quality_matches=False)
-            match_quality_matrix = self._point_nearness(src_keypoints, pred_keypoints)
+            match_quality_matrix = self._point_nearness(src_keypoints,
+                                                        pred_keypoints)
             results = matcher(match_quality_matrix)
             true_positive = torch.count_nonzero(results.unique() != -1)
             matched_elements = results[results > -1]

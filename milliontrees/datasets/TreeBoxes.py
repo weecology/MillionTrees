@@ -14,6 +14,7 @@ from milliontrees.common.metrics.all_metrics import DetectionAccuracy
 from PIL import Image
 from albumentations.pytorch import ToTensorV2
 
+
 class TreeBoxesDataset(MillionTreesDataset):
     """The TreeBoxes dataset is a collection of tree annotations annotated as
     four pointed bounding boxes.
@@ -63,9 +64,11 @@ class TreeBoxesDataset(MillionTreesDataset):
             'compressed_size':
                 5940337
         },
-        "0.1":{
-            'download_url':"https://data.rc.ufl.edu/pub/ewhite/TreeBoxes_v0.1.zip",
-            'compressed_size': 3476300
+        "0.1": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/TreeBoxes_v0.1.zip",
+            'compressed_size':
+                3476300
         }
     }
 
@@ -82,7 +85,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.geometry_name = geometry_name
         self.eval_score_threshold = eval_score_threshold
         self.image_size = image_size
-        
+
         if self._split_scheme not in ['official', 'random']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
@@ -109,16 +112,20 @@ class TreeBoxesDataset(MillionTreesDataset):
             'id_test': 'Test (ID/Cis)'
         }
 
-        unique_files = df.drop_duplicates(subset=['filename'], inplace=False).reset_index(drop=True)
-        unique_files['split_id'] = unique_files['split'].apply(lambda x: self._split_dict[x])
+        unique_files = df.drop_duplicates(subset=['filename'],
+                                          inplace=False).reset_index(drop=True)
+        unique_files['split_id'] = unique_files['split'].apply(
+            lambda x: self._split_dict[x])
         self._split_array = unique_files['split_id'].values
 
         # Filenames
         self._input_array = unique_files.filename
-        
+
         # Create lookup table for which index to select for each filename
-        self._input_lookup = df.groupby('filename').apply(lambda x: x.index.values).to_dict()
-        self._y_array = df[["xmin", "ymin", "xmax", "ymax"]].values.astype("float32")
+        self._input_lookup = df.groupby('filename').apply(
+            lambda x: x.index.values).to_dict()
+        self._y_array = df[["xmin", "ymin", "xmax",
+                            "ymax"]].values.astype("float32")
 
         # Labels -> just 'Tree'
         self._n_classes = 1
@@ -137,7 +144,8 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         # Create dictionary for codes to names
         self._source_id_to_code = df.set_index('source_id')['source'].to_dict()
-        self._filename_id_to_code = df.set_index('filename_id')['filename'].to_dict()
+        self._filename_id_to_code = df.set_index(
+            'filename_id')['filename'].to_dict()
 
         # Location/group info
         n_groups = max(df['source_id']) + 1
@@ -145,15 +153,22 @@ class TreeBoxesDataset(MillionTreesDataset):
         assert len(np.unique(df['source_id'])) == self._n_groups
 
         # Metadata is at the image level
-        unique_sources = df[['filename_id', 'source_id']].drop_duplicates(subset="filename_id", inplace=False).reset_index(drop=True)
+        unique_sources = df[['filename_id', 'source_id']].drop_duplicates(
+            subset="filename_id", inplace=False).reset_index(drop=True)
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
-        self._metadata_fields = ['filename_id','source_id']
+        self._metadata_fields = ['filename_id', 'source_id']
 
         self._collate = TreeBoxesDataset._collate_fn
 
         self.metrics = {
-        "accuracy":DetectionAccuracy(geometry_name=self.geometry_name, score_threshold=self.eval_score_threshold, metric="accuracy"),
-        "recall":DetectionAccuracy(geometry_name=self.geometry_name, score_threshold=self.eval_score_threshold, metric="recall"),
+            "accuracy":
+                DetectionAccuracy(geometry_name=self.geometry_name,
+                                  score_threshold=self.eval_score_threshold,
+                                  metric="accuracy"),
+            "recall":
+                DetectionAccuracy(geometry_name=self.geometry_name,
+                                  score_threshold=self.eval_score_threshold,
+                                  metric="recall"),
         }
 
         # eval grouper
@@ -164,16 +179,15 @@ class TreeBoxesDataset(MillionTreesDataset):
         super().__init__(root_dir, download, split_scheme)
 
     def eval(self, y_pred, y_true, metadata):
-        """
-        The main evaluation metric, detection_acc_avg_dom,
-        measures the simple average of the detection accuracies
-        of each domain.
-        """
+        """The main evaluation metric, detection_acc_avg_dom, measures the
+        simple average of the detection accuracies of each domain."""
 
-        results= {}
+        results = {}
         results_str = ''
-        for metric in self.metrics:  
-            result, result_str = self.standard_group_eval(self.metrics[metric], self._eval_grouper, y_pred, y_true, metadata)
+        for metric in self.metrics:
+            result, result_str = self.standard_group_eval(
+                self.metrics[metric], self._eval_grouper, y_pred, y_true,
+                metadata)
             results[metric] = result
             results_str += result_str
 
@@ -187,7 +201,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         detection_acc_avg_dom = np.array(detection_accs).mean()
         results['detection_acc_avg_dom'] = detection_acc_avg_dom
         results_str = f'Average detection_acc across source: {detection_acc_avg_dom:.3f}\n' + results_str
-        
+
         return results, results_str
 
     def get_input(self, idx):
@@ -198,31 +212,35 @@ class TreeBoxesDataset(MillionTreesDataset):
             - x (np.ndarray): Input features of the idx-th data point
         """
         # All images are in the images folder
-        img_path = os.path.join(self._data_dir / 'images' / self._input_array[idx])
+        img_path = os.path.join(self._data_dir / 'images' /
+                                self._input_array[idx])
         img = Image.open(img_path)
-        img = np.array(img.convert('RGB'))/255
+        img = np.array(img.convert('RGB')) / 255
         img = np.array(img, dtype=np.float32)
 
         return img
 
     @staticmethod
     def _collate_fn(batch):
-        """
-        Stack x (batch[1]) and metadata (batch[0]), but not y.
-        originally, batch = (item1, item2, item3, item4)
-        after zip, batch = [(item1[0], item2[0], ..), ..]
+        """Stack x (batch[1]) and metadata (batch[0]), but not y.
+
+        originally, batch = (item1, item2, item3, item4) after zip,
+        batch = [(item1[0], item2[0], ..), ..]
         """
         batch = list(zip(*batch))
         batch[1] = torch.stack(batch[1])
         batch[0] = torch.stack(batch[0])
         batch[2] = list(batch[2])
-        
+
         return tuple(batch)
-    
+
     def _transform_(self):
         transform = A.Compose([
             A.Resize(height=self.image_size, width=self.image_size, p=1.0),
             ToTensorV2()
-            ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], clip=True))
-        
+        ],
+                              bbox_params=A.BboxParams(format='pascal_voc',
+                                                       label_fields=['labels'],
+                                                       clip=True))
+
         return transform

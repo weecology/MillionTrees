@@ -130,11 +130,12 @@ def test_TreeBoxes_eval(dataset, pred_tensor):
     eval_results, eval_string = dataset.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=test_dataset.metadata_array)
 
     if pred_tensor == [[134, 156, 313, 336]]:
-        # One image is blank, and in the other one of the boxes is correct, the other is not. Averaged over 2 images = 0.25
-        assert eval_results["detection_acc_avg"] == 0.25
+        # One image is 0.5, and in the other one of the boxes is correct. Averaged over 2 images = 0.75
+        assert eval_results["accuracy"]["detection_accuracy_avg"] == 0.75
 
     assert len(eval_results) 
-    assert "detection_acc_avg" in eval_results.keys()
+    assert "accuracy" in eval_results.keys()
+    assert "recall" in eval_results.keys()
 
 # Test structure with real annotation data to ensure format is correct
 # Do not run on github actions, long running.

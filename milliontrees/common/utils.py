@@ -72,11 +72,14 @@ def get_counts(g, n_groups):
     Returns:
         - counts (ndarray): An array of length n_groups, denoting the count of each group.
     """
-    unique_groups, unique_counts = torch.unique(g, sorted=False, return_counts=True)
+    unique_groups, unique_counts = torch.unique(g,
+                                                sorted=False,
+                                                return_counts=True)
     counts = torch.zeros(n_groups, device=g.device)
     counts[unique_groups] = unique_counts.float()
-    
+
     return counts
+
 
 def avg_over_groups(v, g, n_groups):
     """
@@ -89,18 +92,18 @@ def avg_over_groups(v, g, n_groups):
     """
     assert v.device == g.device
     assert v.numel() == g.numel()
-    
+
     group_count = get_counts(g, n_groups)
     group_sum = torch.zeros(n_groups, device=v.device)
-    
+
     for i in range(n_groups):
         mask = (g == i)
         if mask.any():
             group_sum[i] = v[mask].sum()
-    
+
     group_avgs = group_sum / group_count
     group_avgs[group_count == 0] = float('nan')
-    
+
     return group_avgs, group_count
 
 
