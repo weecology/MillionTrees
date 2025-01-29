@@ -37,7 +37,7 @@ jobs:
           pip install -r requirements.txt
           
       - name: Run pytest for everything but test_polygons
-        run: pytest -v --ignore= tests/test_polygons.py
+        run: pytest -v --ignore-glob="*Polygons*"
 
       - name: Check style
         run: yapf -d --recursive milliontrees/
