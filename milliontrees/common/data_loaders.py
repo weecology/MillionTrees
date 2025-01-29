@@ -34,7 +34,9 @@ def get_train_loader(loader,
         - data loader (DataLoader): Data loader.
     """
     if isinstance(dataset, MillionTreesDataset):
-        print("Warning: You are loading the entire dataset. Consider using dataset.get_subset('train') for a portion of the dataset if intended.")
+        print(
+            "Warning: You are loading the entire dataset. Consider using dataset.get_subset('train') for a portion of the dataset if intended."
+        )
     if loader == 'standard':
         if uniform_over_groups is None or not uniform_over_groups:
 
@@ -80,7 +82,7 @@ def get_train_loader(loader,
                                      n_groups_per_batch=n_groups_per_batch,
                                      uniform_over_groups=uniform_over_groups,
                                      distinct_groups=distinct_groups)
-        
+
         return DataLoader(dataset,
                           shuffle=None,
                           sampler=None,

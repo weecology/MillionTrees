@@ -4,6 +4,7 @@ import time
 import torch
 import numpy as np
 
+
 class MillionTreesDataset:
     """Shared dataset class for all MillionTrees datasets.
 
@@ -85,7 +86,8 @@ class MillionTreesDataset:
             split_idx = np.sort(
                 np.random.permutation(split_idx)[:num_to_retain])
 
-        return MillionTreesSubset(self, split_idx, transform, self.geometry_name)
+        return MillionTreesSubset(self, split_idx, transform,
+                                  self.geometry_name)
 
     def check_init(self):
         """Convenience function to check that the WILDSDataset is properly
@@ -95,8 +97,8 @@ class MillionTreesDataset:
             '_y_array', '_y_size', '_metadata_fields', '_metadata_array'
         ]
         for attr_name in required_attrs:
-            assert hasattr(self,
-                           attr_name), f'MillionTreesDataset is missing {attr_name}.'
+            assert hasattr(
+                self, attr_name), f'MillionTreesDataset is missing {attr_name}.'
 
         # Check that data directory exists
         if not os.path.exists(self.data_dir):
@@ -110,8 +112,10 @@ class MillionTreesDataset:
         assert 'val' in self.split_dict
 
         # Check the form of the required arrays
-        assert isinstance(self.y_array, np.ndarray) or isinstance(self.y_array, list), 'y_array must be a numpy array or list'
-        assert isinstance(self.metadata_array, torch.Tensor), 'metadata_array must be a torch tensor'
+        assert isinstance(self.y_array, np.ndarray) or isinstance(
+            self.y_array, list), 'y_array must be a numpy array or list'
+        assert isinstance(self.metadata_array,
+                          torch.Tensor), 'metadata_array must be a torch tensor'
 
         # Check that dimensions match
         assert len(self._input_array) == len(self.metadata_array)
@@ -461,7 +465,10 @@ class MillionTreesDataset:
 class MillionTreesSubset(MillionTreesDataset):
 
     def __init__(self, dataset, indices, transform=None, geometry_name="y"):
-        """This acts like `torch.utils.data.Subset`, but on `milliontreesDatasets`. We
+        """This acts like `torch.utils.data.Subset`, but on
+        `milliontreesDatasets`.
+
+        We
         pass in `transform` (which is used for data augmentation) explicitly
         because it can potentially vary on the training vs. test subsets.
         """
@@ -479,18 +486,16 @@ class MillionTreesSubset(MillionTreesDataset):
 
         if transform is None:
             self.transform = dataset._transform_()
-        else: 
+        else:
             self.transform = transform
 
     def __getitem__(self, idx):
         metadata, x, targets = self.dataset[self.indices[idx]]
-        
+
         if self._dataset_name == 'TreeBoxes':
-            augmented = self.transform(
-                image=x,
-                bboxes=targets[self.geometry_name],
-                labels=targets["labels"]
-            )
+            augmented = self.transform(image=x,
+                                       bboxes=targets[self.geometry_name],
+                                       labels=targets["labels"])
             y = torch.from_numpy(augmented["bboxes"]).float()
 
         elif self._dataset_name == 'TreePoints':
@@ -503,19 +508,18 @@ class MillionTreesSubset(MillionTreesDataset):
 
         else:
             masks = [mask for mask in targets[self.geometry_name]]
-            augmented = self.transform(
-                image=x,
-                masks=masks,
-                bboxes=targets["bboxes"],
-                labels=targets["labels"])
-            
+            augmented = self.transform(image=x,
+                                       masks=masks,
+                                       bboxes=targets["bboxes"],
+                                       labels=targets["labels"])
+
             y = augmented['masks']
             y = torch.stack(y, dim=0)
             bboxes = augmented['bboxes']
 
         x = augmented['image']
         labels = torch.from_numpy(np.array(augmented["labels"]))
-        
+
         # If image has no annotations, set zeros
         if len(y) == 0:
             if self._dataset_name == 'TreeBoxes':
@@ -526,10 +530,14 @@ class MillionTreesSubset(MillionTreesDataset):
                 bboxes = torch.zeros(0, 4)
 
         if self._dataset_name == 'TreePolygons':
-            targets = {self.geometry_name: y, "labels": labels,"bboxes": bboxes}
+            targets = {
+                self.geometry_name: y,
+                "labels": labels,
+                "bboxes": bboxes
+            }
         else:
             targets = {self.geometry_name: y, "labels": labels}
-        
+
         return metadata, x, targets
 
     def __len__(self):

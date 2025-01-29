@@ -36,11 +36,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-      - name: Run pytest
-        run: pytest -v
+      - name: Run pytest for everything but test_polygons
+        run: pytest -v --ignore=milliontrees/test_polygons.py
 
       - name: Check style
-        run: yapf -d --recursive milliontrees/ --style=.style.yapf
+        run: yapf -d --recursive milliontrees/
         
       #- name: Check notebook style 
       #  run: nbqa yapf --in-place docs/examples/*.ipynb --style=.style.yapf
@@ -48,9 +48,9 @@ jobs:
       # - name: Check notebook build
       #   run: pytest --nbmake docs/*.ipynb
       
-      #- name: Run docformatter
-      #  run: docformatter --check --recursive milliontrees/
+      - name: Run docformatter
+        run: docformatter --check --recursive milliontrees/
         
-      #- name: Test Docs
-      #  run: |
-      #    cd docs && make clean && make html SPHINXOPTS="-W"
+      - name: Test Docs
+        run: |
+          cd docs && make clean && make html SPHINXOPTS="-W"

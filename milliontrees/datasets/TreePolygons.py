@@ -15,6 +15,7 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import torch
 
+
 class TreePolygonsDataset(MillionTreesDataset):
     """The TreePolygons dataset is a collection of tree annotations annotated
     as multi-point polygons locations.
@@ -44,10 +45,12 @@ class TreePolygonsDataset(MillionTreesDataset):
             'compressed_size':
                 17112645
         },
-        "0.1":{
-            'download_url':"https://data.rc.ufl.edu/pub/ewhite/TreePolygons_v0.1.zip",
-            'compressed_size': 40277152
-    }
+        "0.1": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/TreePolygons_v0.1.zip",
+            'compressed_size':
+                40277152
+        }
     }
 
     def __init__(self,
@@ -62,7 +65,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name
         self.image_size = image_size
-        
+
         if self._split_scheme != 'official':
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
@@ -88,18 +91,21 @@ class TreePolygonsDataset(MillionTreesDataset):
             'id_test': 'Test (ID/Cis)'
         }
 
-        unique_files = df.drop_duplicates(subset=['filename'], inplace=False).reset_index(drop=True)
-        unique_files['split_id'] = unique_files['split'].apply(lambda x: self._split_dict[x])
+        unique_files = df.drop_duplicates(subset=['filename'],
+                                          inplace=False).reset_index(drop=True)
+        unique_files['split_id'] = unique_files['split'].apply(
+            lambda x: self._split_dict[x])
         self._split_array = unique_files['split_id'].values
 
         df['split_id'] = df['split'].apply(lambda x: self._split_dict[x])
         self._split_array = df['split_id'].values
-        
+
         # Filenames
         self._input_array = unique_files.filename
-        
+
         # Create lookup table for which index to select for each filename
-        self._input_lookup = df.groupby('filename').apply(lambda x: x.index.values).to_dict()
+        self._input_lookup = df.groupby('filename').apply(
+            lambda x: x.index.values).to_dict()
 
         # Convert each polygon to shapely objects
         df['polygon'] = df['polygon'].apply(from_wkt)
@@ -120,7 +126,8 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         # Create dictionary for codes to names
         self._source_id_to_code = df.set_index('source_id')['source'].to_dict()
-        self._filename_id_to_code = df.set_index('filename_id')['filename'].to_dict()
+        self._filename_id_to_code = df.set_index(
+            'filename_id')['filename'].to_dict()
 
         # Location/group info
         n_groups = max(df['source_id']) + 1
@@ -128,16 +135,18 @@ class TreePolygonsDataset(MillionTreesDataset):
         assert len(np.unique(df['source_id'])) == self._n_groups
 
         # Metadata is at the image level
-        unique_sources = df[['filename_id', 'source_id']].drop_duplicates(subset="filename_id", inplace=False).reset_index(drop=True)
+        unique_sources = df[['filename_id', 'source_id']].drop_duplicates(
+            subset="filename_id", inplace=False).reset_index(drop=True)
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
-        self._metadata_fields = ['filename_id','source_id']
+        self._metadata_fields = ['filename_id', 'source_id']
 
         # eval grouper
         self._eval_grouper = CombinatorialGrouper(dataset=self,
-                                                  groupby_fields=(['source_id']))
+                                                  groupby_fields=(['source_id'
+                                                                  ]))
 
         super().__init__(root_dir, download, split_scheme)
-    
+
     def __getitem__(self, idx):
         """
         Args:
@@ -154,19 +163,28 @@ class TreePolygonsDataset(MillionTreesDataset):
         x = self.get_input(idx)
         y_indices = self._input_lookup[self._input_array[idx]]
         y_polygons = [self._y_array[i] for i in y_indices]
-        mask_imgs = [self.create_polygon_mask(x.shape[:2], y_polygon) for y_polygon in y_polygons]
+        mask_imgs = [
+            self.create_polygon_mask(x.shape[:2], y_polygon)
+            for y_polygon in y_polygons
+        ]
         masks = torch.stack([Mask(mask_img) for mask_img in mask_imgs])
-        bboxes = BoundingBoxes(data=masks_to_boxes(masks), format='xyxy', canvas_size=x.shape[:2])
+        bboxes = BoundingBoxes(data=masks_to_boxes(masks),
+                               format='xyxy',
+                               canvas_size=x.shape[:2])
         masks = np.stack([mask.numpy() for mask in masks])
 
         metadata = self._metadata_array[idx]
-        targets = {"y": masks, "bboxes": bboxes, "labels": np.zeros(len(masks), dtype=int)}
+        targets = {
+            "y": masks,
+            "bboxes": bboxes,
+            "labels": np.zeros(len(masks), dtype=int)
+        }
 
         return metadata, x, targets
 
     def create_polygon_mask(self, image_size, vertices):
-        """
-        Create a grayscale image with a white polygonal area on a black background.
+        """Create a grayscale image with a white polygonal area on a black
+        background.
 
         Parameters:
         - image_size (tuple): A tuple representing the dimensions (width, height) of the image.
@@ -226,7 +244,6 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         return results, results_str
 
-
     def get_input(self, idx):
         """
         Args:
@@ -235,17 +252,21 @@ class TreePolygonsDataset(MillionTreesDataset):
             - x (np.ndarray): Input features of the idx-th data point
         """
         # All images are in the images folder
-        img_path = os.path.join(self._data_dir / 'images' / self._input_array[idx])
+        img_path = os.path.join(self._data_dir / 'images' /
+                                self._input_array[idx])
         img = Image.open(img_path)
-        img = np.array(img.convert('RGB'))/255
+        img = np.array(img.convert('RGB')) / 255
         img = np.array(img, dtype=np.float32)
 
         return img
-    
+
     def _transform_(self):
         transform = A.Compose([
             A.Resize(height=self.image_size, width=self.image_size, p=1.0),
             ToTensorV2()
-            ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], clip=True))
-        
+        ],
+                              bbox_params=A.BboxParams(format='pascal_voc',
+                                                       label_fields=['labels'],
+                                                       clip=True))
+
         return transform
