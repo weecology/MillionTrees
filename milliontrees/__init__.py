@@ -11,10 +11,6 @@ additional_datasets = []
 
 supported_datasets = benchmark_datasets + additional_datasets
 
-unlabeled_datasets = [
-    'NEON',
-]
+unlabeled_datasets = []
 
-unlabeled_splits = [
-    'train_unlabeled', 'val_unlabeled', 'test_unlabeled', 'extra_unlabeled'
-]
+unlabeled_splits = []

@@ -46,5 +46,14 @@ Forests underlie many ecosystem services, agricultural systems and urban plannin
    developer
    submission_guidelines
    source/modules.rst
-   examples/Datasets.ipynb
+
+from .TreeBoxes import TreeBoxesDataset
+from .TreePoints import TreePointsDataset
+from .TreePolygons import TreePolygonsDataset
+
+__all__ = [
+    'TreeBoxesDataset',
+    'TreePointsDataset',
+    'TreePolygonsDataset'
+]
 

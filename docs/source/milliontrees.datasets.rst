@@ -1,14 +1,6 @@
 milliontrees.datasets package
 =============================
 
-Subpackages
------------
-
-.. toctree::
-   :maxdepth: 4
-
-   milliontrees.datasets.unlabeled
-
 Submodules
 ----------
 
