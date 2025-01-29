@@ -6,6 +6,7 @@ import pytest
 import os
 import pandas as pd
 import numpy as np
+from shapely import from_wkt
 
 # Check if running on hipergator
 if os.path.exists("/orange"):
@@ -101,19 +102,27 @@ def test_TreePolygons_eval(dataset):
     all_y_pred = []
     all_y_true = []
     all_metadata = []
+    
     # Get predictions for the full test set
     for metadata, x, y_true in test_loader:
-        y_pred = [{'y': torch.tensor([[134.4, 156.8]]), 'label': torch.tensor([0]), 'score': torch.tensor([0.54])} for _ in range(x.shape[0])]
+        # Construct the mask for true positive for image1.jpg
+        polygon = from_wkt("POLYGON((10 15, 50 15, 50 55, 10 55, 10 15))")
+        pred_mask = dataset.create_polygon_mask(vertices=polygon, image_size=(448, 448))
+        pred_box = torch.tensor([10, 15, 50, 55]).unsqueeze(0)
+        batch = {'y': torch.tensor([pred_mask]), 'bboxes':pred_box,'labels': torch.tensor([0]), 'scores': torch.tensor([0.54])}
+        
         # Accumulate y_true, y_pred, metadata
-        all_y_pred.append(y_pred)
+        all_y_pred.append(batch)
         all_y_true.append(y_true)
-        all_metadata.append(metadata)
 
     # Evaluate
-    eval_results, eval_string = dataset.eval(all_y_pred, all_y_true, all_metadata)
-    eval_results["keypoint_acc_avg"] == 0.5
+    eval_results, eval_string = dataset.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=test_dataset.metadata_array)
+    
+    # The above example has one true positive and two false negatives = 0.33 accuracy and recall
+    eval_results["accuracy"]["detection_acc_avg"] == 0.33
     assert len(eval_results) 
-    assert "keypoint_acc_avg" in eval_results.keys()
+    assert "accuracy" in eval_results.keys()
+    assert "recall" in eval_results.keys()
 
 # Test structure with real annotation data to ensure format is correct
 # Do not run on github actions, long running.

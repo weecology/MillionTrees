@@ -529,3 +529,93 @@ class KeypointAccuracy(ElementwiseMetric):
 
     def worst(self, metrics):
         return minimum(metrics)
+
+class MaskAccuracy(ElementwiseMetric):
+    """Given a specific Intersection over union threshold, determine the
+    accuracy achieved for a Mask R-CNN detector."""
+
+    def __init__(self,
+                    iou_threshold=0.5,
+                    score_threshold=0.1,
+                    name=None,
+                    geometry_name="masks",
+                    metric="accuracy"):
+        self.iou_threshold = iou_threshold
+        self.score_threshold = score_threshold
+        self.geometry_name = geometry_name
+
+        if name is None:
+            name = "mask_acc"
+        super().__init__(name=name)
+
+    def _compute_element_wise(self, y_pred, y_true):
+        batch_results = []
+        for gt, target in zip(y_true, y_pred):
+            target_masks = target[self.geometry_name]
+            target_scores = target["scores"]
+
+            gt_masks = gt[self.geometry_name]
+            pred_masks = target_masks[target_scores > self.score_threshold]
+            det_accuracy = self._accuracy(gt_masks, pred_masks,
+                                            self.iou_threshold)
+            batch_results.append(det_accuracy)
+
+        return torch.tensor(batch_results)
+
+    def _mask_iou(self, src_masks, pred_masks):
+        intersection = (src_masks & pred_masks).float().sum((1, 2))
+        union = (src_masks | pred_masks).float().sum((1, 2))
+        iou = intersection / union
+        return iou
+
+    def _recall(self, src_masks, pred_masks, iou_threshold):
+        total_gt = len(src_masks)
+        total_pred = len(pred_masks)
+        if total_gt > 0 and total_pred > 0:
+            # Define the matcher and distance matrix based on iou
+            matcher = Matcher(iou_threshold,
+                                iou_threshold,
+                                allow_low_quality_matches=False)
+            match_quality_matrix = self._mask_iou(src_masks, pred_masks)
+            results = matcher(match_quality_matrix)
+            true_positive = torch.count_nonzero(results.unique() != -1)
+            return true_positive / total_gt
+
+        elif total_gt == 0:
+            if total_pred > 0:
+                return torch.tensor(0.)
+            else:
+                return torch.tensor(1.)
+        elif total_gt > 0 and total_pred == 0:
+            return torch.tensor(0.)
+        
+    def _accuracy(self, src_masks, pred_masks, iou_threshold):
+        total_gt = len(src_masks)
+        total_pred = len(pred_masks)
+        if total_gt > 0 and total_pred > 0:
+            # Define the matcher and distance matrix based on iou
+            matcher = Matcher(iou_threshold,
+                                iou_threshold,
+                                allow_low_quality_matches=False)
+            match_quality_matrix = self._mask_iou(src_masks, pred_masks)
+            results = matcher(match_quality_matrix)
+            true_positive = torch.count_nonzero(results.unique() != -1)
+            matched_elements = results[results > -1]
+            # in Matcher, a pred element can be matched only twice
+            false_positive = (
+                torch.count_nonzero(results == -1) +
+                (len(matched_elements) - len(matched_elements.unique())))
+            false_negative = total_gt - true_positive
+            acc = true_positive / (true_positive + false_positive +
+                                    false_negative)
+            return acc
+        elif total_gt == 0:
+            if total_pred > 0:
+                return torch.tensor(0.)
+            else:
+                return torch.tensor(1.)
+        elif total_gt > 0 and total_pred == 0:
+            return torch.tensor(0.)
+
+    def worst(self, metrics):
+        return minimum(metrics)
