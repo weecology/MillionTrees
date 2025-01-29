@@ -8,7 +8,7 @@ import numpy as np
 from shapely import from_wkt
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
-from milliontrees.common.metrics.all_metrics import Accuracy, Recall, F1
+from milliontrees.common.metrics.all_metrics import MaskAccuracy
 from torchvision.tv_tensors import BoundingBoxes, Mask
 from torchvision.ops import masks_to_boxes
 import albumentations as A
@@ -59,12 +59,14 @@ class TreePolygonsDataset(MillionTreesDataset):
                  download=False,
                  split_scheme='official',
                  geometry_name='y',
+                 eval_score_threshold=0.5,
                  image_size=448):
 
         self._version = version
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name
         self.image_size = image_size
+        self.eval_score_threshold = eval_score_threshold
 
         if self._split_scheme != 'official':
             raise ValueError(
@@ -141,6 +143,16 @@ class TreePolygonsDataset(MillionTreesDataset):
         self._metadata_fields = ['filename_id', 'source_id']
 
         # eval grouper
+        self.metrics = {
+            "accuracy":
+                MaskAccuracy(geometry_name=self.geometry_name,
+                                  score_threshold=self.eval_score_threshold,
+                                  metric="accuracy"),
+            "recall":
+                MaskAccuracy(geometry_name=self.geometry_name,
+                                  score_threshold=self.eval_score_threshold,
+                                  metric="recall"),
+        }
         self._eval_grouper = CombinatorialGrouper(dataset=self,
                                                   groupby_fields=(['source_id'
                                                                   ]))
@@ -188,8 +200,7 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         Parameters:
         - image_size (tuple): A tuple representing the dimensions (width, height) of the image.
-        - vertices (list): A list of tuples, each containing the x, y coordinates of a vertex
-                            of the polygon. Vertices should be in clockwise or counter-clockwise order.
+        - vertices (shapely.geometry.Polygon): A shapely Polygon object representing the polygon.
 
         Returns:
         - mask_img (np.ndarray): A numpy array representing the image with the drawn polygon.
@@ -210,37 +221,29 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         return mask_img
 
-    def eval(self, y_pred, y_true, metadata, prediction_fn=None):
-        """Computes all evaluation metrics.
-
-        Args:
-            - y_pred (Tensor): Predictions from a model. By default, they are predicted labels (LongTensor).
-                               But they can also be other model outputs such that prediction_fn(y_pred)
-                               are predicted labels.
-            - y_true (LongTensor): Ground-truth labels
-            - metadata (Tensor): Metadata
-            - prediction_fn (function): A function that turns y_pred into predicted labels
-        Output:
-            - results (dictionary): Dictionary of evaluation metrics
-            - results_str (str): String summarizing the evaluation metrics
-        """
-        metrics = [
-            Accuracy(prediction_fn=prediction_fn),
-            Recall(prediction_fn=prediction_fn, average='macro'),
-            F1(prediction_fn=prediction_fn, average='macro'),
-        ]
+    def eval(self, y_pred, y_true, metadata):
+        """The main evaluation metric, detection_acc_avg_dom, measures the
+        simple average of the detection accuracies of each domain."""
 
         results = {}
+        results_str = ''
+        for metric in self.metrics:
+            result, result_str = self.standard_group_eval(
+                self.metrics[metric], self._eval_grouper, y_pred, y_true,
+                metadata)
+            results[metric] = result
+            results_str += result_str
 
-        for i in range(len(metrics)):
-            results.update({
-                **metrics[i].compute(y_pred, y_true),
-            })
-
-        results_str = (
-            f"Average acc: {results[metrics[0].agg_metric_field]:.3f}\n"
-            f"Recall macro: {results[metrics[1].agg_metric_field]:.3f}\n"
-            f"F1 macro: {results[metrics[2].agg_metric_field]:.3f}\n")
+        detection_accs = []
+        for k, v in results["accuracy"].items():
+            if k.startswith('detection_acc_source:'):
+                d = k.split(':')[1]
+                count = results["accuracy"][f'source:{d}']
+                if count > 0:
+                    detection_accs.append(v)
+        detection_acc_avg_dom = np.array(detection_accs).mean()
+        results['detection_acc_avg_dom'] = detection_acc_avg_dom
+        results_str = f'Average detection_acc across source: {detection_acc_avg_dom:.3f}\n' + results_str
 
         return results, results_str
 

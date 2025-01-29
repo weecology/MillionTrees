@@ -176,7 +176,7 @@ class CombinatorialGrouper(Grouper):
             groups = metadata[:,
                               self.groupby_field_indices].long() @ self.factors
 
-        if return_counts:
+        if return_counts:   
             group_counts = get_counts(groups, self._n_groups)
             return groups, group_counts
         else:
