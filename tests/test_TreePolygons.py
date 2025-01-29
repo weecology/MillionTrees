@@ -119,7 +119,7 @@ def test_TreePolygons_eval(dataset):
     eval_results, eval_string = dataset.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=test_dataset.metadata_array)
     
     # The above example has one true positive and two false negatives = 0.33 accuracy and recall
-    eval_results["accuracy"]["detection_acc_avg"] == 0.33
+    eval_results["accuracy"]["mask_acc_avg"] == 0.33
     assert len(eval_results) 
     assert "accuracy" in eval_results.keys()
     assert "recall" in eval_results.keys()
