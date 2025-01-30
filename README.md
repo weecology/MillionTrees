@@ -3,14 +3,17 @@
 [![Version](https://img.shields.io/pypi/v/MillionTrees.svg)](https://pypi.python.org/pypi/MillionTrees)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/MillionTrees)](https://pypi.python.org/pypi/MillionTrees)
 
-
 # Overview
 
-The MillionTrees benchmark is designed to provie *open*, *reproducible* and *rigorous* evaluation of tree detection algorithms. The dataset currently holds X images, X annotations and X train/test evaluation splits. This repo is the python package for rapid data sharing and evaluation. We anticipate the dataset will be ready by spring 2025. 
+The MillionTrees benchmark is designed to provie *open*, *reproducible* and *rigorous* evaluation of tree detection algorithms. ]This repo is the python package for rapid data sharing and evaluation.
 
-## Current Status
+# Current status
 
-There are 3 datasets available for the MillionTrees benchmark:
+We are in the process of release public data, these are datasets that have previously been published and have a DOI. We will followup this release, likely with a 1.0 tag, of the previously unpublished parts of the dataset along with a scientific manuscript.
+
+# Dataloaders
+
+There are 3 datasets for the MillionTrees benchmark:
 
 * TreeBoxes: A dataset of 282,288 tree crowns from 9 sources.
 
