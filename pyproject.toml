@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=61", "setuptools-scm[toml]>=6.2.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "milliontrees"
+version = "1.5.1-dev0"
+description = "Benchmark dataset for Airborne Tree Machine Learning"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.8,<3.13"
+classifiers = [
+    "Development Status :: 6 - Mature",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Image Recognition"
+]
+
+[project.authors]
+name = "Ben Weinstein"
+email = "benweinstein@weecology.org"
+
+[[project.authors]]
+name = "Henry Senyondo"
+email = "henrykironde@gmail.com"
+
+[[project.authors]]
+name = "Ethan White"
+email = "ethan@weecology.org"
+
+[project.urls]
+Documentation = "http://milliontrees.readthedocs.io/en/latest/"
+Source = "https://github.com/Weecology/MillionTrees"
+Contributors = "https://github.com/Weecology/MillionTrees/graphs/contributors"
+
+[project.dependencies]
+dependencies = [
+    "numpy",
+    "pandas",
+    "pillow",
+    "torch",
+    "torchvision",
+    "tqdm",
+    "pytest",
+    "scikit-learn",
+    "shapely",
+    "bumpversion",
+    "yapf",
+    "sphinx",
+    "furo",
+    "sphinx_markdown_tables",
+    "myst_parser",
+    "albumentations",
+    "torchmetrics",
+    "docformatter"
+]
+
+[tool.setuptools.packages.find]
+where = ["milliontrees"]
