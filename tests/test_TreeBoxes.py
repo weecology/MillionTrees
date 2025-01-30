@@ -14,8 +14,8 @@ else:
 
 # Test structure without real annotation data to ensure format is correct
 def test_TreeBoxes_generic(dataset):
-    dataset = TreeBoxesDataset(download=False, root_dir=dataset) 
-    for metadata, image, targets in dataset:
+    ds = TreeBoxesDataset(download=False, root_dir=dataset,version="0.0") 
+    for metadata, image, targets in ds:
         boxes, labels = targets["y"], targets["labels"]
         assert image.shape == (100, 100, 3)
         assert image.dtype == np.float32
@@ -25,7 +25,7 @@ def test_TreeBoxes_generic(dataset):
         assert metadata.shape == (2,)
         break
 
-    train_dataset = dataset.get_subset("train")
+    train_dataset = ds.get_subset("train")
      
     for metadata, image, targets in train_dataset:
         boxes, labels = targets["y"], targets["labels"]
@@ -40,8 +40,8 @@ def test_TreeBoxes_generic(dataset):
 
 # confirm that we can change target name is needed
 def test_get_dataset_with_geometry_name(dataset):
-    dataset = TreeBoxesDataset(download=False, root_dir=dataset, geometry_name="boxes") 
-    train_dataset = dataset.get_subset("train")
+    ds = TreeBoxesDataset(download=False, root_dir=dataset, geometry_name="boxes",version="0.0") 
+    train_dataset = ds.get_subset("train")
 
     for metadata, image, targets in train_dataset:
         boxes, labels = targets["boxes"], targets["labels"]
@@ -62,13 +62,12 @@ def test_get_dataset_with_geometry_name(dataset):
         all_y_pred.extend(y_pred)
 
     # Concat and Evaluate
-    eval_results, eval_string = dataset.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=train_dataset.metadata_array)
-
+    eval_results, eval_string = ds.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=train_dataset.metadata_array)
 
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_get_train_dataloader(dataset, batch_size):
-    dataset = TreeBoxesDataset(download=False, root_dir=dataset) 
-    train_dataset = dataset.get_subset("train")
+    ds = TreeBoxesDataset(download=False, root_dir=dataset, version="0.0") 
+    train_dataset = ds.get_subset("train")
     train_loader = get_train_loader('standard', train_dataset, batch_size=batch_size)
     for metadata, x, targets in train_loader:
         y = targets[0]["y"]
@@ -81,8 +80,8 @@ def test_get_train_dataloader(dataset, batch_size):
         break
 
 def test_get_test_dataloader(dataset):
-    dataset = TreeBoxesDataset(download=False, root_dir=dataset) 
-    test_dataset = dataset.get_subset("test")
+    ds = TreeBoxesDataset(download=False, root_dir=dataset,version="0.0") 
+    test_dataset = ds.get_subset("test")
     
     for metadata, image, targets in test_dataset:
         boxes, labels = targets["y"], targets["labels"]
@@ -97,7 +96,7 @@ def test_get_test_dataloader(dataset):
     # Assert that test_dataset[0] == "image3.jpg"
     metadata, image, targets = test_dataset[0]
     assert metadata[1] == 1
-    assert dataset._filename_id_to_code[int(metadata[0])] == "image3.jpg"
+    assert ds._filename_id_to_code[int(metadata[0])] == "image3.jpg"
 
     test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
     for metadata, x, targets in test_loader:
@@ -112,8 +111,8 @@ def test_get_test_dataloader(dataset):
     
 @pytest.mark.parametrize("pred_tensor", [[[134, 156, 313, 336]], [[30, 70, 35, 75],[30, 20, 35, 55]]], ids=["single", "multiple"])
 def test_TreeBoxes_eval(dataset, pred_tensor):
-    dataset = TreeBoxesDataset(download=False, root_dir=dataset) 
-    test_dataset = dataset.get_subset("test")
+    ds = TreeBoxesDataset(download=False, root_dir=dataset,version="0.0") 
+    test_dataset = ds.get_subset("test")
     test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
 
     all_y_pred = []
@@ -127,7 +126,7 @@ def test_TreeBoxes_eval(dataset, pred_tensor):
         all_y_pred.extend(y_pred)
 
     # Concat and Evaluate
-    eval_results, eval_string = dataset.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=test_dataset.metadata_array)
+    eval_results, eval_string = ds.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=test_dataset.metadata_array)
 
     if pred_tensor == [[134, 156, 313, 336]]:
         # One image is 0.5, and in the other one of the boxes is correct. Averaged over 2 images = 0.75
@@ -138,8 +137,8 @@ def test_TreeBoxes_eval(dataset, pred_tensor):
     assert "recall" in eval_results.keys()
 
 def test_TreeBoxes_download(tmpdir):
-    dataset = TreeBoxesDataset(download=True, root_dir=tmpdir)
-    train_dataset = dataset.get_subset("train")
+    ds = TreeBoxesDataset(download=True, root_dir=tmpdir, version="0.0")
+    train_dataset = ds.get_subset("train")
      
     for metadata, image, targets in train_dataset:
         boxes = targets["y"]

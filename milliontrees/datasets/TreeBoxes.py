@@ -73,13 +73,14 @@ class TreeBoxesDataset(MillionTreesDataset):
     }
 
     def __init__(self,
-                 version='0.0',
+                 version=None,
                  root_dir='data',
                  download=False,
                  split_scheme='official',
                  geometry_name='y',
                  eval_score_threshold=0.1,
                  image_size=448):
+        
         self._version = version
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name

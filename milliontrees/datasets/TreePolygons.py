@@ -54,7 +54,7 @@ class TreePolygonsDataset(MillionTreesDataset):
     }
 
     def __init__(self,
-                 version='0.0',
+                 version=None,
                  root_dir='data',
                  download=False,
                  split_scheme='official',
