@@ -63,3 +63,4 @@ https://milliontrees.idtrees.org/en/latest/datasets.html
 
 ## Acknowledgements
 The design of the MillionTrees benchmark was inspired by the [WILDS benchmark](https://github.com/p-lambda/wilds), and we are grateful to their work, as well as Sara Beery for suggesting the use of this template.
+
