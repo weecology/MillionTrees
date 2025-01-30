@@ -56,17 +56,10 @@ Once the installation is complete, you can use the MillionTrees package in your 
 
 # Datasets
 
-The MillionTrees package has ingested many contributed datasets and formatted them in a consistant fashion.
-
-| Geometry | Training Images | Training Annotations | Eval Images | Eval Annotations |
-|----------|-----------------|----------------------|-------------|------------------|
-| Point    |                 |                      |             |                  |
-| Polygon  |                 |                      |             |                  |
-| Box      |                 |                      |             |                  |
-
+Datasets are documented on ReadTheDocs with sample images overlayed with annotations.
+https://milliontrees.idtrees.org/en/latest/datasets.html
 
 # Citing MillionTrees
-
 
 ## Acknowledgements
 The design of the MillionTrees benchmark was inspired by the [WILDS benchmark](https://github.com/p-lambda/wilds), and we are grateful to their work, as well as Sara Beery for suggesting the use of this template.
