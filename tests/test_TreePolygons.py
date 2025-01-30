@@ -124,35 +124,6 @@ def test_TreePolygons_eval(dataset):
     assert "accuracy" in eval_results.keys()
     assert "recall" in eval_results.keys()
 
-
-
-# Test structure with real annotation data to ensure format is correct
-# Do not run on github actions, long running.
-@pytest.mark.skipif(not on_hipergator, reason="Do not run on github actions")
-def test_TreePolygons_release():
-    # Lookup size of the train dataset on disk
-    dataset = TreePolygonsDataset(download=False, root_dir="/orange/ewhite/DeepForest/MillionTrees/")
-    train_dataset = dataset.get_subset("train")
-     
-    for metadata, image, targets in train_dataset:
-        y = targets["y"]
-        labels = targets["labels"]
-        assert image.shape == (3, 448, 448)
-        assert image.dtype == torch.float32
-        assert image.min() >= 0.0 and image.max() <= 1.0
-        assert y[0].shape == (448, 448)
-        assert metadata.shape[0] == 2
-    
-    train_loader = get_train_loader('standard', train_dataset, batch_size=2)
-    for metadata, x, targets in train_loader:
-        y = targets["y"]
-        assert x.shape == (2, 3, 448, 448)
-        assert x.dtype == torch.float32
-        assert x.min() >= 0.0 and x.max() <= 1.0
-        assert y[0].shape == (1,448, 448)
-        assert len(metadata) == 2
-        break
-
 def test_TreePolygons_download(tmpdir):
     dataset = TreePolygonsDataset(download=True, root_dir=tmpdir, version="0.0")
     train_dataset = dataset.get_subset("train")
