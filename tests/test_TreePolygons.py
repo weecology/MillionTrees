@@ -16,8 +16,8 @@ else:
 
 # Test structure without real annotation data to ensure format is correct
 def test_TreePolygons_generic(dataset):
-    dataset = TreePolygonsDataset(download=False, root_dir=dataset) 
-    for metadata, image, targets in dataset:
+    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0") 
+    for metadata, image, targets in ds:
         masks = targets["y"]
         labels = targets["labels"]
         boxes = targets["bboxes"]
@@ -30,7 +30,7 @@ def test_TreePolygons_generic(dataset):
         assert metadata.shape == (2,)
         break
 
-    train_dataset = dataset.get_subset("train")
+    train_dataset = ds.get_subset("train")
      
     for metadata, image, targets in train_dataset:
         masks = targets["y"]
@@ -47,8 +47,8 @@ def test_TreePolygons_generic(dataset):
 
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_get_train_dataloader(dataset, batch_size):
-    dataset = TreePolygonsDataset(download=False, root_dir=dataset) 
-    train_dataset = dataset.get_subset("train")
+    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0") 
+    train_dataset = ds.get_subset("train")
     train_loader = get_train_loader('standard', train_dataset, batch_size=batch_size)
     for metadata, x, targets in train_loader:
         masks = targets["y"]
@@ -62,8 +62,8 @@ def test_get_train_dataloader(dataset, batch_size):
         break
 
 def test_get_test_dataloader(dataset):
-    dataset = TreePolygonsDataset(download=False, root_dir=dataset) 
-    test_dataset = dataset.get_subset("test")
+    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0") 
+    test_dataset = ds.get_subset("test")
     
     for metadata, image, targets in test_dataset:
         masks = targets["y"]
@@ -82,7 +82,7 @@ def test_get_test_dataloader(dataset):
     # Assert that test_dataset[0] == "image3.jpg"
     metadata, image, targets = test_dataset[0]
     assert metadata[1] == 1
-    assert dataset._filename_id_to_code[int(metadata[0])] == "image3.jpg"
+    assert ds._filename_id_to_code[int(metadata[0])] == "image3.jpg"
 
     test_loader = get_eval_loader('standard', test_dataset, batch_size=1)
     for metadata, x, targets in test_loader:
@@ -95,8 +95,8 @@ def test_get_test_dataloader(dataset):
         break
 
 def test_TreePolygons_eval(dataset):
-    dataset = TreePolygonsDataset(download=False, root_dir=dataset) 
-    test_dataset = dataset.get_subset("test")
+    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0") 
+    test_dataset = ds.get_subset("test")
     test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
 
     all_y_pred = []
@@ -107,7 +107,7 @@ def test_TreePolygons_eval(dataset):
     for metadata, x, y_true in test_loader:
         # Construct the mask for true positive for image1.jpg
         polygon = from_wkt("POLYGON((10 15, 50 15, 50 55, 10 55, 10 15))")
-        pred_mask = dataset.create_polygon_mask(vertices=polygon, image_size=(448, 448))
+        pred_mask = ds.create_polygon_mask(vertices=polygon, image_size=(448, 448))
         pred_box = torch.tensor([10, 15, 50, 55]).unsqueeze(0)
         batch = {'y': torch.tensor([pred_mask]), 'bboxes':pred_box,'labels': torch.tensor([0]), 'scores': torch.tensor([0.54])}
         
@@ -116,7 +116,7 @@ def test_TreePolygons_eval(dataset):
         all_y_true.append(y_true)
 
     # Evaluate
-    eval_results, eval_string = dataset.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=test_dataset.metadata_array)
+    eval_results, eval_string = ds.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=test_dataset.metadata_array)
     
     # The above example has one true positive and two false negatives = 0.33 accuracy and recall
     eval_results["accuracy"]["mask_acc_avg"] == 0.33
@@ -125,8 +125,8 @@ def test_TreePolygons_eval(dataset):
     assert "recall" in eval_results.keys()
 
 def test_TreePolygons_download(tmpdir):
-    dataset = TreePolygonsDataset(download=True, root_dir=tmpdir, version="0.0")
-    train_dataset = dataset.get_subset("train")
+    ds = TreePolygonsDataset(download=True, root_dir=tmpdir, version="0.0")
+    train_dataset = ds.get_subset("train")
      
     for metadata, image, targets in train_dataset:
         masks = targets["y"]

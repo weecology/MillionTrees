@@ -5,8 +5,8 @@ from milliontrees.common.data_loaders import get_train_loader
 
 import torch
 
-def test_TreePolygons_release():
-    dataset = TreePolygonsDataset(download=False, root_dir="/orange/ewhite/DeepForest/MillionTrees/")
+def test_TreePolygons_latest_release(tmpdir):
+    dataset = TreePolygonsDataset(download=True, root_dir=tmpdir)
     train_dataset = dataset.get_subset("train")
         
     for metadata, image, targets in train_dataset:
@@ -28,12 +28,12 @@ def test_TreePolygons_release():
         assert len(metadata) == 2
         break
 
-def test_TreePoints_release():
-    dataset = TreePointsDataset(download=False, root_dir="/orange/ewhite/DeepForest/MillionTrees/")
+def test_TreePoints_latest_release(tmpdir):
+    dataset = TreePointsDataset(download=True, root_dir=tmpdir)
     train_dataset = dataset.get_subset("train")
     
     for metadata, image, targets in train_dataset:
-        points = targets["points"]
+        points = targets["y"]
         labels = targets["labels"]
         assert image.shape == (3, 448, 448)
         assert image.dtype == torch.float32
@@ -43,7 +43,7 @@ def test_TreePoints_release():
     
     train_loader = get_train_loader('standard', train_dataset, batch_size=2)
     for metadata, x, targets in train_loader:
-        points = targets["points"]
+        points = targets["y"]
         assert x.shape == (2, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
@@ -51,12 +51,12 @@ def test_TreePoints_release():
         assert len(metadata) == 2
         break
 
-def test_TreeBoxes_release():
-    dataset = TreeBoxesDataset(download=False, root_dir="/orange/ewhite/DeepForest/MillionTrees/")
+def test_TreeBoxes_latest_release(tmpdir):
+    dataset = TreeBoxesDataset(download=True, root_dir=tmpdir)
     train_dataset = dataset.get_subset("train")
     
     for metadata, image, targets in train_dataset:
-        boxes = targets["boxes"]
+        boxes = targets["y"]
         labels = targets["labels"]
         assert image.shape == (3, 448, 448)
         assert image.dtype == torch.float32
@@ -66,7 +66,7 @@ def test_TreeBoxes_release():
     
     train_loader = get_train_loader('standard', train_dataset, batch_size=2)
     for metadata, x, targets in train_loader:
-        boxes = targets["boxes"]
+        boxes = targets["y"]
         assert x.shape == (2, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0

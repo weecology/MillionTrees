@@ -15,8 +15,8 @@ else:
 
 # Test structure without real annotation data to ensure format is correct
 def test_TreePoints_generic(dataset):
-    dataset = TreePointsDataset(download=False, root_dir=dataset) 
-    for metadata, image, targets in dataset:
+    ds = TreePointsDataset(download=False, root_dir=dataset, version="0.0") 
+    for metadata, image, targets in ds:
         points, labels = targets["y"], targets["labels"]
         assert image.shape == (100, 100, 3)
         assert image.dtype == np.float32
@@ -26,7 +26,7 @@ def test_TreePoints_generic(dataset):
         assert metadata.shape == (2,)
         break
 
-    train_dataset = dataset.get_subset("train")
+    train_dataset = ds.get_subset("train")
      
     for metadata, image, targets in train_dataset:
         points, labels = targets["y"], targets["labels"]
@@ -41,8 +41,8 @@ def test_TreePoints_generic(dataset):
 
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_get_train_dataloader(dataset, batch_size):
-    dataset = TreePointsDataset(download=False, root_dir=dataset) 
-    train_dataset = dataset.get_subset("train")
+    ds = TreePointsDataset(download=False, root_dir=dataset, version="0.0") 
+    train_dataset = ds.get_subset("train")
     train_loader = get_train_loader('standard', train_dataset, batch_size=batch_size)
     for metadata, x, targets in train_loader:
         y = targets[0]["y"]
@@ -55,8 +55,8 @@ def test_get_train_dataloader(dataset, batch_size):
         break
 
 def test_get_test_dataloader(dataset):
-    dataset = TreePointsDataset(download=False, root_dir=dataset) 
-    test_dataset = dataset.get_subset("test")
+    ds = TreePointsDataset(download=False, root_dir=dataset, version="0.0") 
+    test_dataset = ds.get_subset("test")
     
     for metadata, image, targets in test_dataset:
         points, labels = targets["y"], targets["labels"]
@@ -71,7 +71,7 @@ def test_get_test_dataloader(dataset):
     # Assert that test_dataset[0] == "image3.jpg"
     metadata, image, targets = test_dataset[0]
     assert metadata[1] == 1
-    assert dataset._filename_id_to_code[int(metadata[0])] == "image3.jpg"
+    assert ds._filename_id_to_code[int(metadata[0])] == "image3.jpg"
 
     test_loader = get_eval_loader('standard', test_dataset, batch_size=1)
     for metadata, x, targets in test_loader:
@@ -85,8 +85,8 @@ def test_get_test_dataloader(dataset):
         break
 @pytest.mark.parametrize("pred_tensor", [[[134, 156]], [[30, 70],[35, 55]]], ids=["single", "multiple"])
 def test_TreePoints_eval(dataset, pred_tensor):
-    dataset = TreePointsDataset(download=False, root_dir=dataset) 
-    test_dataset = dataset.get_subset("test")
+    ds = TreePointsDataset(download=False, root_dir=dataset, version="0.0") 
+    test_dataset = ds.get_subset("test")
     test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
 
     all_y_pred = []
@@ -100,12 +100,12 @@ def test_TreePoints_eval(dataset, pred_tensor):
         all_y_pred.extend(y_pred)
 
     # Evaluate
-    eval_results, eval_string = dataset.eval(all_y_pred, all_y_true, test_dataset.metadata_array)
+    eval_results, eval_string = ds.eval(all_y_pred, all_y_true, test_dataset.metadata_array)
     assert "keypoint_acc_avg" in eval_results.keys()
 
 def test_TreePoints_download(tmpdir):
-    dataset = TreePointsDataset(download=True, root_dir=tmpdir, version="0.0")
-    train_dataset = dataset.get_subset("train")
+    ds = TreePointsDataset(download=True, root_dir=tmpdir, version="0.0")
+    train_dataset = ds.get_subset("train")
      
     for metadata, image, targets in train_dataset:
         points = targets["y"]
