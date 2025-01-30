@@ -26,24 +26,16 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Image Recognition"
 ]
 
-[[project.authors]]
-name = "Ben Weinstein"
-email = "benweinstein@weecology.org"
+authors = [
+    { name = "Ben Weinstein", email = "benweinstein@weecology.org" },
+    { name = "Henry Senyondo", email = "henrykironde@gmail.com" },
+    { name = "Ethan White", email = "ethan@weecology.org" }
+]
 
-[[project.authors]]
-name = "Henry Senyondo"
-email = "henrykironde@gmail.com"
+urls.Documentation = "http://milliontrees.readthedocs.io/en/latest/"
+urls.Source = "https://github.com/Weecology/MillionTrees"
+urls.Contributors = "https://github.com/Weecology/MillionTrees/graphs/contributors"
 
-[[project.authors]]
-name = "Ethan White"
-email = "ethan@weecology.org"
-
-[project.urls]
-Documentation = "http://milliontrees.readthedocs.io/en/latest/"
-Source = "https://github.com/Weecology/MillionTrees"
-Contributors = "https://github.com/Weecology/MillionTrees/graphs/contributors"
-
-[project.dependencies]
 dependencies = [
     "numpy",
     "pandas",
