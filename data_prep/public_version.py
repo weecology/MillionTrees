@@ -8,7 +8,7 @@ from deepforest.visualize import plot_results
 from deepforest.utilities import read_file
 import cv2
 
-version = "v0.2"
+version = "v0.1"
 base_dir = "/orange/ewhite/web/public/"
 
 TreeBoxes = [
@@ -266,9 +266,9 @@ def zip_directory(folder_path, zip_path):
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(folder_path):
             for file in files:
-                zipf.write(os.path.join(root, file),
-                            os.path.relpath(os.path.join(root, file), 
-                                            os.path.join(folder_path, '..')))
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, folder_path)
+                zipf.write(file_path, arcname)
 
 zip_directory(f"{base_dir}TreeBoxes_{version}", f"{base_dir}TreeBoxes_{version}.zip")
 zip_directory(f"{base_dir}TreePoints_{version}", f"{base_dir}TreePoints_{version}.zip")
