@@ -132,7 +132,7 @@ def test_TreePoints_release():
         break
 
 def test_TreePoints_download(tmpdir):
-    dataset = TreePointsDataset(download=True, root_dir=tmpdir)
+    dataset = TreePointsDataset(download=True, root_dir=tmpdir, version="0.0")
     train_dataset = dataset.get_subset("train")
      
     for metadata, image, targets in train_dataset:

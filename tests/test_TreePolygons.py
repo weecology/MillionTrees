@@ -154,7 +154,7 @@ def test_TreePolygons_release():
         break
 
 def test_TreePolygons_download(tmpdir):
-    dataset = TreePolygonsDataset(download=True, root_dir=tmpdir)
+    dataset = TreePolygonsDataset(download=True, root_dir=tmpdir, version="0.0")
     train_dataset = dataset.get_subset("train")
      
     for metadata, image, targets in train_dataset:

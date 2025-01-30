@@ -11,6 +11,12 @@ print(f'Version {__version__}')
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+with open('requirements.txt') as f:
+    required = f.read().splitlines()
+
+# Remove 'sphinx', 'yapf', and any dev packages
+required = [pkg for pkg in required if pkg not in ['sphinx', 'yapf','furo','myst_parser','docformatter','pytest','bumpversion','sphinx_markdown_tables'] and not pkg.startswith('dev-')]
+
 setuptools.setup(
     name="milliontrees",
     version=__version__,
@@ -20,21 +26,7 @@ setuptools.setup(
     description="MillionTrees Benchmark for Airborne Machine Learning",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    install_requires=[
-        'numpy',
-        'ogb',
-        'outdated',
-        'pandas',
-        'pillow',
-        'ogb',
-        'pytz',
-        'torch',
-        'torchvision',
-        'tqdm',
-        'scikit-learn',
-        'scipy',
-        'shapely'
-    ],
+    install_requires=required,
     license='MIT',
     packages=setuptools.find_packages(exclude=['data_prep', 'examples']),
     classifiers=[
