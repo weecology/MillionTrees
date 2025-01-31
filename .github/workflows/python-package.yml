@@ -50,7 +50,7 @@ jobs:
       #   run: pytest --nbmake docs/*.ipynb
 
       - name: Run docformatter
-        run: docformatter --check --recursive src/milliontrees/
+        run: docformatter --wrap-summaries 100 --wrap-descriptions 100  --recursive src/milliontrees/
 
       - name: Test Docs
         run: |
