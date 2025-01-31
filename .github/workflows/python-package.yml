@@ -35,13 +35,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install libgeos-dev
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install .
 
       - name: Run pytest for everything but test_polygons
         run: pytest -v --ignore-glob="*release*"
 
       - name: Check style
-        run: yapf -d --recursive milliontrees/
+        run: yapf -d --recursive src/milliontrees/
 
       #- name: Check notebook style
       #  run: nbqa yapf --in-place docs/examples/*.ipynb --style=.style.yapf
@@ -50,7 +50,7 @@ jobs:
       #   run: pytest --nbmake docs/*.ipynb
 
       - name: Run docformatter
-        run: docformatter --check --recursive milliontrees/
+        run: docformatter --check --recursive src/milliontrees/
 
       - name: Test Docs
         run: |
