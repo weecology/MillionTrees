@@ -75,7 +75,7 @@ def pseudolabel_binary_logits(logits, confidence_threshold):
     unlabeled_y_pseudo = unlabeled_y_pseudo[example_mask]
     unlabeled_y_pred = logits[example_mask]
     return (unlabeled_y_pred, unlabeled_y_pseudo, pseudolabels_kept_frac,
-        example_mask)
+            example_mask)
 
 
 def pseudolabel_multiclass_logits(logits, confidence_threshold):
@@ -142,7 +142,7 @@ def pseudolabel_detection(preds, confidence_threshold):
     # They will be treated as empty images
     example_mask = torch.ones(len(preds), dtype=torch.bool)
     return (unlabeled_y_pred, unlabeled_y_pseudo, pseudolabels_kept_frac,
-        example_mask)
+            example_mask)
 
 
 def pseudolabel_detection_discard_empty(preds, confidence_threshold):
@@ -340,8 +340,8 @@ def mse_loss(out, targets):
         return torch.Tensor()
     else:
         assert out.dim(
-            ) > 1, 'MSE loss currently supports Tensors of dimensions > 1'
-        losses = (out - targets) ** 2
+        ) > 1, 'MSE loss currently supports Tensors of dimensions > 1'
+        losses = (out - targets)**2
         reduce_dims = tuple(list(range(1, len(targets.shape))))
         losses = torch.mean(losses, dim=reduce_dims)
         return losses
@@ -472,7 +472,7 @@ class DetectionAccuracy(ElementwiseMetric):
                 (len(matched_elements) - len(matched_elements.unique())))
             false_negative = total_gt - true_positive
             acc = true_positive / (true_positive + false_positive +
-                false_negative)
+                                   false_negative)
             return acc
         elif total_gt == 0:
             if total_pred > 0:
@@ -533,7 +533,7 @@ class KeypointAccuracy(ElementwiseMetric):
                               distance_threshold,
                               allow_low_quality_matches=False)
             match_quality_matrix = self._point_nearness(src_keypoints,
-                pred_keypoints)
+                                                        pred_keypoints)
             results = matcher(match_quality_matrix)
             true_positive = torch.count_nonzero(results.unique() != -1)
             matched_elements = results[results > -1]
@@ -543,7 +543,7 @@ class KeypointAccuracy(ElementwiseMetric):
                 (len(matched_elements) - len(matched_elements.unique())))
             false_negative = total_gt - true_positive
             acc = true_positive / (true_positive + false_positive +
-                false_negative)
+                                   false_negative)
             return acc
         elif total_gt == 0:
             if total_pred > 0:

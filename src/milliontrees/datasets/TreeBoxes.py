@@ -196,7 +196,6 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         return results, results_str
 
-
     def get_input(self, idx):
         """Retrieves the input features (image) for a given data point.
 

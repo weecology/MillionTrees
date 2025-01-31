@@ -53,8 +53,9 @@ def split_into_groups(g):
               in `groups`, with the same length as `groups`.
     """
 
-    unique_groups, unique_counts = torch.unique(g, sorted=False,
-        return_counts=True)
+    unique_groups, unique_counts = torch.unique(g,
+                                                sorted=False,
+                                                return_counts=True)
     group_indices = []
     for group in unique_groups:
         group_indices.append(torch.nonzero(g == group, as_tuple=True)[0])
@@ -107,7 +108,7 @@ def map_to_id_array(df, ordered_map={}):
     for i, c in enumerate(df.columns):
         if c in ordered_map:
             category_type = CategoricalDtype(categories=ordered_map[c],
-                ordered=True)
+                                             ordered=True)
         else:
             category_type = 'category'
         series = df[c].astype(category_type)
