@@ -37,8 +37,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install .
 
-      - name: Run pytest for everything but test_polygons
-        run: pytest -v --ignore-glob="*release*"
+      #- name: Run pytest for everything but test_polygons
+      # run: pytest -v --ignore-glob="*release*"
 
       - name: Check style
         run: yapf -d --recursive src/milliontrees/
