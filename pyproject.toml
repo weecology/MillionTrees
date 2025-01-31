@@ -59,4 +59,4 @@ dependencies = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages.find = {where = ["src"], include = ["milliontrees*"], exclude = ["tests*", "docs*","data_prep*"]}
+packages.find = {where = ["src"], include = ["milliontrees*"]}
