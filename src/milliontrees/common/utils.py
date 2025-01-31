@@ -39,8 +39,7 @@ def maximum(numbers, empty_val=0.):
 
 
 def split_into_groups(g):
-    """
-    Splits the input tensor into unique groups and their corresponding indices.
+    """Splits the input tensor into unique groups and their corresponding indices.
 
     Args:
         g (Tensor): A vector containing group labels.
@@ -63,10 +62,9 @@ def split_into_groups(g):
 
 
 def get_counts(g, n_groups):
-    """This differs from split_into_groups in how it handles missing groups.
-    get_counts always returns a count array of length n_groups, whereas
-    split_into_groups returns a unique_counts array whose length is the number
-    of unique groups present in g.
+    """This differs from split_into_groups in how it handles missing groups. get_counts always
+    returns a count array of length n_groups, whereas split_into_groups returns a unique_counts
+    array whose length is the number of unique groups present in g.
 
     Args:
         - g (ndarray): Vector of groups

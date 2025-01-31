@@ -6,11 +6,11 @@ import milliontrees
 def get_dataset(dataset: str, version: Optional[str]=None, unlabeled: bool=False, **dataset_kwargs):
     """Brief description of the function.
 
-Args:
-    dataset: Description of dataset.
-    version: Description of version.
-    unlabeled: Description of unlabeled.
-"""
+    Args:
+        dataset: Description of dataset.
+        version: Description of version.
+        unlabeled: Description of unlabeled.
+    """
     if version is not None:
         version = str(version)
     if dataset not in milliontrees.supported_datasets:

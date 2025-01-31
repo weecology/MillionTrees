@@ -114,8 +114,7 @@ def get_eval_loader(loader, dataset, batch_size, grouper=None, **loader_kwargs):
 
 
 class GroupSampler:
-    """Constructs batches by first sampling groups, then sampling data from
-    those groups.
+    """Constructs batches by first sampling groups, then sampling data from those groups.
 
     It drops the last batch if it's incomplete.
     """
