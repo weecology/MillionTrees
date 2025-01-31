@@ -15,11 +15,10 @@ def minimum(numbers, empty_val=0.):
             return np.array(empty_val)
         else:
             return np.nanmin(numbers)
+    elif len(numbers) == 0:
+        return empty_val
     else:
-        if len(numbers) == 0:
-            return empty_val
-        else:
-            return min(numbers)
+        return min(numbers)
 
 
 def maximum(numbers, empty_val=0.):
@@ -33,25 +32,27 @@ def maximum(numbers, empty_val=0.):
             return np.array(empty_val)
         else:
             return np.nanmax(numbers)
+    elif len(numbers) == 0:
+        return empty_val
     else:
-        if len(numbers) == 0:
-            return empty_val
-        else:
-            return max(numbers)
+        return max(numbers)
 
 
 def split_into_groups(g):
-    """
+    """Splits the input tensor into unique groups and their corresponding indices.
+
     Args:
-        - g (Tensor): Vector of groups
+        g (Tensor): A vector containing group labels.
+
     Returns:
-        - groups (Tensor): Unique groups present in g
-        - group_indices (list): List of Tensors, where the i-th tensor is the indices of the
-                                elements of g that equal groups[i].
-                                Has the same length as len(groups).
-        - unique_counts (Tensor): Counts of each element in groups.
-                                 Has the same length as len(groups).
+        tuple:
+            - groups (Tensor): A tensor containing the unique group labels present in `g`.
+            - group_indices (list of Tensors): A list where each tensor contains the indices
+              of elements in `g` that correspond to the respective group in `groups`.
+            - unique_counts (Tensor): A tensor representing the count of each unique group
+              in `groups`, with the same length as `groups`.
     """
+
     unique_groups, unique_counts = torch.unique(g,
                                                 sorted=False,
                                                 return_counts=True)
@@ -62,10 +63,9 @@ def split_into_groups(g):
 
 
 def get_counts(g, n_groups):
-    """This differs from split_into_groups in how it handles missing groups.
-    get_counts always returns a count array of length n_groups, whereas
-    split_into_groups returns a unique_counts array whose length is the number
-    of unique groups present in g.
+    """This differs from split_into_groups in how it handles missing groups. get_counts always
+    returns a count array of length n_groups, whereas split_into_groups returns a unique_counts
+    array whose length is the number of unique groups present in g.
 
     Args:
         - g (ndarray): Vector of groups
@@ -77,7 +77,6 @@ def get_counts(g, n_groups):
                                                 return_counts=True)
     counts = torch.zeros(n_groups, device=g.device)
     counts[unique_groups] = unique_counts.float()
-
     return counts
 
 
@@ -92,18 +91,14 @@ def avg_over_groups(v, g, n_groups):
     """
     assert v.device == g.device
     assert v.numel() == g.numel()
-
     group_count = get_counts(g, n_groups)
     group_sum = torch.zeros(n_groups, device=v.device)
-
     for i in range(n_groups):
         mask = (g == i)
         if mask.any():
             group_sum[i] = v[mask].sum()
-
     group_avgs = group_sum / group_count
     group_avgs[group_count == 0] = float('nan')
-
     return group_avgs, group_count
 
 
@@ -125,7 +120,6 @@ def map_to_id_array(df, ordered_map={}):
 def subsample_idxs(idxs, num=5000, take_rest=False, seed=None):
     seed = (seed + 541433) if seed is not None else None
     rng = np.random.default_rng(seed)
-
     idxs = idxs.copy()
     rng.shuffle(idxs)
     if take_rest:
@@ -138,17 +132,18 @@ def subsample_idxs(idxs, num=5000, take_rest=False, seed=None):
 def shuffle_arr(arr, seed=None):
     seed = (seed + 548207) if seed is not None else None
     rng = np.random.default_rng(seed)
-
     arr = arr.copy()
     rng.shuffle(arr)
     return arr
 
 
 def threshold_at_recall(y_pred, y_true, global_recall=60):
-    """Calculate the model threshold to use to achieve a desired global_recall
-    level.
+    """Calculate the model threshold used to achieve a desired global_recall level.
 
-    Assumes that y_true is a vector of the true binary labels.
+    Args:
+        y_pred (Description of y_pred, Assumes that y_true is a vector of the true binary labels.)
+        y_true (Description of y_true.)
+        global_recall (Description of global_recall.)
     """
     return np.percentile(y_pred[y_true == 1], 100 - global_recall)
 
@@ -159,4 +154,4 @@ def numel(obj):
     elif isinstance(obj, list):
         return len(obj)
     else:
-        raise TypeError("Invalid type for numel")
+        raise TypeError('Invalid type for numel')

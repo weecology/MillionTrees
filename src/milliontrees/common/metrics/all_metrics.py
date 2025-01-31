@@ -1,8 +1,6 @@
 import copy
-
 import numpy as np
 import torch
-
 import torch.nn.functional as F
 from torchvision.ops.boxes import box_iou
 from torchvision.models.detection._utils import Matcher
@@ -25,8 +23,18 @@ def binary_logits_to_score(logits):
 
 
 def multiclass_logits_to_pred(logits):
-    """Takes multi-class logits of size (batch_size, ..., n_classes) and
-    returns predictions by taking an argmax at the last dimension."""
+    """Converts multi-class logits into predictions.
+
+    This function takes a tensor of logits with shape (batch_size, ..., n_classes)
+    and computes predictions by applying `argmax` along the last dimension.
+
+    Args:
+        logits (Tensor): A tensor of shape (batch_size, ..., n_classes) representing
+                         multi-class logits.
+
+    Returns:
+        Tensor: A tensor containing predicted class indices.
+    """
     assert logits.dim() > 1
     return logits.argmax(-1)
 
@@ -36,56 +44,63 @@ def binary_logits_to_pred(logits):
 
 
 def pseudolabel_binary_logits(logits, confidence_threshold):
-    """
-    Input:
-        logits (Tensor): Binary logits of size (batch_size, n_tasks).
-                         If an entry is >0, it means the prediction for taht
-                         (example, task) is positive.
-        confidence_threshold (float): In [0,1]
+    """Applies a confidence threshold to binary logits and generates pseudo- labels.
 
-    Output:
-        unlabeled_y_pred (Tensor): Filtered version of logits, discarding any rows (examples) that
-                                   have no predictions with confidence above confidence_threshold.
-        unlabeled_y_pseudo (Tensor): Corresponding hard-pseudo-labeled version of logits. All
-                                     entries with confidence below confidence_threshold are set to
-                                     nan. All rows with no confident entries are discarded.
-        pseudolabels_kept_frac (float): Fraction of (examples, tasks) not set to nan or discarded.
-        mask (Tensor): Mask used to discard predictions with confidence under the confidence threshold.
+    Args:
+        logits (Tensor): A tensor of shape (batch_size, n_tasks) representing binary logits.
+                         A positive value (>0) indicates a positive prediction for the corresponding (example, task).
+        confidence_threshold (float): A threshold in the range [0,1] used to filter predictions.
+
+    Returns:
+        tuple:
+            - unlabeled_y_pred (Tensor): A filtered version of `logits`, discarding rows (examples)
+                                         where no predictions exceed the confidence threshold.
+            - unlabeled_y_pseudo (Tensor): A hard pseudo-labeled version of `logits`, where entries
+                                           below the confidence threshold are set to NaN. Rows with no
+                                           confident predictions are discarded.
+            - pseudolabels_kept_frac (float): The fraction of (example, task) pairs that are not set
+                                              to NaN or discarded.
+            - mask (Tensor): A mask indicating which predictions meet the confidence threshold.
     """
+
     if len(logits.shape) != 2:
         raise ValueError('Logits must be 2-dimensional.')
     probs = 1 / (1 + torch.exp(-logits))
     mask = (torch.max(probs, 1 - probs) >= confidence_threshold)
     unlabeled_y_pseudo = (logits > 0).float()
     unlabeled_y_pseudo[~mask] = float('nan')
-    pseudolabels_kept_frac = mask.sum() / mask.numel(
-    )  # mask is bool, so no .mean()
+    # mask is bool, so no .mean()
+    pseudolabels_kept_frac = mask.sum() / mask.numel()
     example_mask = torch.any(~torch.isnan(unlabeled_y_pseudo), dim=1)
     unlabeled_y_pseudo = unlabeled_y_pseudo[example_mask]
     unlabeled_y_pred = logits[example_mask]
-    return unlabeled_y_pred, unlabeled_y_pseudo, pseudolabels_kept_frac, example_mask
+    return (unlabeled_y_pred, unlabeled_y_pseudo, pseudolabels_kept_frac,
+            example_mask)
 
 
 def pseudolabel_multiclass_logits(logits, confidence_threshold):
-    """
-    Input:
-        logits (Tensor): Multi-class logits of size (batch_size, ..., n_classes).
-        confidence_threshold (float): In [0,1]
+    """Applies a confidence threshold to multi-class logits and generates pseudo-labels.
 
-    Output:
-        unlabeled_y_pred (Tensor): Filtered version of logits, discarding any rows (examples) that
-                                   have no predictions with confidence above confidence_threshold.
-        unlabeled_y_pseudo (Tensor): Corresponding hard-pseudo-labeled version of logits. All
-                                     examples with confidence below confidence_threshold are discarded.
-        pseudolabels_kept_frac (float): Fraction of examples not discarded.
-        mask (Tensor): Mask used to discard predictions with confidence under the confidence threshold.
+    Args:
+        logits (Tensor): A tensor of shape (batch_size, ..., n_classes) representing multi-class logits.
+        confidence_threshold (float): A threshold in the range [0,1] used to filter predictions.
+
+    Returns:
+        tuple:
+            - unlabeled_y_pred (Tensor): A filtered version of `logits`, discarding rows (examples)
+                                         where no predictions exceed the confidence threshold.
+            - unlabeled_y_pseudo (Tensor): A hard pseudo-labeled version of `logits`, where examples
+                                           with confidence below the threshold are discarded.
+            - pseudolabels_kept_frac (float): The fraction of examples retained after filtering.
+            - mask (Tensor): A mask indicating which predictions meet the confidence threshold.
     """
+
     mask = torch.max(F.softmax(logits, -1), -1)[0] >= confidence_threshold
     unlabeled_y_pseudo = multiclass_logits_to_pred(logits)
     unlabeled_y_pseudo = unlabeled_y_pseudo[mask]
     unlabeled_y_pred = logits[mask]
-    pseudolabels_kept_frac = mask.sum() / mask.numel(
-    )  # mask is bool, so no .mean()
+    # mask is bool, so no .mean()
+    pseudolabels_kept_frac = mask.sum() / mask.numel()
     return unlabeled_y_pred, unlabeled_y_pseudo, pseudolabels_kept_frac, mask
 
 
@@ -94,13 +109,22 @@ def pseudolabel_identity(logits, confidence_threshold):
 
 
 def pseudolabel_detection(preds, confidence_threshold):
+    """Filters detection predictions based on a confidence threshold.
+
+    Args:
+        preds (List[dict]): A list of length `batch_size`, where each entry is a dictionary
+                            containing the following keys:
+                            - 'boxes' (Tensor): Bounding box coordinates.
+                            - 'labels' (Tensor): Class labels for detected objects.
+                            - 'scores' (Tensor): Confidence scores for each detection.
+                            - 'losses' (dict): An empty dictionary (not used).
+        confidence_threshold (float): A threshold in the range [0,1] used to filter predictions.
+
+    Returns:
+        List[dict]: A filtered version of `preds`, where detections with confidence scores
+                    below `confidence_threshold` are removed.
     """
-    Input:
-        preds (List): List of len batch_size. Each entry is a dict containing
-                      the keys 'boxes', 'labels', 'scores', and 'losses'
-                      ('losses' is empty)
-        confidence_threshold (float): In [0,1]
-    """
+
     preds, pseudolabels_kept_frac = _mask_pseudolabels_detection(
         preds, confidence_threshold)
     unlabeled_y_pred = [{
@@ -117,17 +141,28 @@ def pseudolabel_detection(preds, confidence_threshold):
     # Keep all examples even if they don't have any confident-enough predictions
     # They will be treated as empty images
     example_mask = torch.ones(len(preds), dtype=torch.bool)
-    return unlabeled_y_pred, unlabeled_y_pseudo, pseudolabels_kept_frac, example_mask
+    return (unlabeled_y_pred, unlabeled_y_pseudo, pseudolabels_kept_frac,
+            example_mask)
 
 
 def pseudolabel_detection_discard_empty(preds, confidence_threshold):
+    """Filters detection predictions based on a confidence threshold and discards empty entries.
+
+    Args:
+        preds (List[dict]): A list of length `batch_size`, where each entry is a dictionary
+                            containing the following keys:
+                            - 'boxes' (Tensor): Bounding box coordinates.
+                            - 'labels' (Tensor): Class labels for detected objects.
+                            - 'scores' (Tensor): Confidence scores for each detection.
+                            - 'losses' (dict): An empty dictionary (not used).
+        confidence_threshold (float): A threshold in the range [0,1] used to filter predictions.
+
+    Returns:
+        List[dict]: A filtered version of `preds`, where detections with confidence scores
+                    below `confidence_threshold` are removed. Entries with no remaining detections
+                    are discarded from the list.
     """
-    Input:
-        preds (List): List of len batch_size. Each entry is a dict containing
-                      the keys 'boxes', 'labels', 'scores', and 'losses'
-                      ('losses' is empty)
-        confidence_threshold (float): In [0,1]
-    """
+
     preds, pseudolabels_kept_frac = _mask_pseudolabels_detection(
         preds, confidence_threshold)
     unlabeled_y_pred = [{
@@ -147,7 +182,6 @@ def pseudolabel_detection_discard_empty(preds, confidence_threshold):
 def _mask_pseudolabels_detection(preds, confidence_threshold):
     total_boxes = 0.0
     kept_boxes = 0.0
-
     preds = copy.deepcopy(preds)
     for pred in preds:
         mask = (pred['scores'] >= confidence_threshold)
@@ -156,7 +190,6 @@ def _mask_pseudolabels_detection(preds, confidence_threshold):
         pred['scores'] = pred['scores'][mask]
         total_boxes += len(mask)
         kept_boxes += mask.sum()
-
     pseudolabels_kept_frac = kept_boxes / total_boxes
     return preds, pseudolabels_kept_frac
 
@@ -231,7 +264,6 @@ class MultiTaskAveragePrecision(MultiTaskMetric):
                 group_metrics.append(flattened_metrics)
         group_metrics = torch.stack(group_metrics)
         worst_group_metric = self.worst(group_metrics[group_counts > 0])
-
         return group_metrics, group_counts, worst_group_metric
 
     def worst(self, metrics):
@@ -324,8 +356,7 @@ class MSE(ElementwiseLoss):
 
 
 class PrecisionAtRecall(Metric):
-    """Given a specific model threshold, determine the precision score
-    achieved."""
+    """Given a specific model threshold, determine the precision score achieved."""
 
     def __init__(self, threshold, score_fn=None, name=None):
         self.score_fn = score_fn
@@ -370,8 +401,8 @@ class DummyMetric(Metric):
 
 
 class DetectionAccuracy(ElementwiseMetric):
-    """Given a specific Intersection over union threshold, determine the
-    accuracy achieved for a one-class detector."""
+    """Given a specific Intersection over union threshold, determine the accuracy achieved for a
+    one-class detector."""
 
     def __init__(self,
                  iou_threshold=0.3,
@@ -401,7 +432,6 @@ class DetectionAccuracy(ElementwiseMetric):
                 det_accuracy = self._recall(gt_boxes, pred_boxes,
                                             self.iou_threshold)
             batch_results.append(det_accuracy)
-
         return torch.tensor(batch_results)
 
     def _recall(self, src_boxes, pred_boxes, iou_threshold):
@@ -416,7 +446,6 @@ class DetectionAccuracy(ElementwiseMetric):
             results = matcher(match_quality_matrix)
             true_positive = torch.count_nonzero(results.unique() != -1)
             return true_positive / total_gt
-
         elif total_gt == 0:
             if total_pred > 0:
                 return torch.tensor(0.)
@@ -458,8 +487,8 @@ class DetectionAccuracy(ElementwiseMetric):
 
 
 class KeypointAccuracy(ElementwiseMetric):
-    """Given a specific Intersection over union threshold, determine the
-    accuracy achieved for a one-class detector."""
+    """Given a specific Intersection over union threshold, determine the accuracy achieved for a
+    one-class detector."""
 
     def __init__(self,
                  distance_threshold=0.1,
@@ -469,7 +498,6 @@ class KeypointAccuracy(ElementwiseMetric):
         self.distance_threshold = distance_threshold
         self.score_threshold = score_threshold
         self.geometry_name = geometry_name
-
         if name is None:
             name = "keypoint_acc"
         super().__init__(name=name)
@@ -485,7 +513,6 @@ class KeypointAccuracy(ElementwiseMetric):
             det_accuracy = self._accuracy(gt_boxes, pred_boxes,
                                           self.distance_threshold)
             batch_results.append(det_accuracy)
-
         return torch.tensor(batch_results)
 
     def _point_nearness(self, src_keypoints, pred_keypoints):
@@ -495,7 +522,6 @@ class KeypointAccuracy(ElementwiseMetric):
 
         # Inverson of distance to get relative distance
         relative_distance = 1 / distance
-
         return relative_distance
 
     def _accuracy(self, src_keypoints, pred_keypoints, distance_threshold):
@@ -532,8 +558,8 @@ class KeypointAccuracy(ElementwiseMetric):
 
 
 class MaskAccuracy(ElementwiseMetric):
-    """Given a specific Intersection over union threshold, determine the
-    accuracy achieved for a Mask R-CNN detector."""
+    """Given a specific Intersection over union threshold, determine the accuracy achieved for a
+    Mask R-CNN detector."""
 
     def __init__(self,
                  iou_threshold=0.5,
@@ -544,7 +570,6 @@ class MaskAccuracy(ElementwiseMetric):
         self.iou_threshold = iou_threshold
         self.score_threshold = score_threshold
         self.geometry_name = geometry_name
-
         if name is None:
             name = "mask_acc"
         super().__init__(name=name)
@@ -560,7 +585,6 @@ class MaskAccuracy(ElementwiseMetric):
             det_accuracy = self._accuracy(gt_masks, pred_masks,
                                           self.iou_threshold)
             batch_results.append(det_accuracy)
-
         return torch.tensor(batch_results)
 
     def _mask_iou(self, src_masks, pred_masks):
@@ -581,7 +605,6 @@ class MaskAccuracy(ElementwiseMetric):
             results = matcher(match_quality_matrix)
             true_positive = torch.count_nonzero(results.unique() != -1)
             return true_positive / total_gt
-
         elif total_gt == 0:
             if total_pred > 0:
                 return torch.tensor(0.)
