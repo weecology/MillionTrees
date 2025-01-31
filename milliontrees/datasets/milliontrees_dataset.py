@@ -308,7 +308,7 @@ class MillionTreesDataset:
         """Helper function for downloading/updating the dataset if required.
 
         Note that we only do a version check for datasets where the
-        download_url is set. 
+        download_url is set.
         """
         self.check_version()
 
