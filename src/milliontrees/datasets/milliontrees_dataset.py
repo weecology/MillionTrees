@@ -92,8 +92,7 @@ class MillionTreesDataset:
                                   self.geometry_name)
 
     def check_init(self):
-        """Convenience function to check that the WILDSDataset is properly
-        configured."""
+        """Convenience function to check that the WILDSDataset is properly configured."""
         required_attrs = [
             '_dataset_name', '_data_dir', '_split_scheme', '_split_array',
             '_y_array', '_y_size', '_metadata_fields', '_metadata_array'
@@ -151,8 +150,7 @@ class MillionTreesDataset:
 
     @property
     def dataset_name(self):
-        """A string that identifies the dataset, e.g., 'amazon',
-        'camelyon17'."""
+        """A string that identifies the dataset, e.g., 'amazon', 'camelyon17'."""
         return self._dataset_name
 
     @property
@@ -165,16 +163,13 @@ class MillionTreesDataset:
 
     @property
     def versions_dict(self):
-        """A dictionary where each key is a version string (e.g., '1.0') and
-        each value is a dictionary containing the 'download_url' and
-        'compressed_size' keys.
+        """A dictionary where each key is a version string (e.g., '1.0') and each value is a
+        dictionary containing the 'download_url' and 'compressed_size' keys.
 
-        'download_url' is the URL for downloading the dataset archive.
-        If None, the dataset cannot be downloaded automatically (e.g.,
-        because it first requires accepting a usage agreement).
+        'download_url' is the URL for downloading the dataset archive. If None, the dataset cannot
+        be downloaded automatically (e.g., because it first requires accepting a usage agreement).
 
-        'compressed_size' is the approximate size of the compressed
-        dataset in bytes.
+        'compressed_size' is the approximate size of the compressed dataset in bytes.
         """
         return self._versions_dict
 
@@ -193,14 +188,14 @@ class MillionTreesDataset:
 
     @property
     def split_scheme(self):
-        """A string identifier of how the split is constructed, e.g.,
-        'standard', 'mixed-to-test', 'user', etc."""
+        """A string identifier of how the split is constructed, e.g., 'standard', 'mixed-to-test',
+        'user', etc."""
         return self._split_scheme
 
     @property
     def split_dict(self):
-        """A dictionary mapping splits to integer identifiers (used in
-        split_array), e.g., {'train': 0, 'val': 1, 'test': 2}.
+        """A dictionary mapping splits to integer identifiers (used in split_array), e.g., {'train':
+        0, 'val': 1, 'test': 2}.
 
         Keys should match up with split_names.
         """
@@ -208,8 +203,8 @@ class MillionTreesDataset:
 
     @property
     def split_names(self):
-        """A dictionary mapping splits to their pretty names, e.g., {'train':
-        'Train', 'val': 'Validation', 'test': 'Test'}.
+        """A dictionary mapping splits to their pretty names, e.g., {'train': 'Train', 'val':
+        'Validation', 'test': 'Test'}.
 
         Keys should match up with split_dict.
         """
@@ -224,14 +219,14 @@ class MillionTreesDataset:
 
     @property
     def split_array(self):
-        """An array of integers, with split_array[i] representing what split
-        the i-th data point belongs to."""
+        """An array of integers, with split_array[i] representing what split the i-th data point
+        belongs to."""
         return self._split_array
 
     @property
     def y_array(self):
-        """A Tensor of targets (e.g., labels for classification tasks), with
-        y_array[i] representing the target of the i-th data point.
+        """A Tensor of targets (e.g., labels for classification tasks), with y_array[i] representing
+        the target of the i-th data point.
 
         y_array[i] can contain multiple elements.
         """
@@ -239,13 +234,11 @@ class MillionTreesDataset:
 
     @property
     def y_size(self):
-        """The number of dimensions/elements in the target, i.e.,
-        len(y_array[i]).
+        """The number of dimensions/elements in the target, i.e., len(y_array[i]).
 
-        For standard classification/regression tasks, y_size = 1. For
-        multi-task or structured prediction settings, y_size > 1. Used
-        for logging and to configure models to produce appropriately-
-        sized output.
+        For standard classification/regression tasks, y_size = 1. For multi-task or structured
+        prediction settings, y_size > 1. Used for logging and to configure models to produce
+        appropriately- sized output.
         """
         return self._y_size
 
@@ -253,9 +246,8 @@ class MillionTreesDataset:
     def n_classes(self):
         """Number of classes for single-task classification datasets.
 
-        Used for logging and to configure models to produce
-        appropriately-sized output. None by default. Leave as None if
-        not applicable (e.g., regression or multi-task classification).
+        Used for logging and to configure models to produce appropriately-sized output. None by
+        default. Leave as None if not applicable (e.g., regression or multi-task classification).
         """
         return getattr(self, '_n_classes', None)
 
@@ -269,8 +261,7 @@ class MillionTreesDataset:
 
     @property
     def metadata_fields(self):
-        """A list of strings naming each column of the metadata table, e.g.,
-        ['hospital', 'y'].
+        """A list of strings naming each column of the metadata table, e.g., ['hospital', 'y'].
 
         Must include 'y'.
         """
@@ -278,8 +269,8 @@ class MillionTreesDataset:
 
     @property
     def metadata_array(self):
-        """A Tensor of metadata, with the i-th row representing the metadata
-        associated with the i-th data point.
+        """A Tensor of metadata, with the i-th row representing the metadata associated with the
+        i-th data point.
 
         The columns correspond to the metadata_fields defined above.
         """
@@ -287,17 +278,14 @@ class MillionTreesDataset:
 
     @property
     def metadata_map(self):
-        """An optional dictionary that, for each metadata field, contains a
-        list that maps from integers (in metadata_array) to a string
-        representing what that integer means.
+        """An optional dictionary that, for each metadata field, contains a list that maps from
+        integers (in metadata_array) to a string representing what that integer means.
 
-        This is only used for logging, so that we print out more
-        intelligible metadata values. Each key must be in
-        metadata_fields. For example, if we have     metadata_fields =
-        ['hospital', 'y']     metadata_map = {'hospital': ['East',
-        'West']} then if metadata_array[i, 0] == 0, the i-th data point
-        belongs to the 'East' hospital while if metadata_array[i, 0] ==
-        1, it belongs to the 'West' hospital.
+        This is only used for logging, so that we print out more intelligible metadata values. Each
+        key must be in metadata_fields. For example, if we have     metadata_fields = ['hospital',
+        'y']     metadata_map = {'hospital': ['East', 'West']} then if metadata_array[i, 0] == 0,
+        the i-th data point belongs to the 'East' hospital while if metadata_array[i, 0] == 1, it
+        belongs to the 'West' hospital.
         """
         return getattr(self, '_metadata_map', None)
 
@@ -309,9 +297,8 @@ class MillionTreesDataset:
     def initialize_data_dir(self, root_dir, download):
         """Helper function for downloading/updating the dataset if required.
 
-        Note that we only do a version check for datasets where the
-        download_url is set. Currently, this includes all datasets
-        except Yelp. Datasets for which we don't control the download,
+        Note that we only do a version check for datasets where the download_url is set. Currently,
+        this includes all datasets except Yelp. Datasets for which we don't control the download,
         like Yelp, might not handle versions similarly.
         """
         self.check_version()
@@ -467,8 +454,7 @@ class MillionTreesDataset:
 class MillionTreesSubset(MillionTreesDataset):
 
     def __init__(self, dataset, indices, transform=None, geometry_name="y"):
-        """This acts like `torch.utils.data.Subset`, but on
-        `milliontreesDatasets`.
+        """This acts like `torch.utils.data.Subset`, but on `milliontreesDatasets`.
 
         We
         pass in `transform` (which is used for data augmentation) explicitly

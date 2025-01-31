@@ -32,7 +32,7 @@ class TreeBoxesDataset(MillionTreesDataset):
 
     References:
         Website: https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
-        
+
         Citation:
             @article{Weinstein2020,
             title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
@@ -170,8 +170,9 @@ class TreeBoxesDataset(MillionTreesDataset):
     def eval(self, y_pred, y_true, metadata):
         """Performs evaluation on the given predictions.
 
-        The main evaluation metric, detection_acc_avg_dom, measures the
-        simple average of the detection accuracies of each domain."""
+        The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
+        detection accuracies of each domain.
+        """
 
         results = {}
         results_str = ''
@@ -201,7 +202,7 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         Args:
             idx (int): Index of a data point
-    
+
         Returns:
             np.ndarray: Input features of the idx-th data point (image) as a normalized numpy array.
         """
@@ -218,8 +219,8 @@ class TreeBoxesDataset(MillionTreesDataset):
     def _collate_fn(batch):
         """Collates a batch by stacking `x` (features) and `metadata`, but not `y` (targets).
 
-        The batch is initially a tuple of individual data points: (item1, item2, item3, ...).  
-        After zipping, it transforms into a list of tuples:  
+        The batch is initially a tuple of individual data points: (item1, item2, item3, ...).
+        After zipping, it transforms into a list of tuples:
         [(item1[0], item2[0], ...), (item1[1], item2[1], ...), ...].
 
         Args:
