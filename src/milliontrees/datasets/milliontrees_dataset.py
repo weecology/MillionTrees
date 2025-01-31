@@ -8,18 +8,20 @@ import numpy as np
 class MillionTreesDataset:
     """Shared dataset class for all MillionTrees datasets.
 
-    Each data point in the dataset is an (x, y, metadata) tuple, where:
-    - x is the input features
-    - y is the target
-    - metadata is a vector of relevant information, e.g., domain.
-      For convenience, metadata also contains y.
+    Each data point in the dataset is a tuple (x, y, metadata), where:
+        - x: The input features
+        - y: The target
+        - metadata: A vector of relevant information (e.g., domain).
+          For convenience, metadata also contains y.
     """
+
     DEFAULT_SPLITS = {'train': 0, 'val': 1, 'test': 2}
     DEFAULT_SPLIT_NAMES = {
         'train': 'Train',
         'val': 'Validation',
         'test': 'Test'
     }
+
     DEFAULT_SOURCE_DOMAIN_SPLITS = [0]
 
     def __init__(self, root_dir, download, split_scheme):
@@ -308,7 +310,9 @@ class MillionTreesDataset:
         """Helper function for downloading/updating the dataset if required.
 
         Note that we only do a version check for datasets where the
-        download_url is set.
+        download_url is set. Currently, this includes all datasets
+        except Yelp. Datasets for which we don't control the download,
+        like Yelp, might not handle versions similarly.
         """
         self.check_version()
 

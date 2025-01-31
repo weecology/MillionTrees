@@ -16,45 +16,33 @@ from albumentations.pytorch import ToTensorV2
 
 
 class TreeBoxesDataset(MillionTreesDataset):
-    """The TreeBoxes dataset is a collection of tree annotations annotated as
-    four pointed bounding boxes.
+    """A dataset of tree annotations with bounding box coordinates from multiple global sources.
 
-    The dataset is comprised of many sources from across the world. There are 2 splits:
-        - Official: 80% of the data randomly split into train and 20% in test
-        - Random: 80% of the locations randomly split into train and 20% in test
-    Supported `split_scheme`:
-        - 'Official'
-        - 'Random'
-    Input (x):
-        RGB images from camera traps
-    Label (y):
-        y is a n x 4-dimensional vector where each line represents a box coordinate (x_min, y_min, x_max, y_max)
-    Metadata:
-        Each image is annotated with the following metadata
-            - location (int): location id
+    The dataset contains aerial imagery of trees with their corresponding bounding box annotations.
+    Each tree is annotated with a 4-point bounding box (x_min, y_min, x_max, y_max).
 
-    Website:
-        https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
-    Original publication:
-        The following publications are included in this dataset
-        @article{Weinstein2020,
-        title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
-        author={Weinstein BG, Graves SJ, Marconi S, Singh A, Zare A, Stewart D, et al.},
-        journal={PLoS Comput Biol},
-                year={2021},
-        doi={10.1371/journal.pcbi.1009180}
-        }
-    Original publication:
-        The following publications are included in this dataset
-        @article{Weinstein2020,
-        title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
-        author={Weinstein BG, Graves SJ, Marconi S, Singh A, Zare A, Stewart D, et al.},
-        journal={PLoS Comput Biol},
-                year={2021},
-        doi={10.1371/journal.pcbi.1009180}
-        }
-    License:
-        This dataset is distributed under Creative Commons Attribution License
+    Dataset Splits:
+        - Official: Random 80/20 split of all data
+        - Random: Random 80/20 split by location
+
+    Data Format:
+        Input (x): RGB aerial imagery
+        Labels (y): Nx4 array of bounding box coordinates
+        Metadata: Location identifiers for each image
+
+    References:
+        Website: https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
+        
+        Citation:
+            @article{Weinstein2020,
+            title={A benchmark dataset for canopy crown detection and delineation in co-registered airborne RGB, LiDAR and hyperspectral imagery from the National Ecological Observation Network.},
+            author={Weinstein BG, Graves SJ, Marconi S, Singh A, Zare A, Stewart D, et al.},
+            journal={PLoS Comput Biol},
+            year={2021},
+            doi={10.1371/journal.pcbi.1009180}
+            }
+
+    License: Creative Commons Attribution License
     """
     _dataset_name = 'TreeBoxes'
     _versions_dict = {
@@ -180,7 +168,9 @@ class TreeBoxesDataset(MillionTreesDataset):
         super().__init__(root_dir, download, split_scheme)
 
     def eval(self, y_pred, y_true, metadata):
-        """The main evaluation metric, detection_acc_avg_dom, measures the
+        """Performs evaluation on the given predictions.
+
+        The main evaluation metric, detection_acc_avg_dom, measures the
         simple average of the detection accuracies of each domain."""
 
         results = {}
@@ -205,12 +195,15 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         return results, results_str
 
+
     def get_input(self, idx):
-        """
+        """Retrieves the input features (image) for a given data point.
+
         Args:
-            - idx (int): Index of a data point
-        Output:
-            - x (np.ndarray): Input features of the idx-th data point
+            idx (int): Index of a data point
+    
+        Returns:
+            np.ndarray: Input features of the idx-th data point (image) as a normalized numpy array.
         """
         # All images are in the images folder
         img_path = os.path.join(self._data_dir / 'images' /
@@ -223,10 +216,19 @@ class TreeBoxesDataset(MillionTreesDataset):
 
     @staticmethod
     def _collate_fn(batch):
-        """Stack x (batch[1]) and metadata (batch[0]), but not y.
+        """Collates a batch by stacking `x` (features) and `metadata`, but not `y` (targets).
 
-        originally, batch = (item1, item2, item3, item4) after zip,
-        batch = [(item1[0], item2[0], ..), ..]
+        The batch is initially a tuple of individual data points: (item1, item2, item3, ...).  
+        After zipping, it transforms into a list of tuples:  
+        [(item1[0], item2[0], ...), (item1[1], item2[1], ...), ...].
+
+        Args:
+            batch (list): A batch of data points, where each data point is a tuple (metadata, x, y).
+
+        Returns:
+            tuple: A tuple containing:
+                - Stacked `x` (features).
+                - Stacked `metadata`.
         """
         batch = list(zip(*batch))
         batch[1] = torch.stack(batch[1])
