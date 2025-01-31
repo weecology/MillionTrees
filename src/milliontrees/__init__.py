@@ -1,6 +1,6 @@
 """MillionTrees - Benchmark dataset for Airborne Tree Machine Learning"""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 from .get_dataset import get_dataset
 
 benchmark_datasets = [
