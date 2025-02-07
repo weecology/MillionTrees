@@ -7,7 +7,7 @@ tqdm
 pytest
 scikit-learn
 shapely
-bumpversion
+bump-my-version
 yapf
 sphinx
 furo
