@@ -41,7 +41,7 @@ class TreePolygonsDataset(MillionTreesDataset):
     _versions_dict = {
         '0.0': {
             'download_url':
-                'https://github.com/weecology/MillionTrees/releases/latest/download/TreePolygons_v0.0.zip',
+                'https://github.com/weecology/MillionTrees/releases/download/0.0.0-dev1/TreePolygons_v0.0.zip',
             'compressed_size':
                 17112645
         },
