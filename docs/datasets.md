@@ -5,6 +5,10 @@ There are three datasets within the MillionTrees package: TreeBoxes, TreePoints,
 
 ## Boxes
 
+## Kaggle Palm Counting
+
+![sample_image](public/Kaggle_Palm_Counting.png)
+
 ### Kwon et al. 2023
 
 ![sample_image](public/Kwon_et_al_2023.png)
@@ -15,7 +19,7 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 
 **Location:** Suwon, South Korea
 
-### Ragadoshi_Sweden
+### Radogoshi et al. 2021 
 
 ![sample_image](public/Radogoshi_et_al._2021.png)
 
@@ -34,6 +38,8 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 ![sample_image](public/Santos_et_al._2019.png)
 
 **Link:** [Dataset Ninja](https://datasetninja.com/tree-species-detection)  
+
+**Citation**
 
 @Article{s19163595,
   AUTHOR = {Santos, Anderson Aparecido dos and Marcato Junior, José and Araújo, Márcio Santos and Di Martini, David Robledo and Tetila, Everton Castelão and Siqueira, Henrique Lopes and Aoki, Camila and Eltner, Anette and Matsubara, Edson Takashi and Pistori, Hemerson and Feitosa, Raul Queiroz and Liesenberg, Veraldo and Gonçalves, Wesley Nunes},
@@ -151,6 +157,15 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 **Location:** Quebec, Canada
 
+### Feng et al. 2025
+
+![sample_image](public/Feng_et_al._2025.png)
+
+**Link:** [Zenodo](https://zenodo.org/records/14525290)
+**Location:** Simulation
+
+*Note this dataset is simulated and therefore somewhat more controvertial in its inclusion. We believe the size, diversity and realism of the images merit inclusion.*
+
 ### Firoze et al. 2023
 
 ![sample_image](public/Firoze_et_al._2023.png)
@@ -182,6 +197,24 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 **Location:** Tanzania
 
 Citation status uncertain, contact Tjomme Dooper fruit punch AI.
+
+### Kattenborn et al. 2020
+
+![sample_image](public/Kattenborn_et_al._2020.png)
+
+**Link:** [Zenodo](https://zenodo.org/records/7648984)
+
+**Location:** New Zealand
+
+Kattenborn, T., Eichel, J., Wiser, S., Burrows, L., Fassnacht, F. E., & Schmidtlein, S. (2020). Convolutional Neural Networks accurately predict cover fractions of plant species and communities in Unmanned Aerial Vehicle imagery. Remote Sensing in Ecology and Conservation, 6(4), 472-486.
+
+### Lucas et al. 2024
+
+![sample_image](public/Lucas_et_al_2024.png)
+
+**Link:** [Manuscript](https://www.nw-fva.de/fileadmin/nwfva/publikationen/pdf/lucas_2024_individual_tree_detection_and_crown_delineation_in_the_harz.pdf) 
+
+**Citation** Lucas, Moritz, et al. "Individual tree detection and crown delineation in the Harz National Park from 2009 to 2022 using mask R–CNN and aerial imagery." ISPRS Open Journal of Photogrammetry and Remote Sensing 13 (2024): 100071.
 
 ### Miranda et al. 2024
 
