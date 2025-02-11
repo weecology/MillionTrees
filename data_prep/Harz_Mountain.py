@@ -29,5 +29,6 @@ for shapefile in shapefiles:
 # full image path
 annotations = pd.concat(annotations)
 annotations["image_path"] = annotations["image_path"].apply(lambda x: os.path.join("/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/all_images",x))
+annotation["source"] = "Lucas et al. 2024"
 
 annotations.to_csv("/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv", index=False)
