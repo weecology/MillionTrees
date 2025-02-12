@@ -13,13 +13,9 @@ We are in the process of release public data, these are datasets that have previ
 
 # Dataloaders
 
-There are 3 datasets for the MillionTrees benchmark:
-
-* TreeBoxes: A dataset of 282,288 tree crowns from 9 sources.
-
-* TreePolygons: A dataset of 362,751 tree crowns from 8 sources.
-
-* TreePoints: A dataset of 191,614 tree stems from 2 sources.
+TreeBoxes: 4411 images, 2 splits, 197343 rows
+TreePolygons: 18437 images, 2 splits, 760347 rows
+TreePoints: 3929 images, 2 splits, 256184 rows
 
 ## Why MillionTrees?
 

@@ -366,44 +366,22 @@ def collect_spread_annotations():
     else:
         print("No annotations found to combine")
 
-def reverse_rgb_images():
+def remove_alpha_channel():
     base_dir = "/orange/ewhite/DeepForest/SPREAD"
     rgb_folders = glob.glob(f"{base_dir}/*/rgb")
-    
+
     for rgb_folder in rgb_folders:
         rgb_images = sorted([f for f in os.listdir(rgb_folder) if f.endswith(".png")])
-        
-        for rgb_image_file in rgb_images:
-            full_path = os.path.join(rgb_folder, rgb_image_file)
-            bgr_image = cv2.imread(full_path)
-            if bgr_image is None:
-                print(f"Cannot read image: {full_path}")
-                continue
-            
-            rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
-            reversed_image = rgb_image[:, :, ::-1]  # Reverse the channel order
-            
-            output_path = os.path.join(rgb_folder, f"reversed_{rgb_image_file}")
-            cv2.imwrite(output_path, reversed_image)
-            print(f"Saved reversed image to {output_path}")
-            
-            # Plot each step using matplotlib
-            fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-            ax[0].imshow(cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB))
-            ax[0].set_title("Original BGR Image")
-            ax[0].axis("off")
-            
-            ax[1].imshow(rgb_image)
-            ax[1].set_title("Converted RGB Image")
-            ax[1].axis("off")
-            
-            ax[2].imshow(reversed_image)
-            ax[2].set_title("Reversed RGB Image")
-            ax[2].axis("off")
-            
-            plt.show()
-            plt.savefig("/home/b.weinstein/MillionTrees/current.png")
+        for img_file in rgb_images:
+            img_path = os.path.join(rgb_folder, img_file)
+            img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+            if img is not None and img.shape[2] == 4:  # Check if image has 4 channels
+                img = img[:, :, :-1]  # Remove the last channel
+                cv2.imwrite(img_path, img)
+                print(f"Processed {img_path}")
+            else:
+                print(f"Skipped {img_path} (not a 4-channel image)")
 
 if __name__ == "__main__":
     #collect_spread_annotations()
-    reverse_rgb_images()
+    remove_alpha_channel()
