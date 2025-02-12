@@ -8,7 +8,7 @@ from deepforest.visualize import plot_results
 from deepforest.utilities import read_file
 import cv2
 
-version = "v0.1.2"
+version = "v0.1.3"
 base_dir = "/orange/ewhite/web/public/"
 
 TreeBoxes = [
@@ -303,7 +303,6 @@ for source, group in mini_TreePolygons_annotations.groupby("source"):
     group.root_dir = f"{base_dir}MiniTreePolygons_{version}/images/"
     height, width, channels = cv2.imread(f"{base_dir}MiniTreePolygons_{version}/images/" + group.image_path.iloc[0]).shape
     source = source.replace(" ", "_")
-    # Flip BGR and RGB order
     plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source, height=height, width=width)
 
 # Zip the files
