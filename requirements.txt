@@ -16,3 +16,5 @@ myst_parser
 albumentations
 torchmetrics
 docformatter
+label-studio
+label-studio-sdk
