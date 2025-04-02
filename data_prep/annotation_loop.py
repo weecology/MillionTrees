@@ -141,7 +141,7 @@ def main():
 
         # Sample random images
         dataset_size = len(train_dataset)
-        sample_indices = np.random.choice(dataset_size, size=min(10, dataset_size), replace=False)
+        sample_indices = np.random.choice(dataset_size, size=min(200, dataset_size), replace=False)
         
         # Get image paths and annotations for sampled indices
         image_paths = []
@@ -150,6 +150,9 @@ def main():
             data = train_dataset[i]
             filename_id = data[0][0]
             image_path = dataset._filename_id_to_code[int(filename_id)]
+            # If ends in .tif, skip
+            if image_path.endswith(".tif"):
+                continue
             indices = dataset._input_lookup[image_path]
             boxes = dataset._y_array[indices,:]
             full_path = dataset._data_dir / "images" / image_path

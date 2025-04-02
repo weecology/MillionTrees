@@ -143,7 +143,18 @@ def check_if_complete(annotations):
 def convert_json_to_dataframe(x, dataset_type):
     """Convert Label Studio JSON annotations to pandas DataFrame"""
     results = []
+    choices = {"complete": None, "remove": None}
+    
     for annotation in x:
+        # Handle choice annotations
+        if annotation["type"] == "choices":
+            if annotation["from_name"] == "complete":
+                choices["complete"] = annotation["value"]["choices"][0]  # 'yes' or 'no'
+            elif annotation["from_name"] == "remove":
+                choices["remove"] = annotation["value"]["choices"][0]    # 'yes' or 'no'
+            continue
+            
+        # Handle geometry annotations
         if dataset_type == 'TreePoints':
             # KeyPoint format
             x = annotation["value"]["x"]/100 * annotation["original_width"]
@@ -172,7 +183,19 @@ def convert_json_to_dataframe(x, dataset_type):
             # Polygon format - not implemented yet
             continue
             
+        # Add choice flags to each annotation
+        result.update({
+            "complete": choices["complete"],
+            "remove": choices["remove"]
+        })
         results.append(result)
+    
+    # If no geometries but choices exist, create a single row with just the choices
+    if not results and any(v is not None for v in choices.values()):
+        results.append({
+            "complete": choices["complete"],
+            "remove": choices["remove"]
+        })
     
     return pd.DataFrame(results)
 
@@ -339,6 +362,8 @@ def download_completed_tasks(label_studio_project, csv_dir, dataset_type):
                     "x": [0],
                     "y": [0],
                     "label": [0],
+                    "complete": ["no"],
+                    "remove": ["no"],
                     "annotator": [labeled_task["annotations"][0]["created_username"]]
                 })
             elif dataset_type == 'TreeBoxes':
@@ -349,6 +374,8 @@ def download_completed_tasks(label_studio_project, csv_dir, dataset_type):
                     "xmax": [0],
                     "ymax": [0],
                     "label": [0],
+                    "complete": ["no"],
+                    "remove": ["no"],
                     "annotator": [labeled_task["annotations"][0]["created_username"]]
                 })
         else:
