@@ -71,7 +71,7 @@ class TreePointsDataset(MillionTreesDataset):
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
 
         # Load splits
-        df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
+        self.df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
 
         # Splits
         self._split_dict = {
@@ -89,7 +89,7 @@ class TreePointsDataset(MillionTreesDataset):
             'id_test': 'Test (ID/Cis)'
         }
 
-        unique_files = df.drop_duplicates(subset=['filename'],
+        unique_files = self.df.drop_duplicates(subset=['filename'],
                                           inplace=False).reset_index(drop=True)
         unique_files['split_id'] = unique_files['split'].apply(
             lambda x: self._split_dict[x])
@@ -99,11 +99,11 @@ class TreePointsDataset(MillionTreesDataset):
         self._input_array = unique_files.filename
 
         # Create lookup table for which index to select for each filename
-        self._input_lookup = df.groupby('filename').apply(
+        self._input_lookup = self.df.groupby('filename').apply(
             lambda x: x.index.values).to_dict()
 
         # Point labels
-        self._y_array = df[["x", "y"]].values.astype(int)
+        self._y_array = self.df[["x", "y"]].values.astype(int)
 
         # Labels -> just 'Tree'
         self._n_classes = 1
@@ -112,25 +112,25 @@ class TreePointsDataset(MillionTreesDataset):
         self._y_size = 4
 
         # Class labels
-        self.labels = np.zeros(df.shape[0])
+        self.labels = np.zeros(self.df.shape[0])
 
         # Create dictionary for codes to names
         # Create source locations with a numeric ID
-        df["source_id"] = df.source.astype('category').cat.codes
+        self.df["source_id"] = self.df.source.astype('category').cat.codes
 
         # Create filename numeric ID
-        df["filename_id"] = df.filename.astype('category').cat.codes
-        self._source_id_to_code = df.set_index('source_id')['source'].to_dict()
-        self._filename_id_to_code = df.set_index(
+        self.df["filename_id"] = self.df.filename.astype('category').cat.codes
+        self._source_id_to_code = self.df.set_index('source_id')['source'].to_dict()
+        self._filename_id_to_code = self.df.set_index(
             'filename_id')['filename'].to_dict()
 
         # Location/group info
-        n_groups = max(df['source_id']) + 1
+        n_groups = max(self.df['source_id']) + 1
         self._n_groups = n_groups
-        assert len(np.unique(df['source_id'])) == self._n_groups
+        assert len(np.unique(self.df['source_id'])) == self._n_groups
 
         # Metadata is at the image level
-        unique_sources = df[['filename_id', 'source_id']].drop_duplicates(
+        unique_sources = self.df[['filename_id', 'source_id']].drop_duplicates(
             subset="filename_id", inplace=False).reset_index(drop=True)
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
         self._metadata_fields = ['filename_id', 'source_id']
@@ -144,6 +144,10 @@ class TreePointsDataset(MillionTreesDataset):
                                                                   ]))
 
         super().__init__(root_dir, download, split_scheme)
+
+    def get_annotation_from_filename(self, filename):
+        indices = self._input_lookup[filename]
+        return self._y_array[indices]
 
     def eval(self, y_pred, y_true, metadata):
         """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the

@@ -1,3 +1,4 @@
+# Core dependencies
 numpy
 pandas
 pillow
@@ -7,14 +8,28 @@ tqdm
 pytest
 scikit-learn
 shapely
-bump-my-version
-yapf
+albumentations
+
+# Documentation
 sphinx
 furo
 sphinx_markdown_tables
 myst_parser
-albumentations
-torchmetrics
 docformatter
-label-studio
+
+# Development tools
+bumpversion
+yapf
+black
+flake8
+
+# Label Studio tools
 label-studio-sdk
+paramiko
+python-dotenv
+
+# Version checking
+outdated
+
+# Metrics
+torchmetrics
