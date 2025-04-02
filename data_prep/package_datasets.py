@@ -103,8 +103,8 @@ assert TreeBoxes_datasets.ymax.max() < 20000
 
 assert TreePoints_datasets.x.max() < 20000
 assert TreePoints_datasets.y.max() < 30000
-# Create directories if they do not exist
 
+# Create directories if they do not exist
 os.makedirs(f"{base_dir}TreeBoxes_{version}/images", exist_ok=True)
 os.makedirs(f"{base_dir}TreePoints_{version}/images", exist_ok=True)
 os.makedirs(f"{base_dir}TreePolygons_{version}/images", exist_ok=True)
@@ -175,6 +175,7 @@ box_sources = TreeBoxes_datasets.source.unique()
 
 test_sources_polygons = ["Vasquez et al. 2023","Miranda et al. 2024"]
 train_sources_polygons = [x for x in polygon_sources if x not in test_sources_polygons]
+
 # Drop vazquez training data
 TreePolygons_datasets = TreePolygons_datasets[~TreePolygons_datasets.source.isin(["Vasquez et al. 2023 - training"])]
 test_sources_points = ["Amirkolaee et al. 2023"]

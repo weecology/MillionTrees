@@ -12,11 +12,19 @@ Current Status
 
 There are 3 datasets available for the MillionTrees benchmark:
  
-* TreeBoxes: A dataset of 251,047 tree crowns from 10 sources.
+* TreeBoxes: A dataset of 197,343 tree crowns from 10 sources.
 
-* TreePolygons: A dataset of 394,155 tree crowns from 12 sources.
+* TreePolygons: A dataset of 760,347 tree crowns from 12 sources.
 
-* TreePoints: A dataset of 256,185 tree stems from 4 sources.
+* TreePoints: A dataset of 256,308 tree stems from 4 sources.
+
+There are 3 split_schemes available for the MillionTrees benchmark:
+
+* Official: For each source, 80% of the data is used for training and 20% for testing.
+
+* crossgeometry: Boxes and Points are used to predict polygons.
+
+* zeroshot: Selected sources are entirely held out for testing.
 
 Contact
 -------

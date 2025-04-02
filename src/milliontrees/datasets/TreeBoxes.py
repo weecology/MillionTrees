@@ -22,8 +22,9 @@ class TreeBoxesDataset(MillionTreesDataset):
     Each tree is annotated with a 4-point bounding box (x_min, y_min, x_max, y_max).
 
     Dataset Splits:
-        - Official: Random 80/20 split of all data
-        - Random: Random 80/20 split by location
+        - Official: For each source, 80% of the data is used for training and 20% for testing.
+        - crossgeometry: Boxes and Points are used to predict polygons.
+        - zeroshot: Selected sources are entirely held out for testing.
 
     Data Format:
         Input (x): RGB aerial imagery
@@ -75,7 +76,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.eval_score_threshold = eval_score_threshold
         self.image_size = image_size
 
-        if self._split_scheme not in ['official', 'random']:
+        if self._split_scheme not in ['official', 'zeroshot','crossgeometry']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
 
@@ -89,16 +90,10 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._split_dict = {
             'train': 0,
             'val': 1,
-            'test': 2,
-            'id_val': 3,
-            'id_test': 4
         }
         self._split_names = {
             'train': 'Train',
             'val': 'Validation (OOD/Trans)',
-            'test': 'Test (OOD/Trans)',
-            'id_val': 'Validation (ID/Cis)',
-            'id_test': 'Test (ID/Cis)'
         }
 
         unique_files = df.drop_duplicates(subset=['filename'],

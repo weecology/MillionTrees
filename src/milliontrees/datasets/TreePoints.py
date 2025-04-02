@@ -17,12 +17,10 @@ from albumentations.pytorch import ToTensorV2
 class TreePointsDataset(MillionTreesDataset):
     """The TreePoints dataset is a collection of tree annotations annotated as x,y locations.
 
-    The dataset is comprised of many sources from across the world. There are 2 splits:
-        - Official: 80% of the data randomly split into train and 20% in test
-        - Random: 80% of the locations randomly split into train and 20% in test
-    Supported `split_scheme`:
-        - 'Official'
-        - 'Random'
+    Dataset Splits:
+        - Official: For each source, 80% of the data is used for training and 20% for testing.
+        - crossgeometry: Boxes and Points are used to predict polygons.
+        - zeroshot: Selected sources are entirely held out for testing.
     Input (x):
         RGB images from camera traps
     Label (y):
@@ -63,7 +61,7 @@ class TreePointsDataset(MillionTreesDataset):
         self.geometry_name = geometry_name
         self.distance_threshold = distance_threshold
 
-        if self._split_scheme not in ['official', 'random']:
+        if self._split_scheme not in ['official', 'crossgeometry', 'zeroshot']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
 
@@ -77,16 +75,10 @@ class TreePointsDataset(MillionTreesDataset):
         self._split_dict = {
             'train': 0,
             'val': 1,
-            'test': 2,
-            'id_val': 3,
-            'id_test': 4
         }
         self._split_names = {
             'train': 'Train',
-            'val': 'Validation (OOD/Trans)',
-            'test': 'Test (OOD/Trans)',
-            'id_val': 'Validation (ID/Cis)',
-            'id_test': 'Test (ID/Cis)'
+            'val': 'Validation',
         }
 
         unique_files = self.df.drop_duplicates(subset=['filename'],
