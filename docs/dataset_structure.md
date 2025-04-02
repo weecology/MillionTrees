@@ -88,6 +88,14 @@ dataset = TreePointsDataset(download=True, root_dir=<directory to save data>, sp
 
 This looks at the file official.csv and gets the 'split' column that designates which images are in train/test/val depending on the task.
 
+## Dataset Splits
+
+The MillionTrees benchmark supports multiple dataset split schemes to accommodate various tasks:
+
+- **Official**: For each source, 80% of the data is used for training, and 20% is reserved for testing.
+- **Crossgeometry**: Combines Boxes and Points annotations to predict Polygons.
+- **Zeroshot**: Entire sources are held out for testing, simulating a zero-shot learning scenario.
+
 ## Annotation Geometry
 
 ### Boxes

@@ -20,11 +20,11 @@ class TreePolygonsDataset(MillionTreesDataset):
     """The TreePolygons dataset is a collection of tree annotations annotated as multi-point
     polygons locations.
 
-    The dataset is comprised of many sources from across the world. There are 5 splits:
-        - Random: 80% of the data randomly split into train and 20% in test
-        - location: 80% of the locations randomly split into train and 20% in test
-    Supported `split_scheme`:
-        - 'official'
+    The dataset is comprised of many sources from across the world. 
+    Dataset Splits:
+        - Official: For each source, 80% of the data is used for training and 20% for testing.
+        - crossgeometry: Boxes and Points are used to predict polygons.
+        - zeroshot: Selected sources are entirely held out for testing.
     Input (x):
         RGB images from camera traps
     Label (y):

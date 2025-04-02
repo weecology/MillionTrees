@@ -15,11 +15,10 @@ class MillionTreesDataset:
           For convenience, metadata also contains y.
     """
 
-    DEFAULT_SPLITS = {'train': 0, 'val': 1, 'test': 2}
+    DEFAULT_SPLITS = {'train': 0, 'val': 1}
     DEFAULT_SPLIT_NAMES = {
         'train': 'Train',
         'val': 'Validation',
-        'test': 'Test'
     }
 
     DEFAULT_SOURCE_DOMAIN_SPLITS = [0]
