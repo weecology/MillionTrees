@@ -210,7 +210,7 @@ Kattenborn, T., Eichel, J., Wiser, S., Burrows, L., Fassnacht, F. E., & Schmidtl
 
 ### Lucas et al. 2024
 
-![sample_image](public/Lucas_et_al_2024_flipped.png)
+![sample_image](public/Lucas_et_al_2024.png)
 
 **Link:** [Manuscript](https://www.nw-fva.de/fileadmin/nwfva/publikationen/pdf/lucas_2024_individual_tree_detection_and_crown_delineation_in_the_harz.pdf) 
 
