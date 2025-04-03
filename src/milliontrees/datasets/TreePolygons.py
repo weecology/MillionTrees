@@ -82,15 +82,11 @@ class TreePolygonsDataset(MillionTreesDataset):
             'train': 0,
             'val': 1,
             'test': 2,
-            'id_val': 3,
-            'id_test': 4
         }
         self._split_names = {
             'train': 'Train',
             'val': 'Validation (OOD/Trans)',
             'test': 'Test (OOD/Trans)',
-            'id_val': 'Validation (ID/Cis)',
-            'id_test': 'Test (ID/Cis)'
         }
 
         unique_files = df.drop_duplicates(subset=['filename'],
