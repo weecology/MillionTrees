@@ -90,10 +90,12 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._split_dict = {
             'train': 0,
             'val': 1,
+            'test': 2,
         }
         self._split_names = {
             'train': 'Train',
             'val': 'Validation (OOD/Trans)',
+            'test': 'Test (OOD/Trans)',
         }
 
         unique_files = df.drop_duplicates(subset=['filename'],
