@@ -11,7 +11,7 @@ There are three datasets within the MillionTrees package: TreeBoxes, TreePoints,
 
 ### Kwon et al. 2023
 
-![sample_image](public/Kwon_et_al_2023.png)
+![sample_image](public/Kwon_et_al._2023.png)
 
 **Citation:** Ryoungseob Kwon, Youngryel Ryu, Tackang Yang, Zilong Zhong, Jungho Im,  
 *Merging multiple sensing platforms and deep learning empowers individual tree mapping and species detection at the city scale*,  
@@ -210,7 +210,7 @@ Kattenborn, T., Eichel, J., Wiser, S., Burrows, L., Fassnacht, F. E., & Schmidtl
 
 ### Lucas et al. 2024
 
-![sample_image](public/Lucas_et_al_2024.png)
+![sample_image](public/Lucas_et_al._2024.png)
 
 **Link:** [Manuscript](https://www.nw-fva.de/fileadmin/nwfva/publikationen/pdf/lucas_2024_individual_tree_detection_and_crown_delineation_in_the_harz.pdf) 
 
