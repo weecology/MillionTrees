@@ -205,10 +205,10 @@ class Accuracy(ElementwiseMetric):
     def _compute_element_wise(self, y_pred, y_true):
         if self.prediction_fn is not None:
             y_pred = self.prediction_fn(y_pred)
-        return (y_pred == y_true).float()
+        return torch.round((y_pred == y_true).float(), decimals=3)
 
     def worst(self, metrics):
-        return minimum(metrics)
+        return torch.round(minimum(metrics), decimals=3)
 
 
 class MultiTaskAccuracy(MultiTaskMetric):
@@ -547,14 +547,14 @@ class KeypointAccuracy(ElementwiseMetric):
             return acc
         elif total_gt == 0:
             if total_pred > 0:
-                return torch.tensor(0.)
+                return torch.round(torch.tensor(0.), decimals=3)
             else:
-                return torch.tensor(1.)
+                return torch.round(torch.tensor(1.), decimals=3)
         elif total_gt > 0 and total_pred == 0:
-            return torch.tensor(0.)
+            return torch.round(torch.tensor(0.), decimals=3)
 
     def worst(self, metrics):
-        return minimum(metrics)
+        return torch.round(minimum(metrics), decimals=3)
 
 
 class MaskAccuracy(ElementwiseMetric):
