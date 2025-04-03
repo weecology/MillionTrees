@@ -75,10 +75,12 @@ class TreePointsDataset(MillionTreesDataset):
         self._split_dict = {
             'train': 0,
             'val': 1,
+            'test': 2,
         }
         self._split_names = {
             'train': 'Train',
             'val': 'Validation',
+            'test': 'Test',
         }
 
         unique_files = self.df.drop_duplicates(subset=['filename'],
