@@ -8,20 +8,21 @@ from deepforest.visualize import plot_results
 from deepforest.utilities import read_file
 import cv2
 
-version = "v0.1.3"
+version = "v0.1.3.1"
 base_dir = "/orange/ewhite/web/public/"
+debug = False
 
 TreeBoxes = [
-    #"/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
-    #"/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
-    #'/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
+    "/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
+    "/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
+    '/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
     '/orange/ewhite/DeepForest/Radogoshi_Sweden/annotations.csv',
     "/orange/ewhite/DeepForest/WRI/WRI-labels-opensource/annotations.csv",
-    #"/orange/ewhite/DeepForest/Guangzhou2022/annotations.csv",
+    "/orange/ewhite/DeepForest/Guangzhou2022/annotations.csv",
     "/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
     "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
     '/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
-   # "/orange/ewhite/DeepForest/Santos2019/annotations.csv"
+    "/orange/ewhite/DeepForest/Santos2019/annotations.csv"
    ]
 
 TreePoints = [
@@ -36,12 +37,12 @@ TreePolygons = [
     "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
     "/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
     "/orange/ewhite/DeepForest/Firoze2023/annotations.csv",
-    #"/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
-    #"/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
-    #"/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",
-    #"/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
-    #"/orange/ewhite/DeepForest/Araujo_2020/annotations.csv",
-    #"/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv",
+    "/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
+    "/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
+    "/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",
+    "/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
+    "/orange/ewhite/DeepForest/Araujo_2020/annotations.csv",
+    "/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv",
     "/orange/ewhite/DeepForest/BCI/BCI_50ha_2020_08_01_crownmap_raw/annotations.csv",
     "/orange/ewhite/DeepForest/BCI/BCI_50ha_2022_09_29_crownmap_raw/annotations.csv",
     "/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv",
@@ -66,6 +67,10 @@ TreeBoxes_datasets = TreeBoxes_datasets.rename(columns={"image_path":"filename"}
 # Make xmin, ymin, xmax, ymax columns from geometry
 TreeBoxes_datasets[["xmin","ymin","xmax","ymax"]] = gpd.GeoSeries.from_wkt(TreeBoxes_datasets["geometry"]).bounds
 
+# One from each source for debug
+if debug:
+    TreeBoxes_datasets = TreeBoxes_datasets.groupby("source").head()
+
 # Combine point datasets
 TreePoints_datasets = []
 for dataset in TreePoints:
@@ -79,6 +84,9 @@ TreePoints_datasets = TreePoints_datasets.rename(columns={"image_path":"filename
 # Make x,y columns from geometry
 TreePoints_datasets["x"] = gpd.GeoSeries.from_wkt(TreePoints_datasets["geometry"]).centroid.x
 TreePoints_datasets["y"] = gpd.GeoSeries.from_wkt(TreePoints_datasets["geometry"]).centroid.y
+
+if debug:
+    TreePoints_datasets = TreePoints_datasets.groupby("source").head()
 
 # Combine polygon datasets
 TreePolygons_datasets = []
@@ -94,6 +102,8 @@ train = TreePolygons_datasets[TreePolygons_datasets.split=="train"]
 test = TreePolygons_datasets[TreePolygons_datasets.split=="test"]
 TreePolygons_datasets = TreePolygons_datasets.rename(columns={"image_path":"filename"})
 
+if debug:
+    TreePolygons_datasets = TreePolygons_datasets.groupby("source").head()
 
 # Assert that none of the geometry columns have bounds greater than 20,000, checking for non-geographic coordinates
 assert TreeBoxes_datasets.xmin.max() < 20000
@@ -124,18 +134,18 @@ with open(f"{base_dir}TreePoints_{version}/RELEASE_{version}.txt", "w") as outfi
 # Copy images
 for image in TreeBoxes_datasets.filename.unique():
     destination = f"{base_dir}TreeBoxes_{version}/images/"
-    if not os.path.exists(destination + os.path.basename(image)):
-        shutil.copy(image, destination)
+    #if not os.path.exists(destination + os.path.basename(image)):
+    shutil.copy(image, destination)
 
 for image in TreePoints_datasets.filename.unique():
     destination = f"{base_dir}TreePoints_{version}/images/"
-    if not os.path.exists(destination + os.path.basename(image)):
-        shutil.copy(image, destination)
+    #if not os.path.exists(destination + os.path.basename(image)):
+    shutil.copy(image, destination)
 
 for image in TreePolygons_datasets.filename.unique():
     destination = f"{base_dir}TreePolygons_{version}/images/"
-    if not os.path.exists(destination + os.path.basename(image)):
-        shutil.copy(image, destination)
+    #if not os.path.exists(destination + os.path.basename(image)):
+    shutil.copy(image, destination)
 
 # change filenames to relative path
 TreeBoxes_datasets["filename"] = TreeBoxes_datasets["filename"].apply(os.path.basename)

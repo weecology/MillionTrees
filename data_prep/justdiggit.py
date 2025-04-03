@@ -41,8 +41,8 @@ for image in annotations.image_path.unique():
     gdf.root_dir = "/orange/ewhite/DeepForest/justdiggit-drone/label_sample/"
     width, height = rio.open(gdf.root_dir + image).shape
 
-    #plot_results(gdf, height=height, width=width)
-    #plt.savefig("current.png")
+    plot_results(gdf, height=height, width=width)
+    plt.savefig("current.png")
 
 annotations["image_path"] = "/orange/ewhite/DeepForest/justdiggit-drone/label_sample/" + annotations["image_path"]
 annotations.to_csv("/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv")
