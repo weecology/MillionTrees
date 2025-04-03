@@ -256,8 +256,10 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/BCI/BCI_50ha_2020_08_01_crownmap_raw/annotations.csv",
         "/orange/ewhite/DeepForest/BCI/BCI_50ha_2022_09_29_crownmap_raw/annotations.csv",
         "/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv",
-        "/orange/ewhite/DeepForest/SPREAD/annotations.csv"
+        "/orange/ewhite/DeepForest/SPREAD/annotations.csv",
+        "/orange/ewhite/DeepForest/KagglePalm/Palm-Counting-349images/annotations.csv",
     ]
+
     # Combine datasets
     TreeBoxes_datasets = combine_datasets(TreeBoxes, debug=debug)
     TreePoints_datasets = combine_datasets(TreePoints, debug=debug)
