@@ -17,25 +17,30 @@ import torch
 
 
 class TreePolygonsDataset(MillionTreesDataset):
-    """The TreePolygons dataset is a collection of tree annotations annotated as multi-point
-    polygons locations.
+    """
+    The TreePolygons dataset is a collection of tree annotations annotated as multi-point
+    polygon locations.
 
     The dataset is comprised of many sources from across the world.
+
     Dataset Splits:
         - Official: For each source, 80% of the data is used for training and 20% for testing.
         - crossgeometry: Boxes and Points are used to predict polygons.
         - zeroshot: Selected sources are entirely held out for testing.
+
     Input (x):
-        RGB images from camera traps
+        RGB images from camera traps.
+
     Label (y):
-        y is a n x 2-dimensional vector where each line represents a point coordinate (x, y)
+        y is an n x 2-dimensional vector where each line represents a point coordinate (x, y).
+
     Metadata:
-        Each image is annotated with the following metadata
+        Each image is annotated with the following metadata:
             - location (int): location id
             - source (int): source id
 
     License:
-        This dataset is distributed under Creative Commons Attribution License
+        This dataset is distributed under the Creative Commons Attribution License.
     """
     _dataset_name = 'TreePolygons'
     _versions_dict = {
