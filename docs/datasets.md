@@ -198,16 +198,6 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
-### Kattenborn et al. 2020
-
-![sample_image](public/Kattenborn_et_al._2020.png)
-
-**Link:** [Zenodo](https://zenodo.org/records/7648984)
-
-**Location:** New Zealand
-
-Kattenborn, T., Eichel, J., Wiser, S., Burrows, L., Fassnacht, F. E., & Schmidtlein, S. (2020). Convolutional Neural Networks accurately predict cover fractions of plant species and communities in Unmanned Aerial Vehicle imagery. Remote Sensing in Ecology and Conservation, 6(4), 472-486.
-
 ### Lucas et al. 2024
 
 ![sample_image](public/Lucas_et_al._2024.png)
