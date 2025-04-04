@@ -39,7 +39,8 @@ def maximum(numbers, empty_val=0.):
 
 
 def split_into_groups(g):
-    """Splits the input tensor into unique groups and their corresponding indices.
+    """Splits the input tensor into unique groups and their corresponding
+    indices.
 
     Args:
         g (Tensor): A vector containing group labels.
@@ -63,9 +64,10 @@ def split_into_groups(g):
 
 
 def get_counts(g, n_groups):
-    """This differs from split_into_groups in how it handles missing groups. get_counts always
-    returns a count array of length n_groups, whereas split_into_groups returns a unique_counts
-    array whose length is the number of unique groups present in g.
+    """This differs from split_into_groups in how it handles missing groups.
+    get_counts always returns a count array of length n_groups, whereas
+    split_into_groups returns a unique_counts array whose length is the number
+    of unique groups present in g.
 
     Args:
         - g (ndarray): Vector of groups
@@ -138,7 +140,8 @@ def shuffle_arr(arr, seed=None):
 
 
 def threshold_at_recall(y_pred, y_true, global_recall=60):
-    """Calculate the model threshold used to achieve a desired global_recall level.
+    """Calculate the model threshold used to achieve a desired global_recall
+    level.
 
     Args:
         y_pred (Description of y_pred, Assumes that y_true is a vector of the true binary labels.)
