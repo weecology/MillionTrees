@@ -46,6 +46,12 @@ class TreePointsDataset(MillionTreesDataset):
                 "https://data.rc.ufl.edu/pub/ewhite/TreePoints_v0.1.zip",
             'compressed_size':
                 170340
+        },
+        "0.1.3.4":{
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/TreePoints_v0.1.3.4.zip",
+            'compressed_size':
+                1459676926
         }
     }
 

@@ -59,6 +59,12 @@ class TreeBoxesDataset(MillionTreesDataset):
                 "https://data.rc.ufl.edu/pub/ewhite/TreeBoxes_v0.1.zip",
             'compressed_size':
                 3476300
+        },
+                "0.1.3.4": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/TreeBoxes_v0.1.3.4.zip",
+            'compressed_size':
+                6717977561
         }
     }
 
