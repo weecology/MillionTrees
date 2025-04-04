@@ -12,7 +12,8 @@ class Loss(Metric):
         super().__init__(name=name)
 
     def _compute(self, y_pred, y_true):
-        """Helper for computing element-wise metric, implemented for each metric.
+        """Helper for computing element-wise metric, implemented for each
+        metric.
 
         Args:
             - y_pred (Tensor): Predicted targets or model output
@@ -23,7 +24,8 @@ class Loss(Metric):
         return self.loss_fn(y_pred, y_true)
 
     def worst(self, metrics):
-        """Given a list/numpy array/Tensor of metrics, computes the worst-case metric.
+        """Given a list/numpy array/Tensor of metrics, computes the worst-case
+        metric.
 
         Args:
             - metrics (Tensor, numpy array, or list): Metrics
@@ -42,7 +44,8 @@ class ElementwiseLoss(ElementwiseMetric):
         super().__init__(name=name)
 
     def _compute_element_wise(self, y_pred, y_true):
-        """Helper for computing element-wise metric, implemented for each metric.
+        """Helper for computing element-wise metric, implemented for each
+        metric.
 
         Args:
             - y_pred (Tensor): Predicted targets or model output
@@ -53,7 +56,8 @@ class ElementwiseLoss(ElementwiseMetric):
         return self.loss_fn(y_pred, y_true)
 
     def worst(self, metrics):
-        """Given a list/numpy array/Tensor of metrics, computes the worst-case metric.
+        """Given a list/numpy array/Tensor of metrics, computes the worst-case
+        metric.
 
         Args:
             - metrics (Tensor, numpy array, or list): Metrics
@@ -81,7 +85,8 @@ class MultiTaskLoss(MultiTaskMetric):
         return flattened_loss
 
     def worst(self, metrics):
-        """Given a list/numpy array/Tensor of metrics, computes the worst-case metric.
+        """Given a list/numpy array/Tensor of metrics, computes the worst-case
+        metric.
 
         Args:
             - metrics (Tensor, numpy array, or list): Metrics
