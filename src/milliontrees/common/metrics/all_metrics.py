@@ -44,7 +44,8 @@ def binary_logits_to_pred(logits):
 
 
 def pseudolabel_binary_logits(logits, confidence_threshold):
-    """Applies a confidence threshold to binary logits and generates pseudo- labels.
+    """Applies a confidence threshold to binary logits and generates pseudo-
+    labels.
 
     Args:
         logits (Tensor): A tensor of shape (batch_size, n_tasks) representing binary logits.
@@ -79,7 +80,8 @@ def pseudolabel_binary_logits(logits, confidence_threshold):
 
 
 def pseudolabel_multiclass_logits(logits, confidence_threshold):
-    """Applies a confidence threshold to multi-class logits and generates pseudo-labels.
+    """Applies a confidence threshold to multi-class logits and generates
+    pseudo-labels.
 
     Args:
         logits (Tensor): A tensor of shape (batch_size, ..., n_classes) representing multi-class logits.
@@ -146,7 +148,8 @@ def pseudolabel_detection(preds, confidence_threshold):
 
 
 def pseudolabel_detection_discard_empty(preds, confidence_threshold):
-    """Filters detection predictions based on a confidence threshold and discards empty entries.
+    """Filters detection predictions based on a confidence threshold and
+    discards empty entries.
 
     Args:
         preds (List[dict]): A list of length `batch_size`, where each entry is a dictionary
@@ -356,7 +359,8 @@ class MSE(ElementwiseLoss):
 
 
 class PrecisionAtRecall(Metric):
-    """Given a specific model threshold, determine the precision score achieved."""
+    """Given a specific model threshold, determine the precision score
+    achieved."""
 
     def __init__(self, threshold, score_fn=None, name=None):
         self.score_fn = score_fn
@@ -401,8 +405,8 @@ class DummyMetric(Metric):
 
 
 class DetectionAccuracy(ElementwiseMetric):
-    """Given a specific Intersection over union threshold, determine the accuracy achieved for a
-    one-class detector."""
+    """Given a specific Intersection over union threshold, determine the
+    accuracy achieved for a one-class detector."""
 
     def __init__(self,
                  iou_threshold=0.3,
@@ -487,8 +491,8 @@ class DetectionAccuracy(ElementwiseMetric):
 
 
 class KeypointAccuracy(ElementwiseMetric):
-    """Given a specific Intersection over union threshold, determine the accuracy achieved for a
-    one-class detector."""
+    """Given a specific Intersection over union threshold, determine the
+    accuracy achieved for a one-class detector."""
 
     def __init__(self,
                  distance_threshold=0.1,
@@ -558,8 +562,8 @@ class KeypointAccuracy(ElementwiseMetric):
 
 
 class MaskAccuracy(ElementwiseMetric):
-    """Given a specific Intersection over union threshold, determine the accuracy achieved for a
-    Mask R-CNN detector."""
+    """Given a specific Intersection over union threshold, determine the
+    accuracy achieved for a Mask R-CNN detector."""
 
     def __init__(self,
                  iou_threshold=0.5,
