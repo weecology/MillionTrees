@@ -77,7 +77,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.eval_score_threshold = eval_score_threshold
         self.image_size = image_size
 
-        if self._split_scheme not in ['official', 'zeroshot','crossgeometry']:
+        if self._split_scheme not in ['official', 'zeroshot', 'crossgeometry']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
 

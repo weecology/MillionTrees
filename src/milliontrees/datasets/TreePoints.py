@@ -84,8 +84,8 @@ class TreePointsDataset(MillionTreesDataset):
             'test': 'Test',
         }
 
-        unique_files = self.df.drop_duplicates(subset=['filename'],
-                                          inplace=False).reset_index(drop=True)
+        unique_files = self.df.drop_duplicates(
+            subset=['filename'], inplace=False).reset_index(drop=True)
         unique_files['split_id'] = unique_files['split'].apply(
             lambda x: self._split_dict[x])
         self._split_array = unique_files['split_id'].values
@@ -115,7 +115,8 @@ class TreePointsDataset(MillionTreesDataset):
 
         # Create filename numeric ID
         self.df["filename_id"] = self.df.filename.astype('category').cat.codes
-        self._source_id_to_code = self.df.set_index('source_id')['source'].to_dict()
+        self._source_id_to_code = self.df.set_index(
+            'source_id')['source'].to_dict()
         self._filename_id_to_code = self.df.set_index(
             'filename_id')['filename'].to_dict()
 

@@ -4,6 +4,10 @@ from deepforest import get_data
 import glob
 import json
 import shapely.geometry
+from PIL import Image
+from deepforest.visualize import plot_results
+from matplotlib import pyplot as plt
+import geopandas as gpd
 
 eval_set = "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/instances_tree_eval2023.json"
 train_set = "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/instances_tree_train2023.json"
@@ -86,3 +90,16 @@ df["source"] = "Troles et al. 2024"
 # Make filenames full path 
 df["image_path"] = df["image_path"].apply(lambda x: os.path.join("/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/images", x))
 df.to_csv("/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv", index=False)
+
+sample_image = train_polygons.head()
+sample_image["label"] = "Tree"
+# Read and get the height and width of the image
+image_path = sample_image["image_path"].iloc[0]
+image = Image.open("/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/images/" + image_path)
+width, height = image.size
+print(f"Image size: {width} x {height}")
+sample_image.root_dir = "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/images"
+sample_image["geometry"] = sample_image["geometry"].apply(shapely.wkt.loads)
+gdf = gpd.GeoDataFrame(sample_image, geometry="geometry", crs="EPSG:4326")
+ax = plot_results(sample_image,width=width, height=height, savedir="/orange/ewhite/DeepForest/Troles_Bamberg/", basename="sample_image")
+plt.savefig("current.png")
