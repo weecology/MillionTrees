@@ -22,6 +22,22 @@ print(f"Image shape: {image.shape}, Image type: {type(image)}")
 print(f"Targets keys: {targets.keys()}, Label type: {type(targets)}")
 ```
 
+### Dataloaders
+
+Datasets are batched into lists of target dictionaries, tensors of images, and tensors of metadata.
+Each target dictionary contains tensors of the ground truth with the keys dict_keys
+(['y', 'labels']). 'y' differs among the TreeGeometry datasets.
+
+```
+train_loader = get_train_loader("standard", train_dataset, batch_size=2)
+
+# Show one batch of the loader
+for metadata, image, targets in train_loader:
+    print("Targets is a list of dictionaries with the following keys: ", targets[0].keys())
+    print(f"Image shape: {image.shape}, Image type: {type(image)}")
+    print(f"Annotation shape of the first image: {targets[0]['y'].shape}")
+```
+
 ## Training models
 
 We recommend using pytorch-lightning to train models for maximum reproducibility. Imagine a simple object detection model that predicts the bounding boxes of trees in an image. Of course users are welcome to use any other framework or model, but this is a simple example to get started.

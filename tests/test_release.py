@@ -20,7 +20,9 @@ def test_TreePolygons_latest_release(tmpdir):
     
     train_loader = get_train_loader('standard', train_dataset, batch_size=2)
     for metadata, x, targets in train_loader:
-        y = targets["y"]
+        len(targets) == 2
+        labels = targets[0]["labels"]
+        y = targets["y"][0]
         assert x.shape == (2, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
@@ -43,7 +45,8 @@ def test_TreePoints_latest_release(tmpdir):
     
     train_loader = get_train_loader('standard', train_dataset, batch_size=2)
     for metadata, x, targets in train_loader:
-        points = targets["y"]
+        len(targets) == 2
+        points = targets[0]["y"]
         assert x.shape == (2, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
@@ -66,7 +69,8 @@ def test_TreeBoxes_latest_release(tmpdir):
     
     train_loader = get_train_loader('standard', train_dataset, batch_size=2)
     for metadata, x, targets in train_loader:
-        boxes = targets["y"]
+        len(targets) == 2
+        boxes = targets[0]["y"]
         assert x.shape == (2, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
