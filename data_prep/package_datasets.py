@@ -325,7 +325,7 @@ def run(version, base_dir, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.1.3.4"
+    version = "v0.2"
     base_dir = "/orange/ewhite/web/public/"
     debug = False
     run(version, base_dir, debug)

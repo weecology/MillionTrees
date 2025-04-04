@@ -51,9 +51,9 @@ class TreePolygonsDataset(MillionTreesDataset):
             'compressed_size':
                 40277152
         },
-        "0.1.3.4":{
+        "0.2":{
             'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/TreePolygons_v0.1.3.4.zip",
+                "https://data.rc.ufl.edu/pub/ewhite/TreePolygons_v0.2.zip",
             'compressed_size':
                 75419767345
         }
