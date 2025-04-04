@@ -33,10 +33,10 @@ for shapefile in shapefiles:
 
     # Convert .tif to .png
     gdf["label"] = "tree"
-    annotation = read_file(gdf, root_dir="/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/train/images")
+    annotation = read_file(gdf, root_dir="/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/all_images")
     unique_images = gdf["image_path"].unique()
     for row in unique_images:
-        tif_path = os.path.join("/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/train/images", row)
+        tif_path = os.path.join("/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/all_images", row)
         png_path = tif_path.replace(".tif", ".png")
         try:
             with rasterio.open(tif_path) as src:
@@ -60,7 +60,7 @@ annotations = pd.concat(annotations)
 
 # Update full image paths
 annotations["image_path"] = annotations["image_path"].apply(
-    lambda x: os.path.join("/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/train/images", x)
+    lambda x: os.path.join("/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/all_images", x)
 )
 annotations["source"] = "Lucas et al. 2024"
 
@@ -70,7 +70,7 @@ print("Annotations saved to /orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDete
 
 sample_image = annotations.head()
 sample_image["label"] = "Tree"
-sample_image.root_dir = "/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/train/images"
+sample_image.root_dir = "/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/all_images"
 # Read and get the height and width of the image
 image_path = sample_image["image_path"].iloc[0]
 image = Image.open(image_path)
