@@ -1,7 +1,7 @@
 from milliontrees.datasets.TreePolygons import TreePolygonsDataset
 from milliontrees.datasets.TreePoints import TreePointsDataset
 from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
-from milliontrees.common.data_loaders import get_train_loader
+from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
 
 import torch
 
@@ -20,6 +20,20 @@ def test_TreePolygons_latest_release(tmpdir):
     
     train_loader = get_train_loader('standard', train_dataset, batch_size=2)
     for metadata, x, targets in train_loader:
+        len(targets) == 2
+        labels = targets[0]["labels"]
+        y = targets["y"][0]
+        assert x.shape == (2, 3, 448, 448)
+        assert x.dtype == torch.float32
+        assert x.min() >= 0.0 and x.max() <= 1.0
+        assert y[0].shape == (1,448, 448)
+        assert len(metadata) == 2
+        break
+
+    val_dataset = dataset.get_subset("val")
+    val_loader = get_eval_loader('standard', val_dataset, batch_size=2)
+
+    for metadata, x, targets in val_loader:
         len(targets) == 2
         labels = targets[0]["labels"]
         y = targets["y"][0]
@@ -54,6 +68,20 @@ def test_TreePoints_latest_release(tmpdir):
         assert len(metadata) == 2
         break
 
+    val_dataset = dataset.get_subset("val")
+    val_loader = get_eval_loader('standard', val_dataset, batch_size=2)
+
+    for metadata, x, targets in val_loader:
+        len(targets) == 2
+        labels = targets[0]["labels"]
+        y = targets["y"][0]
+        assert x.shape == (2, 3, 448, 448)
+        assert x.dtype == torch.float32
+        assert x.min() >= 0.0 and x.max() <= 1.0
+        assert y[0].shape == (1,448, 448)
+        assert len(metadata) == 2
+        break
+
 def test_TreeBoxes_latest_release(tmpdir):
     dataset = TreeBoxesDataset(download=True, root_dir=tmpdir)
     train_dataset = dataset.get_subset("train")
@@ -69,6 +97,18 @@ def test_TreeBoxes_latest_release(tmpdir):
     
     train_loader = get_train_loader('standard', train_dataset, batch_size=2)
     for metadata, x, targets in train_loader:
+        len(targets) == 2
+        boxes = targets[0]["y"]
+        assert x.shape == (2, 3, 448, 448)
+        assert x.dtype == torch.float32
+        assert x.min() >= 0.0 and x.max() <= 1.0
+        assert boxes.shape[1] == 4
+        assert len(metadata) == 2
+        break
+
+    val_dataset = dataset.get_subset("val")
+    val_loader = get_eval_loader('standard', val_dataset, batch_size=2)
+    for metadata, x, targets in val_loader:
         len(targets) == 2
         boxes = targets[0]["y"]
         assert x.shape == (2, 3, 448, 448)
