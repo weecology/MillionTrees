@@ -206,6 +206,14 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 **Citation** Lucas, Moritz, et al. "Individual tree detection and crown delineation in the Harz National Park from 2009 to 2022 using mask R–CNN and aerial imagery." ISPRS Open Journal of Photogrammetry and Remote Sensing 13 (2024): 100071.
 
+### Kattenborn et al. 2023
+
+![sample_image](public/Kattenborn_et_al._2023.png)
+
+**Link:** [https://www.mdpi.com/1424-8220/21/5/1617](https://zslpublications.onlinelibrary.wiley.com/doi/full/10.1002/rse2.146)
+
+**Location:** New Zealand
+
 ### Miranda et al. 2024
 
 ![sample_image](public/Alejandro_Miranda.png)

@@ -44,6 +44,7 @@ def split_dataset(datasets, split_column="filename", frac=0.8):
     train_images = datasets[split_column].drop_duplicates().sample(frac=frac)
     datasets.loc[datasets[split_column].isin(train_images), "split"] = "train"
     datasets.loc[~datasets[split_column].isin(train_images), "split"] = "test"
+    
     return datasets
 
 
@@ -56,6 +57,8 @@ def process_geometry_columns(datasets, geom_type):
         datasets["y"] = gpd.GeoSeries.from_wkt(datasets["geometry"]).centroid.y
     elif geom_type == "polygon":
         datasets["polygon"] = gpd.GeoDataFrame(datasets.geometry).to_wkt()
+        # Remove multipolygons
+        datasets = datasets[datasets["geometry"].apply(lambda x: gpd.GeoSeries.from_wkt([x]).geom_type[0] != "MultiPolygon")]
     return datasets
 
 
@@ -69,8 +72,8 @@ def copy_images(datasets, base_dir, dataset_type):
     """Copy images to the destination folder."""
     for image in datasets["filename"].unique():
         destination = f"{base_dir}{dataset_type}_{version}/images/"
-        shutil.copy(image, destination)
-
+        if not os.path.exists(os.path.join(destination, os.path.basename(image))):
+            shutil.copy(image, destination)
 
 def create_mini_datasets(datasets, base_dir, dataset_type, version):
     """Create mini datasets for debugging and generate visualizations."""
@@ -107,6 +110,10 @@ def create_release_files(base_dir, dataset_type):
 
 def zip_directory(folder_path, zip_path):
     """Zip the contents of a directory."""
+    # Remove the existing zip file if it exists
+    if os.path.exists(zip_path):
+        os.remove(zip_path)
+    # Create a new zip file
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(folder_path):
             for file in files:
@@ -258,12 +265,17 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv",
         "/orange/ewhite/DeepForest/SPREAD/annotations.csv",
         "/orange/ewhite/DeepForest/KagglePalm/Palm-Counting-349images/annotations.csv",
+        "/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/annotations.csv"
     ]
 
     # Combine datasets
     TreeBoxes_datasets = combine_datasets(TreeBoxes, debug=debug)
     TreePoints_datasets = combine_datasets(TreePoints, debug=debug)
     TreePolygons_datasets = combine_datasets(TreePolygons, debug=debug)
+
+    # Remove rows where xmin equals xmax
+    TreeBoxes_datasets = TreeBoxes_datasets[TreeBoxes_datasets["xmin"] != TreeBoxes_datasets["xmax"]]
+    TreeBoxes_datasets = TreeBoxes_datasets[TreeBoxes_datasets["ymin"] != TreeBoxes_datasets["ymax"]]
 
     # Remove alpha channels
     remove_alpha_channel(TreeBoxes_datasets)
@@ -325,7 +337,7 @@ def run(version, base_dir, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.2"
+    version = "v0.3"
     base_dir = "/orange/ewhite/web/public/"
     debug = False
     run(version, base_dir, debug)
