@@ -12,6 +12,10 @@ The aim of the package is to provide a single interface to load data directly in
 
 ```
 from milliontrees.common.data_loaders import get_train_loader
+from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
+
+# Download the data; this will take a while
+dataset = TreeBoxesDataset(download=True)
 
 train_dataset = dataset.get_subset("train")
 
