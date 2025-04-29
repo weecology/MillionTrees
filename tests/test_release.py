@@ -6,6 +6,7 @@ from milliontrees.common.data_loaders import get_train_loader
 import torch
 
 def test_TreePolygons_latest_release(tmpdir):
+    print(tmpdir)
     dataset = TreePolygonsDataset(download=True, root_dir=tmpdir)
     train_dataset = dataset.get_subset("train")
         
@@ -29,6 +30,7 @@ def test_TreePolygons_latest_release(tmpdir):
         break
 
 def test_TreePoints_latest_release(tmpdir):
+    print(tmpdir)
     dataset = TreePointsDataset(download=True, root_dir=tmpdir)
     train_dataset = dataset.get_subset("train")
     
@@ -52,6 +54,7 @@ def test_TreePoints_latest_release(tmpdir):
         break
 
 def test_TreeBoxes_latest_release(tmpdir):
+    print(tmpdir)
     dataset = TreeBoxesDataset(download=True, root_dir=tmpdir)
     train_dataset = dataset.get_subset("train")
     
