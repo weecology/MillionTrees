@@ -12,6 +12,10 @@ The aim of the package is to provide a single interface to load data directly in
 
 ```
 from milliontrees.common.data_loaders import get_train_loader
+from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
+
+# Download the data; this will take a while
+dataset = TreeBoxesDataset(download=True)
 
 train_dataset = dataset.get_subset("train")
 
@@ -20,6 +24,22 @@ metadata, image, targets = train_dataset[0]
 print(f"Metadata length: {len(metadata)}")
 print(f"Image shape: {image.shape}, Image type: {type(image)}")
 print(f"Targets keys: {targets.keys()}, Label type: {type(targets)}")
+```
+
+### Dataloaders
+
+Datasets are batched into lists of target dictionaries, tensors of images, and tensors of metadata.
+Each target dictionary contains tensors of the ground truth with the keys dict_keys
+(['y', 'labels']). 'y' differs among the TreeGeometry datasets.
+
+```
+train_loader = get_train_loader("standard", train_dataset, batch_size=2)
+
+# Show one batch of the loader
+for metadata, image, targets in train_loader:
+    print("Targets is a list of dictionaries with the following keys: ", targets[0].keys())
+    print(f"Image shape: {image.shape}, Image type: {type(image)}")
+    print(f"Annotation shape of the first image: {targets[0]['y'].shape}")
 ```
 
 ## Training models
