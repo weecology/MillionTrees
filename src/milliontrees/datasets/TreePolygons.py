@@ -17,9 +17,8 @@ import torch
 
 
 class TreePolygonsDataset(MillionTreesDataset):
-    """
-    The TreePolygons dataset is a collection of tree annotations annotated as multi-point
-    polygon locations.
+    """The TreePolygons dataset is a collection of tree annotations annotated as multi-point polygon
+    locations.
 
     The dataset is comprised of many sources from across the world.
 
