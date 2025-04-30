@@ -103,6 +103,15 @@ IEEE Transactions on Geoscience and Remote Sensing (2023)
 
 **Location:** London, England
 
+
+### Lefebvre et al. 2024
+
+![sample_image](public/Lefebvre_et_al._2024".png)
+
+[Dataset Link](https://www.frdr-dfdr.ca/repo/dataset/9f10a155-c89f-43ee-9864-da28ca436af6)
+
+**Citation:** Lefebvre, I., Laliberté, E. (2024). UAV LiDAR, UAV Imagery, Tree Segmentations and Ground Mesurements for Estimating Tree Biomass in Canadian (Quebec) Plantations. Federated Research Data Repository. https://doi.org/10.20383/103.0979
+
 ### Ventura et al. 2022
 
 ![sample_image](public/Ventura_et_al._2022.png)
