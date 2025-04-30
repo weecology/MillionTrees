@@ -116,10 +116,10 @@ crop_wcm_annotations = split_raster(
 annotations = pd.concat([crop_wcm_annotations, crop_ecm_annotations])
 
 # Update full image paths
-annotations["image_path"] = annotations["image_path"].apply(lambda x: os.path.join(shapefiles_dir, x))
+annotations["image_path"] = annotations["image_path"].apply(lambda x: os.path.join("/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops", x))
 annotations["source"] = "Kattenborn et al. 2023"
 
 # Save combined annotations
-output_csv = os.path.join(shapefiles_dir, "annotations.csv")
+output_csv = os.path.join("/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops", "annotations.csv")
 annotations.to_csv(output_csv, index=False)
 print(f"Annotations saved to {output_csv}")
