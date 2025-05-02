@@ -1,5 +1,5 @@
 # Datasets
-There are three datasets within the MillionTrees package: TreeBoxes, TreePoints, and TreePolygons. These datasets contain many source datasets from dozens of papers and research efforts. Below, each source is briefly described. The images for each dataset are generated directly from the dataloaders to allow rapid verification of the annotation status and are regenerated automatically when a new dataset is released or updated.
+There are three datasets within the MillionTrees package: TreeBoxes, TreePoints, and TreePolygons. These datasets contain many source datasets from dozens of papers and research efforts. Below, each source is briefly described. The images for each dataset are generated directly from the dataloaders to allow rapid verification of the annotation status and are regenerated automatically when a new dataset is released or updated. Sample images within a dataset are *randomly selected* within  to ensure transparency. This does mean that some images are sparsely annotated compared to the rest of the images in a source.
 
 *Note: The datasets below are processed and will be part of the final release. The current release is pre-release and not final. Only publically available datasets are included at this time.*
 

@@ -239,14 +239,15 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
         "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
         '/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
-        # "/orange/ewhite/DeepForest/Santos2019/annotations.csv"
+        # "/orange/ewhite/DeepForest/Santos2019/annotations.csv",
+        "/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv"
    ]
 
     TreePoints = [
         "/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv",
         "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
         "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
-        "/orange/ewhite/DeepForest/Tonga/annotations.csv"
+        "/orange/ewhite/DeepForest/Tonga/annotations.csv",
     ]
 
     TreePolygons = [
@@ -265,7 +266,8 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv",
         "/orange/ewhite/DeepForest/SPREAD/annotations.csv",
         "/orange/ewhite/DeepForest/KagglePalm/Palm-Counting-349images/annotations.csv",
-        "/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/annotations.csv"
+        "/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops/annotations.csv",
+        "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv"
     ]
 
     # Combine datasets
@@ -337,7 +339,7 @@ def run(version, base_dir, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.3"
+    version = "v0.4"
     base_dir = "/orange/ewhite/web/public/"
     debug = False
     run(version, base_dir, debug)
