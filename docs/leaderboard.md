@@ -1,6 +1,5 @@
 # Leaderboard
 
-
 # Tasks
 
 There are three tasks within the MillionTrees package. 
@@ -32,6 +31,45 @@ All point sources are used to train and predict all box sources.
 
 
 # Submissions
+
+## Submit to the leaderboard
+
+Once you have trained a model and evaluated its performance, you can submit your results to the MillionTrees leaderboard. Here's how:
+
+1. Create a public repository with your code and model training scripts. Make sure to include:
+   - Clear instructions for reproducing your results
+   - Requirements file listing all dependencies
+   - Training configuration files/parameters
+   - Code for data preprocessing and augmentation
+   - Model architecture definition
+   - Evaluation code
+
+2. Generate predictions on the test split:
+   ```python
+   test_dataset = dataset.get_subset("test")  # Use test split
+   test_loader = get_eval_loader("standard", test_dataset, batch_size=16)
+   
+   predictions = []
+   for metadata, images, _ in test_loader:
+       pred = model(images)
+       predictions.append(pred)
+   ```
+
+3. Save visual examples of your model's predictions:
+   ```python
+   # Save a few example predictions
+   dataset.visualize_predictions(
+       predictions[:5], 
+       save_dir="prediction_examples/"
+   )
+   ```
+
+4. Submit a pull request to the [MillionTrees repository](https://github.com/weecology/MillionTrees) with:
+   - Link to your code repository
+   - Model description and approach
+   - Performance metrics on test set
+   - Example prediction visualizations
+   - Instructions for reproducing results
 
 ## Official
 
