@@ -20,11 +20,11 @@ pip install MillionTrees
 pip install numpy==1.26.4
 ```
 
-## Load the data
+## Load the datasets
 
 The aim of the package is to provide a single interface to load data directly into pytorch without needing to deal with the details of the data format. Users download the data and yield training and evaluation examples from the dataloaders.
 
-```
+```python
 from milliontrees.common.data_loaders import get_train_loader
 from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
 
@@ -54,4 +54,5 @@ for metadata, image, targets in train_loader:
     print("Targets is a list of dictionaries with the following keys: ", targets[0].keys())
     print(f"Image shape: {image.shape}, Image type: {type(image)}")
     print(f"Annotation shape of the first image: {targets[0]['y'].shape}")
+    break
 ```
