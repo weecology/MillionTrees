@@ -6,12 +6,77 @@ There are three overarching datasets: 'Points', 'Polygons' and 'Boxes' based on 
 ## Data download
 
 ```python
+from milliontrees.datasets.TreePoints import TreePointsDataset
 dataset = TreePointsDataset(download=True, root_dir=<directory to save data>) 
 ```
 
+* Note, even when download=True, if the data already exists in root_dir, the data will not be downloaded a second time.
+
 ## Dataset Access Methods
 
+## Dataloaders
+
+Part of the inspiration of this package is to keep most users from needing to interact with the filesystem. The dataloaders are built in, and for many applications, the user will never need to mess around with csv files or image paths. All annotations are pytorch dataloaders and can be iterated over.
+
+```python
+for image, label, metadata in dataset:
+    assert image.shape == (3, 100, 100)
+    assert label.shape == (2,)
+    assert len(metadata) == 2
+    break
+```
+
+Users can select a subset of the dataset and optionally supply a torchvision transform:
+
+```python
+transform = transforms.Compose([
+    transforms.Resize((448, 448)),
+    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.ToTensor()
+])
+
+train_dataset = dataset.get_subset("train", transform=transform)
+    
+for image, label, metadata in train_dataset:
+    assert image.shape == (3, 448, 448)
+    assert label.shape == (4,)
+    assert len(metadata) == 2
+    break
+```
+
+## Split Schemes
+
+One of the great things about supplying data as dataloaders is easy access to different ways to combine datasets. The MillionTrees benchmark has multiple tasks, and each of these is a 'split_scheme', following the terminology from the WILDS benchmark.
+
+```python
+dataset = TreePointsDataset(download=True, root_dir=<directory to save data>, split_scheme="official") 
+```
+
+This looks at the file official.csv and gets the 'split' column that designates which images are in train/test/val depending on the task.
+
+## Dataset Splits
+
+The MillionTrees benchmark supports multiple dataset split schemes to accommodate various tasks:
+
+- **Official**: For each source, 80% of the data is used for training, and 20% is reserved for testing.
+- **Crossgeometry**: Combines Boxes and Points annotations to predict Polygons.
+- **Zeroshot**: Entire sources are held out for testing, simulating a zero-shot learning scenario.
+
+Each split scheme uses the same underlying data, so you don't need to redownload when changing split schemes! 
+
+## Annotation Geometry
+
+### Boxes
+Boxes annotations are given as xmin, ymin, xmax, ymax coordinates relative to the image origin (top-left).
+
+### Points
+Points annotations are given as x,y coordinate relative to the image origin.
+
+### Polygons
+Polygon annotations are given as well-known text coordinates, e.g. "POLYGON((x1 y2, x2 y2, x3, y3 ...))" relative to the image origin.
+
 ### DataFrame Interface
+The goal of MillionTrees project is to limit a user's need to access the underyling data structure.
 Each dataset maintains a pandas DataFrame containing all annotations and metadata, accessible via the `df` attribute:
 
 ```python
@@ -49,60 +114,3 @@ dataset = get_dataset("TreePoints")
 indices = dataset._input_lookup["IMG_904.jpg"]
 coordinates = dataset._y_array[indices]
 ```
-
-## Dataloaders
-
-Part of the inspiration of this package is to keep most users from needing to interact with the filesystem. The dataloaders are built in, and for many applications, the user will never need to mess around with csv files or image paths. All annotations are pytorch dataloaders and can be iterated over.
-
-```python
-for image, label, metadata in dataset:
-    assert image.shape == (3, 100, 100)
-    assert label.shape == (2,)
-    assert len(metadata) == 2
-```
-
-Users can select a subset of the dataset and optionally supply a torchvision transform:
-
-```python
-transform = transforms.Compose([
-    transforms.Resize((448, 448)),
-    transforms.RandomHorizontalFlip(p=0.5),
-    transforms.ToTensor()
-])
-
-train_dataset = dataset.get_subset("train", transform=transform)
-    
-for image, label, metadata in train_dataset:
-    assert image.shape == (3, 448, 448)
-    assert label.shape == (4,)
-    assert len(metadata) == 2
-```
-
-## Split Schemes
-
-One of the great things about supplying data as dataloaders is easy access to different ways to combine datasets. The MillionTrees benchmark has multiple tasks, and each of these is a 'split_scheme', following the terminology from the WILDS benchmark.
-
-```python
-dataset = TreePointsDataset(download=True, root_dir=<directory to save data>, split_scheme="official") 
-```
-
-This looks at the file official.csv and gets the 'split' column that designates which images are in train/test/val depending on the task.
-
-## Dataset Splits
-
-The MillionTrees benchmark supports multiple dataset split schemes to accommodate various tasks:
-
-- **Official**: For each source, 80% of the data is used for training, and 20% is reserved for testing.
-- **Crossgeometry**: Combines Boxes and Points annotations to predict Polygons.
-- **Zeroshot**: Entire sources are held out for testing, simulating a zero-shot learning scenario.
-
-## Annotation Geometry
-
-### Boxes
-Boxes annotations are given as xmin, ymin, xmax, ymax coordinates relative to the image origin (top-left).
-
-### Points
-Points annotations are given as x,y coordinate relative to the image origin.
-
-### Polygons
-Polygon annotations are given as well-known text coordinates, e.g. "POLYGON((x1 y2, x2 y2, x3, y3 ...))" relative to the image origin.
