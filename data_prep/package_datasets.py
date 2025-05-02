@@ -239,7 +239,8 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
         "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
         '/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
-        # "/orange/ewhite/DeepForest/Santos2019/annotations.csv"
+        # "/orange/ewhite/DeepForest/Santos2019/annotations.csv",
+        "/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv"
    ]
 
     TreePoints = [

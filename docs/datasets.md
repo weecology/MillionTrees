@@ -5,6 +5,14 @@ There are three datasets within the MillionTrees package: TreeBoxes, TreePoints,
 
 ## Boxes
 
+## Dumortier 2025
+
+![sample_image](public/Dumortier_et_al._2025.png)
+
+Cite: 10.5281/zenodo.15155080
+
+https://zenodo.org/records/15155081
+
 ## Kaggle Palm Counting
 
 ![sample_image](public/Kaggle_Palm_Counting.png)
@@ -106,7 +114,7 @@ IEEE Transactions on Geoscience and Remote Sensing (2023)
 
 ### Lefebvre et al. 2024
 
-![sample_image](public/Lefebvre_et_al._2024".png)
+![sample_image](public/Lefebvre_et_al._2024.png)
 
 [Dataset Link](https://www.frdr-dfdr.ca/repo/dataset/9f10a155-c89f-43ee-9864-da28ca436af6)
 
