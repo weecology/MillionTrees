@@ -46,7 +46,7 @@ Datasets are batched into lists of target dictionaries, tensors of images, and t
 Each target dictionary contains tensors of the ground truth with the keys dict_keys
 (['y', 'labels']). 'y' differs among the TreeGeometry datasets.
 
-```
+```python
 train_loader = get_train_loader("standard", train_dataset, batch_size=2)
 
 # Show one batch of the loader
