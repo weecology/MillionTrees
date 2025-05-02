@@ -1,4 +1,4 @@
-## Training models
+# Training models
 
 MillionTrees is a dataset package, it is designed to be general and flexible. We recommend using pytorch-lightning to train models for maximum reproducibility. Imagine a simple object detection model that predicts the bounding boxes of trees in an image. Of course users are welcome to use any other framework or model, but this is a simple example to get started.
 
