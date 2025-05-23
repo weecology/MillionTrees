@@ -2,7 +2,7 @@
 
 MillionTrees is a dataset package, it is designed to be general and flexible. We recommend using pytorch-lightning to train models for maximum reproducibility. Imagine a simple object detection model that predicts the bounding boxes of trees in an image. Of course users are welcome to use any other framework or model, but this is a simple example to get started.
 
-### Data setup
+## Data setup
 
 ```python
 from milliontrees.common.data_loaders import get_train_loader
@@ -15,7 +15,7 @@ train_dataset = dataset.get_subset("train")
 train_loader = get_train_loader("standard", train_dataset, batch_size=2)
 ```
 
-### Model Definition
+## Model Definition
 
 ```python
 # Create a simple PyTorch Lightning object detection model
@@ -29,7 +29,7 @@ class ObjectDetectionModel(pl.LightningModule):
         super().__init__()
         # Use a pre-trained Faster R-CNN model
         self.model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
-        
+
         # Modify the box predictor for our use case
         num_classes = 2  # Background + Tree
         in_features = self.model.roi_heads.box_predictor.cls_score.in_features

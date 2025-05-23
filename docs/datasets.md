@@ -5,7 +5,7 @@ There are three datasets within the MillionTrees package: TreeBoxes, TreePoints,
 
 ## Boxes
 
-## Dumortier 2025
+### Dumortier 2025
 
 ![sample_image](public/Dumortier_et_al._2025.png)
 
@@ -13,7 +13,7 @@ Cite: 10.5281/zenodo.15155080
 
 https://zenodo.org/records/15155081
 
-## Kaggle Palm Counting
+### Kaggle Palm Counting
 
 ![sample_image](public/Kaggle_Palm_Counting.png)
 
