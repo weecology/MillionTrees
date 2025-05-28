@@ -16,6 +16,7 @@ furo
 sphinx_markdown_tables
 myst_parser
 docformatter
+nbsphinx
 
 # Development tools
 bumpversion
