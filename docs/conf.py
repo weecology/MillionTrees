@@ -12,7 +12,7 @@ author = 'Ben Weinstein'
 release = __version__
 
 master_doc = 'index'
-extensions = ['myst_parser', 'sphinx.ext.autodoc', "sphinx.ext.napoleon"]
+extensions = ['myst_parser', 'sphinx.ext.autodoc', "sphinx.ext.napoleon", "nbsphinx"]
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_theme = 'furo'
