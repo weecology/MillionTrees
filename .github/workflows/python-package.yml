@@ -14,8 +14,8 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
+          - "3.12"
           - "3.11"
-
         os:
           - "ubuntu-latest"
 
@@ -30,28 +30,43 @@ jobs:
       - name: "Checkout code"
         uses: "actions/checkout@v4"
 
-      - name: Install dependencies
+      - name: Install apt dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install libgeos-dev
-          python -m pip install --upgrade pip
-          pip install .
+          sudo apt-get install -y libgeos-dev pandoc
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python dependencies
+        run: |
+          uv sync --all-extras --dev
+          uv pip install nbqa
+
+      - name: Verify nbqa installation
+        run: uv run nbqa --version
 
       - name: Run pytest for everything but test_polygons
-        run: pytest -v --ignore-glob="*release*"
+        run: uv run pytest -v --ignore-glob="*release*"
 
       - name: Check style
-        run: yapf -d --recursive src/milliontrees/
+        run: uv run yapf -d --recursive src/milliontrees/ --style=.style.yapf
 
-      #- name: Check notebook style
-      #  run: nbqa yapf --in-place docs/examples/*.ipynb --style=.style.yapf
+      - name: Check notebook style
+        run: uv run nbqa yapf --in-place docs/examples/*.ipynb --style=.style.yapf
 
       # - name: Check notebook build
-      #   run: pytest --nbmake docs/*.ipynb
+      #   run: uv run pytest --nbmake docs/*.ipynb
 
       - name: Run docformatter
-        run: docformatter --wrap-summaries 100 --wrap-descriptions 100  --recursive src/milliontrees/
+        run: uv run docformatter --check --wrap-summaries 100 --wrap-descriptions 100 --recursive src/milliontrees/
 
       - name: Test Docs
         run: |
           cd docs && make clean && make html SPHINXOPTS="-W"
+      
+      - name: Test and check build artifacts
+        run: |
+          uv pip install build && uv run python -m build && uv run twine check dist/*

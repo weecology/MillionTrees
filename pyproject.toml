@@ -43,18 +43,37 @@ dependencies = [
     "torch",
     "torchvision",
     "tqdm",
-    "pytest",
     "scikit-learn",
     "shapely",
+    "albumentations",
+    "torchmetrics",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
     "bumpversion",
     "yapf",
+    "docformatter",
+    "black",
+    "flake8",
+    "label-studio-sdk",
+    "paramiko",
+    "python-dotenv",
+    "outdated",
+    "build",
+    "twine",
+]
+docs = [
     "sphinx",
     "furo",
     "sphinx_markdown_tables",
     "myst_parser",
-    "albumentations",
-    "torchmetrics",
-    "docformatter",
+    "sphinx_rtd_theme",
+    "sphinx-design",
+    "nbmake",
+    "nbsphinx",
+    "nbqa",
 ]
 
 [tool.setuptools]
