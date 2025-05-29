@@ -12,11 +12,15 @@ albumentations
 
 # Documentation
 sphinx
+sphinx_rtd_theme
+sphinx-design
 furo
 sphinx_markdown_tables
 myst_parser
 docformatter
+nbmake
 nbsphinx
+nbqa
 
 # Development tools
 bumpversion
