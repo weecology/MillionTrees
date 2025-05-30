@@ -252,6 +252,7 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
         "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
         "/orange/ewhite/DeepForest/Tonga/annotations.csv",
+        '/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv'
     ]
 
     TreePolygons = [
@@ -271,8 +272,9 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/SPREAD/annotations.csv",
         "/orange/ewhite/DeepForest/KagglePalm/Palm-Counting-349images/annotations.csv",
         "/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops/annotations.csv",
-        "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv"
-    ]
+        "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
+        "/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv"
+        ]
 
     # Combine datasets
     TreeBoxes_datasets = combine_datasets(TreeBoxes, debug=debug)
