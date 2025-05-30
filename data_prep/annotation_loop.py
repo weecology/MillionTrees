@@ -172,17 +172,17 @@ def main():
         )
 
         # Upload new batch of images
-        upload_to_label_studio(
-            images=image_paths,
-            sftp_client=sftp_client,
-            dataset_type=dataset_type,
-            url=os.getenv("LABEL_STUDIO_URL"), 
-            project_name=f"MillionTrees-{dataset_type}",
-            images_to_annotate_dir=dataset._data_dir / "images" ,
-            folder_name=os.getenv("LABEL_STUDIO_DATA_DIR"),
-            preannotations=annotations,
-            batch_size=10
-        )
+        # upload_to_label_studio(
+        #     images=image_paths,
+        #     sftp_client=sftp_client,
+        #     dataset_type=dataset_type,
+        #     url=os.getenv("LABEL_STUDIO_URL"), 
+        #     project_name=f"MillionTrees-{dataset_type}",
+        #     images_to_annotate_dir=dataset._data_dir / "images" ,
+        #     folder_name=os.getenv("LABEL_STUDIO_DATA_DIR"),
+        #     preannotations=annotations,
+        #     batch_size=10
+        # )
 
 if __name__ == "__main__":
     main() 
