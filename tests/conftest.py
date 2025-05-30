@@ -24,7 +24,7 @@ def dataset():
     box_data = generate_box_dataset(image_dir)
     box_data["split"] = "train"
     box_data.loc[box_data.filename.isin(["image3.jpg","image4.jpg"]), "split"] = "test"
-    box_file = os.path.join(data_dir, "official.csv")
+    box_file = os.path.join(data_dir, "random.csv")
     box_data.to_csv(box_file)
 
     second_split = box_data.copy(deep=True)
@@ -47,7 +47,7 @@ def dataset():
     polygon_data = generate_polygon_dataset(image_dir)
     polygon_data["split"] = "train"
     polygon_data.loc[2, "split"] = "test"
-    polygon_file = os.path.join(data_dir, "official.csv")
+    polygon_file = os.path.join(data_dir, "random.csv")
     polygon_data.to_csv(polygon_file)
 
     second_split = polygon_data.copy(deep=True)
@@ -71,7 +71,7 @@ def dataset():
     # Assign each image to a train-test split, make a copy of the dataframe and a new split
     point_data['split'] = 'train'
     point_data.loc[2, 'split'] = 'test'
-    point_file = os.path.join(data_dir, "official.csv")
+    point_file = os.path.join(data_dir, "random.csv")
     point_data.to_csv(point_file)
 
     second_split = point_data.copy(deep=True)

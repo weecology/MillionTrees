@@ -1,0 +1,36 @@
+source_name,is_incomplete
+"Reiersen et al. 2022",False
+"Beloiu et al. 2023",True
+"NEON_points",False
+"Dumortier et al. 2025",False
+"Santos et al. 2019",False
+"Kolovai-Trees",False
+"Lucas et al. 2024",False
+"Zamboni et al. 2021",True
+"Radogoshi et al. 2021",True
+"Amirkolaee et al. 2023",True
+"Araujo et al. 2020",False
+"Kattenborn et al. 2023",False
+"Sun et al. 2022",False
+"Kruse et al. 2021",False
+"Feng et al. 2025",False
+"Troles et al. 2024",False
+"Justdiggit 2023",False
+"Hickman 2021",False
+"Firoze et al. 2023",False
+"Kwon et al. 2023",False
+"Velasquez-Camacho et al. 2023",False
+"Alejandro_Miranda",False
+"Weecology_University_Florida",True
+"Lefebvre et al. 2024",False
+"Safonova et al. 2021",False
+"World Resources Institute",False
+"Ball et al. 2023",False
+"Wagner et al. 2023",False
+"Ventura et al. 2022",False
+"Zuniga-Gonzalez et al. 2023",False
+"Cloutier et al. 2023",True
+"Jansen et al. 2023",False
+"Vasquez et al. 2023",False
+"Vasquez et al. 2023 - training",False
+"NEON_benchmark",True 

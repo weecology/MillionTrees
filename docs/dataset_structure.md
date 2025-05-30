@@ -17,14 +17,14 @@ dataset = TreePointsDataset(download=True, root_dir=<directory to save data>)
 One of the great things about supplying data as dataloaders is easy access to different ways to combine datasets. The MillionTrees benchmark has multiple tasks, and each of these is a 'split_scheme', following the terminology from the WILDS benchmark.
 
 ```python
-dataset = TreePointsDataset(download=True, root_dir=<directory to save data>, split_scheme="official") 
+dataset = TreePointsDataset(download=True, root_dir=<directory to save data>, split_scheme="random") 
 ```
 
-This looks at the file official.csv and gets the 'split' column that designates which images are in train/test/val depending on the task.
+This looks at the file random.csv and gets the 'split' column that designates which images are in train/test/val depending on the task.
 
 The MillionTrees benchmark supports multiple dataset split schemes to accommodate various tasks:
 
-- **Official**: For each source, 80% of the data is used for training, and 20% is reserved for testing.
+- **Random**: For each source, 80% of the data is used for training, and 20% is reserved for testing.
 - **Crossgeometry**: Combines Boxes and Points annotations to predict Polygons.
 - **Zeroshot**: Entire sources are held out for testing, simulating a zero-shot learning scenario.
 
@@ -89,6 +89,24 @@ Each dataset maintains a pandas DataFrame containing all annotations and metadat
 dataset = TreePointsDataset()
 dataset.df  # Access full DataFrame with annotations and metadata
 ```
+
+### Incomplete Data Handling
+Some datasets may contain incomplete annotations or data quality issues. The `remove_incomplete` flag allows you to filter out these problematic entries:
+
+```python
+# Initialize dataset with incomplete data removed
+dataset = TreePointsDataset(remove_incomplete=True)
+```
+
+When `remove_incomplete=True`, the dataset will:
+1. Filter out any annotations marked as incomplete in the source data
+2. Only include high-quality, complete annotations in the dataset
+3. Apply this filtering to all splits (train/val/test)
+
+This is particularly useful when:
+- Working with datasets that have known quality issues
+- Training models that require complete, high-quality annotations
+- Ensuring consistent data quality across all splits
 
 The DataFrame contains:
 - `filename`: Image filename

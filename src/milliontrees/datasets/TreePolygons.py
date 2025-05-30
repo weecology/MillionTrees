@@ -23,7 +23,7 @@ class TreePolygonsDataset(MillionTreesDataset):
     The dataset is comprised of many sources from across the world.
 
     Dataset Splits:
-        - Official: For each source, 80% of the data is used for training and 20% for testing.
+        - Random: For each source, 80% of the data is used for training and 20% for testing.
         - crossgeometry: Boxes and Points are used to predict polygons.
         - zeroshot: Selected sources are entirely held out for testing.
 
@@ -67,10 +67,11 @@ class TreePolygonsDataset(MillionTreesDataset):
                  version=None,
                  root_dir='data',
                  download=False,
-                 split_scheme='official',
+                 split_scheme='random',
                  geometry_name='y',
                  eval_score_threshold=0.5,
-                 image_size=448):
+                 image_size=448,
+                 remove_incomplete=False):
 
         self._version = version
         self._split_scheme = split_scheme
@@ -78,7 +79,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         self.image_size = image_size
         self.eval_score_threshold = eval_score_threshold
 
-        if self._split_scheme != 'official':
+        if self._split_scheme != 'random':
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
         # path
@@ -86,6 +87,10 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         # Load splits
         df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
+
+        # Remove incomplete data based on flag
+        if remove_incomplete:
+            df = df[df['complete'] == True]
 
         # Splits
         self._split_dict = {
