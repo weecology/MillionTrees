@@ -209,6 +209,14 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
+### Li et al. 2023
+
+![sample_image](public/Li_et_al._2023.png)
+
+**link** [Manuscript](https://academic.oup.com/pnasnexus/article/2/4/pgad076/7073732?login=false) [github](https://github.com/sizhuoli/TreeCountSegHeight?tab=readme-ov-file)
+
+**Location**: Denmark
+
 ### Lefebvre et al. 2024
 
 ![sample_image](public/Lefebvre_et_al._2024.png)

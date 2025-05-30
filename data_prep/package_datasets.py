@@ -269,7 +269,8 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/KagglePalm/Palm-Counting-349images/annotations.csv",
         "/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops/annotations.csv",
         "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
-        "/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv"
+        "/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
+        "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/annotations.csv",
         ]
 
     # Combine datasets
