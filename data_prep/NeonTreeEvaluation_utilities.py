@@ -4,16 +4,10 @@ import os
 import pandas as pd
 import neonutilities as nu
 import geopandas as gpd
-import rasterio
 from rasterio.windows import from_bounds
-import shutil
-import laspy
 import numpy as np
-import tempfile
 from deepforest.utilities import read_file
 import os
-from glob import glob
-
 
 # Read neon_token.txt file to get the token
 def read_neon_token():
@@ -82,7 +76,7 @@ def run():
     # For each plotID, crop the remote sensing data
     benchmark_annotations["plotID"] = benchmark_annotations["image_path"].apply(lambda x: "_".join(x.split("_")[0:2]))
     plotIDs = benchmark_annotations["plotID"].unique()
-    data_products = ["rgb","CHM"] # ADD "lidar", "hyperspectral" when needed
+    data_products = ["rgb","CHM","lidar"] # ADD "hyperspectral" when needed
     for year in [2024, 2023, 2022, 2021, 2020, 2019, 2018]:
         for data_product in data_products:
             print(f"Processing data product: {data_product}")
@@ -106,7 +100,7 @@ def match_xml_to_tif(xml_path, tifs):
         tif_folder_path = os.path.join(neon_training_annotations, tif_folder)
         if not os.path.isdir(tif_folder_path):
             continue
-        tif_files = glob(os.path.join(tif_folder_path, "*.tif"))
+        tif_files = glob.glob(os.path.join(tif_folder_path, "*.tif"))
         for tif_path in tif_files:
             tif_name = os.path.splitext(os.path.basename(tif_path))[0]
             xml_path = os.path.join(annotation_folder, f"{tif_name}.xml")
