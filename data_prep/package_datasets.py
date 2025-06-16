@@ -275,6 +275,7 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
         "/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
         "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/annotations.csv",
+        #"/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv"
         ]
 
     # Combine datasets
