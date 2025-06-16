@@ -30,30 +30,39 @@ def lookup_plot_bounds(plot_file, plotID):
 
 def download_remote_sensing_data(data_product, site, bounds, year):
     if data_product == "lidar":
-        id = "DP3.30003.001"
+        id = "DP1.30003.001"
     elif data_product == "rgb":
         id = "DP3.30010.001"
     elif data_product == "hyperspectral":
         id = "DP3.30006.002"
     elif data_product == "CHM":
-        id = "DP3.30026.001"
+        id = "DP3.30015.001"
     else:
         raise ValueError("Unsupported data product")
     
     xmin, ymin, xmax, ymax = bounds.values[0]
     print("Downloading data for site:", site, "from", xmin, ymin, "to", xmax, ymax, "for year:", year)
-    nu.by_tile_aop(dpid=id, 
-                site=site, 
-                easting=int(xmin),
-                northing=int(ymin),
-                year=year,
-                token=read_neon_token(),
-                include_provisional=True,
-                check_size=False,
-                # Save in tmpdir, going to crop and save to final location later
-                savepath=os.path.join("/orange/ewhite/NeonData/", site),
-                verbose=True,
-                )
+    
+    geo_index = f"{int(xmin // 1000 * 1000)}_{int(ymin // 1000 * 1000)}"
+    existing_tiles = glob.glob(os.path.join("/orange/ewhite/NeonData/", site, f"{id}/**/*"), recursive=True)
+    existing_tiles = [x for x in existing_tiles if geo_index in x]
+    existing_tiles = [x for x in existing_tiles if str(year) in x]
+    if len(existing_tiles) > 0:
+        print(f"Data for {site}, {geo_index}, {year} already exists, skipping download.")
+        return existing_tiles[0]
+    else:
+        download_tiles = nu.by_tile_aop(dpid=id, 
+                    site=site, 
+                    easting=int(xmin),
+                    northing=int(ymin),
+                    year=year,
+                    token=read_neon_token(),
+                    include_provisional=True,
+                    check_size=False,
+                    # Save in tmpdir, going to crop and save to final location later
+                    savepath=os.path.join("/orange/ewhite/NeonData/", site),
+                    verbose=True,
+                    )
 
 def run(): 
     BENCHMARK_PATH = "/orange/idtrees-collab/NeonTreeEvaluation/"
