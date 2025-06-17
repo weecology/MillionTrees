@@ -91,7 +91,7 @@ dataset.df  # Access full DataFrame with annotations and metadata
 ```
 
 ### Incomplete Data Handling
-Some datasets may contain incomplete annotations or data quality issues. The `remove_incomplete` flag allows you to filter out these problematic entries:
+Some datasets may contain incomplete annotations or data quality issues. The `remove_incomplete` flag allows you to filter out these potentially problematic entries:
 
 ```python
 # Initialize dataset with incomplete data removed
