@@ -320,8 +320,8 @@ def main():
     Main function to process all cities with tree location data
     """
     # Directory containing tree location CSV files
-    tree_locations_dir = "data_prep/tree_locations"
-    output_dir = "data_prep/AutoArborist"
+    tree_locations_dir = "tree_locations"
+    output_dir = "AutoArborist"
     
     os.makedirs(output_dir, exist_ok=True)
     
@@ -334,7 +334,19 @@ def main():
     
     for csv_file in csv_files:
         # Extract city name from filename
-        city_name = csv_file.replace('Trees.csv', '').replace('_train.csv', '').replace('_test.csv', '')
+        city_name = csv_file.replace('Trees.csv', '').replace('_train.csv', '').replace('_test.csv', '').replace('_sample.csv', '')
+        
+        # Handle different filename patterns
+        if city_name.lower().startswith('calgary'):
+            city_name = 'calgary'
+        elif city_name.lower().startswith('edmonton'):
+            city_name = 'edmonton'
+        elif city_name.lower().startswith('vancouver'):
+            city_name = 'vancouver'
+        elif city_name.lower().startswith('new_york') or city_name.lower().startswith('newyork'):
+            city_name = 'new_york'
+        elif city_name.lower().startswith('washington') or city_name.lower().startswith('dc'):
+            city_name = 'washington_dc'
         
         # Skip if already processed train/test files
         if '_train' in csv_file or '_test' in csv_file:
@@ -397,5 +409,5 @@ def main():
 if __name__ == "__main__":
     main()
 
-# Calgary orthophoto links
-https://www.arcgis.com/apps/mapviewer/index.html?webmap=823b8c06c5544c1b825c7dd5da96d35a
+# Calgary orthophoto reference:
+# https://www.arcgis.com/apps/mapviewer/index.html?webmap=823b8c06c5544c1b825c7dd5da96d35a
