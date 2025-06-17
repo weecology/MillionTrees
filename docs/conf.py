@@ -1,8 +1,11 @@
 # Configuration file for the Sphinx documentation builder.
 import os
 import sys
-# Add the src directory to the Python path
-sys.path.insert(0, os.path.abspath('../src'))
+
+# Add the src directory and project root to the Python path
+curr_path = os.path.dirname(os.path.abspath(os.path.expanduser(__file__)))
+sys.path.insert(0, os.path.join(curr_path, ".."))
+sys.path.insert(0, os.path.abspath("../src"))
 
 from milliontrees.version import __version__
 
@@ -12,7 +15,7 @@ author = 'Ben Weinstein'
 release = __version__
 
 master_doc = 'index'
-extensions = ['myst_parser', 'sphinx.ext.autodoc', "sphinx.ext.napoleon"]
+extensions = ['myst_parser', 'sphinx.ext.autodoc', "sphinx.ext.napoleon", "nbsphinx"]
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_theme = 'furo'
