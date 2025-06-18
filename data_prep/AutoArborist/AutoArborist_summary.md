@@ -6,11 +6,11 @@ Automated overhead imagery acquisition and annotation for tree locations.
 
 - **Total cities processed**: 1
 - **Successful cities**: 1
-- **Total tree annotations**: 9
+- **Total tree annotations**: 4
 
 ## Cities with Successful Imagery
 
-- **calgary**: 9 trees
+- **calgary**: 4 trees
 
 ## Failed Cities
 

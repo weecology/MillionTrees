@@ -60,7 +60,7 @@ def load_tree_locations(csv_path):
     Returns:
         geopandas.GeoDataFrame: Tree locations with geometry
     """
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path).head(10)
     
     # Create point geometries from lat/lng
     geometry = [Point(lng, lat) for lng, lat in zip(df['SHAPE_LNG'], df['SHAPE_LAT'])]
@@ -86,6 +86,57 @@ def get_city_bounds(tree_locations, buffer_km=2.0):
     return (bounds[0] - buffer_deg, bounds[1] - buffer_deg, 
             bounds[2] + buffer_deg, bounds[3] + buffer_deg)
 
+def split_into_grid_cells(tree_locations, cell_size_meters=100):
+    """
+    Split tree locations into grid cells of specified size
+    
+    Args:
+        tree_locations: GeoDataFrame of tree locations in WGS84
+        cell_size_meters: Size of grid cells in meters
+    
+    Returns:
+        list: List of (GeoDataFrame, bounds) tuples for each grid cell
+    """
+    # Transform to a projected CRS for accurate distance measurements
+    # Using UTM zone based on the center of the data
+    center_lon = tree_locations.geometry.x.mean()
+    utm_zone = int((center_lon + 180) / 6) + 1
+    utm_crs = f'EPSG:{32600 + utm_zone}'  # WGS84 UTM zone
+    
+    # Transform to UTM
+    tree_locations_utm = tree_locations.to_crs(utm_crs)
+    
+    # Get bounds in UTM coordinates
+    minx, miny, maxx, maxy = tree_locations_utm.total_bounds
+    
+    # Create grid cells
+    grid_cells = []
+    x_cells = int(np.ceil((maxx - minx) / cell_size_meters))
+    y_cells = int(np.ceil((maxy - miny) / cell_size_meters))
+    
+    for i in range(x_cells):
+        for j in range(y_cells):
+            # Calculate cell bounds
+            cell_minx = minx + i * cell_size_meters
+            cell_miny = miny + j * cell_size_meters
+            cell_maxx = cell_minx + cell_size_meters
+            cell_maxy = cell_miny + cell_size_meters
+            
+            # Create cell polygon
+            cell = box(cell_minx, cell_miny, cell_maxx, cell_maxy)
+            
+            # Find trees in this cell
+            trees_in_cell = tree_locations_utm[tree_locations_utm.intersects(cell)]
+            
+            if len(trees_in_cell) > 0:
+                # Transform back to WGS84 for imagery download
+                trees_in_cell = trees_in_cell.to_crs('EPSG:4326')
+                cell_bounds = transform_bounds(utm_crs, 'EPSG:4326', 
+                                            cell_minx, cell_miny, cell_maxx, cell_maxy)
+                grid_cells.append((trees_in_cell, cell_bounds))
+    
+    return grid_cells
+
 def download_arcgis_imagery(bounds, imagery_config, output_path, size=(2048, 2048)):
     """
     Download imagery from ArcGIS Rest Server
@@ -108,8 +159,8 @@ def download_arcgis_imagery(bounds, imagery_config, output_path, size=(2048, 204
     params = {
         'bbox': f'{minx},{miny},{maxx},{maxy}',
         'bboxSR': imagery_config['crs'].split(':')[1],  # Extract EPSG code
-        'size': f'{size[0]},{size[1]}',
         'imageSR': imagery_config['crs'].split(':')[1],
+        'size': f'{size[0]},{size[1]}',
         'format': 'tiff',
         'pixelType': 'U8',
         'noData': '255,255,255',
@@ -186,7 +237,7 @@ def create_annotations_from_trees(tree_locations, image_path, image_bounds, pixe
     
     return annotations
 
-def process_large_imagery(image_path, annotations, chip_size=1000, overlap=0.1):
+def process_large_imagery(image_path, annotations, chip_size=2048, overlap=0.1):
     """
     Process large imagery by splitting into chips and updating annotations
     
@@ -269,38 +320,50 @@ def process_city(city_name, csv_path, output_dir):
         # Get imagery configuration
         imagery_config = IMAGERY_SOURCES[city_name.lower()]
         
-        # Get bounds and download imagery
-        bounds = get_city_bounds(tree_locations)
-        image_path = os.path.join(output_dir, f"{city_name}_imagery.tif")
+        # Split into grid cells
+        grid_cells = split_into_grid_cells(tree_locations)
+        print(f"Split into {len(grid_cells)} grid cells")
         
-        downloaded_path = download_arcgis_imagery(bounds, imagery_config, image_path)
-        if not downloaded_path:
-            print(f"Failed to download imagery for {city_name}")
-            return False, 0, None
+        all_annotations = []
         
-        # Verify the image was downloaded correctly
-        try:
-            with rasterio.open(downloaded_path) as src:
-                image_bounds = src.bounds
-                pixel_size = src.res[0]
-                print(f"Image dimensions: {src.width}x{src.height}, bounds: {image_bounds}")
-        except Exception as e:
-            print(f"Error reading downloaded image: {e}")
-            return False, 0, None
+        # Process each grid cell
+        for i, (cell_trees, cell_bounds) in enumerate(grid_cells):
+            print(f"Processing grid cell {i+1}/{len(grid_cells)} with {len(cell_trees)} trees")
+            
+            # Download imagery for this cell
+            image_path = os.path.join(output_dir, f"{city_name}_cell_{i}_imagery.tif")
+            downloaded_path = download_arcgis_imagery(cell_bounds, imagery_config, image_path)
+            
+            if not downloaded_path:
+                print(f"Failed to download imagery for cell {i}")
+                continue
+            
+            # Verify the image was downloaded correctly
+            try:
+                with rasterio.open(downloaded_path) as src:
+                    image_bounds = src.bounds
+                    pixel_size = src.res[0]
+                    print(f"Image dimensions: {src.width}x{src.height}, bounds: {image_bounds}")
+            except Exception as e:
+                print(f"Error reading downloaded image: {e}")
+                continue
+            
+            # Transform tree locations to image CRS
+            cell_trees_proj = transform_tree_locations(cell_trees, imagery_config['crs'])
+            
+            # Create annotations for this cell
+            cell_annotations = create_annotations_from_trees(
+                cell_trees_proj, downloaded_path, image_bounds, pixel_size)
+            
+            if len(cell_annotations) > 0:
+                all_annotations.append(cell_annotations)
         
-        # Transform tree locations to image CRS
-        tree_locations_proj = transform_tree_locations(tree_locations, imagery_config['crs'])
-        
-        # Create annotations
-        annotations = create_annotations_from_trees(
-            tree_locations_proj, downloaded_path, image_bounds, pixel_size)
-        
-        if len(annotations) == 0:
+        if not all_annotations:
             print(f"No trees found within image bounds for {city_name}")
             return False, 0, None
         
-        # Process large imagery if needed
-        annotations = process_large_imagery(downloaded_path, annotations)
+        # Combine all annotations
+        annotations = pd.concat(all_annotations, ignore_index=True)
         
         # Save annotations
         annotations_path = os.path.join(output_dir, f"{city_name}_annotations.csv")
@@ -320,8 +383,8 @@ def main():
     Main function to process all cities with tree location data
     """
     # Directory containing tree location CSV files
-    tree_locations_dir = "tree_locations"
-    output_dir = "AutoArborist"
+    tree_locations_dir = "/Users/benweinstein/Documents/MillionTrees/data_prep/tree_locations"
+    output_dir = "/Users/benweinstein/Documents/MillionTrees/data_prep/AutoArborist"
     
     os.makedirs(output_dir, exist_ok=True)
     
