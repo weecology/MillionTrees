@@ -19,6 +19,7 @@ sites = {
     "Tempe":"https://data.tempe.gov/maps/cea011e890c847d297678a3176869bf3/explore?location=33.395241%2C-111.926973%2C19.00", # Can't download
     "Massachusetts":"https://tiles.arcgis.com/tiles/hGdibHYSPO59RG1h/arcgis/rest/services/orthos2021/MapServer",
     "Hennepin":"https://gis.hennepin.us/arcgis/rest/services/Imagery/UTM_Aerial_2022/MapServer",
+    
     }
 
 # Oregon server https://imagery.oregonexplorer.info/arcgis/rest/services/OSIP_2022

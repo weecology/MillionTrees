@@ -160,6 +160,14 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 **Location:** Danum, Malaysia
 
+## Bolhman 2008
+
+![sample_image](public/Bohlman_et_al._2008.png)
+
+Unpublished data from Barro Colorado Island
+
+**Location**: BCI, Panama
+
 ### Cloutier et al. 2023
 
 ![sample_image](public/Cloutier_et_al._2023.png)
@@ -209,6 +217,14 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
+### Li et al. 2023
+
+![sample_image](public/Li_et_al._2023.png)
+
+**link** [Manuscript](https://academic.oup.com/pnasnexus/article/2/4/pgad076/7073732?login=false) [github](https://github.com/sizhuoli/TreeCountSegHeight?tab=readme-ov-file)
+
+**Location**: Denmark
+
 ### Lefebvre et al. 2024
 
 ![sample_image](public/Lefebvre_et_al._2024.png)
@@ -244,6 +260,14 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 **Link:** [https://www.mdpi.com/1424-8220/21/5/1617](https://www.mdpi.com/1424-8220/21/5/1617)
 
 **Location:** Spain
+
+### Takeshige et al. 2025
+
+![sample_image](public/Takeshige_et_al._2025.png)
+
+**Link:** https://esj-journals.onlinelibrary.wiley.com/doi/10.1111/1440-1703.12555
+
+**Location:** Japan
 
 ### Troles et al. 2024
 

@@ -20,7 +20,7 @@ There are 3 datasets available for the MillionTrees benchmark:
 
 There are 3 split_schemes available for the MillionTrees benchmark:
 
-* Official: For each source, 80% of the data is used for training and 20% for testing.
+* Random: For each source, 80% of the data is used for training and 20% for testing.
 
 * crossgeometry: Boxes and Points are used to predict polygons.
 

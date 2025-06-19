@@ -137,7 +137,7 @@ def test_TreeBoxes_eval(dataset, pred_tensor):
     assert "recall" in eval_results.keys()
 
 def test_TreeBoxes_download(tmpdir):
-    ds = TreeBoxesDataset(download=True, root_dir=tmpdir, version="0.0")
+    ds = TreeBoxesDataset(download=True, root_dir=tmpdir)
     train_dataset = ds.get_subset("train")
      
     for metadata, image, targets in train_dataset:
