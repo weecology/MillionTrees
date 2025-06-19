@@ -20,6 +20,8 @@ from deepforest.preprocess import split_raster
 from deepforest.utilities import read_file
 from PIL import Image
 import io
+import argparse
+import glob
 
 # ArcGIS Rest Server endpoints for various cities
 IMAGERY_SOURCES = {
@@ -47,6 +49,47 @@ IMAGERY_SOURCES = {
         "url": "https://imagery.dcgis.dc.gov/dcgis/rest/services/Ortho/Ortho_2023/ImageServer/exportImage",
         "crs": "EPSG:26985",  # NAD83(HARN) / Maryland
         "pixel_size": 0.1
+    },
+    "minneapolis": {
+        'url':"https://gis.hennepin.us/arcgis/rest/services/Imagery/UTM_Aerial_2022/MapServer",
+        "crs": "EPSG:26915",  # NAD83 / UTM zone 15N
+        "pixel_size": 0.1
+        },
+    "pittsburgh": {
+        "url": "https://imagery.pasda.psu.edu/arcgis/services/pasda/AlleghenyCountyImagery2017/MapServer/WMSServer?SERVICE=WMS&request=getcapabilities",  # 3 inch but leaf off
+        "crs": "EPSG:26917",  # NAD83 / UTM zone 17N (approximate for Pittsburgh)
+        "pixel_size": 0.0762  # 3 inch ≈ 0.0762 meters
+        },
+    "charlottesville": {
+            "url":"https://vginmaps.vdem.virginia.gov/arcgis/rest/services/VBMP_Imagery/MostRecentImagery_WGS/MapServer/export",
+            "crs": "EPSG:3857",
+            "pixel_size": 0.1  # Approximate pixel size in meters
+        },
+    "bloomington": {
+        "url": "https://imageserver.gisdata.mn.gov/cgi-bin/wms?",
+        "crs": "EPSG:26915",  # NAD83 / UTM zone 15N
+        "pixel_size": 0.1  # Approximate pixel size in meters
+    },
+    "seattle": {
+        "url":"https://gis.seattle.gov/image/rest/services/BaseMaps/WM_Aerial/MapServer/export?",
+        "crs": "EPSG:3857",
+        "pixel_size": 0.1  # Approximate pixel size in meters
+        }
+        ,
+    "montreal": {
+            "url": "https://gociteweb.longueuil.quebec/arcgis/rest/services/image/Orthophoto2022_WebMercator/MapServer/export",
+            "crs": "EPSG:3857",
+            "pixel_size": 0.1  # Approximate pixel size in meters
+        },
+    "columbus": {
+        "url": "https://maps.columbus.gov/arcgis/rest/services/Imagery/Imagery2023/MapServer/export",
+        "crs": "EPSG:3857",
+        "pixel_size": 0.1  # Approximate pixel size in meters
+    },
+    "cambridge": {
+        "url": "https://tiles.arcgis.com/tiles/hGdibHYSPO59RG1h/arcgis/rest/services/orthos2021/MapServer/export",
+        "crs": "EPSG:3857",  # Web Mercator
+        "pixel_size": 0.1  # Approximate pixel size in meters
     }
 }
 
@@ -60,7 +103,7 @@ def load_tree_locations(csv_path):
     Returns:
         geopandas.GeoDataFrame: Tree locations with geometry
     """
-    df = pd.read_csv(csv_path).head(10)
+    df = pd.read_csv(csv_path)
     
     # Create point geometries from lat/lng
     geometry = [Point(lng, lat) for lng, lat in zip(df['SHAPE_LNG'], df['SHAPE_LAT'])]
@@ -88,7 +131,7 @@ def get_city_bounds(tree_locations, buffer_km=2.0):
 
 def split_into_grid_cells(tree_locations, cell_size_meters=100):
     """
-    Split tree locations into grid cells of specified size
+    Split tree locations into grid cells of specified size, only for cells containing trees.
     
     Args:
         tree_locations: GeoDataFrame of tree locations in WGS84
@@ -98,7 +141,6 @@ def split_into_grid_cells(tree_locations, cell_size_meters=100):
         list: List of (GeoDataFrame, bounds) tuples for each grid cell
     """
     # Transform to a projected CRS for accurate distance measurements
-    # Using UTM zone based on the center of the data
     center_lon = tree_locations.geometry.x.mean()
     utm_zone = int((center_lon + 180) / 6) + 1
     utm_crs = f'EPSG:{32600 + utm_zone}'  # WGS84 UTM zone
@@ -106,34 +148,29 @@ def split_into_grid_cells(tree_locations, cell_size_meters=100):
     # Transform to UTM
     tree_locations_utm = tree_locations.to_crs(utm_crs)
     
-    # Get bounds in UTM coordinates
-    minx, miny, maxx, maxy = tree_locations_utm.total_bounds
+    # Calculate grid cell indices for each tree
+    tree_locations_utm = tree_locations_utm.copy()
+    tree_locations_utm['grid_x'] = (tree_locations_utm.geometry.x // cell_size_meters).astype(int)
+    tree_locations_utm['grid_y'] = (tree_locations_utm.geometry.y // cell_size_meters).astype(int)
     
-    # Create grid cells
+    # Group by unique grid cell
+    grouped = tree_locations_utm.groupby(['grid_x', 'grid_y'])
+    
+    # Limit to cells that contain more than 5 trees
+    grouped = grouped.filter(lambda x: len(x) > 20)
     grid_cells = []
-    x_cells = int(np.ceil((maxx - minx) / cell_size_meters))
-    y_cells = int(np.ceil((maxy - miny) / cell_size_meters))
-    
-    for i in range(x_cells):
-        for j in range(y_cells):
-            # Calculate cell bounds
-            cell_minx = minx + i * cell_size_meters
-            cell_miny = miny + j * cell_size_meters
-            cell_maxx = cell_minx + cell_size_meters
-            cell_maxy = cell_miny + cell_size_meters
-            
-            # Create cell polygon
-            cell = box(cell_minx, cell_miny, cell_maxx, cell_maxy)
-            
-            # Find trees in this cell
-            trees_in_cell = tree_locations_utm[tree_locations_utm.intersects(cell)]
-            
-            if len(trees_in_cell) > 0:
-                # Transform back to WGS84 for imagery download
-                trees_in_cell = trees_in_cell.to_crs('EPSG:4326')
-                cell_bounds = transform_bounds(utm_crs, 'EPSG:4326', 
-                                            cell_minx, cell_miny, cell_maxx, cell_maxy)
-                grid_cells.append((trees_in_cell, cell_bounds))
+    for (grid_x, grid_y), group in grouped.groupby(['grid_x', 'grid_y']):
+        cell_minx = grid_x * cell_size_meters
+        cell_miny = grid_y * cell_size_meters
+        cell_maxx = cell_minx + cell_size_meters
+        cell_maxy = cell_miny + cell_size_meters
+        
+        # Transform back to WGS84 for imagery download
+        cell_bounds = transform_bounds(utm_crs, 'EPSG:4326',
+                                       cell_minx, cell_miny, cell_maxx, cell_maxy)
+        # Transform group back to WGS84
+        group_wgs84 = group.to_crs('EPSG:4326')
+        grid_cells.append((group_wgs84, cell_bounds))
     
     return grid_cells
 
@@ -378,13 +415,45 @@ def process_city(city_name, csv_path, output_dir):
         print(f"Error processing {city_name}: {e}")
         return False, 0, None
 
+def cli():
+    parser = argparse.ArgumentParser(description="AutoArborist: Download imagery and create MillionTrees annotations for a city.")
+    parser.add_argument("csv_path", type=str, help="Path to the city tree locations CSV file")
+    parser.add_argument("--output_dir", type=str, default="/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery", help="Directory to save outputs")
+    args = parser.parse_args()
+
+    # Extract city name from filename
+    csv_file = os.path.basename(args.csv_path)
+    city_name = csv_file.replace('Trees.csv', '').replace('_train.csv', '').replace('_test.csv', '').replace('_sample.csv', '')
+    if city_name.lower().startswith('calgary'):
+        city_name = 'calgary'
+    elif city_name.lower().startswith('edmonton'):
+        city_name = 'edmonton'
+    elif city_name.lower().startswith('vancouver'):
+        city_name = 'vancouver'
+    elif city_name.lower().startswith('new_york') or city_name.lower().startswith('newyork'):
+        city_name = 'new_york'
+    elif city_name.lower().startswith('washington') or city_name.lower().startswith('dc'):
+        city_name = 'washington_dc'
+    elif city_name.lower().startswith('hennepin'):
+        city_name = 'minneapolis'
+    elif city_name.lower().startswith('pittsburgh'):
+        city_name = 'pittsburgh',
+
+    print(f"Processing city: {city_name}")
+
+    success, num_trees, annotations_path = process_city(city_name, args.csv_path, args.output_dir)
+    if success:
+        print(f"Success: {num_trees} trees, annotations at {annotations_path}")
+    else:
+        print("Processing failed.")
+
 def main():
     """
     Main function to process all cities with tree location data
     """
     # Directory containing tree location CSV files
-    tree_locations_dir = "/Users/benweinstein/Documents/MillionTrees/data_prep/tree_locations"
-    output_dir = "/Users/benweinstein/Documents/MillionTrees/data_prep/AutoArborist"
+    tree_locations_dir = "/orange/ewhite/DeepForest/AutoArborist/auto_arborist_cvpr2022_v0.27/tree_locations"
+    output_dir = "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery"
     
     os.makedirs(output_dir, exist_ok=True)
     
@@ -470,7 +539,29 @@ def main():
     return results
 
 if __name__ == "__main__":
-    main()
+    cli()
+
+# Combine all the csv files into a single CSV for easier access
+output_dir = "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery"
+combined_csv_path = os.path.join(output_dir, "AutoArborist_combined_annotations.csv")
+
+all_annotations = []
+completed_csvs = glob.glob(os.path.join(output_dir, "*_annotations.csv"))
+for csv_file in completed_csvs:
+    df = read_file(csv_file)
+    df['city'] = os.path.basename(csv_file).replace('_annotations.csv', '')
+    df["source"] = "Beery et al. 2022"
+    # Full path to the image
+    df['image_path'] = df.image_path.apply(lambda x: os.path.join(output_dir, x))
+    all_annotations.append(df)
+
+combined_df = pd.concat(all_annotations, ignore_index=True)
+combined_df.to_csv(combined_csv_path, index=False)
+print(f"Combined annotations saved to: {combined_csv_path}")
+        
+
+
+
 
 # Calgary orthophoto reference:
 # https://www.arcgis.com/apps/mapviewer/index.html?webmap=823b8c06c5544c1b825c7dd5da96d35a

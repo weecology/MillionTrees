@@ -22,6 +22,11 @@ sites = {
     
     }
 
+# Vancouver has its own system
+
+"https://opendata.vancouver.ca/explore/dataset/orthophoto-imagery-2022/api/?location=12,49.25627,-123.1388&basemap=jawg.streets"
+
+
 # Oregon server https://imagery.oregonexplorer.info/arcgis/rest/services/OSIP_2022
 # Denver is alittle questionable, example tile. https://drapparchive.s3.amazonaws.com/2016/N1E192b.tif
 # Download the file
