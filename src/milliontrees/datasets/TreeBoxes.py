@@ -22,7 +22,7 @@ class TreeBoxesDataset(MillionTreesDataset):
     Each tree is annotated with a 4-point bounding box (x_min, y_min, x_max, y_max).
 
     Dataset Splits:
-        - Official: For each source, 80% of the data is used for training and 20% for testing.
+        - Random: For each source, 80% of the data is used for training and 20% for testing.
         - crossgeometry: Boxes and Points are used to predict polygons.
         - zeroshot: Selected sources are entirely held out for testing.
 
@@ -71,9 +71,10 @@ class TreeBoxesDataset(MillionTreesDataset):
                  version=None,
                  root_dir='data',
                  download=False,
-                 split_scheme='official',
+                 split_scheme='random',
                  geometry_name='y',
                  eval_score_threshold=0.1,
+                 remove_incomplete=False,
                  image_size=448):
 
         self._version = version
@@ -82,7 +83,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.eval_score_threshold = eval_score_threshold
         self.image_size = image_size
 
-        if self._split_scheme not in ['official', 'zeroshot', 'crossgeometry']:
+        if self._split_scheme not in ['random', 'zeroshot', 'crossgeometry']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
 
@@ -91,6 +92,10 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         # Load splits
         df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
+
+        # Remove incomplete data based on flag
+        if remove_incomplete:
+            df = df[df['complete'] == True]
 
         # Splits
         self._split_dict = {

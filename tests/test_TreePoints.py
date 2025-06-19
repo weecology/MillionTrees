@@ -104,7 +104,7 @@ def test_TreePoints_eval(dataset, pred_tensor):
     assert "keypoint_acc_avg" in eval_results.keys()
 
 def test_TreePoints_download(tmpdir):
-    ds = TreePointsDataset(download=True, root_dir=tmpdir, version="0.0")
+    ds = TreePointsDataset(download=True, root_dir=tmpdir)
     train_dataset = ds.get_subset("train")
      
     for metadata, image, targets in train_dataset:

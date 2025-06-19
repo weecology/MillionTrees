@@ -36,6 +36,10 @@ def combine_datasets(dataset_paths, debug=False):
     if debug:
         df = df.groupby("source").head()
 
+    # Read the source_completeness.csv file
+    source_completeness = pd.read_csv("source_completeness.csv")
+    source_completeness = source_completeness[["source", "complete"]]
+    df = df.merge(source_completeness, on="source", how="left")
     return df
 
 
@@ -77,10 +81,10 @@ def copy_images(datasets, base_dir, dataset_type):
 
 def create_mini_datasets(datasets, base_dir, dataset_type, version):
     """Create mini datasets for debugging and generate visualizations."""
-    mini_datasets = datasets.groupby("source").first().reset_index(drop=True)
+    mini_datasets = datasets.groupby("source").apply(lambda x: x.loc[x.groupby("filename").size().idxmax()]).reset_index(drop=True)
     mini_filenames = mini_datasets["filename"].tolist()
     mini_annotations = datasets[datasets["filename"].isin(mini_filenames)]
-    mini_annotations.to_csv(f"{base_dir}Mini{dataset_type}_{version}/official.csv", index=False)
+    mini_annotations.to_csv(f"{base_dir}Mini{dataset_type}_{version}/random.csv", index=False)
     
     # Copy images for mini datasets
     for image in mini_filenames:
@@ -121,22 +125,22 @@ def zip_directory(folder_path, zip_path):
                 arcname = os.path.relpath(file_path, folder_path)
                 zipf.write(file_path, arcname)
 
-def official_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version):
-    """Perform official split and save the results."""
+def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version):
+    """Perform random split and save the results."""
     # Randomly split datasets into train and test (80/20 split)
     TreePolygons_datasets = split_dataset(TreePolygons_datasets, split_column="filename", frac=0.8)
     TreePoints_datasets = split_dataset(TreePoints_datasets, split_column="filename", frac=0.8)
     TreeBoxes_datasets = split_dataset(TreeBoxes_datasets, split_column="filename", frac=0.8)
 
     # Save the splits to CSV
-    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons_{version}/official.csv", index=False)
-    TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}/official.csv", index=False)
-    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}/official.csv", index=False)
+    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons_{version}/random.csv", index=False)
+    TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}/random.csv", index=False)
+    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}/random.csv", index=False)
 
-    print("Official splits saved:")
-    print(f"TreePolygons: {base_dir}TreePolygons_{version}/official.csv")
-    print(f"TreePoints: {base_dir}TreePoints_{version}/official.csv")
-    print(f"TreeBoxes: {base_dir}TreeBoxes_{version}/official.csv")
+    print("random splits saved:")
+    print(f"TreePolygons: {base_dir}TreePolygons_{version}/random.csv")
+    print(f"TreePoints: {base_dir}TreePoints_{version}/random.csv")
+    print(f"TreeBoxes: {base_dir}TreeBoxes_{version}/random.csv")
 
 def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version):
     """Perform cross-geometry split and save the results."""
@@ -159,7 +163,7 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
 def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version):
     """Perform zero-shot split and save the results."""
     # Define test and train sources
-    test_sources_polygons = ["Vasquez et al. 2023", "Miranda et al. 2024"]
+    test_sources_polygons = ["Troles et al. 2024"]
     train_sources_polygons = [x for x in TreePolygons_datasets.source.unique() if x not in test_sources_polygons]
 
     test_sources_points = ["Amirkolaee et al. 2023"]
@@ -248,6 +252,7 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
         "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
         "/orange/ewhite/DeepForest/Tonga/annotations.csv",
+        '/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv'
     ]
 
     TreePolygons = [
@@ -267,8 +272,11 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/SPREAD/annotations.csv",
         "/orange/ewhite/DeepForest/KagglePalm/Palm-Counting-349images/annotations.csv",
         "/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops/annotations.csv",
-        "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv"
-    ]
+        "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
+        "/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
+        "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/annotations.csv",
+        #"/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv"
+        ]
 
     # Combine datasets
     TreeBoxes_datasets = combine_datasets(TreeBoxes, debug=debug)
@@ -321,7 +329,7 @@ def run(version, base_dir, debug=False):
 
     # Perform splits
     zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version)
-    official_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version)
+    random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version)
     cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version)
 
     # Create release files

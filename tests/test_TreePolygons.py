@@ -125,7 +125,7 @@ def test_TreePolygons_eval(dataset):
     assert "recall" in eval_results.keys()
 
 def test_TreePolygons_download(tmpdir):
-    ds = TreePolygonsDataset(download=True, root_dir=tmpdir, version="0.0")
+    ds = TreePolygonsDataset(download=True, root_dir=tmpdir)
     train_dataset = ds.get_subset("train")
      
     for metadata, image, targets in train_dataset:
