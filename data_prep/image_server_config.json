@@ -1,0 +1,139 @@
+{
+  "image_servers": {
+    "calgary": {
+      "name": "Calgary, Canada - 2024 Orthophoto",
+      "url": "https://gis.calgary.ca/arcgis/rest/services/pub_Orthophotos/CurrentOrthophoto/ImageServer/exportImage",
+      "type": "arcgis_imageserver",
+      "crs": "EPSG:3776",
+      "test_bbox": [-113.1, 51.0, -113.0, 51.1],
+      "resolution": 0.1,
+      "max_image_size": [4100, 15000],
+      "description": "Calgary 2024 aerial orthophoto at 10cm resolution with RGB + NIR bands",
+      "update_frequency": "annually",
+      "contact": "GBS@Calgary.ca"
+    },
+    "charlottesville": {
+      "name": "Charlottesville, Virginia, USA - VBMP Imagery",
+      "url": "https://gismaps.vdem.virginia.gov/arcgis/rest/services/VBMP_Imagery/MostRecentImagery_WGS_Tile_Index/MapServer/export",
+      "type": "arcgis_mapserver",
+      "crs": "EPSG:3857",
+      "test_bbox": [-78.5, 38.0, -78.4, 38.1],
+      "resolution": 0.3,
+      "max_image_size": [4096, 4096],
+      "description": "Virginia Base Mapping Program imagery 2021-2023 at 1-foot to 3-inch resolution",
+      "update_frequency": "annually",
+      "contact": "VGIN"
+    },
+    "new_york": {
+      "name": "New York State, USA - Latest Orthoimagery",
+      "url": "https://orthos.its.ny.gov/arcgis/rest/services/wms/Latest/MapServer/export",
+      "type": "arcgis_mapserver",
+      "crs": "EPSG:3857",
+      "test_bbox": [-74.0, 40.7, -73.9, 40.8],
+      "resolution": 0.36,
+      "max_image_size": [4096, 4096],
+      "description": "Combination of 2021-2024 orthoimagery at 12-inch resolution",
+      "update_frequency": "annually",
+      "contact": "nysgis@its.ny.gov"
+    },
+    "washington_dc": {
+      "name": "Washington DC, USA - 2023 Orthophoto",
+      "url": "https://imagery.dcgis.dc.gov/dcgis/rest/services/Ortho/Ortho_2023/ImageServer/exportImage",
+      "type": "arcgis_imageserver",
+      "crs": "EPSG:3857",
+      "test_bbox": [-77.1, 38.8, -77.0, 38.9],
+      "resolution": 0.15,
+      "max_image_size": [4100, 15000],
+      "description": "Washington DC 2023 orthophoto at 6-inch resolution",
+      "update_frequency": "annually",
+      "contact": "dcgis"
+    },
+    "edmonton": {
+      "name": "Edmonton, Canada - 2019 RGB Imagery",
+      "url": "https://gis.edmonton.ca/site1/rest/services/Imagery_Public/2019_RGB_Pictometry/ImageServer/exportImage",
+      "type": "arcgis_imageserver",
+      "crs": "EPSG:3857",
+      "test_bbox": [-113.6, 53.4, -113.4, 53.6],
+      "resolution": 0.15,
+      "max_image_size": [4100, 15000],
+      "description": "Edmonton 2019 RGB aerial imagery",
+      "update_frequency": "periodic",
+      "contact": "opendata@edmonton.ca"
+    },
+    "bloomington": {
+      "name": "Bloomington, Minnesota, USA - State Imagery",
+      "url": "https://imageserver.gisdata.mn.gov/cgi-bin/wms",
+      "type": "wms",
+      "crs": "EPSG:26915",
+      "test_bbox": [-93.4, 44.8, -93.2, 45.0],
+      "resolution": 0.3,
+      "max_image_size": [2048, 2048],
+      "description": "Minnesota state-wide imagery service",
+      "update_frequency": "periodic",
+      "contact": "gisdata.mn.gov"
+    }
+  },
+  "fallback_servers": {
+    "global_satellite": {
+      "name": "ESRI World Imagery",
+      "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export",
+      "type": "arcgis_mapserver",
+      "crs": "EPSG:3857",
+      "resolution": 1.0,
+      "description": "Global satellite imagery fallback"
+    }
+  },
+  "server_parameters": {
+    "arcgis_imageserver": {
+      "default_params": {
+        "bboxSR": "4326",
+        "format": "png",
+        "f": "image",
+        "interpolation": "RSP_BilinearInterpolation"
+      },
+      "optional_params": {
+        "imageSR": null,
+        "time": null,
+        "renderingRule": null,
+        "mosaicRule": null,
+        "compressionQuality": 90
+      }
+    },
+    "arcgis_mapserver": {
+      "default_params": {
+        "bboxSR": "4326", 
+        "format": "png",
+        "f": "image",
+        "layers": "show:0"
+      },
+      "optional_params": {
+        "imageSR": null,
+        "time": null,
+        "layerDefs": null,
+        "transparent": "true"
+      }
+    },
+    "wms": {
+      "default_params": {
+        "service": "WMS",
+        "version": "1.3.0",
+        "request": "GetMap",
+        "format": "image/png",
+        "crs": "EPSG:4326"
+      },
+      "optional_params": {
+        "styles": "",
+        "transparent": "true"
+      }
+    }
+  },
+  "testing_config": {
+    "default_image_size": [512, 512],
+    "max_trees_to_load": 50,
+    "default_timeout": 30,
+    "bbox_buffer_degrees": 0.01,
+    "crown_size_pixels": 10,
+    "retry_attempts": 3,
+    "cache_duration_hours": 24
+  }
+}
