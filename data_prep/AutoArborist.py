@@ -35,13 +35,13 @@ IMAGERY_SOURCES = {
         "crs": "EPSG:3776", 
         "pixel_size": 0.1
     },
-    "vancouver": {
-        "url": "https://opendata.vancouver.ca/explore/dataset/orthophoto-imagery-2015/api",
-        "crs": "EPSG:26910",  # NAD83 / UTM zone 10N
-        "pixel_size": 0.1
-    },
+    # "vancouver": {
+    #     "url": "https://opendata.vancouver.ca/explore/dataset/orthophoto-imagery-2015/api",
+    #     "crs": "EPSG:26910",  # NAD83 / UTM zone 10N
+    #     "pixel_size": 0.1
+    # },
     "new_york": {
-        "url": "https://orthos.its.ny.gov/arcgis/rest/services/2018_4Band/ImageServer/exportImage",
+        "url": "https://orthos.its.ny.gov/arcgis/rest/services/wms/Latest/MapServer/export?",
         "crs": "EPSG:2263",  # NAD83 / New York Long Island (ftUS)
         "pixel_size": 0.15
     },
@@ -50,26 +50,26 @@ IMAGERY_SOURCES = {
         "crs": "EPSG:26985",  # NAD83(HARN) / Maryland
         "pixel_size": 0.1
     },
-    "minneapolis": {
-        'url':"https://gis.hennepin.us/arcgis/rest/services/Imagery/UTM_Aerial_2022/MapServer",
-        "crs": "EPSG:26915",  # NAD83 / UTM zone 15N
+    "bloomington": {
+        'url':"https://gis.hennepin.us/arcgis/rest/services/Imagery/UTM_Aerial_2022/MapServer/export?",
+        "crs": "EPSG:26915",  
         "pixel_size": 0.1
         },
-    "pittsburgh": {
-        "url": "https://imagery.pasda.psu.edu/arcgis/services/pasda/AlleghenyCountyImagery2017/MapServer/WMSServer?SERVICE=WMS&request=getcapabilities",  # 3 inch but leaf off
-        "crs": "EPSG:26917",  # NAD83 / UTM zone 17N (approximate for Pittsburgh)
-        "pixel_size": 0.0762  # 3 inch ≈ 0.0762 meters
-        },
+    #"pittsburgh": {
+    #    "url": "https://imagery.pasda.psu.edu/arcgis/rest/services/PEMAImagery2021_2023/MapServer/export?",  
+    #    "crs": "EPSG:3857",  # Web Mercator
+    #    "pixel_size": 0.1  # 3 inch ≈ 0.0762 meters
+    #    },
     "charlottesville": {
             "url":"https://vginmaps.vdem.virginia.gov/arcgis/rest/services/VBMP_Imagery/MostRecentImagery_WGS/MapServer/export",
             "crs": "EPSG:3857",
             "pixel_size": 0.1  # Approximate pixel size in meters
         },
-    "bloomington": {
-        "url": "https://imageserver.gisdata.mn.gov/cgi-bin/wms?",
-        "crs": "EPSG:26915",  # NAD83 / UTM zone 15N
-        "pixel_size": 0.1  # Approximate pixel size in meters
-    },
+    # "bloomington": {
+    #     "url": "https://imageserver.gisdata.mn.gov/cgi-bin/wms?",
+    #     "crs": "EPSG:26915",  # NAD83 / UTM zone 15N
+    #     "pixel_size": 0.1  # Approximate pixel size in meters
+    # },
     "seattle": {
         "url":"https://gis.seattle.gov/image/rest/services/BaseMaps/WM_Aerial/MapServer/export?",
         "crs": "EPSG:3857",
@@ -85,12 +85,12 @@ IMAGERY_SOURCES = {
         "url": "https://maps.columbus.gov/arcgis/rest/services/Imagery/Imagery2023/MapServer/export",
         "crs": "EPSG:3857",
         "pixel_size": 0.1  # Approximate pixel size in meters
-    },
-    "cambridge": {
-        "url": "https://tiles.arcgis.com/tiles/hGdibHYSPO59RG1h/arcgis/rest/services/orthos2021/MapServer/export",
-        "crs": "EPSG:3857",  # Web Mercator
-        "pixel_size": 0.1  # Approximate pixel size in meters
     }
+    # "cambridge": {
+    #     "url": "https://tiles.arcgis.com/tiles/hGdibHYSPO59RG1h/arcgis/rest/services/orthos2023/MapServer/export",
+    #     "crs": "EPSG:3857",  # Web Mercator (as shown in the service description)
+    #     "pixel_size": 0.15  # 15cm resolution as mentioned in the service description
+    # }
 }
 
 def load_tree_locations(csv_path):
@@ -209,13 +209,38 @@ def download_arcgis_imagery(bounds, imagery_config, output_path, size=(2048, 204
         response = requests.get(imagery_config['url'], params=params, timeout=60)
         response.raise_for_status()
         
+        # Check the actual response content to determine file format
+        # PNG files start with the signature: 89 50 4E 47 0D 0A 1A 0A
+        # TIFF files start with either: 49 49 2A 00 (little-endian) or 4D 4D 00 2A (big-endian)
+        content_bytes = response.content[:8]
+        
+        # Determine file extension based on file signature
+        if content_bytes.startswith(b'\x89PNG\r\n\x1a\n'):
+            file_extension = '.png'
+            detected_format = 'PNG'
+        elif content_bytes.startswith(b'II*\x00') or content_bytes.startswith(b'MM\x00*'):
+            file_extension = '.tif'
+            detected_format = 'TIFF'
+        elif content_bytes.startswith(b'\xff\xd8\xff'):
+            file_extension = '.jpg'
+            detected_format = 'JPEG'
+        else:
+            # Default to .tif if signature is unclear
+            file_extension = '.tif'
+            detected_format = 'Unknown'
+            print(f"Warning: Unknown file signature {content_bytes.hex()}, defaulting to .tif")
+        
+        # Update output path with correct extension
+        base_path = os.path.splitext(output_path)[0]
+        actual_output_path = base_path + file_extension
+        
         # Save the image
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, 'wb') as f:
+        os.makedirs(os.path.dirname(actual_output_path), exist_ok=True)
+        with open(actual_output_path, 'wb') as f:
             f.write(response.content)
             
-        print(f"Downloaded imagery: {output_path}")
-        return output_path
+        print(f"Downloaded imagery: {actual_output_path} (Detected format: {detected_format})")
+        return actual_output_path
         
     except requests.exceptions.RequestException as e:
         print(f"Failed to download imagery: {e}")
@@ -371,6 +396,14 @@ def process_city(city_name, csv_path, output_dir):
             image_path = os.path.join(output_dir, f"{city_name}_cell_{i}_imagery.tif")
             downloaded_path = download_arcgis_imagery(cell_bounds, imagery_config, image_path)
             
+            if city_name.lower() == "new_york":
+                # Load data and remove infrared band
+                with rasterio.open(downloaded_path) as src:
+                    image = src.read()
+                    image = image[:3, :, :]
+                    with rasterio.open(downloaded_path, 'w', **src.profile) as dst:
+                        dst.write(image)
+
             if not downloaded_path:
                 print(f"Failed to download imagery for cell {i}")
                 continue
@@ -380,14 +413,20 @@ def process_city(city_name, csv_path, output_dir):
                 with rasterio.open(downloaded_path) as src:
                     image_bounds = src.bounds
                     pixel_size = src.res[0]
+                    crs = src.crs
                     print(f"Image dimensions: {src.width}x{src.height}, bounds: {image_bounds}")
             except Exception as e:
                 print(f"Error reading downloaded image: {e}")
                 continue
             
+            if src.crs is None:
+                # transform the cell bounds to the image CRS
+                image_bounds = transform_bounds( "EPSG:4326",imagery_config['crs'],
+                                       cell_bounds[0], cell_bounds[1], cell_bounds[2], cell_bounds[3])
+            
             # Transform tree locations to image CRS
             cell_trees_proj = transform_tree_locations(cell_trees, imagery_config['crs'])
-            
+                
             # Create annotations for this cell
             cell_annotations = create_annotations_from_trees(
                 cell_trees_proj, downloaded_path, image_bounds, pixel_size)
@@ -403,7 +442,7 @@ def process_city(city_name, csv_path, output_dir):
         annotations = pd.concat(all_annotations, ignore_index=True)
         
         # Save annotations
-        annotations_path = os.path.join(output_dir, f"{city_name}_annotations.csv")
+        annotations_path = os.path.join(output_dir, f"{city_name.lower()}_annotations.csv")
         annotations.to_csv(annotations_path, index=False)
         
         print(f"Created annotations for {len(annotations)} trees in {city_name}")
@@ -437,7 +476,7 @@ def cli():
     elif city_name.lower().startswith('hennepin'):
         city_name = 'minneapolis'
     elif city_name.lower().startswith('pittsburgh'):
-        city_name = 'pittsburgh',
+        city_name = 'pittsburgh'
 
     print(f"Processing city: {city_name}")
 
@@ -541,27 +580,27 @@ def main():
 if __name__ == "__main__":
     cli()
 
-# Combine all the csv files into a single CSV for easier access
-output_dir = "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery"
-combined_csv_path = os.path.join(output_dir, "AutoArborist_combined_annotations.csv")
+    # Combine all the csv files into a single CSV for easier access
+    output_dir = "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery"
+    combined_csv_path = os.path.join(output_dir, "AutoArborist_combined_annotations.csv")
 
-all_annotations = []
-completed_csvs = glob.glob(os.path.join(output_dir, "*_annotations.csv"))
-for csv_file in completed_csvs:
-    df = read_file(csv_file)
-    df['city'] = os.path.basename(csv_file).replace('_annotations.csv', '')
-    df["source"] = "Beery et al. 2022"
-    # Full path to the image
-    df['image_path'] = df.image_path.apply(lambda x: os.path.join(output_dir, x))
-    all_annotations.append(df)
+    all_annotations = []
+    completed_csvs = glob.glob(os.path.join(output_dir, "*_annotations.csv"))
 
-combined_df = pd.concat(all_annotations, ignore_index=True)
-combined_df.to_csv(combined_csv_path, index=False)
-print(f"Combined annotations saved to: {combined_csv_path}")
-        
+    # don't include AutoArborist_combined_annotations.csv
+    completed_csvs = [csv_file for csv_file in completed_csvs if csv_file != combined_csv_path]
 
+    for csv_file in completed_csvs:
+        df = read_file(csv_file)
+        df['city'] = os.path.basename(csv_file).replace('_annotations.csv', '')
+        df["source"] = "Beery et al. 2022"
+        # Full path to the image
+        df['image_path'] = df.image_path.apply(lambda x: os.path.join(output_dir, x))
+        all_annotations.append(df)
 
-
+    combined_df = pd.concat(all_annotations, ignore_index=True)
+    combined_df.to_csv(combined_csv_path, index=False)
+    print(f"Combined annotations saved to: {combined_csv_path}")
 
 # Calgary orthophoto reference:
 # https://www.arcgis.com/apps/mapviewer/index.html?webmap=823b8c06c5544c1b825c7dd5da96d35a
