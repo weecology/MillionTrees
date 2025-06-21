@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 def download_metadata():
     """Download OFO metadata files from Google Drive"""
     # Create data directory
-    os.makedirs("/orange/ewhite/DeepForest/OpenForestObservatory", exist_ok=True)
+    os.makedirs("data_prep/OpenForestObservatory", exist_ok=True)
     
     # Note: These would need to be actual Google Drive download links
     # For now, we'll use placeholder URLs that would need to be updated
@@ -33,7 +33,7 @@ def download_metadata():
 
 def load_ofo_data():
     """Load OFO ground reference and drone mission data"""
-    base_dir = "/orange/ewhite/DeepForest/OpenForestObservatory"
+    base_dir = "data_prep/OpenForestObservatory"
     
     # For testing, create mock data structures
     # In reality, these would be loaded from the downloaded .gpkg files
@@ -119,9 +119,9 @@ def match_trees_to_orthomosaic(trees_gdf, mission_row, orthomosaic_path):
             for idx, tree in plot_trees.iterrows():
                 # Convert geographic coordinates to pixel coordinates
                 lon, lat = tree.geometry.x, tree.geometry.y
-                x_pixel, y_pixel = rasterio.transform.xy(src.transform.inverted(), lon, lat)
-                plot_trees.at[idx, 'x_pixel'] = int(x_pixel)
-                plot_trees.at[idx, 'y_pixel'] = int(y_pixel)
+                row, col = rasterio.transform.rowcol(src.transform, lon, lat)
+                plot_trees.at[idx, 'x_pixel'] = int(col)
+                plot_trees.at[idx, 'y_pixel'] = int(row)
             
             # Filter trees that fall within the image bounds
             height, width = src.height, src.width
@@ -247,7 +247,7 @@ def create_test_visualization(annotations_df, orthomosaic_path, output_dir):
 
 def process_single_mission(mission_id="mission_001", test_mode=True):
     """Process a single mission for testing"""
-    output_dir = "/orange/ewhite/DeepForest/OpenForestObservatory"
+    output_dir = "data_prep/OpenForestObservatory"
     os.makedirs(output_dir, exist_ok=True)
     
     # Load data
@@ -333,7 +333,7 @@ def create_mock_orthomosaic(output_path, size=(2000, 2000)):
 
 def run_full_processing():
     """Process all available missions"""
-    output_dir = "/orange/ewhite/DeepForest/OpenForestObservatory"
+    output_dir = "data_prep/OpenForestObservatory"
     os.makedirs(output_dir, exist_ok=True)
     
     # Load data
