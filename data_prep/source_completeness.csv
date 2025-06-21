@@ -1,36 +1,37 @@
-source_name,is_incomplete
-"Reiersen et al. 2022",False
-"Beloiu et al. 2023",True
-"NEON_points",False
-"Dumortier et al. 2025",False
-"Santos et al. 2019",False
-"Kolovai-Trees",False
-"Lucas et al. 2024",False
-"Zamboni et al. 2021",True
-"Radogoshi et al. 2021",True
-"Amirkolaee et al. 2023",True
-"Araujo et al. 2020",False
-"Kattenborn et al. 2023",False
-"Sun et al. 2022",False
-"Kruse et al. 2021",False
-"Feng et al. 2025",False
-"Troles et al. 2024",False
-"Justdiggit 2023",False
-"Hickman 2021",False
-"Firoze et al. 2023",False
-"Kwon et al. 2023",False
-"Velasquez-Camacho et al. 2023",False
-"Alejandro_Miranda",False
-"Weecology_University_Florida",True
-"Lefebvre et al. 2024",False
-"Safonova et al. 2021",False
-"World Resources Institute",False
-"Ball et al. 2023",False
-"Wagner et al. 2023",False
-"Ventura et al. 2022",False
-"Zuniga-Gonzalez et al. 2023",False
-"Cloutier et al. 2023",True
-"Jansen et al. 2023",False
-"Vasquez et al. 2023",False
-"Vasquez et al. 2023 - training",False
-"NEON_benchmark",True 
+source,complete
+"Reiersen et al. 2022",True
+"Beloiu et al. 2023",False
+"NEON_points",True
+"Dumortier et al. 2025",True
+"Santos et al. 2019",True
+"Kolovai-Trees",True
+"Lucas et al. 2024",True
+"Zamboni et al. 2021",False
+"Radogoshi et al. 2021",False
+"Amirkolaee et al. 2023",False
+"Araujo et al. 2020",True
+"Kattenborn et al. 2023",True
+"Sun et al. 2022",True
+"Kruse et al. 2021",True
+"Feng et al. 2025",True
+"Troles et al. 2024",True
+"Justdiggit 2023",True
+"Hickman 2021",True
+"Firoze et al. 2023",True
+"Kwon et al. 2023",True
+"Velasquez-Camacho et al. 2023",True
+"Alejandro_Miranda",True
+"Weecology_University_Florida",False
+"Lefebvre et al. 2024",True
+"Safonova et al. 2021",True
+"World Resources Institute",True
+"Ball et al. 2023",True
+"Wagner et al. 2023",True
+"Ventura et al. 2022",True
+"Zuniga-Gonzalez et al. 2023",True
+"Cloutier et al. 2023",False
+"Jansen et al. 2023",True
+"Vasquez et al. 2023",True
+"Vasquez et al. 2023 - training",True
+"NEON_benchmark",False
+"Open Forest Observatory",True

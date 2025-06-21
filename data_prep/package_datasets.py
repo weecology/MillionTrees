@@ -252,7 +252,8 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
         "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
         "/orange/ewhite/DeepForest/Tonga/annotations.csv",
-        '/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv'
+        '/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
+        '/orange/ewhite/DeepForest/OpenForestObservatory/annotations.csv'
     ]
 
     TreePolygons = [

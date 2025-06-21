@@ -144,6 +144,18 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 [https://learn.arcgis.com/en/projects/detect-objects-with-a-deep-learning-pretrained-model/](https://learn.arcgis.com/en/projects/detect-objects-with-a-deep-learning-pretrained-model/)
 
+### Open Forest Observatory
+
+![sample_image](public/Open_Forest_Observatory.png)
+
+**Citation:** Open Forest Observatory. *Ground-referenced data for individual tree detection and species classification in drone imagery*. 2024.
+
+**Link:** [https://openforestobservatory.org/](https://openforestobservatory.org/)
+
+**Location:** Western United States (California, Oregon, Montana, and other states)
+
+**Description:** High-quality field-validated tree location data matched to drone orthomosaics. Contains 269 ground-based reference plots with overhead-visible trees >5m height mapped, measured, and identified to species. Trees are georeferenced as point locations at stem base, with corresponding overhead drone imagery providing high-resolution aerial context. Spatial alignment between field data and drone imagery is optimized using automated rigid shift algorithms.
+
 ## Polygons
 
 ### Araujo et al. 2020
