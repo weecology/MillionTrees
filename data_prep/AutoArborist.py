@@ -392,7 +392,7 @@ def create_sample_plots(annotations, output_dir, city_name, max_samples=3):
             
             # Create plot
             plt.figure(figsize=(12, 8))
-            plot_annotations(image_annotations, radius=10)
+            plot_results(image_annotations, radius=10)
             plt.title(f"{city_name.title()} - Sample {i+1} ({len(image_annotations)} trees)")
             plt.tight_layout()
             
