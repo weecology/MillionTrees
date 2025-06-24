@@ -18,10 +18,12 @@ from pyproj import Transformer
 import warnings
 from deepforest.preprocess import split_raster
 from deepforest.utilities import read_file
+from deepforest.visualize import plot_results
 from PIL import Image
 import io
 import argparse
 import glob
+import matplotlib.pyplot as plt
 
 # ArcGIS Rest Server endpoints for various cities
 IMAGERY_SOURCES = {
@@ -50,11 +52,11 @@ IMAGERY_SOURCES = {
         "crs": "EPSG:26985",  # NAD83(HARN) / Maryland
         "pixel_size": 0.1
     },
-    "bloomington": {
-        'url':"https://gis.hennepin.us/arcgis/rest/services/Imagery/UTM_Aerial_2022/MapServer/export?",
-        "crs": "EPSG:26915",  
-        "pixel_size": 0.1
-        },
+    # "bloomington": {
+    #     'url':"https://gis.hennepin.us/arcgis/rest/services/Imagery/UTM_Aerial_2022/MapServer/export?",
+    #     "crs": "EPSG:26915",  
+    #     "pixel_size": 0.1
+    #     },
     #"pittsburgh": {
     #    "url": "https://imagery.pasda.psu.edu/arcgis/rest/services/PEMAImagery2021_2023/MapServer/export?",  
     #    "crs": "EPSG:3857",  # Web Mercator
@@ -353,7 +355,60 @@ def process_large_imagery(image_path, annotations, chip_size=2048, overlap=0.1):
             os.remove(temp_annotations_path)
         return annotations
 
-def process_city(city_name, csv_path, output_dir):
+def create_sample_plots(annotations, output_dir, city_name, max_samples=3):
+    """
+    Create sample plots of annotations for quality control
+    
+    Args:
+        annotations: DataFrame of annotations
+        output_dir: directory to save plots
+        city_name: name of the city for plot titles
+        max_samples: maximum number of sample plots to create
+    """
+    if len(annotations) == 0:
+        print(f"No annotations to plot for {city_name}")
+        return
+    
+    # Create plots directory
+    plots_dir = os.path.join(output_dir, 'plots')
+    os.makedirs(plots_dir, exist_ok=True)
+    
+    # Get unique image paths and sample up to max_samples
+    unique_images = annotations['image_path'].unique()
+    if len(unique_images) > max_samples:
+        sample_images = np.random.choice(unique_images, max_samples, replace=False)
+    else:
+        sample_images = unique_images
+    
+    print(f"Creating {len(sample_images)} sample plots for {city_name}")
+    
+    for i, image_path in enumerate(sample_images):
+        try:
+            # Get annotations for this image
+            image_annotations = annotations[annotations['image_path'] == image_path].copy()
+            
+            # Set root directory for plotting
+            image_annotations['root_dir'] = output_dir
+            
+            # Create plot
+            plt.figure(figsize=(12, 8))
+            plot_annotations(image_annotations, radius=10)
+            plt.title(f"{city_name.title()} - Sample {i+1} ({len(image_annotations)} trees)")
+            plt.tight_layout()
+            
+            # Save plot
+            plot_filename = f"{city_name}_sample_{i+1}.png"
+            plot_path = os.path.join(plots_dir, plot_filename)
+            plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+            plt.close()
+            
+            print(f"  Saved plot: {plot_path}")
+            
+        except Exception as e:
+            print(f"  Error creating plot for {image_path}: {e}")
+            plt.close()  # Close any open figure
+
+def process_city(city_name, csv_path, output_dir, create_plots=True):
     """
     Process a single city: download imagery and create annotations
     
@@ -361,6 +416,7 @@ def process_city(city_name, csv_path, output_dir):
         city_name: name of the city (must be in IMAGERY_SOURCES)
         csv_path: path to CSV file with tree locations
         output_dir: directory to save outputs
+        create_plots: whether to create sample plots
     
     Returns:
         tuple: (success: bool, num_trees: int, annotations_path: str)
@@ -375,6 +431,12 @@ def process_city(city_name, csv_path, output_dir):
         tree_locations = load_tree_locations(csv_path)
         print(f"Loaded {len(tree_locations)} tree locations")
         
+        if city_name.lower() == "montreal":
+            # remove the trees that are outside the bounds of the image
+            # transform the tree locations to the image CRS
+            proj_tree_locations = tree_locations.to_crs(IMAGERY_SOURCES['montreal']['crs'])
+            tree_locations = tree_locations[proj_tree_locations.intersects(box(-8185982.510891517, 5686259.959149192, -8158840.010891517, 5726331.709149192))]
+
         if len(tree_locations) == 0:
             print(f"No tree locations found in {csv_path}")
             return False, 0, None
@@ -396,21 +458,18 @@ def process_city(city_name, csv_path, output_dir):
             image_path = os.path.join(output_dir, f"{city_name}_cell_{i}_imagery.tif")
             downloaded_path = download_arcgis_imagery(cell_bounds, imagery_config, image_path)
             
-            if city_name.lower() == "new_york":
-                # Load data and remove infrared band
-                with rasterio.open(downloaded_path) as src:
-                    image = src.read()
-                    image = image[:3, :, :]
-                    with rasterio.open(downloaded_path, 'w', **src.profile) as dst:
-                        dst.write(image)
-
-            if not downloaded_path:
-                print(f"Failed to download imagery for cell {i}")
-                continue
-            
-            # Verify the image was downloaded correctly
             try:
                 with rasterio.open(downloaded_path) as src:
+                    image = src.read()
+                    if image.shape[0] == 4:
+                        image = image[:3, :, :]  # Keep only first 3 bands (RGB)
+                        # Create a new profile with updated band count
+                        profile = src.profile.copy()
+                        profile['count'] = 3  # Update to 3 bands
+                        
+                        with rasterio.open(downloaded_path, 'w', **profile) as dst:
+                            dst.write(image)
+                    
                     image_bounds = src.bounds
                     pixel_size = src.res[0]
                     crs = src.crs
@@ -418,12 +477,17 @@ def process_city(city_name, csv_path, output_dir):
             except Exception as e:
                 print(f"Error reading downloaded image: {e}")
                 continue
+
+            if not downloaded_path:
+                print(f"Failed to download imagery for cell {i}")
+                continue
             
             if src.crs is None:
                 # transform the cell bounds to the image CRS
                 image_bounds = transform_bounds( "EPSG:4326",imagery_config['crs'],
                                        cell_bounds[0], cell_bounds[1], cell_bounds[2], cell_bounds[3])
-            
+                pixel_size = (image_bounds[3] - image_bounds[1])/2048
+
             # Transform tree locations to image CRS
             cell_trees_proj = transform_tree_locations(cell_trees, imagery_config['crs'])
                 
@@ -448,6 +512,10 @@ def process_city(city_name, csv_path, output_dir):
         print(f"Created annotations for {len(annotations)} trees in {city_name}")
         print(f"Saved to: {annotations_path}")
         
+        # Create sample plots if requested
+        if create_plots:
+            create_sample_plots(annotations, output_dir, city_name)
+        
         return True, len(annotations), annotations_path
         
     except Exception as e:
@@ -458,6 +526,7 @@ def cli():
     parser = argparse.ArgumentParser(description="AutoArborist: Download imagery and create MillionTrees annotations for a city.")
     parser.add_argument("csv_path", type=str, help="Path to the city tree locations CSV file")
     parser.add_argument("--output_dir", type=str, default="/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery", help="Directory to save outputs")
+    parser.add_argument("--no-plots", action="store_true", help="Skip creating sample plots")
     args = parser.parse_args()
 
     # Extract city name from filename
@@ -480,7 +549,7 @@ def cli():
 
     print(f"Processing city: {city_name}")
 
-    success, num_trees, annotations_path = process_city(city_name, args.csv_path, args.output_dir)
+    success, num_trees, annotations_path = process_city(city_name, args.csv_path, args.output_dir, create_plots=not args.no_plots)
     if success:
         print(f"Success: {num_trees} trees, annotations at {annotations_path}")
     else:
@@ -525,7 +594,7 @@ def main():
             
         csv_path = os.path.join(tree_locations_dir, csv_file)
         
-        success, num_trees, annotations_path = process_city(city_name, csv_path, output_dir)
+        success, num_trees, annotations_path = process_city(city_name, csv_path, output_dir, create_plots=True)
         
         results.append({
             'city': city_name,
@@ -577,10 +646,68 @@ def main():
     
     return results
 
-if __name__ == "__main__":
-    cli()
+def create_combined_sample_plots(combined_df, output_dir, max_samples_per_city=2):
+    """
+    Create sample plots from the combined dataset, showing examples from each city
+    
+    Args:
+        combined_df: Combined annotations DataFrame
+        output_dir: Directory to save plots
+        max_samples_per_city: Maximum number of sample plots per city
+    """
+    plots_dir = os.path.join(output_dir, 'plots')
+    os.makedirs(plots_dir, exist_ok=True)
+    
+    # Group by city and create sample plots
+    for city_name, city_df in combined_df.groupby('city'):
+        print(f"Creating sample plots for {city_name}...")
+        
+        # Get unique image paths for this city
+        unique_images = city_df['image_path'].unique()
+        if len(unique_images) > max_samples_per_city:
+            sample_images = np.random.choice(unique_images, max_samples_per_city, replace=False)
+        else:
+            sample_images = unique_images
+        
+        for i, image_path in enumerate(sample_images):
+            try:
+                # Get annotations for this image
+                image_annotations = city_df[city_df['image_path'] == image_path].copy(deep=True)
+                
+                # Set root directory for plotting
+                image_annotations.root_dir = output_dir
+                
+                # Plot annotations need relative paths to the image
+                image_annotations['image_path'] = image_annotations['image_path'].apply(lambda x: os.path.basename(x))
+                # Create plot
+                plt.figure(figsize=(12, 8))
+                plot_results(image_annotations, radius=10)
+                plt.title(f"{city_name.title()} - Combined Sample {i+1} ({len(image_annotations)} trees)")
+                plt.tight_layout()
+                
+                # Save plot
+                plot_filename = f"{city_name}_combined_sample_{i+1}.png"
+                plot_path = os.path.join(plots_dir, plot_filename)
+                plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+                plt.close()
+                
+                print(f"  Saved plot: {plot_path}")
+                
+            except Exception as e:
+                print(f"  Error creating plot for {image_path}: {e}")
+                plt.close()
+    
+    print(f"All sample plots saved to: {plots_dir}")
 
-    # Combine all the csv files into a single CSV for easier access
+if __name__ == "__main__":
+    # Check if running as CLI or main function
+    import sys
+    if len(sys.argv) > 1:
+        cli()
+    else:
+        main()
+
+    # # Combine all the csv files into a single CSV for easier access
     output_dir = "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery"
     combined_csv_path = os.path.join(output_dir, "AutoArborist_combined_annotations.csv")
 
@@ -601,6 +728,11 @@ if __name__ == "__main__":
     combined_df = pd.concat(all_annotations, ignore_index=True)
     combined_df.to_csv(combined_csv_path, index=False)
     print(f"Combined annotations saved to: {combined_csv_path}")
+    
+    # Create sample plots from combined dataset
+    print("\nCreating sample plots from combined dataset...")
+    create_combined_sample_plots(combined_df, output_dir, max_samples_per_city=10)
+
 
 # Calgary orthophoto reference:
 # https://www.arcgis.com/apps/mapviewer/index.html?webmap=823b8c06c5544c1b825c7dd5da96d35a

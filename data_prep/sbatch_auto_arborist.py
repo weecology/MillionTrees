@@ -13,7 +13,7 @@ csv_files = [f for f in csv_files if not any(x in f.lower() for x in ["train", "
 csv_files = [os.path.basename(f) for f in csv_files]
 
 # Just do one for now
-#csv_files = ["ColumbusTrees.csv"]
+csv_files = ["ColumbusTrees.csv"]
 
 for csv_file in csv_files:
     # If output annotations already exist, skip
