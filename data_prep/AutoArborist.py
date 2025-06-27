@@ -9,18 +9,14 @@ import geopandas as gpd
 import numpy as np
 import os
 import requests
-import time
 from shapely.geometry import Point, box
 import rasterio
-from rasterio.warp import transform_bounds, calculate_default_transform
+from rasterio.warp import transform_bounds
 from rasterio.crs import CRS
 from pyproj import Transformer
-import warnings
 from deepforest.preprocess import split_raster
 from deepforest.utilities import read_file
 from deepforest.visualize import plot_results
-from PIL import Image
-import io
 import argparse
 import glob
 import matplotlib.pyplot as plt

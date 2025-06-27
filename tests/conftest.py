@@ -27,12 +27,6 @@ def dataset():
     box_file = os.path.join(data_dir, "random.csv")
     box_data.to_csv(box_file)
 
-    second_split = box_data.copy(deep=True)
-    second_split['split'] = 'test'
-    box_data.loc[box_data.filename.isin(["image3.jpg","image4.jpg"]), "split"] = "test"
-    second_file = os.path.join(image_dir, "random.csv")
-    second_split.to_csv(second_file)
-
     # Save a Release txt file
     release_file = os.path.join(data_dir, "RELEASE_v0.0.txt")
     with open(release_file, "w") as f:
@@ -49,12 +43,6 @@ def dataset():
     polygon_data.loc[2, "split"] = "test"
     polygon_file = os.path.join(data_dir, "random.csv")
     polygon_data.to_csv(polygon_file)
-
-    second_split = polygon_data.copy(deep=True)
-    second_split['split'] = 'test'
-    second_split.loc[2, 'split'] = 'train'
-    second_file = os.path.join(data_dir, "random.csv")
-    second_split.to_csv(second_file)
 
     # Save a Release txt file
     release_file = os.path.join(data_dir, "RELEASE_v0.0.txt")
@@ -73,12 +61,6 @@ def dataset():
     point_data.loc[2, 'split'] = 'test'
     point_file = os.path.join(data_dir, "random.csv")
     point_data.to_csv(point_file)
-
-    second_split = point_data.copy(deep=True)
-    second_split['split'] = 'test'
-    second_split.loc[2, 'split'] = 'train'
-    second_file = os.path.join(data_dir, "random.csv")
-    second_split.to_csv(second_file)
 
     # Save a Release txt file
     release_file = os.path.join(data_dir, "RELEASE_v0.0.txt")
