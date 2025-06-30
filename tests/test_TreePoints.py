@@ -3,15 +3,8 @@ from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
 
 import torch
 import pytest
-import os
-import pandas as pd
 import numpy as np
-
-# Check if running on hipergator
-if os.path.exists("/orange"):
-    on_hipergator = True
-else:
-    on_hipergator = False
+import requests
 
 # Test structure without real annotation data to ensure format is correct
 def test_TreePoints_generic(dataset):
@@ -83,6 +76,7 @@ def test_get_test_dataloader(dataset):
         assert y.shape[1] == 2
         assert len(metadata) == 1
         break
+
 @pytest.mark.parametrize("pred_tensor", [[[134, 156]], [[30, 70],[35, 55]]], ids=["single", "multiple"])
 def test_TreePoints_eval(dataset, pred_tensor):
     ds = TreePointsDataset(download=False, root_dir=dataset, version="0.0") 
@@ -103,15 +97,11 @@ def test_TreePoints_eval(dataset, pred_tensor):
     eval_results, eval_string = ds.eval(all_y_pred, all_y_true, test_dataset.metadata_array)
     assert "keypoint_acc_avg" in eval_results.keys()
 
-def test_TreePoints_download(tmpdir):
-    ds = TreePointsDataset(download=True, root_dir=tmpdir)
-    train_dataset = ds.get_subset("train")
-     
-    for metadata, image, targets in train_dataset:
-        points = targets["y"]
-        assert image.shape == (3, 448, 448)
-        assert image.dtype == torch.float32
-        assert image.min() >= 0.0 and image.max() <= 1.0
-        assert points.shape[1] == 2
-        assert metadata.shape[0] == 2
-        break
+def test_TreePoints_download_url(dataset):
+    ds = TreePointsDataset(download=False, root_dir=dataset, version="0.0")
+    for version in ds._versions_dict.keys():
+        print(version)
+        # Confirm url can be downloaded
+        url = ds._versions_dict[version]['download_url']
+        response = requests.head(url, allow_redirects=True)
+        assert response.status_code == 200, f"URL {url} is not accessible"

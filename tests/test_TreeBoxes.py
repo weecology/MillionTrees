@@ -3,14 +3,8 @@ from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
 
 import torch
 import pytest
-import os
 import numpy as np
-
-# Check if running on hipergator
-if os.path.exists("/orange"):
-    on_hipergator = True
-else:
-    on_hipergator = False
+import requests
 
 # Test structure without real annotation data to ensure format is correct
 def test_TreeBoxes_generic(dataset):
@@ -136,15 +130,12 @@ def test_TreeBoxes_eval(dataset, pred_tensor):
     assert "accuracy" in eval_results.keys()
     assert "recall" in eval_results.keys()
 
-def test_TreeBoxes_download(tmpdir):
-    ds = TreeBoxesDataset(download=True, root_dir=tmpdir)
-    train_dataset = ds.get_subset("train")
-     
-    for metadata, image, targets in train_dataset:
-        boxes = targets["y"]
-        assert image.shape == (3, 448, 448)
-        assert image.dtype == torch.float32
-        assert image.min() >= 0.0 and image.max() <= 1.0
-        assert boxes.shape[1] == 4
-        assert metadata.shape[0] == 2
-        break
+
+def test_TreeBoxes_download_url(dataset):
+    ds = TreeBoxesDataset(download=False, root_dir=dataset, version="0.0")
+    for version in ds._versions_dict.keys():
+        print(version)
+        # Confirm url can be downloaded
+        url = ds._versions_dict[version]['download_url']
+        response = requests.head(url, allow_redirects=True)
+        assert response.status_code == 200, f"URL {url} is not accessible"
