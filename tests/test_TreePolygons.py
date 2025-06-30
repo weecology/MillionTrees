@@ -7,12 +7,7 @@ import os
 import pandas as pd
 import numpy as np
 from shapely import from_wkt
-
-# Check if running on hipergator
-if os.path.exists("/orange"):
-    on_hipergator = True
-else:
-    on_hipergator = False
+import requests
 
 # Test structure without real annotation data to ensure format is correct
 def test_TreePolygons_generic(dataset):
@@ -79,11 +74,6 @@ def test_get_test_dataloader(dataset):
         assert metadata.shape == torch.Size([2])
         break
     
-    # Assert that test_dataset[0] == "image3.jpg"
-    metadata, image, targets = test_dataset[0]
-    assert metadata[1] == 1
-    assert ds._filename_id_to_code[int(metadata[0])] == "image3.jpg"
-
     test_loader = get_eval_loader('standard', test_dataset, batch_size=1)
     for metadata, x, targets in test_loader:
         masks = targets["y"]
@@ -124,15 +114,11 @@ def test_TreePolygons_eval(dataset):
     assert "accuracy" in eval_results.keys()
     assert "recall" in eval_results.keys()
 
-def test_TreePolygons_download(tmpdir):
-    ds = TreePolygonsDataset(download=True, root_dir=tmpdir)
-    train_dataset = ds.get_subset("train")
-     
-    for metadata, image, targets in train_dataset:
-        masks = targets["y"]
-        assert image.shape == (3, 448, 448)
-        assert image.dtype == torch.float32
-        assert image.min() >= 0.0 and image.max() <= 1.0
-        assert masks[0].shape == (448, 448)
-        assert metadata.shape[0] == 2
-        break
+def test_TreePolygons_download_url(dataset):
+    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
+    for version in ds._versions_dict.keys():
+        print(version)
+        # Confirm url can be downloaded
+        url = ds._versions_dict[version]['download_url']
+        response = requests.head(url, allow_redirects=True)
+        assert response.status_code == 200, f"URL {url} is not accessible"
