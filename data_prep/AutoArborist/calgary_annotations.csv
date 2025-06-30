@@ -1,5 +1,0 @@
-image_path,x,y,label,source,score,genus,taxonomy_id
-calgary_cell_0_imagery.tif,28.726521992589753,1266.8241242382182,Tree,AutoArborist,1.0,pyrus,246
-calgary_cell_1_imagery.tif,1474.3938814606222,2027.7430675145406,Tree,AutoArborist,1.0,prunus,235
-calgary_cell_2_imagery.tif,1103.929355195858,1752.8239761867276,Tree,AutoArborist,1.0,ulmus,313
-calgary_cell_3_imagery.tif,1696.7566126893662,618.9646524955717,Tree,AutoArborist,1.0,larix,162
