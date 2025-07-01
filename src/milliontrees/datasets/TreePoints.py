@@ -18,7 +18,7 @@ class TreePointsDataset(MillionTreesDataset):
     """The TreePoints dataset is a collection of tree annotations annotated as x,y locations.
 
     Dataset Splits:
-        - Random: For each source, 80% of the data is used for training and 20% for testing.
+        - official: For each source, 80% of the data is used for training and 20% for testing.
         - crossgeometry: Boxes and Points are used to predict polygons.
         - zeroshot: Selected sources are entirely held out for testing.
     Input (x):
@@ -51,6 +51,12 @@ class TreePointsDataset(MillionTreesDataset):
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.2.zip",
             'compressed_size':
                 1459676926
+        },
+        "0.4": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.4.zip",
+            'compressed_size':
+                1459676926
         }
     }
 
@@ -58,7 +64,7 @@ class TreePointsDataset(MillionTreesDataset):
                  version=None,
                  root_dir='data',
                  download=False,
-                 split_scheme='random',
+                 split_scheme='official',
                  geometry_name='y',
                  remove_incomplete=False,
                  distance_threshold=0.1):
@@ -68,7 +74,7 @@ class TreePointsDataset(MillionTreesDataset):
         self.geometry_name = geometry_name
         self.distance_threshold = distance_threshold
 
-        if self._split_scheme not in ['random', 'crossgeometry', 'zeroshot']:
+        if self._split_scheme not in ['official', 'crossgeometry', 'zeroshot']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
 

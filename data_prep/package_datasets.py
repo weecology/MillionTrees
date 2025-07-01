@@ -37,9 +37,11 @@ def combine_datasets(dataset_paths, debug=False):
         df = df.groupby("source").head()
 
     # Read the source_completeness.csv file
-    source_completeness = pd.read_csv("source_completeness.csv")
-    source_completeness = source_completeness[["source", "complete"]]
-    df = df.merge(source_completeness, on="source", how="left")
+    #source_completeness = pd.read_csv("source_completeness.csv")
+    #source_completeness = source_completeness[["source", "complete"]]
+    #df = df.merge(source_completeness, on="source", how="left")
+    df["complete"] = True
+
     return df
 
 
@@ -289,9 +291,9 @@ def run(version, base_dir, debug=False):
     TreeBoxes_datasets = TreeBoxes_datasets[TreeBoxes_datasets["ymin"] != TreeBoxes_datasets["ymax"]]
 
     # Remove alpha channels
-    remove_alpha_channel(TreeBoxes_datasets)
-    remove_alpha_channel(TreePoints_datasets)
-    remove_alpha_channel(TreePolygons_datasets)
+    #remove_alpha_channel(TreeBoxes_datasets)
+    #remove_alpha_channel(TreePoints_datasets)
+    #remove_alpha_channel(TreePolygons_datasets)
 
     # Check for updated annotations
     check_for_updated_annotations(TreeBoxes_datasets, "Boxes")
@@ -349,6 +351,6 @@ def run(version, base_dir, debug=False):
 
 if __name__ == "__main__":
     version = "v0.4"
-    base_dir = "/orange/ewhite/web/public/"
+    base_dir = "/orange/ewhite/web/public/MillionTrees/"
     debug = False
     run(version, base_dir, debug)

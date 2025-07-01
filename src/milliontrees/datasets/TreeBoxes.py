@@ -71,7 +71,7 @@ class TreeBoxesDataset(MillionTreesDataset):
                  version=None,
                  root_dir='data',
                  download=False,
-                 split_scheme='random',
+                 split_scheme='official',
                  geometry_name='y',
                  eval_score_threshold=0.1,
                  remove_incomplete=False,
@@ -83,7 +83,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.eval_score_threshold = eval_score_threshold
         self.image_size = image_size
 
-        if self._split_scheme not in ['random', 'zeroshot', 'crossgeometry']:
+        if self._split_scheme not in ['official', 'zeroshot', 'crossgeometry']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
 

@@ -9,7 +9,6 @@
 #SBATCH --time=24:00:00       #Time limit hrs:min:sec
 #SBATCH --output=/home/b.weinstein/logs/MillionTrees_test_release_%j.out   # Standard output and error log
 #SBATCH --error=/home/b.weinstein/logs/MillionTrees_test_release_%j.err
-#SBATCH --partition=gpu
 #SBATCH --gpus=1
 
 export PATH="$PATH:/orange/ewhite/b.weinstein/miniconda3_new/bin"
