@@ -305,6 +305,11 @@ def run(version, base_dir, debug=False):
     TreePoints_datasets = split_dataset(TreePoints_datasets)
     TreePolygons_datasets = split_dataset(TreePolygons_datasets)
 
+    # Save the default random split
+    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}/random.csv", index=False)
+    TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}/random.csv", index=False)
+    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons_{version}/random.csv", index=False)
+
     # Process geometry columns
     TreeBoxes_datasets = process_geometry_columns(TreeBoxes_datasets, "box")
     TreePoints_datasets = process_geometry_columns(TreePoints_datasets, "point")

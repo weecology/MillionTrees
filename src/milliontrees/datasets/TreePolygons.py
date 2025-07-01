@@ -67,7 +67,7 @@ class TreePolygonsDataset(MillionTreesDataset):
                  version=None,
                  root_dir='data',
                  download=False,
-                 split_scheme='official',
+                 split_scheme='random',
                  geometry_name='y',
                  eval_score_threshold=0.5,
                  image_size=448,
@@ -79,7 +79,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         self.image_size = image_size
         self.eval_score_threshold = eval_score_threshold
 
-        if self._split_scheme != 'official':
+        if self._split_scheme != 'random':
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
         # path
