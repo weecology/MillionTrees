@@ -258,11 +258,13 @@ def run(version, base_dir, debug=False):
         #'/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
         # "/orange/ewhite/DeepForest/Santos2019/annotations.csv",
         #"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv"
+        "/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
+        "/orange/ewhite/DeepForest/SelvaBox/annotations.csv"
    ]
 
     TreePoints = [
         "/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv",
-       # "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
+        "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
         #"/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
         #"/orange/ewhite/DeepForest/Tonga/annotations.csv",
         #'/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
