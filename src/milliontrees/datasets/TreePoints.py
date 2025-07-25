@@ -18,7 +18,7 @@ class TreePointsDataset(MillionTreesDataset):
     """The TreePoints dataset is a collection of tree annotations annotated as x,y locations.
 
     Dataset Splits:
-        - Random: For each source, 80% of the data is used for training and 20% for testing.
+        - random: For each source, 80% of the data is used for training and 20% for testing.
         - crossgeometry: Boxes and Points are used to predict polygons.
         - zeroshot: Selected sources are entirely held out for testing.
     Input (x):
@@ -49,6 +49,12 @@ class TreePointsDataset(MillionTreesDataset):
         "0.2": {
             'download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.2.zip",
+            'compressed_size':
+                1459676926
+        },
+        "0.4": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.4.zip",
             'compressed_size':
                 1459676926
         }

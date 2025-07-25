@@ -34,6 +34,8 @@ def load_json_annotations(json_dir):
     gdf["source"] = "Li et al. 2023"
 
     df = read_file(gdf)
+
+    df["image_path"] = df["image_path"].apply(lambda x: os.path.join(json_dir, x))
     df.to_csv(os.path.join(json_dir, "annotations.csv"), index=False)
 
     return df

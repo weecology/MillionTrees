@@ -17,7 +17,7 @@ def main():
         nargs='*',
         default=None,
         help=
-        f'Specify a space-separated list of dataset names to download. If left unspecified, the script will download all of the official benchmark datasets. Available choices are {milliontrees.supported_datasets}.'
+        f'Specify a space-separated list of dataset names to download. If left unspecified, the script will download all of the benchmark datasets. Available choices are {milliontrees.supported_datasets}.'
     )
     parser.add_argument(
         '--unlabeled',

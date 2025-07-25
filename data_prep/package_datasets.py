@@ -37,9 +37,11 @@ def combine_datasets(dataset_paths, debug=False):
         df = df.groupby("source").head()
 
     # Read the source_completeness.csv file
-    source_completeness = pd.read_csv("source_completeness.csv")
-    source_completeness = source_completeness[["source", "complete"]]
-    df = df.merge(source_completeness, on="source", how="left")
+    #source_completeness = pd.read_csv("source_completeness.csv")
+    #source_completeness = source_completeness[["source", "complete"]]
+    #df = df.merge(source_completeness, on="source", how="left")
+    df["complete"] = True
+
     return df
 
 
@@ -81,7 +83,18 @@ def copy_images(datasets, base_dir, dataset_type):
 
 def create_mini_datasets(datasets, base_dir, dataset_type, version):
     """Create mini datasets for debugging and generate visualizations."""
-    mini_datasets = datasets.groupby("source").apply(lambda x: x.loc[x.groupby("filename").size().idxmax()]).reset_index(drop=True)
+    # For each source, get the filename with the most annotations
+    filename_counts = datasets.groupby(["source", "filename"]).size().reset_index(name="count")
+    max_count_indices = filename_counts.groupby("source")["count"].idxmax()
+    max_count_filenames = filename_counts.loc[max_count_indices]
+    
+    # Get one row per source (the first row for each filename with max annotations)
+    mini_datasets = []
+    for _, row in max_count_filenames.iterrows():
+        source_data = datasets[(datasets["source"] == row["source"]) & (datasets["filename"] == row["filename"])]
+        mini_datasets.append(source_data.iloc[0])  # Take the first row
+    
+    mini_datasets = pd.DataFrame(mini_datasets)
     mini_filenames = mini_datasets["filename"].tolist()
     mini_annotations = datasets[datasets["filename"].isin(mini_filenames)]
     mini_annotations.to_csv(f"{base_dir}Mini{dataset_type}_{version}/random.csv", index=False)
@@ -236,47 +249,47 @@ def run(version, base_dir, debug=False):
     TreeBoxes = [
         #"/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
         #"/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
-        #'/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
-        '/orange/ewhite/DeepForest/Radogoshi_Sweden/annotations.csv',
-        "/orange/ewhite/DeepForest/WRI/WRI-labels-opensource/annotations.csv",
+        '/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
+        #'/orange/ewhite/DeepForest/Radogoshi_Sweden/annotations.csv',
+        #"/orange/ewhite/DeepForest/WRI/WRI-labels-opensource/annotations.csv",
         #"/orange/ewhite/DeepForest/Guangzhou2022/annotations.csv",
-        "/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
-        "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
-        '/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
+        #"/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
+        #"/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
+        #'/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
         # "/orange/ewhite/DeepForest/Santos2019/annotations.csv",
-        "/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv"
+        #"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv"
    ]
 
     TreePoints = [
         "/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv",
-        "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
-        "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
-        "/orange/ewhite/DeepForest/Tonga/annotations.csv",
-        '/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
-        "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv"
+       # "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
+        #"/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
+        #"/orange/ewhite/DeepForest/Tonga/annotations.csv",
+        #'/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
+        #"/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv"
     ]
 
     TreePolygons = [
-        "/orange/ewhite/DeepForest/Jansen_2023/pngs/annotations.csv",
-        "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
-        "/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
-        "/orange/ewhite/DeepForest/Firoze2023/annotations.csv",
+        #"/orange/ewhite/DeepForest/Jansen_2023/pngs/annotations.csv",
+        #"/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
+        #"/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
+        #"/orange/ewhite/DeepForest/Firoze2023/annotations.csv",
         #"/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
         #"/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
         #"/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",
         #"/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
         #"/orange/ewhite/DeepForest/Araujo_2020/annotations.csv",
         #"/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv",
-        "/orange/ewhite/DeepForest/BCI/BCI_50ha_2020_08_01_crownmap_raw/annotations.csv",
-        "/orange/ewhite/DeepForest/BCI/BCI_50ha_2022_09_29_crownmap_raw/annotations.csv",
-        "/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv",
-        "/orange/ewhite/DeepForest/SPREAD/annotations.csv",
-        "/orange/ewhite/DeepForest/KagglePalm/Palm-Counting-349images/annotations.csv",
-        "/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops/annotations.csv",
-        "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
-        "/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
+        #"/orange/ewhite/DeepForest/BCI/BCI_50ha_2020_08_01_crownmap_raw/annotations.csv",
+        #"/orange/ewhite/DeepForest/BCI/BCI_50ha_2022_09_29_crownmap_raw/annotations.csv",
+        #"/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv",
+        #"/orange/ewhite/DeepForest/SPREAD/annotations.csv",
+        #"/orange/ewhite/DeepForest/KagglePalm/Palm-Counting-349images/annotations.csv",
+        #"/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops/annotations.csv",
+        #"/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
+        #"/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
         "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/annotations.csv",
-        #"/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv"
+        "/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv"
         ]
 
     # Combine datasets
@@ -289,9 +302,9 @@ def run(version, base_dir, debug=False):
     TreeBoxes_datasets = TreeBoxes_datasets[TreeBoxes_datasets["ymin"] != TreeBoxes_datasets["ymax"]]
 
     # Remove alpha channels
-    remove_alpha_channel(TreeBoxes_datasets)
-    remove_alpha_channel(TreePoints_datasets)
-    remove_alpha_channel(TreePolygons_datasets)
+    #remove_alpha_channel(TreeBoxes_datasets)
+    #remove_alpha_channel(TreePoints_datasets)
+    #remove_alpha_channel(TreePolygons_datasets)
 
     # Check for updated annotations
     check_for_updated_annotations(TreeBoxes_datasets, "Boxes")
@@ -302,6 +315,11 @@ def run(version, base_dir, debug=False):
     TreeBoxes_datasets = split_dataset(TreeBoxes_datasets)
     TreePoints_datasets = split_dataset(TreePoints_datasets)
     TreePolygons_datasets = split_dataset(TreePolygons_datasets)
+
+    # Save the default random split
+    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}/random.csv", index=False)
+    TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}/random.csv", index=False)
+    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons_{version}/random.csv", index=False)
 
     # Process geometry columns
     TreeBoxes_datasets = process_geometry_columns(TreeBoxes_datasets, "box")
@@ -349,6 +367,6 @@ def run(version, base_dir, debug=False):
 
 if __name__ == "__main__":
     version = "v0.4"
-    base_dir = "/orange/ewhite/web/public/"
+    base_dir = "/orange/ewhite/web/public/MillionTrees/"
     debug = False
     run(version, base_dir, debug)
