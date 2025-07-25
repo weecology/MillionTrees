@@ -66,10 +66,9 @@ def process_takeshige2025():
             patch_size=1000,  # Using 1000px windows as requested
             allow_empty=False,
             image_name=os.path.basename(ortho_path),
-            base_dir=output_dir
+            save_dir=output_dir
         )
         all_annotations.append(crop_annotations)
-        
 
     # Combine and finalize
     annotations = pd.concat(all_annotations)
