@@ -65,7 +65,7 @@ def dataset():
     # Save a Release txt file
     release_file = os.path.join(data_dir, "RELEASE_v0.0.txt")
     with open(release_file, "w") as f:
-        f.write("v0.0")
+        f.write("v0.0") 
 
     return tmp_dir
 

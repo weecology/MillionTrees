@@ -71,9 +71,9 @@ Once you have trained a model and evaluated its performance, you can submit your
    - Example prediction visualizations
    - Instructions for reproducing results
 
-## Official
+## Random
 
-| Name | Citation | Official Split | 
+| Name | Citation | Random Split | 
 |------|----------|----------------|
 |       |            |                  |
 |       |            |                  |
@@ -82,7 +82,7 @@ Once you have trained a model and evaluated its performance, you can submit your
 ## Zero-shot
 
 
-| Name | Citation | Official Split |
+| Name | Citation | Zero-shot Split |
 |------|----------|----------------|
 |       |            |                  |
 |       |            |                  |
