@@ -249,7 +249,7 @@ def run(version, base_dir, debug=False):
     TreeBoxes = [
         #"/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
         #"/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
-        '/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
+        #'/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
         #'/orange/ewhite/DeepForest/Radogoshi_Sweden/annotations.csv',
         #"/orange/ewhite/DeepForest/WRI/WRI-labels-opensource/annotations.csv",
         #"/orange/ewhite/DeepForest/Guangzhou2022/annotations.csv",
@@ -258,13 +258,13 @@ def run(version, base_dir, debug=False):
         #'/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
         # "/orange/ewhite/DeepForest/Santos2019/annotations.csv",
         #"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv"
-        "/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
+        #"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
         "/orange/ewhite/DeepForest/SelvaBox/annotations.csv"
    ]
 
     TreePoints = [
         "/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv",
-        "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
+       # "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
         #"/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
         #"/orange/ewhite/DeepForest/Tonga/annotations.csv",
         #'/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
@@ -290,7 +290,7 @@ def run(version, base_dir, debug=False):
         #"/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops/annotations.csv",
         #"/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
         #"/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
-        "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/annotations.csv",
+        #"/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/annotations.csv",
         "/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv"
         ]
 

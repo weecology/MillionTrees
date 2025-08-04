@@ -128,6 +128,9 @@ def download_selvabox():
     
     # Convert to DataFrame
     annotations_df = pd.DataFrame(all_annotations)
+    annotations_df = read_file(annotations_df)
+    # full path
+    annotations_df["image_path"] = annotations_df["image_path"].apply(lambda x: os.path.join(images_dir, x))
     
     if len(annotations_df) == 0:
         print("No annotations found!")
