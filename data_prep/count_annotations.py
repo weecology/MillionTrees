@@ -1,6 +1,9 @@
 import pandas as pd
 import os
 from pathlib import Path
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
 
 def analyze_dataset(file_path, dataset_type):
     """Analyze a single dataset and return statistics."""
@@ -32,7 +35,7 @@ def analyze_dataset(file_path, dataset_type):
         unique_images = len(df[image_col].unique()) if image_col else 0
         
         # Extract source from file path
-        source = Path(file_path).parent.name
+        source = df['source'].unique()[0]
         
         return {
             'file_path': file_path,
@@ -67,7 +70,6 @@ def main():
         "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
         '/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
         "/orange/ewhite/DeepForest/Santos2019/annotations.csv",
-        "/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
         "/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
         "/orange/ewhite/DeepForest/SelvaBox/annotations.csv"
     ]
@@ -140,6 +142,29 @@ def main():
         
         print("-" * 60)
     
+    # Create DataFrame for analysis
+    dataset_stats = []
+    for file_path, dataset_type in all_datasets:
+        result = analyze_dataset(file_path, dataset_type)
+        dataset_stats.append({
+            'file_path': file_path,
+            'dataset_type': dataset_type,
+            'status': result['status'],
+            'num_annotations': result['num_annotations'],
+            'unique_images': result['unique_images'],
+            'source': result['source']
+        })
+    
+    stats_df = pd.DataFrame(dataset_stats)
+    
+    # Filter successful datasets for visualization
+    successful_df = stats_df[stats_df['status'] == 'Loaded successfully'].copy()
+    
+    # Create a copy for visualization with capped values
+    viz_df = successful_df.copy()
+    viz_df['original_annotations'] = viz_df['num_annotations']
+    viz_df['num_annotations'] = viz_df['num_annotations'].clip(upper=225000)
+    
     # Summary
     print("\n" + "=" * 80)
     print("SUMMARY")
@@ -158,6 +183,91 @@ def main():
         type_annotations = sum(r['num_annotations'] for r in type_results if r['status'] == 'Loaded successfully')
         type_images = sum(r['unique_images'] for r in type_results if r['status'] == 'Loaded successfully')
         print(f"  {dataset_type}: {type_annotations:,} annotations, {type_images:,} unique images")
+    
+    # Change annotation type from "TreeBoxes" to "Boxes"
+    viz_df['dataset_type'] = viz_df['dataset_type'].replace('TreeBoxes', 'Boxes')
+    viz_df['dataset_type'] = viz_df['dataset_type'].replace('TreePoints', 'Points')
+    viz_df['dataset_type'] = viz_df['dataset_type'].replace('TreePolygons', 'Polygons')
+    
+    # Display DataFrame
+    print("\n" + "=" * 80)
+    print("DATASET STATISTICS DATAFRAME")
+    print("=" * 80)
+    print(successful_df[['source', 'dataset_type', 'num_annotations', 'unique_images']].to_string(index=False))
+    
+    # Create attractive histogram
+    plt.figure(figsize=(12, 10))
+        
+    # Set style
+    sns.set_style("whitegrid")
+    sns.set_palette("husl")
+    
+    # Create a barplot of the number of annotations for each dataset, sorted by number of annotations.
+    ax = sns.barplot(
+        data=viz_df.sort_values('num_annotations'),
+        x='num_annotations',
+        y='source',
+        orient='h',
+        hue='dataset_type',
+        dodge=False,
+        errorbar=None,
+    )
+    
+    # Customize the plot
+    plt.xlabel('Annotations', fontsize=12)
+    plt.ylabel('Dataset', fontsize=12)
+
+    # Add legend
+    plt.legend(title='Annotation Type', title_fontsize=12, fontsize=10)
+    
+    # Add statistics text
+    stats_text = f"Total Datasets: {len(successful_df)}\n"
+    stats_text += f"Total Images: {successful_df['unique_images'].sum():,}\n"
+    stats_text += f"Total Annotations: {successful_df['num_annotations'].sum():,}"
+    
+    plt.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
+             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+    # Set xlim to 0-225000
+    ax.set_xlim(0, 225000)
+    
+    # Customize y-axis to show ">200,000" for the last tick
+    x_ticks = ax.get_xticks()
+    x_tick_labels = [f"{int(tick):,}" for tick in x_ticks]
+    # remove the last tick label
+    x_tick_labels = x_tick_labels[:-1]
+    # add the last tick label
+    x_tick_labels.append(">200,000")
+    ax.set_xticks(x_ticks)  # Set the tick positions first
+    ax.set_xticklabels(x_tick_labels)
+    
+    # Add text labels for datasets with more than 200,000 annotations
+    sorted_df = viz_df.sort_values('num_annotations')
+    for i, (idx, row) in enumerate(sorted_df.iterrows()):
+        if row['original_annotations'] > 200000:
+            # Get the bar position (i is the index in the sorted dataframe)
+            bar_y = i
+            # Position text at the end of the bar with a small offset
+            text_x = row['num_annotations'] + 5000  # Small offset from bar end
+            # Add text label with the actual value
+            plt.text(text_x, bar_y, f"{row['original_annotations']:,}", 
+                    ha='left', va='center', fontsize=7, fontweight='bold',
+                    bbox=dict(boxstyle='round,pad=0.1', facecolor='white', alpha=0.9))
+    
+    # Adjust layout and save
+    #plt.tight_layout()
+    plt.savefig('dataset_distribution_barplot.png', dpi=300, bbox_inches='tight')
+    print(f"\nBarplot saved as 'dataset_distribution_barplot.png'")
+    
+    # Show the plot
+    plt.show()
+    
+    # Save DataFrame to CSV
+    output_csv = 'dataset_statistics.csv'
+    successful_df.to_csv(output_csv, index=False)
+    print(f"Dataset statistics saved to '{output_csv}'")
+    
+    return stats_df, successful_df
 
 if __name__ == "__main__":
     main()
