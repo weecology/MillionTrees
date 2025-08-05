@@ -1,4 +1,4 @@
-source_name,is_incomplete
+source,complete
 "Reiersen et al. 2022",False
 "Beloiu et al. 2023",True
 "NEON_points",False
@@ -34,3 +34,4 @@ source_name,is_incomplete
 "Vasquez et al. 2023",False
 "Vasquez et al. 2023 - training",False
 "NEON_benchmark",True 
+"SelvaBox",False

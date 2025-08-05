@@ -9,6 +9,7 @@ pytest
 scikit-learn
 shapely
 albumentations
+pyarrow
 
 # Documentation
 sphinx

@@ -89,6 +89,15 @@ NAIP Imagery from across the United States
 
 ![sample_image](public/World_Resources_Institute.png)
 
+### SelvaBox (CanopyRS)
+
+![sample_image](public/SelvaBox.png)
+
+**Citation:** SelvaBox: A high-resolution dataset for tropical tree crown detection in dense canopies  
+**Link:** [https://huggingface.co/datasets/CanopyRS/SelvaBox](https://huggingface.co/datasets/CanopyRS/SelvaBox)  
+**Location:** Brazil, Ecuador, and Panama  
+**Description:** High-resolution dataset (4.5 cm GSD) with over 83,000 human bounding box annotations for tropical tree crowns in dense canopies. The dataset comprises 14 rasters from three different countries with varying spatial extents.
+
 ### Zamboni et al. 2022
 
 ![sample_image](public/Zamboni_et_al._2021.png)
