@@ -11,8 +11,8 @@
 #SBATCH --error=/home/b.weinstein/logs/MillionTrees_test_release_%j.err
 #SBATCH --gpus=1
 
-export PATH="$PATH:/orange/ewhite/b.weinstein/miniconda3_new/bin"
-source activate MillionTrees
+source /blue/ewhite/b.weinstein/miniconda3/etc/profile.d/conda.sh
+conda activate MillionTrees
 
 # Add to path
 export PYTHONPATH=$PYTHONPATH:/home/b.weinstein/MillionTrees
