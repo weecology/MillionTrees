@@ -1,15 +1,13 @@
-# Add Dataset Visualization Scripts for Comprehensive Review
+# Add Concise Dataset Visualization Script for Comprehensive Review
 
 ## Overview
 
-This PR introduces comprehensive visualization scripts that loop through all images in all MillionTrees datasets, overlay annotations using `plot_results`, and organize the data for systematic review.
+This PR introduces a concise visualization script that loops through all images in all MillionTrees datasets, overlays annotations using `plot_results`, and organizes the data for systematic review.
 
 ## Changes
 
 ### New Files
-- `visualize_all_datasets.py` - Full-featured visualization script
-- `visualize_datasets_concise.py` - Optimized concise version with minimal flow statements
-- `README_visualization.md` - Comprehensive documentation
+- `visualize_datasets_concise.py` - Concise visualization script with minimal flow statements
 
 ### Features Implemented
 
@@ -28,19 +26,14 @@ This PR introduces comprehensive visualization scripts that loop through all ima
    - Each reviewer gets balanced representation across sources
 
 4. **Code Quality**
-   - Concise implementation with minimal flow statements (as requested)
+   - Concise implementation with minimal flow statements
    - Efficient pandas operations and list comprehensions
    - Graceful error handling for missing files
-   - Comprehensive documentation
 
 ## Usage
 
 ```bash
-# Recommended: Run concise version
 python visualize_datasets_concise.py
-
-# Alternative: Full-featured version
-python visualize_all_datasets.py
 ```
 
 ## Output Structure
@@ -68,30 +61,14 @@ python visualize_all_datasets.py
 
 ## Performance Optimizations
 
-The concise version uses:
 - List comprehensions instead of loops where possible
 - Pandas vectorized operations
 - Minimal conditional statements
 - Efficient memory usage patterns
 
-## Testing
+## Dataset Coverage
 
-- [x] Validates against existing dataset paths from `count_annotations.py`
-- [x] Handles missing files gracefully
-- [x] Generates proper PNG files with annotation overlays
-- [x] Creates balanced reviewer splits
-- [x] Produces comprehensive summary statistics
-
-## Related Work
-
-This builds on existing visualization patterns from:
-- `package_datasets.py` (mini dataset creation)
-- `AutoArborist.py` (sample plotting)
-- Various dataset processing scripts (annotation overlay patterns)
-
-## Future Enhancements
-
-- Support for custom output directories
-- Configurable number of reviewer splits
-- Integration with MillionTrees dataset loaders
-- Batch processing optimizations for very large datasets
+Processes annotations from 38 sources:
+- **TreeBoxes**: 12 sources (Ryoungseob 2023, Velasquez, Individual urban tree, Radogoshi Sweden, WRI, Guangzhou 2022, NEON benchmark, University of Florida, ReForestTree, Santos 2019, Zenodo, SelvaBox)
+- **TreePoints**: 6 sources (TreeFormer, Ventura 2022, NEON points, Tonga, BohlmanBCI, AutoArborist)  
+- **TreePolygons**: 20 sources (Jansen 2023, Troles Bamberg, Cloutier 2023, Firoze 2023, Wagner Australia, Alejandro Chile, Urban London, Olive Trees Spain, Araujo 2020, Justdiggit, BCI 2020/2022, Harz Mountains, SPREAD, Kaggle Palm, Kattenborn, Quebec Lefebvre, BohlmanBCI crowns, TreeCountSegHeight, Takeshige 2025)
