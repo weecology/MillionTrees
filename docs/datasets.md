@@ -98,6 +98,21 @@ NAIP Imagery from across the United States
 **Location:** Brazil, Ecuador, and Panama  
 **Description:** High-resolution dataset (4.5 cm GSD) with over 83,000 human bounding box annotations for tropical tree crowns in dense canopies. The dataset comprises 14 rasters from three different countries with varying spatial extents.
 
+### Veitch-Michaelis et al. 2024.
+
+![sample_image](public/OAM-TCD.png)
+
+**Link:** [HuggingFace Dataset](https://huggingface.co/datasets/restor/tcd)
+
+https://zenodo.org/records/11617167
+
+
+**Location:** Global
+
+**Citation:**  Veitch-Michaelis, J., Cottam, A., Schweizer, D., Broadbent, E., Dao, D., Zhang, C., Almeyda Zambrano, A., & Max, S. (2024). OAM-TCD: A globally diverse dataset of high-resolution tree cover maps (1.0.0) [Data set]. Zenodo.
+
+For more information about the dataset collation, see: Veitch-Michaelis, J. et al. "OAM-TCD: A globally diverse dataset of high-resolution tree cover maps." Advances in neural information processing systems 37 (2024): 49749-49767.
+
 ### Zamboni et al. 2022
 
 ![sample_image](public/Zamboni_et_al._2021.png)
