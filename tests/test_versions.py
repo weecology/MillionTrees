@@ -10,7 +10,6 @@ def test_dataset_url_exists(dataset_class, tmpdir):
     """Test that dataset URLs exist but don't actually download"""
     versions = dataset_class._versions_dict
     for version in versions:
-        print(f"Testing version {version} of {dataset_class.__name__}")
         url = versions[version]['download_url']
         fpath = os.path.join(tmpdir, "test_data", "raw", os.path.basename(url))
         try:
