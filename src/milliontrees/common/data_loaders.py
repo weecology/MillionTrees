@@ -1,7 +1,7 @@
 import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import WeightedRandomSampler, SubsetRandomSampler
-from milliontrees.common.utils import get_counts, split_into_groups
+from .utils import get_counts, split_into_groups
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 
 
