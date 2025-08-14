@@ -4,7 +4,7 @@ from typing import Dict, List, Union
 import numpy as np
 import torch
 
-from .utils import get_counts
+from milliontrees.common.utils import get_counts
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset, MillionTreesSubset
 import warnings
 

@@ -7,7 +7,7 @@ from torchvision.models.detection._utils import Matcher
 from torchvision.ops import nms, box_convert
 from milliontrees.common.metrics.metric import Metric, ElementwiseMetric, MultiTaskMetric
 from milliontrees.common.metrics.loss import ElementwiseLoss
-from ..utils import avg_over_groups, minimum, maximum, get_counts
+from milliontrees.common.utils import avg_over_groups, minimum, maximum, get_counts
 import sklearn.metrics
 from scipy.stats import pearsonr
 

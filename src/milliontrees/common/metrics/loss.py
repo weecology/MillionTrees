@@ -1,5 +1,5 @@
 import torch
-from ..utils import avg_over_groups, maximum
+from milliontrees.common.utils import avg_over_groups, maximum
 from milliontrees.common.metrics.metric import ElementwiseMetric, Metric, MultiTaskMetric
 
 

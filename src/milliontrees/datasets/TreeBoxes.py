@@ -203,7 +203,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         results_str = f'Average detection_acc across source: {detection_acc_avg_dom:.3f}\n' + results_str
 
         # Format results with tables
-        from milliontrees.common.eval_utils.eval_formatter import format_eval_results
+        from milliontrees.common.utils import format_eval_results
         formatted_results = format_eval_results(results, self)
         results_str = formatted_results + '\n' + results_str
 

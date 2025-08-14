@@ -1,5 +1,5 @@
 import numpy as np
-from ..utils import avg_over_groups, get_counts, numel
+from milliontrees.common.utils import avg_over_groups, get_counts, numel
 import torch
 
 
