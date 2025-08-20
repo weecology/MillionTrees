@@ -428,8 +428,8 @@ class DetectionAccuracy(ElementwiseMetric):
             target_boxes = target[self.geometry_name]
             target_scores = target["scores"]
             gt_boxes = gt[self.geometry_name]
-            if target_boxes.dim()==1:
-                target_boxes = target_boxes.view(-1,4)
+            if target_boxes.dim() == 1:
+                target_boxes = target_boxes.view(-1, 4)
             pred_boxes = target_boxes[target_scores > self.score_threshold]
             if self.metric == "accuracy":
                 det_accuracy = self._accuracy(gt_boxes, pred_boxes,
