@@ -70,6 +70,64 @@ def dataset():
     return tmp_dir
 
 
+@pytest.fixture(scope="session")
+def unsupervised_annotations(dataset):
+    """Create a small unsupervised-style annotations CSV for NEON tiles.
+
+    Contains four entries:
+    - 2018_HARV_5_733000_4698000
+    - 2019_HARV_5_733000_4698000
+    - 2017_BART_4_322000_4882000
+    - 2020_BART_4_322000_4882000
+    """
+    # Use the same temporary root created by dataset()
+    tmp_dir = dataset
+    csv_path = os.path.join(tmp_dir, "unsupervised_annotations.csv")
+
+    rows = [
+        {
+            "xmin": 0,
+            "ymin": 0,
+            "xmax": 1,
+            "ymax": 1,
+            "filename": "2018_HARV_5_733000_4698000.tif",
+            "siteID": "HARV",
+            "tile_name": "2018_HARV_5_733000_4698000",
+        },
+        {
+            "xmin": 0,
+            "ymin": 0,
+            "xmax": 1,
+            "ymax": 1,
+            "filename": "2019_HARV_5_733000_4698000.tif",
+            "siteID": "HARV",
+            "tile_name": "2019_HARV_5_733000_4698000",
+        },
+        {
+            "xmin": 0,
+            "ymin": 0,
+            "xmax": 1,
+            "ymax": 1,
+            "filename": "2017_BART_4_322000_4882000.tif",
+            "siteID": "BART",
+            "tile_name": "2017_BART_4_322000_4882000",
+        },
+        {
+            "xmin": 0,
+            "ymin": 0,
+            "xmax": 1,
+            "ymax": 1,
+            "filename": "2020_BART_4_322000_4882000.tif",
+            "siteID": "BART",
+            "tile_name": "2020_BART_4_322000_4882000",
+        },
+    ]
+
+    df = pd.DataFrame(rows)
+    df.to_csv(csv_path, index=False)
+    return csv_path
+
+
 def generate_box_dataset(image_dir):
     # Generate the box dataset logic here
     # Assuming you have a list of xmin, xmax, ymin, ymax values and corresponding image file paths
