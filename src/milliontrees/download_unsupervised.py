@@ -21,11 +21,11 @@ def parse_tile_easting_northing(tile_name: str) -> Optional[Tuple[int, int]]:
     Supports patterns like '123000_456000' or 'E123000_N456000'. Returns integers.
     """
     # Try E######_N###### pattern
-    m = re.search(r"E(\d{3,6}).*?N(\d{3,6})", tile_name)
+    m = re.search(r"E(\d{3,7}).*?N(\d{3,7})", tile_name)
     if m:
         return int(m.group(1)), int(m.group(2))
     # Try ######_###### pattern
-    m = re.search(r"(\d{3,6})[_-](\d{3,6})", tile_name)
+    m = re.search(r"(\d{3,7})[_-](\d{3,7})", tile_name)
     if m:
         return int(m.group(1)), int(m.group(2))
     return None
@@ -70,7 +70,13 @@ def download_tile_rgb(site: str,
         savepath=savepath,
         verbose=True,
     )
-
+    # Post-process: move matching .tif to savepath root and remove nested dirs
+    all_tifs = glob(os.path.join(savepath + "/DP3.30010.001", "**", "*.tif"), recursive=True)
+    chosen = sorted([p for p in all_tifs if f"_{int(easting)}_{int(northing)} in p"], key=len)[0]
+    dst = os.path.join(savepath, os.path.basename(chosen))
+    shutil.move(chosen, dst)
+    for d in next(os.walk(savepath + "/DP3.30010.001"))[1]:
+        shutil.rmtree(os.path.join(savepath + "/DP3.30010.001", d), ignore_errors=True)
 
 def copy_downloads_to_images(download_root: str, images_dir: str) -> None:
     """Copy downloaded image tiles (e.g., .tif) into the dataset images directory."""
