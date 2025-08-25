@@ -85,7 +85,12 @@ import pytest
 import milliontrees.download_unsupervised as dl
 import shutil
 
-@pytest.mark.skipif("GITHUB_ACTIONS" in os.environ, reason="This test is skipped on GitHub Actions.")
+token_present = os.path.exists("neon_token.txt") or bool(os.environ.get("NEON_TOKEN"))
+run_real = os.environ.get("RUN_REAL_NEON") == "1" and token_present
+@pytest.mark.skipif(
+    not run_real,
+    reason="Set RUN_REAL_NEON=1 and provide NEON_TOKEN or neon_token.txt to enable real NEON download test."
+)
 def test_real_download(tmp_path):
     # Arrange
     real_download_dir = tmp_path / "real_downloads"
