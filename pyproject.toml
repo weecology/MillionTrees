@@ -76,7 +76,7 @@ docs = [
     "nbqa",
 ]
 neon = [
-    "neonutilities",
+    "neonutilities; python_version >= '3.9'",
 ]
 
 [tool.setuptools]
