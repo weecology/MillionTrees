@@ -6,7 +6,6 @@ from glob import glob
 from typing import Optional, Tuple
 
 import pandas as pd
-import neonutilities as nu
 
 def read_neon_token(token_path: str = "neon_token.txt") -> str:
     """Read NEON API token from a text file."""
@@ -58,6 +57,12 @@ def download_tile_rgb(site: str,
                       savepath: str,
                       token: str,
                       data_product: str = "DP3.30010.001") -> None:
+    try:
+        import neonutilities as nu  # type: ignore
+    except ImportError as exc:
+        raise ImportError(
+            "Optional dependency missing: 'neonutilities'. Install with `pip install milliontrees[neon]` or `pip install neonutilities`."
+        ) from exc
     nu.by_tile_aop(
         dpid=data_product,
         site=site,
