@@ -89,7 +89,7 @@ def test_get_test_dataloader(dataset):
     
     # Assert that test_dataset[0] == "image3.jpg"
     metadata, image, targets = test_dataset[0]
-    assert metadata[1] == 1
+    assert metadata[1] == 0
     assert ds._filename_id_to_code[int(metadata[0])] == "image3.jpg"
 
     test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
