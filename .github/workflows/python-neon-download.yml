@@ -40,6 +40,6 @@ jobs:
           NEON_TOKEN: ${{ secrets.NEON_TOKEN }}
         run: |
           if [ -n "$NEON_TOKEN" ]; then echo "$NEON_TOKEN" > neon_token.txt; fi
-          uv run pytest -q tests/test_unsupervised_download.py::test_real_download
+          uv run python -m pytest -q tests/test_unsupervised_download.py::test_real_download
 
 
