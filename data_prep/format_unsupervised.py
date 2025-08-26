@@ -13,7 +13,7 @@ annotations = utilities.read_file(unsupervised_annotations_path)
 print(f"Number of annotations: {len(annotations)}")
 
 # Extract siteID and tile_name from the filename
-annotations["siteID"] = annotations["image_path"].apply(lambda x: x.split("/")[-2])
+annotations["siteID"] = annotations["image_path"].apply(lambda x: x.split("_")[1])
 annotations["tile_name"] = annotations["image_path"].apply(lambda x: x.split("/")[-1].split(".")[0])
 
 print(f"Number of sites: {annotations['siteID'].nunique()}")
@@ -35,3 +35,9 @@ polygons_annotations["source"] = "Weinstein et al. 2018 unsupervised"
 # Create box version (same as original but with metadata and source)
 boxes_annotations = annotations.copy()
 boxes_annotations["source"] = "Weinstein et al. 2018 unsupervised"
+
+
+# Save the annotations
+points_annotations.to_csv("/orange/ewhite/DeepForest/unsupervised/TreePoints_unsupervised.csv", index=False)
+polygons_annotations.to_csv("/orange/ewhite/DeepForest/unsupervised/TreePolygons_unsupervised.csv", index=False)
+boxes_annotations.to_csv("/orange/ewhite/DeepForest/unsupervised/TreeBoxes_unsupervised.csv", index=False)

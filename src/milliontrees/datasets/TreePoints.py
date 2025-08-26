@@ -87,6 +87,20 @@ class TreePointsDataset(MillionTreesDataset):
         # Load splits
         self.df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
 
+        # Load unsupervised data if it is included or not excluded
+        if (include_sources and any('unsupervised' in src for src in include_sources)) or \
+           (exclude_sources and not any('unsupervised' in src for src in exclude_sources)):
+            unsupervised_dir = self._data_dir / 'unsupervised'
+            print(
+                f"Loading unsupervised data from {unsupervised_dir}, this may take a while..."
+            )
+            for root, _, files in os.walk(unsupervised_dir):
+                for file in files:
+                    if file.endswith('.csv'):
+                        file_path = os.path.join(root, file)
+                        unsupervised_df = pd.read_csv(file_path)
+                        df = pd.concat([df, unsupervised_df], ignore_index=True)
+
         if remove_incomplete:
             self.df = self.df[self.df['complete'] == True]
 
@@ -94,7 +108,8 @@ class TreePointsDataset(MillionTreesDataset):
         # Default: exclude sources containing 'unsupervised'
         include_patterns = None
         if include_sources is not None and include_sources != []:
-            include_patterns = include_sources if isinstance(include_sources, (list, tuple)) else [include_sources]
+            include_patterns = include_sources if isinstance(
+                include_sources, (list, tuple)) else [include_sources]
         exclude_patterns = exclude_sources
         if exclude_patterns is None:
             exclude_patterns = ['*unsupervised*']
@@ -105,12 +120,14 @@ class TreePointsDataset(MillionTreesDataset):
 
         if include_patterns is not None:
             patterns_lower = [p.lower() for p in include_patterns]
-            mask_include = source_str.apply(lambda s: any(fnmatch.fnmatch(s, p) for p in patterns_lower))
+            mask_include = source_str.apply(
+                lambda s: any(fnmatch.fnmatch(s, p) for p in patterns_lower))
             self.df = self.df[mask_include]
 
         patterns_exclude_lower = [p.lower() for p in exclude_patterns]
         if len(patterns_exclude_lower) > 0:
-            mask_exclude = source_str.apply(lambda s: any(fnmatch.fnmatch(s, p) for p in patterns_exclude_lower))
+            mask_exclude = source_str.apply(lambda s: any(
+                fnmatch.fnmatch(s, p) for p in patterns_exclude_lower))
             self.df = self.df[~mask_exclude]
 
         # Splits

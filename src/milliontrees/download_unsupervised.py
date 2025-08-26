@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 
 import pandas as pd
 
+
 def read_neon_token(token_path: str = "neon_token.txt") -> str:
     """Read NEON API token from a text file."""
     with open(token_path, "r") as file:
@@ -30,17 +31,14 @@ def parse_tile_easting_northing(tile_name: str) -> Optional[Tuple[int, int]]:
     return None
 
 
-def filter_unique_tiles(df: pd.DataFrame,
-                        site_col: str,
-                        tile_col: str,
+def filter_unique_tiles(df: pd.DataFrame, site_col: str, tile_col: str,
                         max_tiles_per_site: Optional[int]) -> pd.DataFrame:
     """Optionally limit number of unique tiles per site."""
     if max_tiles_per_site is None:
         return df
     # Keep at most N unique tiles per site
-    tile_first = (df.drop_duplicates([site_col, tile_col])
-                   .groupby(site_col)
-                   .head(max_tiles_per_site))
+    tile_first = (df.drop_duplicates(
+        [site_col, tile_col]).groupby(site_col).head(max_tiles_per_site))
     keep_tiles = set(zip(tile_first[site_col], tile_first[tile_col]))
     mask = list(zip(df[site_col], df[tile_col]))
     return df[[pair in keep_tiles for pair in mask]]
@@ -76,12 +74,17 @@ def download_tile_rgb(site: str,
         verbose=True,
     )
     # Post-process: move matching .tif to savepath root and remove nested dirs
-    all_tifs = glob(os.path.join(savepath + "/DP3.30010.001", "**", "*.tif"), recursive=True)
-    chosen = sorted([p for p in all_tifs if f"_{int(easting)}_{int(northing)} in p"], key=len)[0]
+    all_tifs = glob(os.path.join(savepath + "/DP3.30010.001", "**", "*.tif"),
+                    recursive=True)
+    chosen = sorted(
+        [p for p in all_tifs if f"_{int(easting)}_{int(northing)} in p"],
+        key=len)[0]
     dst = os.path.join(savepath, os.path.basename(chosen))
     shutil.move(chosen, dst)
     for d in next(os.walk(savepath + "/DP3.30010.001"))[1]:
-        shutil.rmtree(os.path.join(savepath + "/DP3.30010.001", d), ignore_errors=True)
+        shutil.rmtree(os.path.join(savepath + "/DP3.30010.001", d),
+                      ignore_errors=True)
+
 
 def copy_downloads_to_images(download_root: str, images_dir: str) -> None:
     """Copy downloaded image tiles (e.g., .tif) into the dataset images directory."""
@@ -93,8 +96,7 @@ def copy_downloads_to_images(download_root: str, images_dir: str) -> None:
             shutil.copy2(src, dst)
 
 
-def infer_tile_column(df: pd.DataFrame,
-                      tile_col: Optional[str]) -> str:
+def infer_tile_column(df: pd.DataFrame, tile_col: Optional[str]) -> str:
     if tile_col and tile_col in df.columns:
         return tile_col
     # Try to derive from filename/image_path by dropping last underscore part
@@ -108,7 +110,8 @@ def infer_tile_column(df: pd.DataFrame,
     if candidate is None:
         raise ValueError("Could not infer tile column. Provide --tile_column.")
     base = df[candidate].astype(str).apply(os.path.basename)
-    df['__tile_name__'] = base.apply(lambda x: '_'.join(x.split('_')[:-1]) if '_' in x else os.path.splitext(x)[0])
+    df['__tile_name__'] = base.apply(lambda x: '_'.join(x.split('_')[:-1])
+                                     if '_' in x else os.path.splitext(x)[0])
     return '__tile_name__'
 
 
@@ -117,20 +120,51 @@ def normalize_filenames_column(df: pd.DataFrame) -> pd.Series:
         return df['filename'].astype(str).apply(os.path.basename)
     if 'image_path' in df.columns:
         return df['image_path'].astype(str).apply(os.path.basename)
-    raise ValueError("Annotations must contain either 'filename' or 'image_path' column.")
+    raise ValueError(
+        "Annotations must contain either 'filename' or 'image_path' column.")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Download NEON tiles based on box annotations and append to MillionTrees dataset.")
-    parser.add_argument('--data_dir', required=True, help='Path to dataset directory, e.g., /path/to/TreeBoxes_v0.2')
-    parser.add_argument('--annotations_csv', required=True, help='CSV of box annotations from package data')
-    parser.add_argument('--site_column', default='siteID', help='Column name for NEON site ID')
-    parser.add_argument('--tile_column', default=None, help='Column name for tile identifier (if omitted, will be inferred)')
-    parser.add_argument('--year', type=int, default=None, help='NEON year to request; if omitted, uses year parsed from filenames when possible')
-    parser.add_argument('--max_tiles_per_site', type=int, default=None, help='Optional limit on number of unique tiles per site')
-    parser.add_argument('--token_path', default='neon_token.txt', help='Path to NEON API token file')
-    parser.add_argument('--data_product', default='DP3.30010.001', help='NEON data product (default RGB)')
-    parser.add_argument('--download_dir', default='neon_downloads', help='Temporary directory to store NEON downloads before copying')
+    parser = argparse.ArgumentParser(
+        description=
+        "Download NEON tiles based on box annotations and append to MillionTrees dataset."
+    )
+    parser.add_argument(
+        '--data_dir',
+        required=True,
+        help='Path to dataset directory, e.g., /path/to/TreeBoxes_v0.2')
+    parser.add_argument('--annotations_csv',
+                        required=True,
+                        help='CSV of box annotations from package data')
+    parser.add_argument('--site_column',
+                        default='siteID',
+                        help='Column name for NEON site ID')
+    parser.add_argument(
+        '--tile_column',
+        default=None,
+        help='Column name for tile identifier (if omitted, will be inferred)')
+    parser.add_argument(
+        '--year',
+        type=int,
+        default=None,
+        help=
+        'NEON year to request; if omitted, uses year parsed from filenames when possible'
+    )
+    parser.add_argument(
+        '--max_tiles_per_site',
+        type=int,
+        default=None,
+        help='Optional limit on number of unique tiles per site')
+    parser.add_argument('--token_path',
+                        default='neon_token.txt',
+                        help='Path to NEON API token file')
+    parser.add_argument('--data_product',
+                        default='DP3.30010.001',
+                        help='NEON data product (default RGB)')
+    parser.add_argument(
+        '--download_dir',
+        default='neon_downloads',
+        help='Temporary directory to store NEON downloads before copying')
     args = parser.parse_args()
 
     data_dir = args.data_dir
@@ -142,7 +176,8 @@ def main():
     # Load annotations
     ann = pd.read_csv(args.annotations_csv)
     if args.site_column not in ann.columns:
-        raise ValueError(f"Annotations CSV must contain site column '{args.site_column}'.")
+        raise ValueError(
+            f"Annotations CSV must contain site column '{args.site_column}'.")
 
     # Normalize filename for later appending
     ann['filename'] = normalize_filenames_column(ann)
@@ -151,7 +186,8 @@ def main():
     tile_col = infer_tile_column(ann, args.tile_column)
 
     # Filter tiles per site if requested
-    ann_filtered = filter_unique_tiles(ann, args.site_column, tile_col, args.max_tiles_per_site)
+    ann_filtered = filter_unique_tiles(ann, args.site_column, tile_col,
+                                       args.max_tiles_per_site)
 
     # Download tiles
     token = read_neon_token(args.token_path)
@@ -162,7 +198,9 @@ def main():
         tile_name = str(row[tile_col])
         parsed = parse_tile_easting_northing(tile_name)
         if parsed is None:
-            print(f"Could not parse easting/northing from tile '{tile_name}', skipping download.")
+            print(
+                f"Could not parse easting/northing from tile '{tile_name}', skipping download."
+            )
             continue
         easting, northing = parsed
         year = args.year if args.year is not None else None
@@ -172,9 +210,13 @@ def main():
             if m:
                 year = int(m.group(1))
         if year is None:
-            print(f"No year specified and could not infer year from tile '{tile_name}', skipping.")
+            print(
+                f"No year specified and could not infer year from tile '{tile_name}', skipping."
+            )
             continue
-        print(f"Downloading site={site}, tile={tile_name}, easting={easting}, northing={northing}, year={year}")
+        print(
+            f"Downloading site={site}, tile={tile_name}, easting={easting}, northing={northing}, year={year}"
+        )
         download_tile_rgb(site=site,
                           easting=easting,
                           northing=northing,
@@ -197,12 +239,17 @@ def main():
             raise ValueError(f"Annotations CSV must contain column '{col}'.")
 
     to_append = ann.copy()
-    to_append['filename'] = to_append['filename'].astype(str).apply(os.path.basename)
+    to_append['filename'] = to_append['filename'].astype(str).apply(
+        os.path.basename)
     to_append['source'] = 'Weinstein et al. 2018'
     to_append['split'] = 'train'
 
     # Keep only columns expected by dataset; preserve extras if present
-    keep_cols = [c for c in ['xmin', 'ymin', 'xmax', 'ymax', 'filename', 'source', 'split'] if c in to_append.columns]
+    keep_cols = [
+        c for c in
+        ['xmin', 'ymin', 'xmax', 'ymax', 'filename', 'source', 'split']
+        if c in to_append.columns
+    ]
     to_append = to_append[keep_cols]
 
     updated = pd.concat([df, to_append], ignore_index=True)
