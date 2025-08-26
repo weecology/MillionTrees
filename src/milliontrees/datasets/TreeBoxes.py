@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import albumentations as A
 import torchvision.transforms as T
+import fnmatch
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
@@ -75,7 +76,9 @@ class TreeBoxesDataset(MillionTreesDataset):
                  geometry_name='y',
                  eval_score_threshold=0.1,
                  remove_incomplete=False,
-                 image_size=448):
+                 image_size=448,
+                 include_sources=None,
+                 exclude_sources=None):
 
         self._version = version
         self._split_scheme = split_scheme
@@ -96,6 +99,29 @@ class TreeBoxesDataset(MillionTreesDataset):
         # Remove incomplete data based on flag
         if remove_incomplete:
             df = df[df['complete'] == True]
+
+        # Filter by include/exclude source names with wildcard support
+        # Default: exclude sources containing 'unsupervised'
+        include_patterns = None
+        if include_sources is not None and include_sources != []:
+            include_patterns = include_sources if isinstance(include_sources, (list, tuple)) else [include_sources]
+        exclude_patterns = exclude_sources
+        if exclude_patterns is None:
+            exclude_patterns = ['*unsupervised*']
+        elif not isinstance(exclude_patterns, (list, tuple)):
+            exclude_patterns = [exclude_patterns]
+
+        source_str = df['source'].astype(str).str.lower()
+
+        if include_patterns is not None:
+            patterns_lower = [p.lower() for p in include_patterns]
+            mask_include = source_str.apply(lambda s: any(fnmatch.fnmatch(s, p) for p in patterns_lower))
+            df = df[mask_include]
+
+        patterns_exclude_lower = [p.lower() for p in exclude_patterns]
+        if len(patterns_exclude_lower) > 0:
+            mask_exclude = source_str.apply(lambda s: any(fnmatch.fnmatch(s, p) for p in patterns_exclude_lower))
+            df = df[~mask_exclude]
 
         # Splits
         self._split_dict = {

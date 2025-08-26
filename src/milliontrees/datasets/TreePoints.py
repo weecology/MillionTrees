@@ -12,6 +12,7 @@ from milliontrees.common.metrics.all_metrics import KeypointAccuracy
 from PIL import Image
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+import fnmatch
 
 
 class TreePointsDataset(MillionTreesDataset):
@@ -67,7 +68,9 @@ class TreePointsDataset(MillionTreesDataset):
                  split_scheme='random',
                  geometry_name='y',
                  remove_incomplete=False,
-                 distance_threshold=0.1):
+                 distance_threshold=0.1,
+                 include_sources=None,
+                 exclude_sources=None):
 
         self._version = version
         self._split_scheme = split_scheme
@@ -86,6 +89,29 @@ class TreePointsDataset(MillionTreesDataset):
 
         if remove_incomplete:
             self.df = self.df[self.df['complete'] == True]
+
+        # Filter by include/exclude source names with wildcard support
+        # Default: exclude sources containing 'unsupervised'
+        include_patterns = None
+        if include_sources is not None and include_sources != []:
+            include_patterns = include_sources if isinstance(include_sources, (list, tuple)) else [include_sources]
+        exclude_patterns = exclude_sources
+        if exclude_patterns is None:
+            exclude_patterns = ['*unsupervised*']
+        elif not isinstance(exclude_patterns, (list, tuple)):
+            exclude_patterns = [exclude_patterns]
+
+        source_str = self.df['source'].astype(str).str.lower()
+
+        if include_patterns is not None:
+            patterns_lower = [p.lower() for p in include_patterns]
+            mask_include = source_str.apply(lambda s: any(fnmatch.fnmatch(s, p) for p in patterns_lower))
+            self.df = self.df[mask_include]
+
+        patterns_exclude_lower = [p.lower() for p in exclude_patterns]
+        if len(patterns_exclude_lower) > 0:
+            mask_exclude = source_str.apply(lambda s: any(fnmatch.fnmatch(s, p) for p in patterns_exclude_lower))
+            self.df = self.df[~mask_exclude]
 
         # Splits
         self._split_dict = {
