@@ -10,6 +10,8 @@ from PIL import Image
 The goal of this module is to create a reproducible example of how datasets are structured. Each has an images folder, and multiple train/test splits.
 """
 
+SOURCE_MAP = {0: "Weinstein et al. 2024", 1: "Troles et al. 2025"}
+
 @pytest.fixture(scope="session")
 def dataset():
     # Create a temporary directory
@@ -78,6 +80,7 @@ def generate_box_dataset(image_dir):
     ymin = [15, 25, 35, 20, 40, 45]
     ymax = [55, 65, 75, 60, 80, 85]
     locations = [0, 0, 1, 0, 1, 1]
+    locations = [SOURCE_MAP[l] for l in locations]
     resolution = [1, 1, 10, 1, 10, 5]
     image_files = ['image1.jpg', 'image2.jpg', 'image3.jpg', 'image1.jpg', 'image3.jpg', 'image4.jpg']
 
@@ -101,6 +104,7 @@ def generate_polygon_dataset(image_dir):
     # Assuming you have a list of polygon coordinates and corresponding image file paths
     polygon_wkt = ["POLYGON((10 15, 50 15, 50 55, 10 55, 10 15))", "POLYGON((20 25, 60 25, 60 65, 20 65, 20 25))", "POLYGON((30 35, 70 35, 70 75, 30 75, 30 35))"]
     locations = [0,0,1]
+    locations = [SOURCE_MAP[l] for l in locations]
     image_files = ['image1.jpg', 'image2.jpg', 'image3.jpg']
 
     # Create a pandas DataFrame
@@ -124,6 +128,7 @@ def generate_point_dataset(image_dir):
     x = [10, 20, 30, 15, 35, 40]
     y = [15, 25, 35, 20, 40, 45]
     locations = [0, 0, 1, 0, 1, 1]
+    locations = [SOURCE_MAP[l] for l in locations]
     resolution = [1, 1, 10, 1, 10, 5]
     image_files = ['image1.jpg', 'image2.jpg', 'image3.jpg', 'image1.jpg', 'image3.jpg', 'image4.jpg']
 
