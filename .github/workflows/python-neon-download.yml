@@ -28,6 +28,7 @@ jobs:
         run: |
           uv sync --extra neon --dev
           uv pip install nbqa
+          uv pip install pytest
 
       - name: Verify nbqa installation
         run: uv run nbqa --version
