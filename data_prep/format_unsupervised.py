@@ -1,20 +1,22 @@
 # Create unsupervised annotations from NEON dataset
 import pandas as pd
 import os
+import glob
 
 from deepforest import utilities
 from shapely.geometry import Point, Polygon
 
 # Read the unsupervised annotations
-unsupervised_annotations_path = "/orange/ewhite/b.weinstein/NeonTreeEvaluation/pretraining.csv"
-annotations = utilities.read_file(unsupervised_annotations_path)
+
+unsupervised_annotations_path = "/orange/ewhite/b.weinstein/NeonTreeEvaluation/pretraining/pretraining_annotations.csv"
+annotations = pd.read_csv(unsupervised_annotations_path)
 
 # How many annotations, sites, and tiles?
 print(f"Number of annotations: {len(annotations)}")
 
 # Extract siteID and tile_name from the filename
 annotations["siteID"] = annotations["image_path"].apply(lambda x: x.split("_")[1])
-annotations["tile_name"] = annotations["image_path"].apply(lambda x: x.split("/")[-1].split(".")[0])
+annotations["tile_name"] = annotations["image_path"]
 
 print(f"Number of sites: {annotations['siteID'].nunique()}")
 print(f"Number of tiles: {annotations['tile_name'].nunique()}")
@@ -36,8 +38,14 @@ polygons_annotations["source"] = "Weinstein et al. 2018 unsupervised"
 boxes_annotations = annotations.copy()
 boxes_annotations["source"] = "Weinstein et al. 2018 unsupervised"
 
+output_dir = "/orange/ewhite/DeepForest/unsupervised"
+os.makedirs(output_dir, exist_ok=True)
 
-# Save the annotations
-points_annotations.to_csv("/orange/ewhite/DeepForest/unsupervised/TreePoints_unsupervised.csv", index=False)
-polygons_annotations.to_csv("/orange/ewhite/DeepForest/unsupervised/TreePolygons_unsupervised.csv", index=False)
-boxes_annotations.to_csv("/orange/ewhite/DeepForest/unsupervised/TreeBoxes_unsupervised.csv", index=False)
+# Save the annotations as Parquet
+# Convert geometry columns to WKT strings for Arrow compatibility
+points_annotations["geometry"] = points_annotations["geometry"].apply(lambda g: g.wkt if g is not None else None)
+polygons_annotations["geometry"] = polygons_annotations["geometry"].apply(lambda g: g.wkt if g is not None else None)
+
+points_annotations.to_parquet(os.path.join(output_dir, "TreePoints_unsupervised.parquet"), index=False)
+polygons_annotations.to_parquet(os.path.join(output_dir, "TreePolygons_unsupervised.parquet"), index=False)
+boxes_annotations.to_parquet(os.path.join(output_dir, "TreeBoxes_unsupervised.parquet"), index=False)

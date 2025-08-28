@@ -105,10 +105,17 @@ class TreeBoxesDataset(MillionTreesDataset):
             )
             for root, _, files in os.walk(unsupervised_dir):
                 for file in files:
-                    if file.endswith('.csv'):
-                        file_path = os.path.join(root, file)
-                        unsupervised_df = pd.read_csv(file_path)
+                    file_path = os.path.join(root, file)
+                    try:
+                        if file.endswith('.parquet'):
+                            unsupervised_df = pd.read_parquet(file_path)
+                        elif file.endswith('.csv'):
+                            unsupervised_df = pd.read_csv(file_path)
+                        else:
+                            continue
                         df = pd.concat([df, unsupervised_df], ignore_index=True)
+                    except Exception as e:
+                        print(f"Warning: failed to read {file_path}: {e}")
 
         # Remove incomplete data based on flag
         if remove_incomplete:

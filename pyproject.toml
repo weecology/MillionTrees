@@ -77,6 +77,8 @@ docs = [
 ]
 neon = [
     "neonutilities; python_version >= '3.9'",
+    "deepforest",
+    "dask[complete]",
 ]
 
 [tool.setuptools]

@@ -295,6 +295,13 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv"
         ]
 
+    unsupervised = {
+        "TreeBoxes": "/orange/ewhite/DeepForest/unsupervised/TreeBoxes_unsupervised.parquet",
+        "TreePoints": "/orange/ewhite/DeepForest/unsupervised/TreePoints_unsupervised.parquet",
+        "TreePolygons": "/orange/ewhite/DeepForest/unsupervised/TreePolygons_unsupervised.parquet"
+    }
+    
+
     # Combine datasets
     TreeBoxes_datasets = combine_datasets(TreeBoxes, debug=debug)
     TreePoints_datasets = combine_datasets(TreePoints, debug=debug)
@@ -358,6 +365,10 @@ def run(version, base_dir, debug=False):
     create_release_files(base_dir, "TreeBoxes")
     create_release_files(base_dir, "TreePoints")
     create_release_files(base_dir, "TreePolygons")
+
+    # Add unsupervised data to the folders
+    for dataset_type in ["TreeBoxes", "TreePoints", "TreePolygons"]:
+        shutil.copy(unsupervised[dataset_type], f"{base_dir}{dataset_type}_{version}/unsupervised")
 
     # Zip datasets
     zip_directory(f"{base_dir}TreeBoxes_{version}", f"{base_dir}TreeBoxes_{version}.zip")

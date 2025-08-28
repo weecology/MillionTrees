@@ -3,9 +3,14 @@ import re
 import shutil
 import argparse
 from glob import glob
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import pandas as pd
+
+# New dependencies for tiling and parallelization
+from dask import delayed, compute
+from dask.diagnostics import ProgressBar
+from deepforest.preprocess import split_raster
 
 
 def read_neon_token(token_path: str = "neon_token.txt") -> str:
@@ -133,9 +138,9 @@ def main():
         '--data_dir',
         required=True,
         help='Path to dataset directory, e.g., /path/to/TreeBoxes_v0.2')
-    parser.add_argument('--annotations_csv',
+    parser.add_argument('--annotations_parquet',
                         required=True,
-                        help='CSV of box annotations from package data')
+                        help='Parquet of box annotations (unsupervised)')
     parser.add_argument('--site_column',
                         default='siteID',
                         help='Column name for NEON site ID')
@@ -155,6 +160,17 @@ def main():
         type=int,
         default=None,
         help='Optional limit on number of unique tiles per site')
+    parser.add_argument('--patch_size',
+                        type=int,
+                        default=400,
+                        help='Patch size for tiling (pixels). Default 400')
+    parser.add_argument('--allow_empty',
+                        action='store_true',
+                        help='Include empty crops during tiling')
+    parser.add_argument('--num_workers',
+                        type=int,
+                        default=4,
+                        help='Parallel workers for tiling (dask)')
     parser.add_argument('--token_path',
                         default='neon_token.txt',
                         help='Path to NEON API token file')
@@ -173,8 +189,8 @@ def main():
     ensure_dir(images_dir)
     ensure_dir(args.download_dir)
 
-    # Load annotations
-    ann = pd.read_csv(args.annotations_csv)
+    # Load annotations (unsupervised parquet)
+    ann = pd.read_parquet(args.annotations_parquet)
     if args.site_column not in ann.columns:
         raise ValueError(
             f"Annotations CSV must contain site column '{args.site_column}'.")
@@ -255,6 +271,68 @@ def main():
     updated = pd.concat([df, to_append], ignore_index=True)
     updated.to_csv(csv_path, index=False)
     print(f"Appended {len(to_append)} annotations to {csv_path}")
+
+    # --- Tiling annotations per tile and saving as parquet collection ---
+    tiled_output_dir = os.path.join(data_dir, 'unsupervised',
+                                    'unsupervised_annotations_tiled')
+    os.makedirs(tiled_output_dir, exist_ok=True)
+
+    def tile_one_tile(site: str, tile_name: str) -> Optional[str]:
+        # Expect downloaded image present in images_dir as .tif
+        tif_candidates: List[str] = glob(os.path.join(images_dir, f"{tile_name}*.tif"))
+        if len(tif_candidates) == 0:
+            print(f"Warning: no downloaded image found for tile {tile_name}")
+            return None
+        tile_image_path = sorted(tif_candidates, key=len)[0]
+
+        # Subset annotations for this tile (by image_path or filename base)
+        tile_base = os.path.basename(tile_image_path)
+        tile_stem = os.path.splitext(tile_base)[0]
+        ann_tile = ann[ann['filename'].astype(str).str.contains(tile_stem)]
+        if ann_tile.empty:
+            print(f"Warning: no annotations found for tile {tile_name}")
+            return None
+
+        # Run DeepForest tiling
+        save_dir = os.path.join(data_dir, 'unsupervised', 'images_tiled')
+        os.makedirs(save_dir, exist_ok=True)
+        try:
+            tiled_df = split_raster(
+                annotations_file=ann_tile,
+                path_to_raster=tile_image_path,
+                save_dir=save_dir,
+                patch_size=args.patch_size,
+                allow_empty=args.allow_empty,
+            )
+        except Exception as e:
+            print(f"Error splitting raster {tile_name}: {e}")
+            return None
+
+        # Normalize schema for MillionTrees TreeBoxes
+        # Ensure required columns
+        if 'image_path' in tiled_df.columns:
+            tiled_df = tiled_df.rename(columns={'image_path': 'filename'})
+        tiled_df['source'] = 'Weinstein et al. 2018 unsupervised'
+        tiled_df['split'] = 'train'
+
+        keep_cols = [c for c in ['xmin', 'ymin', 'xmax', 'ymax', 'filename', 'source', 'split'] if c in tiled_df.columns]
+        tiled_df = tiled_df[keep_cols]
+
+        out_path = os.path.join(tiled_output_dir, f"{tile_stem}.parquet")
+        tiled_df.to_parquet(out_path, index=False)
+        return out_path
+
+    # Build tasks with dask
+    tasks = []
+    for _, row in to_download.iterrows():
+        site = row[args.site_column]
+        tile_name = str(row[tile_col])
+        tasks.append(delayed(tile_one_tile)(site, tile_name))
+
+    if len(tasks) > 0:
+        with ProgressBar():
+            compute(*tasks, scheduler='threads', num_workers=args.num_workers)
+        print(f"Wrote tiled parquet annotations to {tiled_output_dir}")
 
 
 if __name__ == '__main__':
