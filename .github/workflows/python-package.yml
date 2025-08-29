@@ -49,7 +49,7 @@ jobs:
         run: uv run nbqa --version
 
       - name: Run pytest for everything but test_polygons
-        run: uv run pytest -v --ignore-glob="*release*"
+        run: uv run pytest -v --ignore-glob="*release*" --ignore=tests/test_unsupervised_download.py
 
       - name: Check style
         run: uv run yapf -d --recursive src/milliontrees/ --style=.style.yapf

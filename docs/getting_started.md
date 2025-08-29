@@ -20,8 +20,17 @@ pip install MillionTrees
 pip install numpy==1.26.4
 ```
 
-## Load the datasets
+### Install unsupervised submodule
 
+MillionTrees comes with tens of millions of weakly labeled tree detections. There are extra dependencies for downloading and filtering these datasets.
+
+```
+pip install milliontrees[unsupervised]
+```
+
+For more information, refer to the section on unsupervised datasets.
+
+##  Dataset structure
 The aim of the package is to provide a single interface to load data directly into pytorch without needing to deal with the details of the data format. Users download the data and yield training and evaluation examples from the dataloaders.
 
 ```python
