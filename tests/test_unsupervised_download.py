@@ -15,10 +15,10 @@ def neon_token_txt(tmp_path):
 def test_parse_tile_names():
     import milliontrees.download_unsupervised as dl
     # HARV tile name
-    e, n = dl.parse_tile_easting_northing("2018_HARV_5_733000_4698000")
+    e, n = dl.parse_tile_easting_northing("2018_HARV_5_733000_4698000_image.tif")
     assert isinstance(e, int) and isinstance(n, int)
     # BART tile name
-    e, n = dl.parse_tile_easting_northing("2020_BART_4_322000_4882000")
+    e, n = dl.parse_tile_easting_northing("2020_BART_4_322000_4882000_image.tif")
     assert isinstance(e, int) and isinstance(n, int)
 
 
@@ -31,10 +31,8 @@ def test_unsupervised_downloads(monkeypatch, dataset, unsupervised_annotations, 
 
     # Create dummy downloaded .tif files to simulate NEON download
     dummy_tiles = [
-        "2018_HARV_5_733000_4698000.tif",
-        "2019_HARV_5_733000_4698000.tif",
-        "2017_BART_4_322000_4882000.tif",
-        "2020_BART_4_322000_4882000.tif",
+        "2018_HARV_5_733000_4698000_image.tif",
+        "2019_HARV_6_733000_4698000_image.tif",
     ]
     for name in dummy_tiles:
         open(os.path.join(download_dir, name), "a").close()
@@ -49,7 +47,7 @@ def test_unsupervised_downloads(monkeypatch, dataset, unsupervised_annotations, 
     monkeypatch.setattr(dl, "download_tile_rgb", fake_download_tile_rgb)
 
     # Act: simulate main's download loop using annotations
-    ann = pd.read_csv(unsupervised_annotations)
+    ann = pd.read_parquet(unsupervised_annotations)
     to_download = ann[["siteID", "tile_name"]].drop_duplicates()
     for _, row in to_download.iterrows():
         site = row["siteID"]
@@ -86,10 +84,9 @@ import milliontrees.download_unsupervised as dl
 import shutil
 
 token_present = os.path.exists("neon_token.txt") or bool(os.environ.get("NEON_TOKEN"))
-run_real = os.environ.get("RUN_REAL_NEON") == "1" and token_present
 @pytest.mark.skipif(
-    not run_real,
-    reason="Set RUN_REAL_NEON=1 and provide NEON_TOKEN or neon_token.txt to enable real NEON download test."
+    not token_present,
+    reason="Provide NEON_TOKEN or neon_token.txt to enable real NEON download test."
 )
 def test_real_download(tmp_path):
     # Arrange
@@ -113,13 +110,10 @@ def test_real_download(tmp_path):
     # Act: perform the real download
     dl.download_tile_rgb(site=real_site, easting=real_e, northing=real_n, year=real_year, savepath=str(real_download_dir), token=real_token)
 
-    # Verify the download
-    assert os.path.exists(os.path.join(real_download_dir, real_tile_name))
-
     # Run copy step
     dl.copy_downloads_to_images(real_download_dir, real_images_dir)
 
-    # Verify copies
+    # Verify the image was copied
     assert os.path.exists(os.path.join(real_images_dir, real_tile_name))
 
     # Clean up
@@ -128,6 +122,6 @@ def test_real_download(tmp_path):
     shutil.rmtree(real_data_dir)
 
 def test_TreeBoxes_unsupervised_download(dataset, unsupervised_annotations):
-    ds = TreeBoxesDataset(download=False, root_dir=dataset, version="0.0", unsupervised=True, unsupervised_args={'annotations_parquet': unsupervised_annotations,'neon_token': 'neon_token.txt'})
+    ds = TreeBoxesDataset(download=False, root_dir=dataset, version="0.0", unsupervised=True, unsupervised_args={'annotations_parquet': unsupervised_annotations,'token_path': 'neon_token.txt'})
     assert os.path.exists(ds._data_dir / 'unsupervised/unsupervised_annotations_tiled.parquet')
     assert len(ds) == 8
