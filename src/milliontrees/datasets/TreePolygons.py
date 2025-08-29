@@ -15,6 +15,8 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import torch
 import fnmatch
+from types import SimpleNamespace
+from milliontrees.download_unsupervised import run as run_unsupervised
 
 
 class TreePolygonsDataset(MillionTreesDataset):
@@ -74,7 +76,9 @@ class TreePolygonsDataset(MillionTreesDataset):
                  image_size=448,
                  remove_incomplete=False,
                  include_sources=None,
-                 exclude_sources=None):
+                 exclude_sources=None,
+                 unsupervised=False,
+                 unsupervised_args=None):
 
         self._version = version
         self._split_scheme = split_scheme
@@ -87,6 +91,23 @@ class TreePolygonsDataset(MillionTreesDataset):
                 f'Split scheme {self._split_scheme} not recognized')
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
+
+        # Optionally trigger unsupervised download pipeline
+        if unsupervised:
+            defaults = {
+                'data_dir': str(self._data_dir),
+                'annotations_parquet': self._data_dir / 'unsupervised/TreePolygons_unsupervised.parquet',
+                'max_tiles_per_site': None,
+                'patch_size': 400,
+                'allow_empty': False,
+                'num_workers': 4,
+                'token_path': 'neon_token.txt',
+                'data_product': 'DP3.30010.001',
+                'download_dir': 'neon_downloads',
+            }
+            if isinstance(unsupervised_args, dict):
+                defaults.update(unsupervised_args)
+            run_unsupervised(**defaults)
 
         # Load splits
         df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))

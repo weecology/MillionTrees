@@ -3,7 +3,7 @@ from glob import glob
 
 import pandas as pd
 import pytest
-
+from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
 
 @pytest.fixture
 def neon_token_txt(tmp_path):
@@ -126,3 +126,8 @@ def test_real_download(tmp_path):
     shutil.rmtree(real_download_dir)
     shutil.rmtree(real_images_dir)
     shutil.rmtree(real_data_dir)
+
+def test_TreeBoxes_unsupervised_download(dataset, unsupervised_annotations):
+    ds = TreeBoxesDataset(download=False, root_dir=dataset, version="0.0", unsupervised=True, unsupervised_args={'annotations_parquet': unsupervised_annotations})
+    assert os.path.exists(ds._data_dir / 'unsupervised/unsupervised_annotations_tiled.parquet')
+    assert len(ds) == 8

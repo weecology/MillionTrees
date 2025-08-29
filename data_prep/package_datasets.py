@@ -326,6 +326,11 @@ def run(version, base_dir, debug=False):
     TreePoints_datasets = split_dataset(TreePoints_datasets)
     TreePolygons_datasets = split_dataset(TreePolygons_datasets)
 
+    # Create directories
+    create_directories(base_dir, "TreeBoxes")
+    create_directories(base_dir, "TreePoints")
+    create_directories(base_dir, "TreePolygons")
+
     # Save the default random split
     TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}/random.csv", index=False)
     TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}/random.csv", index=False)
@@ -335,11 +340,6 @@ def run(version, base_dir, debug=False):
     TreeBoxes_datasets = process_geometry_columns(TreeBoxes_datasets, "box")
     TreePoints_datasets = process_geometry_columns(TreePoints_datasets, "point")
     TreePolygons_datasets = process_geometry_columns(TreePolygons_datasets, "polygon")
-
-    # Create directories
-    create_directories(base_dir, "TreeBoxes")
-    create_directories(base_dir, "TreePoints")
-    create_directories(base_dir, "TreePolygons")
 
     # Copy images
     copy_images(TreeBoxes_datasets, base_dir, "TreeBoxes")
@@ -380,7 +380,7 @@ def run(version, base_dir, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.4"
+    version = "v0.5"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     debug = False
     run(version, base_dir, debug)

@@ -74,17 +74,15 @@ def dataset():
 
 @pytest.fixture(scope="session")
 def unsupervised_annotations(dataset):
-    """Create a small unsupervised-style annotations CSV for NEON tiles.
+    """Create a small unsupervised-style annotations parquet for NEON tiles.
 
     Contains four entries:
-    - 2018_HARV_5_733000_4698000
-    - 2019_HARV_5_733000_4698000
-    - 2017_BART_4_322000_4882000
-    - 2020_BART_4_322000_4882000
+    - 2018_HARV_5_733000_4698000_image.tif
+    - 2019_HARV_6_733000_4698000_image.tif
     """
     # Use the same temporary root created by dataset()
     tmp_dir = dataset
-    csv_path = os.path.join(tmp_dir, "unsupervised_annotations.csv")
+    parquet_path = os.path.join(tmp_dir, "unsupervised_annotations.parquet")
 
     rows = [
         {
@@ -92,42 +90,26 @@ def unsupervised_annotations(dataset):
             "ymin": 0,
             "xmax": 1,
             "ymax": 1,
-            "filename": "2018_HARV_5_733000_4698000.tif",
+            "filename": "2018_HARV_5_733000_4698000_image.tif",
             "siteID": "HARV",
-            "tile_name": "2018_HARV_5_733000_4698000",
+            "tile_name": "2018_HARV_5_733000_4698000_image.tif",
         },
         {
             "xmin": 0,
             "ymin": 0,
             "xmax": 1,
             "ymax": 1,
-            "filename": "2019_HARV_5_733000_4698000.tif",
+            "filename": "2019_HARV_6_733000_4698000_image.tif",
             "siteID": "HARV",
-            "tile_name": "2019_HARV_5_733000_4698000",
-        },
-        {
-            "xmin": 0,
-            "ymin": 0,
-            "xmax": 1,
-            "ymax": 1,
-            "filename": "2017_BART_4_322000_4882000.tif",
-            "siteID": "BART",
-            "tile_name": "2017_BART_4_322000_4882000",
-        },
-        {
-            "xmin": 0,
-            "ymin": 0,
-            "xmax": 1,
-            "ymax": 1,
-            "filename": "2020_BART_4_322000_4882000.tif",
-            "siteID": "BART",
-            "tile_name": "2020_BART_4_322000_4882000",
-        },
+            "tile_name": "2019_HARV_6_733000_4698000_image.tif",
+        }
     ]
 
+    # Save as parquet
     df = pd.DataFrame(rows)
-    df.to_csv(csv_path, index=False)
-    return csv_path
+    df.to_parquet(parquet_path)
+
+    return parquet_path
 
 
 def generate_box_dataset(image_dir):

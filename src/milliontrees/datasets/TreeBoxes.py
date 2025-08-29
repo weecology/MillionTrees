@@ -8,11 +8,14 @@ import torch
 import albumentations as A
 import torchvision.transforms as T
 import fnmatch
+from types import SimpleNamespace
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import DetectionAccuracy
 from PIL import Image
+from milliontrees.download_unsupervised import run as run_unsupervised
+
 from albumentations.pytorch import ToTensorV2
 
 
@@ -31,6 +34,21 @@ class TreeBoxesDataset(MillionTreesDataset):
         Input (x): RGB aerial imagery
         Labels (y): Nx4 array of bounding box coordinates
         Metadata: Location identifiers for each image
+
+    Args:
+        version (str): The version of the dataset to load.
+        root_dir (str): The root directory to store the dataset.
+        download (bool): Whether to download the dataset if it is not already present.
+        split_scheme (str): The split scheme to use.
+        geometry_name (str): The name of the geometry to use.
+        eval_score_threshold (float): The threshold for the evaluation score.
+        remove_incomplete (bool): Whether to remove incomplete data.
+        image_size (int): The size of the image to use.
+        include_sources (list): The sources to include.
+        exclude_sources (list): The sources to exclude.
+        unsupervised (bool): If True, include unsupervised data in addition to
+            any other selected sources (unless explicitly excluded).
+        unsupervised_args (dict): The arguments to pass to the unsupervised download pipeline.
 
     References:
         Website: https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
@@ -78,13 +96,16 @@ class TreeBoxesDataset(MillionTreesDataset):
                  remove_incomplete=False,
                  image_size=448,
                  include_sources=None,
-                 exclude_sources=None):
+                 exclude_sources=None,
+                 unsupervised=False,
+                 unsupervised_args=None):
 
         self._version = version
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name
         self.eval_score_threshold = eval_score_threshold
         self.image_size = image_size
+        self.unsupervised = unsupervised
 
         if self._split_scheme not in ['random', 'zeroshot', 'crossgeometry']:
             raise ValueError(
@@ -92,44 +113,44 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
-
+        
         # Load splits
         df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
 
-        # Load unsupervised data if it is included or not excluded
-        if (include_sources and any('unsupervised' in src for src in include_sources)) or \
-           (exclude_sources and not any('unsupervised' in src for src in exclude_sources)):
-            unsupervised_dir = self._data_dir / 'unsupervised'
-            print(
-                f"Loading unsupervised data from {unsupervised_dir}, this may take a while..."
-            )
-            for root, _, files in os.walk(unsupervised_dir):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    try:
-                        if file.endswith('.parquet'):
-                            unsupervised_df = pd.read_parquet(file_path)
-                        elif file.endswith('.csv'):
-                            unsupervised_df = pd.read_csv(file_path)
-                        else:
-                            continue
-                        df = pd.concat([df, unsupervised_df], ignore_index=True)
-                    except Exception as e:
-                        print(f"Warning: failed to read {file_path}: {e}")
+        # Optionally trigger unsupervised download pipeline
+        if unsupervised:
+            # If unsupervised hasn't been downloaded, download it
+            if not os.path.exists(self._data_dir / 'unsupervised/unsupervised_annotations_tiled..'):
+                defaults = {
+                    'data_dir': str(self._data_dir),
+                    'annotations_parquet': str(self._data_dir / 'unsupervised/TreeBoxes_unsupervised.parquet'),
+                    'max_tiles_per_site': None,
+                    'patch_size': 400,
+                    'allow_empty': False,
+                    'num_workers': 4,
+                    'token_path': 'neon_token.txt',
+                    'data_product': 'DP3.30010.001',
+                    'download_dir': str(self._data_dir / 'unsupervised/neon_downloads'),
+                }
+                if isinstance(unsupervised_args, dict):
+                    defaults.update(unsupervised_args)
+                run_unsupervised(**defaults)
+
+        # (moved) Unsupervised data will be appended later, after include/exclude filters,
+        # unless it is explicitly excluded.
 
         # Remove incomplete data based on flag
         if remove_incomplete:
             df = df[df['complete'] == True]
 
         # Filter by include/exclude source names with wildcard support
-        # Default: exclude sources containing 'unsupervised'
         include_patterns = None
         if include_sources is not None and include_sources != []:
             include_patterns = include_sources if isinstance(
                 include_sources, (list, tuple)) else [include_sources]
         exclude_patterns = exclude_sources
         if exclude_patterns is None:
-            exclude_patterns = ['*unsupervised*']
+            exclude_patterns = []
         elif not isinstance(exclude_patterns, (list, tuple)):
             exclude_patterns = [exclude_patterns]
 
@@ -146,6 +167,20 @@ class TreeBoxesDataset(MillionTreesDataset):
             mask_exclude = source_str.apply(lambda s: any(
                 fnmatch.fnmatch(s, p) for p in patterns_exclude_lower))
             df = df[~mask_exclude]
+
+        # After applying filters to labeled data, optionally append unsupervised data additively
+        if self.unsupervised:
+            unsupervised_dir = self._data_dir / 'unsupervised'
+            print(
+                f"Loading unsupervised data from {unsupervised_dir}, this may take a while..."
+            )
+            for root, _, files in os.walk(unsupervised_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    if file.endswith('.parquet'):
+                        unsupervised_df = pd.read_parquet(file_path)
+                        unsupervised_df["split"] = "train"
+                        df = pd.concat([df, unsupervised_df], ignore_index=True)
 
         # Splits
         self._split_dict = {

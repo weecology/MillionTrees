@@ -75,7 +75,7 @@ docs = [
     "nbsphinx",
     "nbqa",
 ]
-neon = [
+unsupervised = [
     "neonutilities; python_version >= '3.9'",
     "deepforest",
     "dask[complete]",

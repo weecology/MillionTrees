@@ -5,6 +5,7 @@ import torch
 import pytest
 import numpy as np
 import requests
+import os
 
 # Test structure without real annotation data to ensure format is correct
 def test_TreePoints_generic(dataset):
