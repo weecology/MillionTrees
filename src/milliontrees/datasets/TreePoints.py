@@ -18,7 +18,8 @@ from milliontrees.download_unsupervised import run as run_unsupervised
 
 
 class TreePointsDataset(MillionTreesDataset):
-    """The TreePoints dataset is a collection of tree annotations annotated as x,y locations.
+    """The TreePoints dataset is a collection of tree annotations annotated as
+    x,y locations.
 
     Dataset Splits:
         - random: For each source, 80% of the data is used for training and 20% for testing.
@@ -91,15 +92,25 @@ class TreePointsDataset(MillionTreesDataset):
         # Optionally trigger unsupervised download pipeline
         if unsupervised:
             defaults = {
-                'data_dir': str(self._data_dir),
-                'annotations_parquet': self._data_dir / 'unsupervised/TreePoints_unsupervised.parquet',
-                'max_tiles_per_site': None,
-                'patch_size': 400,
-                'allow_empty': False,
-                'num_workers': 4,
-                'token_path': 'neon_token.txt',
-                'data_product': 'DP3.30010.001',
-                'download_dir': 'neon_downloads',
+                'data_dir':
+                    str(self._data_dir),
+                'annotations_parquet':
+                    self._data_dir /
+                    'unsupervised/TreePoints_unsupervised.parquet',
+                'max_tiles_per_site':
+                    None,
+                'patch_size':
+                    400,
+                'allow_empty':
+                    False,
+                'num_workers':
+                    4,
+                'token_path':
+                    'neon_token.txt',
+                'data_product':
+                    'DP3.30010.001',
+                'download_dir':
+                    'neon_downloads',
             }
             if isinstance(unsupervised_args, dict):
                 defaults.update(unsupervised_args)
@@ -125,7 +136,8 @@ class TreePointsDataset(MillionTreesDataset):
                             unsupervised_df = pd.read_csv(file_path)
                         else:
                             continue
-                        self.df = pd.concat([self.df, unsupervised_df], ignore_index=True)
+                        self.df = pd.concat([self.df, unsupervised_df],
+                                            ignore_index=True)
                     except Exception as e:
                         print(f"Warning: failed to read {file_path}: {e}")
 
@@ -232,8 +244,8 @@ class TreePointsDataset(MillionTreesDataset):
         return self._y_array[indices]
 
     def eval(self, y_pred, y_true, metadata):
-        """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
-        detection accuracies of each domain."""
+        """The main evaluation metric, detection_acc_avg_dom, measures the
+        simple average of the detection accuracies of each domain."""
         results, results_str = self.standard_group_eval(self._metric,
                                                         self._eval_grouper,
                                                         y_pred, y_true,
@@ -277,8 +289,8 @@ class TreePointsDataset(MillionTreesDataset):
     def _collate_fn(batch):
         """Stack x (batch[1]) and metadata (batch[0]), but not y.
 
-        originally, batch = (item1, item2, item3, item4) after zip, batch = [(item1[0], item2[0],
-        ..), ..]
+        originally, batch = (item1, item2, item3, item4) after zip,
+        batch = [(item1[0], item2[0], ..), ..]
         """
         batch = list(zip(*batch))
         batch[1] = torch.stack(batch[1])

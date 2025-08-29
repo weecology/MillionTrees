@@ -20,7 +20,8 @@ from albumentations.pytorch import ToTensorV2
 
 
 class TreeBoxesDataset(MillionTreesDataset):
-    """A dataset of tree annotations with bounding box coordinates from multiple global sources.
+    """A dataset of tree annotations with bounding box coordinates from
+    multiple global sources.
 
     The dataset contains aerial imagery of trees with their corresponding bounding box annotations.
     Each tree is annotated with a 4-point bounding box (x_min, y_min, x_max, y_max).
@@ -113,24 +114,36 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
-        
+
         # Load splits
         df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
 
         # Optionally trigger unsupervised download pipeline
         if unsupervised:
             # If unsupervised hasn't been downloaded, download it
-            if not os.path.exists(self._data_dir / 'unsupervised/unsupervised_annotations_tiled..'):
+            if not os.path.exists(
+                    self._data_dir /
+                    'unsupervised/unsupervised_annotations_tiled..'):
                 defaults = {
-                    'data_dir': str(self._data_dir),
-                    'annotations_parquet': str(self._data_dir / 'unsupervised/TreeBoxes_unsupervised.parquet'),
-                    'max_tiles_per_site': None,
-                    'patch_size': 400,
-                    'allow_empty': False,
-                    'num_workers': 4,
-                    'token_path': 'neon_token.txt',
-                    'data_product': 'DP3.30010.001',
-                    'download_dir': str(self._data_dir / 'unsupervised/neon_downloads'),
+                    'data_dir':
+                        str(self._data_dir),
+                    'annotations_parquet':
+                        str(self._data_dir /
+                            'unsupervised/TreeBoxes_unsupervised.parquet'),
+                    'max_tiles_per_site':
+                        None,
+                    'patch_size':
+                        400,
+                    'allow_empty':
+                        False,
+                    'num_workers':
+                        4,
+                    'token_path':
+                        'neon_token.txt',
+                    'data_product':
+                        'DP3.30010.001',
+                    'download_dir':
+                        str(self._data_dir / 'unsupervised/neon_downloads'),
                 }
                 if isinstance(unsupervised_args, dict):
                     defaults.update(unsupervised_args)
@@ -263,8 +276,8 @@ class TreeBoxesDataset(MillionTreesDataset):
     def eval(self, y_pred, y_true, metadata):
         """Performs evaluation on the given predictions.
 
-        The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
-        detection accuracies of each domain.
+        The main evaluation metric, detection_acc_avg_dom, measures the
+        simple average of the detection accuracies of each domain.
         """
 
         results = {}
@@ -314,7 +327,8 @@ class TreeBoxesDataset(MillionTreesDataset):
 
     @staticmethod
     def _collate_fn(batch):
-        """Collates a batch by stacking `x` (features) and `metadata`, but not `y` (targets).
+        """Collates a batch by stacking `x` (features) and `metadata`, but not
+        `y` (targets).
 
         The batch is initially a tuple of individual data points: (item1, item2, item3, ...).
         After zipping, it transforms into a list of tuples:

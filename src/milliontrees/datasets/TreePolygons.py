@@ -20,8 +20,8 @@ from milliontrees.download_unsupervised import run as run_unsupervised
 
 
 class TreePolygonsDataset(MillionTreesDataset):
-    """The TreePolygons dataset is a collection of tree annotations annotated as multi-point polygon
-    locations.
+    """The TreePolygons dataset is a collection of tree annotations annotated
+    as multi-point polygon locations.
 
     The dataset is comprised of many sources from across the world.
 
@@ -95,15 +95,25 @@ class TreePolygonsDataset(MillionTreesDataset):
         # Optionally trigger unsupervised download pipeline
         if unsupervised:
             defaults = {
-                'data_dir': str(self._data_dir),
-                'annotations_parquet': self._data_dir / 'unsupervised/TreePolygons_unsupervised.parquet',
-                'max_tiles_per_site': None,
-                'patch_size': 400,
-                'allow_empty': False,
-                'num_workers': 4,
-                'token_path': 'neon_token.txt',
-                'data_product': 'DP3.30010.001',
-                'download_dir': 'neon_downloads',
+                'data_dir':
+                    str(self._data_dir),
+                'annotations_parquet':
+                    self._data_dir /
+                    'unsupervised/TreePolygons_unsupervised.parquet',
+                'max_tiles_per_site':
+                    None,
+                'patch_size':
+                    400,
+                'allow_empty':
+                    False,
+                'num_workers':
+                    4,
+                'token_path':
+                    'neon_token.txt',
+                'data_product':
+                    'DP3.30010.001',
+                'download_dir':
+                    'neon_downloads',
             }
             if isinstance(unsupervised_args, dict):
                 defaults.update(unsupervised_args)
@@ -277,7 +287,8 @@ class TreePolygonsDataset(MillionTreesDataset):
         return metadata, x, targets
 
     def create_polygon_mask(self, image_size, vertices):
-        """Create a grayscale image with a white polygonal area on a black background.
+        """Create a grayscale image with a white polygonal area on a black
+        background.
 
         Parameters:
         - image_size (tuple): A tuple representing the dimensions (width, height) of the image.
@@ -303,8 +314,8 @@ class TreePolygonsDataset(MillionTreesDataset):
         return mask_img
 
     def eval(self, y_pred, y_true, metadata):
-        """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
-        detection accuracies of each domain."""
+        """The main evaluation metric, detection_acc_avg_dom, measures the
+        simple average of the detection accuracies of each domain."""
 
         results = {}
         results_str = ''

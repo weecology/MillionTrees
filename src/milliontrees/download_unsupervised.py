@@ -23,7 +23,8 @@ def read_neon_token(token_path: str = "neon_token.txt") -> str:
 def parse_tile_easting_northing(tile_name: str) -> Optional[Tuple[int, int]]:
     """Parse NEON tile easting/northing from a tile name.
 
-    Supports patterns like '123000_456000' or 'E123000_N456000'. Returns integers.
+    Supports patterns like '123000_456000' or 'E123000_N456000'. Returns
+    integers.
     """
     # Try E######_N###### pattern
     m = re.search(r"E(\d{3,7}).*?N(\d{3,7})", tile_name)
@@ -81,7 +82,8 @@ def download_tile_rgb(site: str,
 
 
 def copy_downloads_to_images(download_root: str, images_dir: str) -> None:
-    """Copy downloaded image tiles (e.g., .tif) into the dataset images directory."""
+    """Copy downloaded image tiles (e.g., .tif) into the dataset images
+    directory."""
     ensure_dir(images_dir)
     tif_files = glob(os.path.join(download_root, "**", "*.tif"), recursive=True)
     for src in tif_files:
@@ -140,8 +142,9 @@ def parse_args():
     return parser.parse_args()
 
 
-def run(data_dir, annotations_parquet, max_tiles_per_site, patch_size, allow_empty, num_workers, token_path, data_product, download_dir):
-    images_dir = os.path.join(data_dir, 'images')    
+def run(data_dir, annotations_parquet, max_tiles_per_site, patch_size,
+        allow_empty, num_workers, token_path, data_product, download_dir):
+    images_dir = os.path.join(data_dir, 'images')
     # Load annotations (unsupervised parquet)
     ann = pd.read_parquet(annotations_parquet)
 
@@ -166,7 +169,7 @@ def run(data_dir, annotations_parquet, max_tiles_per_site, patch_size, allow_emp
             )
             continue
         easting, northing = parsed
-        
+
         # Year is the first 4 digits of the tile name
         year = int(tile_name[:4])
 
@@ -189,7 +192,8 @@ def run(data_dir, annotations_parquet, max_tiles_per_site, patch_size, allow_emp
                                     'unsupervised_annotations_tiled')
     os.makedirs(tiled_output_dir, exist_ok=True)
 
-    def split_tile(ann_tile: pd.DataFrame, tile_image_path: str) -> Optional[str]:
+    def split_tile(ann_tile: pd.DataFrame,
+                   tile_image_path: str) -> Optional[str]:
         # Run DeepForest tiling
         # Rename the tile_name to the image_path
         ann_tile['image_path'] = os.path.basename(tile_image_path)
@@ -207,7 +211,11 @@ def run(data_dir, annotations_parquet, max_tiles_per_site, patch_size, allow_emp
         tiled_df['source'] = 'Weinstein et al. 2018 unsupervised'
         tiled_df['split'] = 'train'
 
-        keep_cols = [c for c in ['xmin', 'ymin', 'xmax', 'ymax', 'filename', 'source', 'split'] if c in tiled_df.columns]
+        keep_cols = [
+            c for c in
+            ['xmin', 'ymin', 'xmax', 'ymax', 'filename', 'source', 'split']
+            if c in tiled_df.columns
+        ]
         tiled_df = tiled_df[keep_cols]
         return tiled_df
 
@@ -220,7 +228,9 @@ def run(data_dir, annotations_parquet, max_tiles_per_site, patch_size, allow_emp
         crop_annotations.append(tiled_df)
 
     crop_annotations = pd.concat(crop_annotations)
-    crop_annotations.to_parquet(os.path.join(data_dir, 'unsupervised', 'unsupervised_annotations_tiled.parquet'), index=False)
+    crop_annotations.to_parquet(os.path.join(
+        data_dir, 'unsupervised', 'unsupervised_annotations_tiled.parquet'),
+                                index=False)
 
     # tasks = []
     # for _, row in to_download.iterrows():
