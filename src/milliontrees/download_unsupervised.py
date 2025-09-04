@@ -23,8 +23,7 @@ def read_neon_token(token_path: str = "neon_token.txt") -> str:
 def parse_tile_easting_northing(tile_name: str) -> Optional[Tuple[int, int]]:
     """Parse NEON tile easting/northing from a tile name.
 
-    Supports patterns like '123000_456000' or 'E123000_N456000'. Returns
-    integers.
+    Supports patterns like '123000_456000' or 'E123000_N456000'. Returns integers.
     """
     # Try E######_N###### pattern
     m = re.search(r"E(\d{3,7}).*?N(\d{3,7})", tile_name)
@@ -82,8 +81,7 @@ def download_tile_rgb(site: str,
 
 
 def copy_downloads_to_images(download_root: str, images_dir: str) -> None:
-    """Copy downloaded image tiles (e.g., .tif) into the dataset images
-    directory."""
+    """Copy downloaded image tiles (e.g., .tif) into the dataset images directory."""
     ensure_dir(images_dir)
     tif_files = glob(os.path.join(download_root, "**", "*.tif"), recursive=True)
     for src in tif_files:

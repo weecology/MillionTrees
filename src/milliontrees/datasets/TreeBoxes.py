@@ -20,8 +20,7 @@ from albumentations.pytorch import ToTensorV2
 
 
 class TreeBoxesDataset(MillionTreesDataset):
-    """A dataset of tree annotations with bounding box coordinates from
-    multiple global sources.
+    """A dataset of tree annotations with bounding box coordinates from multiple global sources.
 
     The dataset contains aerial imagery of trees with their corresponding bounding box annotations.
     Each tree is annotated with a 4-point bounding box (x_min, y_min, x_max, y_max).
@@ -276,8 +275,8 @@ class TreeBoxesDataset(MillionTreesDataset):
     def eval(self, y_pred, y_true, metadata):
         """Performs evaluation on the given predictions.
 
-        The main evaluation metric, detection_acc_avg_dom, measures the
-        simple average of the detection accuracies of each domain.
+        The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
+        detection accuracies of each domain.
         """
 
         results = {}
@@ -327,8 +326,7 @@ class TreeBoxesDataset(MillionTreesDataset):
 
     @staticmethod
     def _collate_fn(batch):
-        """Collates a batch by stacking `x` (features) and `metadata`, but not
-        `y` (targets).
+        """Collates a batch by stacking `x` (features) and `metadata`, but not `y` (targets).
 
         The batch is initially a tuple of individual data points: (item1, item2, item3, ...).
         After zipping, it transforms into a list of tuples:
