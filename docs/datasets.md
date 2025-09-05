@@ -3,9 +3,9 @@ There are three datasets within the MillionTrees package: TreeBoxes, TreePoints,
 
 *Note: The datasets below are processed and will be part of the final release. The current release is pre-release and not final. Only publically available datasets are included at this time.*
 
-## Boxes
+# Boxes
 
-### Dumortier 2025
+## Dumortier 2025
 
 ![sample_image](public/Dumortier_et_al._2025.png)
 
@@ -13,11 +13,11 @@ Cite: 10.5281/zenodo.15155080
 
 https://zenodo.org/records/15155081
 
-### Kaggle Palm Counting
+## Kaggle Palm Counting
 
 ![sample_image](public/Kaggle_Palm_Counting.png)
 
-### Kwon et al. 2023
+## Kwon et al. 2023
 
 ![sample_image](public/Kwon_et_al._2023.png)
 
@@ -27,7 +27,7 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 
 **Location:** Suwon, South Korea
 
-### Radogoshi et al. 2021 
+## Radogoshi et al. 2021 
 
 ![sample_image](public/Radogoshi_et_al._2021.png)
 
@@ -35,13 +35,13 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 
 **Location:** Sweden
 
-### Sun et al. 2022
+## Sun et al. 2022
 
 ![sample_image](public/Sun_et_al._2022.png)
 
 **Link:** [https://www.sciencedirect.com/science/article/pii/S030324342100369X](https://www.sciencedirect.com/science/article/pii/S030324342100369X)
 
-### Santos et al. 2019
+## Santos et al. 2019
 
 ![sample_image](public/Santos_et_al._2019.png)
 
@@ -63,7 +63,7 @@ DOI = {10.3390/s19163595}
 
 **Location:** Barro Colorado Island, Panama
 
-### Velasquez-Camacho et al. 2023
+## Velasquez-Camacho et al. 2023
 
 ![sample_image](public/Velasquez-Camacho_et_al._2023.png)
 
@@ -71,7 +71,7 @@ DOI = {10.3390/s19163595}
 
 **Location:** Spain
 
-### Weinstein et al. 2021
+## Weinstein et al. 2021
 
 ![sample_image](public/NEON_benchmark.png)
 
@@ -83,13 +83,13 @@ An extension of this published resource was made by the Weecology Lab at the Uni
 
 ![sample_image](public/Weecology_University_Florida.png)
 
-### World Resources Institute 
+## World Resources Institute 
 
 NAIP Imagery from across the United States
 
 ![sample_image](public/World_Resources_Institute.png)
 
-### SelvaBox (CanopyRS)
+## SelvaBox (CanopyRS)
 
 ![sample_image](public/SelvaBox.png)
 
@@ -98,7 +98,7 @@ NAIP Imagery from across the United States
 **Location:** Brazil, Ecuador, and Panama  
 **Description:** High-resolution dataset (4.5 cm GSD) with over 83,000 human bounding box annotations for tropical tree crowns in dense canopies. The dataset comprises 14 rasters from three different countries with varying spatial extents.
 
-### Veitch-Michaelis et al. 2024.
+## Veitch-Michaelis et al. 2024.
 
 ![sample_image](public/OAM-TCD.png)
 
@@ -113,7 +113,7 @@ https://zenodo.org/records/11617167
 
 For more information about the dataset collation, see: Veitch-Michaelis, J. et al. "OAM-TCD: A globally diverse dataset of high-resolution tree cover maps." Advances in neural information processing systems 37 (2024): 49749-49767.
 
-### Zamboni et al. 2022
+## Zamboni et al. 2022
 
 ![sample_image](public/Zamboni_et_al._2021.png)
 
@@ -121,9 +121,17 @@ For more information about the dataset collation, see: Veitch-Michaelis, J. et a
 
 **Location:** Mato Grosso do Sul, Brazil
 
-## Points
+## Weinstein et al. 2018 - unsupervised
 
-### Amirkolaee et al. 2023
+Coregistered LIDAR and RGB were acquired over 27 sites in the National Ecological Observation Network, USA. These sites cover a range of forest habitats. An unsupervised LiDAR tree detection algorithm was used to predict tree locations. These locatons were draped over the RGB data to create a very large weakly supervised dataset. There is currently over 40 million tree locations from the original dataset and more can be generated with ongoing data collection.
+
+**Citation**: Weinstein, B.G.; Marconi, S.; Bohlman, S.; Zare, A.; White, E. Individual Tree-Crown Detection in RGB Imagery Using Semi-Supervised Deep Learning Neural Networks. Remote Sens. 2019, 11, 1309. https://doi.org/10.3390/rs11111309
+
+**Location**: Forest across the United States (NEON)
+
+# Points
+
+## Amirkolaee et al. 2023
 
 ![sample_image](public/Amirkolaee_et_al._2023.png)
 
@@ -138,7 +146,7 @@ IEEE Transactions on Geoscience and Remote Sensing (2023)
 
 **Citation:** Lefebvre, I., Laliberté, E. (2024). UAV LiDAR, UAV Imagery, Tree Segmentations and Ground Mesurements for Estimating Tree Biomass in Canadian (Quebec) Plantations. Federated Research Data Repository. https://doi.org/10.20383/103.0979
 
-### Ventura et al. 2022
+## Ventura et al. 2022
 
 ![sample_image](public/Ventura_et_al._2022.png)
 
@@ -150,7 +158,7 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 **Location:** Southern California, United States
 
-### National Ecological Observatory Network
+## National Ecological Observatory Network
 
 ![sample_image](public/NEON_points.png)
 
@@ -158,7 +166,7 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 **Link:** [https://data.neonscience.org/data-products/DP1.10098.001](https://data.neonscience.org/data-products/DP1.10098.001)
 
-### Tonga Trees
+## Tonga Trees
 
 ![sample_image](public/Kolovai-Trees.png)
 
@@ -168,9 +176,9 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 [https://learn.arcgis.com/en/projects/detect-objects-with-a-deep-learning-pretrained-model/](https://learn.arcgis.com/en/projects/detect-objects-with-a-deep-learning-pretrained-model/)
 
-## Polygons
+# Polygons
 
-### Araujo et al. 2020
+## Araujo et al. 2020
 
 ![sample_image](public/Araujo_et_al._2020.png)
 
@@ -178,7 +186,7 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 **Location:** Manuas, Brazil
 
-### Ball et al. 2023
+## Ball et al. 2023
 
 **Link:** [https://zenodo.org/records/8136161](https://zenodo.org/records/8136161)
 
@@ -192,7 +200,7 @@ Unpublished data from Barro Colorado Island
 
 **Location**: BCI, Panama
 
-### Cloutier et al. 2023
+## Cloutier et al. 2023
 
 ![sample_image](public/Cloutier_et_al._2023.png)
 
@@ -200,7 +208,7 @@ Unpublished data from Barro Colorado Island
 
 **Location:** Quebec, Canada
 
-### Feng et al. 2025
+## Feng et al. 2025
 
 ![sample_image](public/Feng_et_al._2025.png)
 
@@ -209,7 +217,7 @@ Unpublished data from Barro Colorado Island
 
 *Note this dataset is simulated and therefore somewhat more controvertial in its inclusion. We believe the size, diversity and realism of the images merit inclusion.*
 
-### Firoze et al. 2023
+## Firoze et al. 2023
 
 ![sample_image](public/Firoze_et_al._2023.png)
 
@@ -217,13 +225,13 @@ Unpublished data from Barro Colorado Island
 
 **Location:** Indiana, United States
 
-### Hickman et al. 2021
+## Hickman et al. 2021
 
 **Link:** [https://zenodo.org/records/5515408](https://zenodo.org/records/5515408)
 
 **Location:** Sabah, Malaysia
 
-### Jansen et al. 2022
+## Jansen et al. 2022
 
 ![sample_image](public/Jansen_et_al._2023.png)
 
@@ -231,7 +239,7 @@ Unpublished data from Barro Colorado Island
 
 **Location:** Northern Australia
 
-### JustDiggit
+## JustDiggit
 
 ![sample_image](public/Justdiggit_2023.png)
 
@@ -241,7 +249,7 @@ Unpublished data from Barro Colorado Island
 
 Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
-### Li et al. 2023
+## Li et al. 2023
 
 ![sample_image](public/Li_et_al._2023.png)
 
@@ -249,13 +257,13 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 **Location**: Denmark
 
-### Lefebvre et al. 2024
+## Lefebvre et al. 2024
 
 ![sample_image](public/Lefebvre_et_al._2024.png)
 
 [Dataset Link](https://www.frdr-dfdr.ca/repo/dataset/9f10a155-c89f-43ee-9864-da28ca436af6)
 
-### Lucas et al. 2024
+## Lucas et al. 2024
 
 ![sample_image](public/Lucas_et_al._2024.png)
 
@@ -263,7 +271,7 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 **Citation** Lucas, Moritz, et al. "Individual tree detection and crown delineation in the Harz National Park from 2009 to 2022 using mask R–CNN and aerial imagery." ISPRS Open Journal of Photogrammetry and Remote Sensing 13 (2024): 100071.
 
-### Kattenborn et al. 2023
+## Kattenborn et al. 2023
 
 ![sample_image](public/Kattenborn_et_al._2023.png)
 
@@ -271,13 +279,13 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 **Location:** New Zealand
 
-### Miranda et al. 2024
+## Miranda et al. 2024
 
 ![sample_image](public/Alejandro_Miranda.png)
 
 **Link:** [Courtesy of Alejandro Miranda](http://www.lepfor.ufro.cl/)
 
-### Safonova et al. 2021
+## Safonova et al. 2021
 
 ![sample_image](public/Safonova_et_al._2021.png)
 
@@ -285,7 +293,7 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 **Location:** Spain
 
-### Takeshige et al. 2025
+## Takeshige et al. 2025
 
 ![sample_image](public/Takeshige_et_al._2025.png)
 
@@ -293,13 +301,13 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 **Location:** Japan
 
-### Troles et al. 2024
+## Troles et al. 2024
 
 ![sample_image](public/Troles_et_al._2024.png)
 
 **Location:** Bamberg, Germany
 
-### Wagner et al. 2023
+## Wagner et al. 2023
 
 ![sample_image](public/Wagner_et_al._2023.png)
 
@@ -308,7 +316,7 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 **Location:** Australia
 
-### Vasquez et al. 2023
+## Vasquez et al. 2023
 
 ![sample_image](public/Vasquez_et_al._2023_-_training.png)
 ![sample_image](public/Vasquez_et_al._2023.png)

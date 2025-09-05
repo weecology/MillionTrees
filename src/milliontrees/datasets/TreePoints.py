@@ -12,6 +12,9 @@ from milliontrees.common.metrics.all_metrics import KeypointAccuracy
 from PIL import Image
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+import fnmatch
+from types import SimpleNamespace
+from milliontrees.download_unsupervised import run as run_unsupervised
 
 
 class TreePointsDataset(MillionTreesDataset):
@@ -67,7 +70,11 @@ class TreePointsDataset(MillionTreesDataset):
                  split_scheme='random',
                  geometry_name='y',
                  remove_incomplete=False,
-                 distance_threshold=0.1):
+                 distance_threshold=0.1,
+                 include_sources=None,
+                 exclude_sources=None,
+                 unsupervised=False,
+                 unsupervised_args=None):
 
         self._version = version
         self._split_scheme = split_scheme
@@ -81,11 +88,86 @@ class TreePointsDataset(MillionTreesDataset):
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
 
+        # Optionally trigger unsupervised download pipeline
+        if unsupervised:
+            defaults = {
+                'data_dir':
+                    str(self._data_dir),
+                'annotations_parquet':
+                    self._data_dir /
+                    'unsupervised/TreePoints_unsupervised.parquet',
+                'max_tiles_per_site':
+                    None,
+                'patch_size':
+                    400,
+                'allow_empty':
+                    False,
+                'num_workers':
+                    4,
+                'token_path':
+                    'neon_token.txt',
+                'data_product':
+                    'DP3.30010.001',
+                'download_dir':
+                    'neon_downloads',
+            }
+            if isinstance(unsupervised_args, dict):
+                defaults.update(unsupervised_args)
+            run_unsupervised(**defaults)
+
         # Load splits
         self.df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
 
+        # Load unsupervised data if it is included or not excluded
+        if (include_sources and any('unsupervised' in src for src in include_sources)) or \
+           (exclude_sources and not any('unsupervised' in src for src in exclude_sources)):
+            unsupervised_dir = self._data_dir / 'unsupervised'
+            print(
+                f"Loading unsupervised data from {unsupervised_dir}, this may take a while..."
+            )
+            for root, _, files in os.walk(unsupervised_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    try:
+                        if file.endswith('.parquet'):
+                            unsupervised_df = pd.read_parquet(file_path)
+                        elif file.endswith('.csv'):
+                            unsupervised_df = pd.read_csv(file_path)
+                        else:
+                            continue
+                        self.df = pd.concat([self.df, unsupervised_df],
+                                            ignore_index=True)
+                    except Exception as e:
+                        print(f"Warning: failed to read {file_path}: {e}")
+
         if remove_incomplete:
             self.df = self.df[self.df['complete'] == True]
+
+        # Filter by include/exclude source names with wildcard support
+        # Default: exclude sources containing 'unsupervised'
+        include_patterns = None
+        if include_sources is not None and include_sources != []:
+            include_patterns = include_sources if isinstance(
+                include_sources, (list, tuple)) else [include_sources]
+        exclude_patterns = exclude_sources
+        if exclude_patterns is None:
+            exclude_patterns = ['*unsupervised*']
+        elif not isinstance(exclude_patterns, (list, tuple)):
+            exclude_patterns = [exclude_patterns]
+
+        source_str = self.df['source'].astype(str).str.lower()
+
+        if include_patterns is not None:
+            patterns_lower = [p.lower() for p in include_patterns]
+            mask_include = source_str.apply(
+                lambda s: any(fnmatch.fnmatch(s, p) for p in patterns_lower))
+            self.df = self.df[mask_include]
+
+        patterns_exclude_lower = [p.lower() for p in exclude_patterns]
+        if len(patterns_exclude_lower) > 0:
+            mask_exclude = source_str.apply(lambda s: any(
+                fnmatch.fnmatch(s, p) for p in patterns_exclude_lower))
+            self.df = self.df[~mask_exclude]
 
         # Splits
         self._split_dict = {

@@ -5,6 +5,7 @@ import torch
 import pytest
 import numpy as np
 import requests
+import os
 
 # Test structure without real annotation data to ensure format is correct
 def test_TreeBoxes_generic(dataset):
@@ -139,3 +140,4 @@ def test_TreeBoxes_download_url(dataset):
         url = ds._versions_dict[version]['download_url']
         response = requests.head(url, allow_redirects=True)
         assert response.status_code == 200, f"URL {url} is not accessible"
+

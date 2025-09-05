@@ -62,7 +62,7 @@ dev = [
     "python-dotenv",
     "outdated",
     "build",
-    "twine",
+    "twine"
 ]
 docs = [
     "sphinx",
@@ -74,6 +74,11 @@ docs = [
     "nbmake",
     "nbsphinx",
     "nbqa",
+]
+unsupervised = [
+    "neonutilities; python_version >= '3.9'",
+    "deepforest",
+    "dask[complete]",
 ]
 
 [tool.setuptools]

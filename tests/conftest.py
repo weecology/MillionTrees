@@ -72,6 +72,46 @@ def dataset():
     return tmp_dir
 
 
+@pytest.fixture(scope="session")
+def unsupervised_annotations(dataset):
+    """Create a small unsupervised-style annotations parquet for NEON tiles.
+
+    Contains four entries:
+    - 2018_HARV_5_733000_4698000_image.tif
+    - 2019_HARV_6_733000_4698000_image.tif
+    """
+    # Use the same temporary root created by dataset()
+    tmp_dir = dataset
+    parquet_path = os.path.join(tmp_dir, "unsupervised_annotations.parquet")
+
+    rows = [
+        {
+            "xmin": 0,
+            "ymin": 0,
+            "xmax": 1,
+            "ymax": 1,
+            "filename": "2018_HARV_5_733000_4698000_image.tif",
+            "siteID": "HARV",
+            "tile_name": "2018_HARV_5_733000_4698000_image.tif",
+        },
+        {
+            "xmin": 0,
+            "ymin": 0,
+            "xmax": 1,
+            "ymax": 1,
+            "filename": "2019_HARV_6_733000_4698000_image.tif",
+            "siteID": "HARV",
+            "tile_name": "2019_HARV_6_733000_4698000_image.tif",
+        }
+    ]
+
+    # Save as parquet
+    df = pd.DataFrame(rows)
+    df.to_parquet(parquet_path)
+
+    return parquet_path
+
+
 def generate_box_dataset(image_dir):
     # Generate the box dataset logic here
     # Assuming you have a list of xmin, xmax, ymin, ymax values and corresponding image file paths

@@ -23,7 +23,12 @@ class MillionTreesDataset:
 
     DEFAULT_SOURCE_DOMAIN_SPLITS = [0]
 
-    def __init__(self, root_dir, download, split_scheme):
+    def __init__(
+        self,
+        root_dir,
+        download,
+        split_scheme,
+    ):
         if len(self._metadata_array.shape) == 1:
             self._metadata_array = self._metadata_array.unsqueeze(1)
         self.check_init()

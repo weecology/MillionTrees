@@ -19,13 +19,6 @@ def main():
         help=
         f'Specify a space-separated list of dataset names to download. If left unspecified, the script will download all of the benchmark datasets. Available choices are {milliontrees.supported_datasets}.'
     )
-    parser.add_argument(
-        '--unlabeled',
-        default=False,
-        type=bool,
-        help=
-        f'If this flag is set, the unlabeled dataset will be downloaded instead of the labeled.'
-    )
     config = parser.parse_args()
 
     if config.datasets is None:
@@ -42,7 +35,6 @@ def main():
         print(f'=== {dataset} ===')
         milliontrees.get_dataset(dataset=dataset,
                                  root_dir=config.root_dir,
-                                 unlabeled=config.unlabeled,
                                  download=True)
 
 
