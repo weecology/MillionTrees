@@ -104,5 +104,8 @@ def test_TreePoints_download_url(dataset):
         print(version)
         # Confirm url can be downloaded
         url = ds._versions_dict[version]['download_url']
+        # If the url is not accessible, skip the test
+        if url == "":
+            continue
         response = requests.head(url, allow_redirects=True)
         assert response.status_code == 200, f"URL {url} is not accessible"

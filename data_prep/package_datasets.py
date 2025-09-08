@@ -247,51 +247,51 @@ def check_for_updated_annotations(dataset, geometry):
 
 def run(version, base_dir, debug=False):
     TreeBoxes = [
-        #"/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
-        #"/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
-        #'/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
-        #'/orange/ewhite/DeepForest/Radogoshi_Sweden/annotations.csv',
-        #"/orange/ewhite/DeepForest/WRI/WRI-labels-opensource/annotations.csv",
-        #"/orange/ewhite/DeepForest/Guangzhou2022/annotations.csv",
-        #"/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
-        #"/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
-        #'/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
-        # "/orange/ewhite/DeepForest/Santos2019/annotations.csv",
-        #"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
+        "/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
+        "/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
+        '/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
+        '/orange/ewhite/DeepForest/Radogoshi_Sweden/annotations.csv',
+        "/orange/ewhite/DeepForest/WRI/WRI-labels-opensource/annotations.csv",
+        "/orange/ewhite/DeepForest/Guangzhou2022/annotations.csv",
+        "/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
+        "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
+        '/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
+        "/orange/ewhite/DeepForest/Santos2019/annotations.csv",
+        "/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
         "/orange/ewhite/DeepForest/OAM_TCD/annotations.csv"
-        #"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
-        #"/orange/ewhite/DeepForest/SelvaBox/annotations.csv"
+        ,"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
+        "/orange/ewhite/DeepForest/SelvaBox/annotations.csv"
    ]
 
     TreePoints = [
         "/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv",
-       # "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
-        #"/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
-        #"/orange/ewhite/DeepForest/Tonga/annotations.csv",
-        #'/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
-        #"/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv"
+        "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
+        "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
+        "/orange/ewhite/DeepForest/Tonga/annotations.csv",
+        '/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
+        "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv"
     ]
 
     TreePolygons = [
-        #"/orange/ewhite/DeepForest/Jansen_2023/pngs/annotations.csv",
-        #"/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
-        #"/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
-        #"/orange/ewhite/DeepForest/Firoze2023/annotations.csv",
-        #"/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
-        #"/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
-        #"/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",
-        #"/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
-        #"/orange/ewhite/DeepForest/Araujo_2020/annotations.csv",
-        #"/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv",
-        #"/orange/ewhite/DeepForest/BCI/BCI_50ha_2020_08_01_crownmap_raw/annotations.csv",
-        #"/orange/ewhite/DeepForest/BCI/BCI_50ha_2022_09_29_crownmap_raw/annotations.csv",
-        #"/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv",
-        #"/orange/ewhite/DeepForest/SPREAD/annotations.csv",
-        #"/orange/ewhite/DeepForest/KagglePalm/Palm-Counting-349images/annotations.csv",
-        #"/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops/annotations.csv",
-        #"/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
-        #"/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
-        #"/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/annotations.csv",
+        "/orange/ewhite/DeepForest/Jansen_2023/pngs/annotations.csv",
+        "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
+        "/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
+        "/orange/ewhite/DeepForest/Firoze2023/annotations.csv",
+        "/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
+        "/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
+        "/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",
+        "/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
+        "/orange/ewhite/DeepForest/Araujo_2020/annotations.csv",
+        "/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv",
+        "/orange/ewhite/DeepForest/BCI/BCI_50ha_2020_08_01_crownmap_raw/annotations.csv",
+        "/orange/ewhite/DeepForest/BCI/BCI_50ha_2022_09_29_crownmap_raw/annotations.csv",
+        "/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv",
+        "/orange/ewhite/DeepForest/SPREAD/annotations.csv",
+        "/orange/ewhite/DeepForest/KagglePalm/Palm-Counting-349images/annotations.csv",
+        "/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops/annotations.csv",
+        "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
+        "/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
+        "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/annotations.csv",
         "/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv"
         ]
 

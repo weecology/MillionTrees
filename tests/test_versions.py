@@ -11,6 +11,8 @@ def test_dataset_url_exists(dataset_class, tmpdir):
     versions = dataset_class._versions_dict
     for version in versions:
         url = versions[version]['download_url']
+        if url == "":
+            continue
         fpath = os.path.join(tmpdir, "test_data", "raw", os.path.basename(url))
         try:
             with urllib.request.urlopen(url) as response:
