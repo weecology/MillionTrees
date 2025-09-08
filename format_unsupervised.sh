@@ -10,9 +10,5 @@
 #SBATCH --output=/home/b.weinstein/logs/Unsupervised_MillionTrees_%j.out   # Standard output and error log
 #SBATCH --error=/home/b.weinstein/logs/Unsupervised_MillionTrees_%j.err
 
-export PATH="$PATH:/orange/ewhite/b.weinstein/miniconda3/bin"
-source activate MillionTrees
-
 #Add to path
-export PYTHONPATH=$PYTHONPATH:/home/b.weinstein/MillionTrees
-python data_prep/package_datasets.py
+uv run python data_prep/package_datasets.py

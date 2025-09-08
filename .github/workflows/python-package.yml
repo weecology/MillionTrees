@@ -54,9 +54,6 @@ jobs:
       - name: Check style
         run: uv run yapf -d --recursive src/milliontrees/ --style=.style.yapf
 
-      - name: Check notebook style
-        run: uv run nbqa yapf --in-place docs/examples/*.ipynb --style=.style.yapf
-
       # - name: Check notebook build
       #   run: uv run pytest --nbmake docs/*.ipynb
 
