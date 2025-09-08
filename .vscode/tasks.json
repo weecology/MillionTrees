@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run on GPU (debugpy)",
+      "type": "shell",
+      "command": "srun --gres=gpu:1 --time 1:00:00 --mem 40GB --pty bash -lc 'uvx --from debugpy debugpy --connect 127.0.0.1:5678 \"${file}\"'",
+      "presentation": {
+        "panel": "dedicated",
+        "group": "gpu"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
