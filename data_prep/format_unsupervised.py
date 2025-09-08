@@ -8,8 +8,11 @@ from shapely.geometry import Point, Polygon
 
 # Read the unsupervised annotations
 
-unsupervised_annotations_path = "/orange/ewhite/b.weinstein/NeonTreeEvaluation/pretraining/pretraining_annotations.csv"
-annotations = pd.read_csv(unsupervised_annotations_path)
+csvs = glob.glob('/blue/ewhite/veitchmichaelisj/deeplidar/output/*.csv')
+annotations = []
+for csv in csvs:
+    annotations.append(pd.read_csv(csv))
+annotations = pd.concat(annotations)
 
 # How many annotations, sites, and tiles?
 print(f"Number of annotations: {len(annotations)}")
