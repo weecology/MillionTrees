@@ -8,8 +8,9 @@ import pandas as pd
 import torch
 
 from deepforest import main as df_main
-from deepforest.utilities import read_file
+from deepforest.utilities import read_file, format_geometry
 from deepforest.visualize import plot_results
+
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
@@ -38,11 +39,11 @@ def format_deepforest_predictions(
     batch_y_pred: List[dict] = []
     formatted_predictions: List[pd.DataFrame] = []
 
-    for image_metadata, pred, image_targets, image in zip(
+    for image_metadata, image_pred, image_targets, image in zip(
             metadata, predictions, targets, images_tensor):
         basename = dataset._filename_id_to_code[int(image_metadata[0])]
 
-        if pred is None or len(pred) == 0:
+        if len(image_pred["boxes"]) == 0:
             y_pred = {
                 "y": torch.zeros((0, 2), dtype=torch.float32),
                 "labels": torch.zeros((0,), dtype=torch.int64),
@@ -50,19 +51,20 @@ def format_deepforest_predictions(
             }
             formatted_pred = pd.DataFrame(columns=["x", "y", "score", "label"])  # empty
         else:
-            pred.root_dir = os.path.join(dataset._data_dir._str, "images")
-            pred_df = read_file(pred)
+            formatted_pred = format_geometry(image_pred)
+            formatted_pred.root_dir = os.path.join(dataset._data_dir._str, "images")
+            formatted_pred = read_file(formatted_pred)
+            
             # Convert boxes to centroids
-            pred_df["geometry"] = pred_df["geometry"].centroid
-            pred_df[["x", "y"]] = pred_df["geometry"].apply(lambda g: pd.Series([g.x, g.y]))
-            pred_df["image_path"] = basename
+            formatted_pred["geometry"] = formatted_pred["geometry"].centroid
+            formatted_pred[["x", "y"]] = formatted_pred["geometry"].apply(lambda g: pd.Series([g.x, g.y]))
+            formatted_pred["image_path"] = basename
 
             y_pred = {
-                "y": torch.tensor(pred_df[["x", "y"]].values.astype("float32")),
-                "labels": torch.tensor(_map_labels_to_int(pred_df.label, model)),
-                "scores": torch.tensor(pred_df.score.values.astype("float32")),
+                "y": torch.tensor(formatted_pred[["x", "y"]].values.astype("float32")),
+                "labels": torch.tensor(_map_labels_to_int(formatted_pred.label, model)),
+                "scores": torch.tensor(formatted_pred.score.values.astype("float32")),
             }
-            formatted_pred = pred_df
 
         batch_y_pred.append(y_pred)
         formatted_predictions.append(formatted_pred)
@@ -92,7 +94,7 @@ def plot_eval_result(
 
     # Predictions
     if isinstance(pred_df, pd.DataFrame) and len(pred_df) > 0:
-        pred_vis_df = read_file(pred_df)
+        pred_vis_df = read_file(pred_df, root_dir=os.path.join(dataset._data_dir._str, "images"))
         pred_vis_df["geometry"] = pred_vis_df["geometry"].centroid
         pred_vis_df[["x", "y"]] = pred_vis_df["geometry"].apply(lambda g: pd.Series([g.x, g.y]))
         if "label" not in pred_vis_df.columns:
@@ -103,16 +105,12 @@ def plot_eval_result(
     # Image channel-last, 0-255
     image = image_tensor.permute(1, 2, 0).numpy() * 255
 
-    # Plot
-    try:
-        fig = plot_results(pred_vis_df, gt_df, image=image.astype("int32"))
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
-            out_path = os.path.join(output_dir, f"{batch_index:06d}_{basename}.png")
-            fig.savefig(out_path, dpi=150, bbox_inches="tight")
-    except Exception:
-        pass
-
+    pred_vis_df.root_dir = os.path.join(dataset._data_dir._str, "images")
+    fig = plot_results(pred_vis_df, gt_df, image=image.astype("int32"))
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+        out_path = os.path.join(output_dir, f"{batch_index:06d}_{basename}.png")
+        fig.savefig(out_path, dpi=150, bbox_inches="tight")
 
 def main():
     parser = argparse.ArgumentParser(description="Run baseline DeepForest on TreePoints using centroid conversion.")
@@ -131,6 +129,7 @@ def main():
     # Load model
     model = df_main.deepforest()
     model.load_model("weecology/deepforest-tree")
+    model.eval()
 
     # Load dataset
     point_dataset = get_dataset("TreePoints", root_dir=args.root_dir)
