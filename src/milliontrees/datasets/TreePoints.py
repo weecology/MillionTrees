@@ -18,8 +18,7 @@ from milliontrees.download_unsupervised import run as run_unsupervised
 
 
 class TreePointsDataset(MillionTreesDataset):
-    """The TreePoints dataset is a collection of tree annotations annotated as
-    x,y locations.
+    """The TreePoints dataset is a collection of tree annotations annotated as x,y locations.
 
     Dataset Splits:
         - random: For each source, 80% of the data is used for training and 20% for testing.
@@ -248,8 +247,8 @@ class TreePointsDataset(MillionTreesDataset):
         return self._y_array[indices]
 
     def eval(self, y_pred, y_true, metadata):
-        """The main evaluation metric, detection_acc_avg_dom, measures the
-        simple average of the detection accuracies of each domain."""
+        """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
+        detection accuracies of each domain."""
         results, results_str = self.standard_group_eval(self._metric,
                                                         self._eval_grouper,
                                                         y_pred, y_true,
@@ -293,8 +292,8 @@ class TreePointsDataset(MillionTreesDataset):
     def _collate_fn(batch):
         """Stack x (batch[1]) and metadata (batch[0]), but not y.
 
-        originally, batch = (item1, item2, item3, item4) after zip,
-        batch = [(item1[0], item2[0], ..), ..]
+        originally, batch = (item1, item2, item3, item4) after zip, batch = [(item1[0], item2[0],
+        ..), ..]
         """
         batch = list(zip(*batch))
         batch[1] = torch.stack(batch[1])
