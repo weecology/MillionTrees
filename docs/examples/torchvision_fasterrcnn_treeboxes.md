@@ -1,4 +1,4 @@
-## Torchvision Faster R-CNN on TreeBoxes
+# Torchvision Faster R-CNN on TreeBoxes
 
 This example uses an off‑the‑shelf COCO‑pretrained Faster R‑CNN from torchvision to perform zero‑shot inference on the TreeBoxes dataset and evaluate with MillionTrees.
 
