@@ -1,0 +1,7 @@
+{
+    "terminal.integrated.env.osx": {
+        "PATH": "${env:PATH}:${workspaceFolder}/src",
+        "python.envFile": "${workspaceFolder}/.env"
+
+    }
+}
