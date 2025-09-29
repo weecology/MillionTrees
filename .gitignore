@@ -175,3 +175,13 @@ cython_debug/
 
 # MacOS
 *.DS_store*
+
+# Ignore large/local datasets
+/data/
+/docs/examples/data/
+/data_prep/images_annotated/
+/data_prep/AutoArborist/
+/data_prep/neon_token.txt
+/neon_training_annotations.zip
+# IDE
+/.vscode/
