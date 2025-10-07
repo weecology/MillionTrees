@@ -25,14 +25,20 @@ except ImportError as e:
     print("Make sure you're running this from the MillionTrees repository root")
     sys.exit(1)
 
-
 def format_bytes(bytes_size):
-    """Convert bytes to human readable format."""
+    """Convert bytes (B) to a human readable format."""
     if bytes_size == 0:
         return "0 B"
     
+    # Convert to int if it's a string
+    if isinstance(bytes_size, str):
+        try:
+            bytes_size = int(bytes_size)
+        except (ValueError, TypeError):
+            return "N/A"
+    
     size_names = ["B", "KB", "MB", "GB", "TB"]
-    size = bytes_size
+    size = float(bytes_size)
     i = 0
     
     while size >= 1024 and i < len(size_names) - 1:
@@ -42,11 +48,14 @@ def format_bytes(bytes_size):
     return f"{size:.2f} {size_names[i]}"
 
 
-def generate_dataset_report(output_path=None, include_test_results=False, test_exit_code=None):
+def generate_dataset_report(output_path=None, include_test_results=False, test_exit_code=None, output_to_docs=True):
     """Generate a comprehensive dataset report."""
     
     if output_path is None:
-        output_path = repo_root / "dataset_release_report.md"
+        if output_to_docs:
+            output_path = repo_root / "docs" / "dataset_release_report.md"
+        else:
+            output_path = repo_root / "dataset_release_report.md"
     
     # Get dataset version information
     datasets_info = [
@@ -73,18 +82,35 @@ def generate_dataset_report(output_path=None, include_test_results=False, test_e
         
         if versions_dict:
             # Get latest version (highest version number)
-            latest_version = max(versions_dict.keys(), key=lambda v: tuple(map(int, v.split('.'))))
+            def version_sort_key(v):
+                try:
+                    return tuple(map(int, v.split('.')))
+                except ValueError:
+                    return (0, 0)
+            
+            latest_version = max(versions_dict.keys(), key=version_sort_key)
             latest_info = versions_dict[latest_version]
-            size_bytes = latest_info.get('compressed_size', 0)
-            total_size += size_bytes
+            size_bytes = latest_info.get('compressed_size', '0')
+            
+            # Convert to int, handling both string and int inputs
+            try:
+                size_bytes_int = int(size_bytes)
+            except (ValueError, TypeError):
+                size_bytes_int = 0
+                
+            total_size += size_bytes_int
             url = latest_info.get('download_url', 'N/A')
+            
+            # Handle missing URLs
+            if not url or url.strip() == '':
+                url = 'N/A'
             
             # Truncate URL for display
             display_url = url
-            if len(url) > 50:
+            if url != 'N/A' and len(url) > 50:
                 display_url = url[:47] + "..."
             
-            report_content.append(f'| {dataset_name} | {latest_version} | {format_bytes(size_bytes)} | {display_url} |')
+            report_content.append(f'| {dataset_name} | {latest_version} | {format_bytes(size_bytes_int)} | {display_url} |')
         else:
             report_content.append(f'| {dataset_name} | N/A | N/A | N/A |')
     
@@ -115,17 +141,35 @@ def generate_dataset_report(output_path=None, include_test_results=False, test_e
             report_content.append('| Version | Download URL | Compressed Size | Size (MB) | Size (GB) |')
             report_content.append('|---------|-------------|-----------------|-----------|-----------|')
             
-            # Sort versions by version number
-            sorted_versions = sorted(versions_dict.keys(), key=lambda v: tuple(map(int, v.split('.'))))
+            # Sort versions by version number (handle malformed versions)
+            def version_sort_key(v):
+                try:
+                    return tuple(map(int, v.split('.')))
+                except ValueError:
+                    # Fallback for non-numeric versions
+                    return (0, 0)
+            
+            sorted_versions = sorted(versions_dict.keys(), key=version_sort_key)
             
             for version in sorted_versions:
                 info = versions_dict[version]
                 url = info.get('download_url', 'N/A')
-                size_bytes = info.get('compressed_size', 0)
-                size_mb = round(size_bytes / (1024 * 1024), 2)
-                size_gb = round(size_bytes / (1024 * 1024 * 1024), 2)
+                size_bytes = info.get('compressed_size', '0')
                 
-                report_content.append(f'| {version} | {url} | {size_bytes:,} bytes | {size_mb} | {size_gb} |')
+                # Convert to int, handling both string and int inputs
+                try:
+                    size_bytes_int = int(size_bytes)
+                except (ValueError, TypeError):
+                    size_bytes_int = 0
+                
+                # Handle missing URLs
+                if not url or url.strip() == '':
+                    url = 'N/A'
+                
+                size_mb = round(size_bytes_int / (1024 * 1024), 2) if size_bytes_int > 0 else 0
+                size_gb = round(size_bytes_int / (1024 * 1024 * 1024), 2) if size_bytes_int > 0 else 0
+                
+                report_content.append(f'| {version} | {url} | {size_bytes_int:,} bytes | {size_mb} | {size_gb} |')
         else:
             report_content.append('No version information available.')
         
@@ -176,12 +220,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate MillionTrees dataset release report')
     parser.add_argument('--output', '-o', type=str, help='Output file path for the report')
     parser.add_argument('--test-exit-code', type=int, help='Exit code from test run to include in report')
+    parser.add_argument('--docs', action='store_true', default=True, help='Generate report in docs directory (default)')
+    parser.add_argument('--root', action='store_true', help='Generate report in root directory')
     
     args = parser.parse_args()
+    
+    # Determine output location
+    output_to_docs = not args.root  # Default to docs unless --root is specified
     
     include_test_results = args.test_exit_code is not None
     generate_dataset_report(
         output_path=args.output,
         include_test_results=include_test_results,
-        test_exit_code=args.test_exit_code
+        test_exit_code=args.test_exit_code,
+        output_to_docs=output_to_docs
     )

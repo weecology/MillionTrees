@@ -5,21 +5,24 @@
 
 # Overview
 
-The MillionTrees benchmark is designed to provide *open*, *reproducible*, and *rigorous* evaluation of tree detection algorithms. This repo is the Python package for rapid data sharing and evaluation.
+The MillionTrees benchmark is designed to provide *open*, *reproducible*, and *rigorous* evaluation of tree detection algorithms. This repo is the Python package for rapid data sharing and evaluation. With over 2 million annotations and tens of millions of weak annotations from algorithm derived workflows for pretraining, MillionTrees is the largest tree detection dataset globally.
 
 # Current status
 
-We are in the process of release public data, these are datasets that have previously been published and have a DOI. We will followup this release, likely with a 1.0 tag, of the previously unpublished parts of the dataset along with a scientific manuscript.
+We have released a beta version of *public* data, these are datasets that have previously been published and have a DOI. We will followup this release, likely with a 1.0 tag, of the previously unpublished parts of the dataset along with a scientific manuscript.
+
+📊 **Current Dataset Status**: See our comprehensive [Dataset Release Report](https://milliontrees.idtrees.org/en/latest/dataset_release_report.html) for up-to-date information on dataset versions, sizes, and download links.
+
 
 # Dataloaders
 
-TreeBoxes: 4411 images, 2 splits, 197343 rows
-TreePolygons: 18437 images, 2 splits, 760347 rows
-TreePoints: 3929 images, 2 splits, 256184 rows
+There are three data loaders based on annotation geometry. TreeBoxes are bounding boxes for individual tree detection. TreePoints are centroids for tree counting and detection, and TreePolygons are for finer crown segmentation. 
 
 ## Why MillionTrees?
 
 There has been a tremendous number of tree crown detection benchmarks, but a lack of progress towards a single algorithm that can be used globally across aquisition sensors, forest type and annotation geometry. Our view is that the hundreds of tree detection algorithms for RGB data published in the last 10 years are all data starved. There are many good models, but they can only be so useful with the small datasets any research team can collect. The result is years of effort in model development, but ultimately a lacking solution for a large audience. The MillionTrees dataset seeks to collect a million annotations across point, polygon and box geometries at a global scale.
+
+The MillionTrees dataset represents where we are as a community. Many datasets are incompletely annotated, and there is varying degrees of annotation accuracy. This is by design, we aim to reflect the real, not idealized, status of tree detection algorithms and applications. By incluing these data that are normally excluded from benchmarks we can both dramatically increase the diversity of tree presentations and backgrounds, as well as engage the community in solving common computer vision challenges for applied machine learning.
 
 ## Installation
 
@@ -58,6 +61,8 @@ Once the installation is complete, you can use the MillionTrees package in your 
 
 Datasets are documented on ReadTheDocs with sample images overlayed with annotations.
 https://milliontrees.idtrees.org/en/latest/datasets.html
+
+**Dataset Release Report**: For detailed information about dataset versions, download sizes, and availability, see our [Dataset Release Report](https://milliontrees.idtrees.org/en/latest/dataset_release_report.html).
 
 # Citing MillionTrees
 

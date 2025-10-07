@@ -86,7 +86,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         },
         "0.5": {
             'download_url': "",
-            'compressed_size': ""
+            'compressed_size': "41108312"
         }
     }
 
