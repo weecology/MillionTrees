@@ -22,6 +22,28 @@ pip install milliontrees[unsupervised]
 
 For more information, refer to the section on unsupervised datasets.
 
+## Mini Datasets for Development
+
+**Recommended for Development**: Before working with the full datasets (which can be several GB), we recommend starting with the mini versions for development and testing. Mini datasets contain a small subset of the data but maintain the same structure and format.
+
+```python
+from milliontrees import get_dataset
+
+# Download a mini version of TreeBoxes (~few MB instead of ~several GB)
+dataset = get_dataset('TreeBoxes', download=True, mini=True)
+
+# This works the same as the full dataset but much faster to download
+train_dataset = dataset.get_subset("train")
+print(f"Mini dataset size: {len(train_dataset)} images")
+```
+
+Mini datasets are available for all three dataset types:
+- `TreeBoxes` → `MiniTreeBoxes` 
+- `TreePoints` → `MiniTreePoints`
+- `TreePolygons` → `MiniTreePolygons`
+
+Once you've developed and tested your code with the mini datasets, simply remove `mini=True` to use the full datasets for training and evaluation.
+
 ##  Dataset structure
 
 The aim of the package is to provide a single interface to load data directly into pytorch without needing to deal with the details of the data format. Users download the data and yield training and evaluation examples from the dataloaders.
@@ -32,7 +54,8 @@ from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
 
 # Download the data; this will take a while. By default sources containing
 # 'unsupervised' are excluded. You can override using include/exclude patterns.
-dataset = TreeBoxesDataset(download=True)
+# For development, consider using mini=True for faster downloads
+dataset = TreeBoxesDataset(download=True)  # Add mini=True for development
 
 train_dataset = dataset.get_subset("train")
 
