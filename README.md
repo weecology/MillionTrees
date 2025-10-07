@@ -5,7 +5,7 @@
 
 # Overview
 
-The MillionTrees benchmark is designed to provie *open*, *reproducible* and *rigorous* evaluation of tree detection algorithms. ]This repo is the python package for rapid data sharing and evaluation.
+The MillionTrees benchmark is designed to provide *open*, *reproducible*, and *rigorous* evaluation of tree detection algorithms. This repo is the Python package for rapid data sharing and evaluation.
 
 # Current status
 
@@ -24,7 +24,7 @@ There has been a tremendous number of tree crown detection benchmarks, but a lac
 ## Installation
 
 ```
-pip install MillionTrees
+pip install milliontrees
 ```
 
 ### Dev Requirements
@@ -33,22 +33,23 @@ To build from the GitHub source and install the required dependencies, follow th
 
 1. Clone the GitHub repository:
     ```
-    git clone https://github.com/username/repo.git
+    git clone https://github.com/weecology/MillionTrees.git
     ```
 
 2. Change to the repository directory:
     ```
-    cd repo
+    cd MillionTrees
     ```
 
-3. Install the required dependencies using pip:
+3. (Recommended) Create and activate a virtual environment, then install dev extras:
     ```
-    pip install -r requirements.txt
+    python -m venv .venv && source .venv/bin/activate
+    pip install -e .[dev,docs]
     ```
 
-4. (Optional) Build and install the package:
+4. (Optional) Build distributions:
     ```
-    python setup.py install
+    python -m build
     ```
 
 Once the installation is complete, you can use the MillionTrees package in your Python projects.
