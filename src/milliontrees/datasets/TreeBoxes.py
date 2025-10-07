@@ -48,6 +48,8 @@ class TreeBoxesDataset(MillionTreesDataset):
         exclude_sources (list): The sources to exclude.
         unsupervised (bool): If True, include unsupervised data in addition to
             any other selected sources (unless explicitly excluded).
+        mini (bool): If True, download mini versions of datasets for development.
+            Mini datasets are smaller subsets that maintain the same structure.
         unsupervised_args (dict): The arguments to pass to the unsupervised download pipeline.
 
     References:
@@ -102,7 +104,8 @@ class TreeBoxesDataset(MillionTreesDataset):
                  include_sources=None,
                  exclude_sources=None,
                  unsupervised=False,
-                 unsupervised_args=None):
+                 unsupervised_args=None,
+                 mini=False):
 
         self._version = version
         self._split_scheme = split_scheme
@@ -110,10 +113,15 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.eval_score_threshold = eval_score_threshold
         self.image_size = image_size
         self.unsupervised = unsupervised
+        self.mini = mini
 
         if self._split_scheme not in ['random', 'zeroshot', 'crossgeometry']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
+
+        # Modify download URLs for mini datasets
+        if mini:
+            self._versions_dict = self._get_mini_versions_dict()
 
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
@@ -309,6 +317,20 @@ class TreeBoxesDataset(MillionTreesDataset):
         results_str = formatted_results + '\n' + results_str
 
         return results, results_str
+
+    def _get_mini_versions_dict(self):
+        """Generate mini versions dict with modified URLs for smaller datasets."""
+        mini_versions = {}
+        for version, info in self._versions_dict.items():
+            mini_info = info.copy()
+            if info['download_url']:
+                # Replace dataset name with Mini version in URL
+                original_filename = f"TreeBoxes_v{version}.zip"
+                mini_filename = f"MiniTreeBoxes_v{version}.zip"
+                mini_info['download_url'] = info['download_url'].replace(
+                    original_filename, mini_filename)
+            mini_versions[version] = mini_info
+        return mini_versions
 
     def get_input(self, idx):
         """Retrieves the input features (image) for a given data point.
