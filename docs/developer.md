@@ -31,14 +31,6 @@
     pip install . -U
     ```
 
-## Running Tests Locally
-
-[Add specific instructions for running tests if necessary.]
-
-## Create Release
-
-[Add specific instructions for creating a release if necessary.]
-
 ## Documentation
 
 We use [Sphinx](http://www.sphinx-doc.org/en/stable/) and [Read the Docs](https://readthedocs.org/) for our documentation. Sphinx supports both reStructuredText and markdown as markup languages. 
@@ -63,16 +55,3 @@ The documentation is automatically updated for changes within modules. **However
    In this example, `source` is the destination folder for the generated `.rst` files, and `/Users/..../MillionTrees/milliontrees/` is the path to the `milliontrees` source code.
 
 3. Review the generated files, make necessary edits to ensure accuracy, and then commit and push the changes.
-
-### Test Documentation Locally
-
-To test the documentation locally:
-
-    ```bash
-    cd docs  # Navigate to the docs directory
-    make html && python3 -m http.server --directory _build/html
-    ```
-
-   This command generates the HTML files and hosts a local HTTP server on `localhost:8000`, allowing you to view the documentation in your browser.
-
-> **Note:** Do not commit the `_build` directory after generating HTML.
