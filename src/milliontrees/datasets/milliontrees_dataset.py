@@ -374,7 +374,7 @@ class MillionTreesDataset:
 
         # Temporarily disabled version warnings since newer versions aren't publicly available yet
         # TODO: Re-enable when version 0.5 datasets are publicly released
-        
+
         # Check that the specified version is the latest version. Otherwise, warn.
         # current_major_version, current_minor_version = tuple(
         #     map(int, self.version.split('.')))
