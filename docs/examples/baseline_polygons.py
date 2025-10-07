@@ -19,11 +19,24 @@ def format_deepforest_predictions(
     images: np.ndarray,
     metadata: torch.Tensor,
     targets: List[dict],
-    model: "df_main.deepforest",
+    model,  # Remove the problematic type hint
     dataset,
     batch_index: int,
 ) -> Tuple[List[dict], List[pd.DataFrame]]:
-    """Run DeepForest on a batch and convert to MillionTrees format."""
+    """
+    Run DeepForest on a batch and convert to MillionTrees format.
+    
+    Args:
+        images: Input images as numpy array
+        metadata: Tensor containing metadata information  
+        targets: List of target dictionaries
+        model: DeepForest model instance
+        dataset: Dataset instance
+        batch_index: Index of the current batch
+        
+    Returns:
+        Tuple containing predictions in MillionTrees format and formatted DataFrames
+    """
     warnings.filterwarnings("ignore")
 
     images_tensor = torch.tensor(images)
