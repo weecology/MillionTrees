@@ -2,7 +2,7 @@
 
 This example uses an off‑the‑shelf COCO‑pretrained Faster R‑CNN from torchvision to perform zero‑shot inference on the TreeBoxes dataset and evaluate with MillionTrees.
 
-### Prerequisites
+## Prerequisites
 
 - Install the package and dependencies:
 
@@ -17,7 +17,7 @@ from milliontrees import get_dataset
 ds = get_dataset("TreeBoxes", version="0.2", root_dir="data", download=True)
 ```
 
-### Script
+## Script
 
 Run the example script which performs inference and evaluation end‑to‑end:
 
@@ -31,7 +31,7 @@ python docs/examples/torchvision_fasterrcnn_treeboxes.py \
 
 It prints a metrics dictionary and a formatted per‑source breakdown, including `detection_acc_avg_dom`.
 
-### Notes
+## Notes
 
 - No training is performed; this is a pure zero‑shot baseline.
 - The MillionTrees evaluation expects per‑image dict predictions with keys `y`, `labels`, and `scores`. The example script handles this conversion for torchvision outputs.

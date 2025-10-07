@@ -15,7 +15,13 @@ author = 'Ben Weinstein'
 release = __version__
 
 master_doc = 'index'
-extensions = ['myst_parser', 'sphinx.ext.autodoc', "sphinx.ext.napoleon", "nbsphinx"]
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon', 
+    'sphinx.ext.viewcode',     # Adds source code links
+    'nbsphinx',               # For Jupyter notebooks
+    'myst_parser'             # For Markdown files
+]
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_theme = 'furo'
