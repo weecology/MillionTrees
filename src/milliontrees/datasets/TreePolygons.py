@@ -66,7 +66,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         },
         "0.5": {
             'download_url': "",
-            'compressed_size': ""
+            'compressed_size': "108369576"
         }
     }
 

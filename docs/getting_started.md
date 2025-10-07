@@ -2,27 +2,19 @@
 
 ## Installation
 
-We highly recommend using conda to isolate a python environment
-
-For example
-
-```
-conda create -n MillionTrees python=3.11
-```
-
 ```
 pip install MillionTrees
 ```
 
-**Note:** On some older systems, there can occasionally be conflicts between torch 2.0 and numpy 2.0. If you encounter errors on loading MillionTrees, try:
+**Note:** On some older systems, there can occasionally be conflicts between torch 2.0 and numpy 2.0. If you encounter errors on loading MillionTrees, try downgrading numpy to pre2.0. 
 
 ```
 pip install numpy==1.26.4
 ```
 
-### Install unsupervised submodule
+### Optional: Unsupervised submodule
 
-MillionTrees comes with tens of millions of weakly labeled tree detections. There are extra dependencies for downloading and filtering these datasets.
+MillionTrees comes with tens of millions of weakly labeled tree detections. There are extra dependencies for downloading and filtering these datasets. These data are large and optional, only needed for training large scale models.
 
 ```
 pip install milliontrees[unsupervised]
@@ -31,6 +23,7 @@ pip install milliontrees[unsupervised]
 For more information, refer to the section on unsupervised datasets.
 
 ##  Dataset structure
+
 The aim of the package is to provide a single interface to load data directly into pytorch without needing to deal with the details of the data format. Users download the data and yield training and evaluation examples from the dataloaders.
 
 ```python
