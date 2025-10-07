@@ -372,26 +372,29 @@ class MillionTreesDataset:
                 f'Version {self.version} not supported. Must be in {self.versions_dict.keys()}.'
             )
 
+        # Temporarily disabled version warnings since newer versions aren't publicly available yet
+        # TODO: Re-enable when version 0.5 datasets are publicly released
+        
         # Check that the specified version is the latest version. Otherwise, warn.
-        current_major_version, current_minor_version = tuple(
-            map(int, self.version.split('.')))
-        latest_major_version, latest_minor_version = tuple(
-            map(int, self.latest_version.split('.')))
-        if latest_major_version > current_major_version:
-            print(
-                f'*****************************\n'
-                f'{self.dataset_name} has been updated to version {self.latest_version}.\n'
-                f'You are currently using version {self.version}.\n'
-                f'We highly recommend updating the dataset by not specifying the older version in the '
-                f'command-line argument or dataset constructor.\n'
-                f'*****************************\n')
-        elif latest_minor_version > current_minor_version:
-            print(
-                f'*****************************\n'
-                f'{self.dataset_name} has been updated to version {self.latest_version}.\n'
-                f'You are currently using version {self.version}.\n'
-                f'Please consider updating the dataset.\n'
-                f'*****************************\n')
+        # current_major_version, current_minor_version = tuple(
+        #     map(int, self.version.split('.')))
+        # latest_major_version, latest_minor_version = tuple(
+        #     map(int, self.latest_version.split('.')))
+        # if latest_major_version > current_major_version:
+        #     print(
+        #         f'*****************************\n'
+        #         f'{self.dataset_name} has been updated to version {self.latest_version}.\n'
+        #         f'You are currently using version {self.version}.\n'
+        #         f'We highly recommend updating the dataset by not specifying the older version in the '
+        #         f'command-line argument or dataset constructor.\n'
+        #         f'*****************************\n')
+        # elif latest_minor_version > current_minor_version:
+        #     print(
+        #         f'*****************************\n'
+        #         f'{self.dataset_name} has been updated to version {self.latest_version}.\n'
+        #         f'You are currently using version {self.version}.\n'
+        #         f'Please consider updating the dataset.\n'
+        #         f'*****************************\n')
 
     @staticmethod
     def standard_eval(metric, y_pred, y_true):
