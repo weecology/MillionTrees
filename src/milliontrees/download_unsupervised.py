@@ -7,10 +7,28 @@ from typing import Optional, Tuple, List
 
 import pandas as pd
 
-# New dependencies for tiling and parallelization
-from dask import delayed, compute
-from dask.diagnostics import ProgressBar
-from deepforest.preprocess import split_raster
+# Conditional imports for optional dependencies
+try:
+    from dask import delayed, compute
+    from dask.diagnostics import ProgressBar
+    from deepforest.preprocess import split_raster
+    DASK_AVAILABLE = True
+    DEEPFOREST_AVAILABLE = True
+except ImportError as e:
+    DASK_AVAILABLE = False
+    DEEPFOREST_AVAILABLE = False
+    # Define dummy functions to prevent import errors
+    def delayed(func):
+        return func
+    def compute(*args):
+        return args
+    class ProgressBar:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+    def split_raster(*args, **kwargs):
+        raise ImportError("deepforest is required for unsupervised data download. Install with: pip install milliontrees[unsupervised]")
 
 
 def read_neon_token(token_path: str = "neon_token.txt") -> str:
@@ -142,6 +160,13 @@ def parse_args():
 
 def run(data_dir, annotations_parquet, max_tiles_per_site, patch_size,
         allow_empty, num_workers, token_path, data_product, download_dir):
+    # Check for required dependencies
+    if not DASK_AVAILABLE or not DEEPFOREST_AVAILABLE:
+        raise ImportError(
+            "dask and deepforest are required for unsupervised data download. "
+            "Install with: pip install milliontrees[unsupervised]"
+        )
+    
     images_dir = os.path.join(data_dir, 'images')
     # Load annotations (unsupervised parquet)
     ann = pd.read_parquet(annotations_parquet)
