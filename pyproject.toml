@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "milliontrees"
-version = "0.2.0"
+version = "0.2.1"
 description = "Benchmark dataset for Airborne Tree Machine Learning"
 readme = "README.md"
 license = { text = "MIT" }
