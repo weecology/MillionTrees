@@ -78,16 +78,22 @@ class TreePointsDataset(MillionTreesDataset):
                  include_sources=None,
                  exclude_sources=None,
                  unsupervised=False,
-                 unsupervised_args=None):
+                 unsupervised_args=None,
+                 mini=False):
 
         self._version = version
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name
         self.distance_threshold = distance_threshold
+        self.mini = mini
 
         if self._split_scheme not in ['random', 'crossgeometry', 'zeroshot']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
+
+        # Modify download URLs for mini datasets
+        if mini:
+            self._versions_dict = self._get_mini_versions_dict()
 
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
@@ -241,6 +247,20 @@ class TreePointsDataset(MillionTreesDataset):
                                                                   ]))
 
         super().__init__(root_dir, download, split_scheme)
+
+    def _get_mini_versions_dict(self):
+        """Generate mini versions dict with modified URLs for smaller datasets."""
+        mini_versions = {}
+        for version, info in self._versions_dict.items():
+            mini_info = info.copy()
+            if info['download_url']:
+                # Replace dataset name with Mini version in URL
+                original_filename = f"TreePoints_v{version}.zip"
+                mini_filename = f"MiniTreePoints_v{version}.zip"
+                mini_info['download_url'] = info['download_url'].replace(
+                    original_filename, mini_filename)
+            mini_versions[version] = mini_info
+        return mini_versions
 
     def get_annotation_from_filename(self, filename):
         indices = self._input_lookup[filename]
