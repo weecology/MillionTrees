@@ -25,8 +25,8 @@ This looks at the file random.csv and gets the 'split' column that designates wh
 The MillionTrees benchmark supports multiple dataset split schemes to accommodate various tasks:
 
 - **Random**: For each source, 80% of the data is used for training, and 20% is reserved for testing.
-- **Crossgeometry**: Combines Boxes and Points annotations to predict Polygons.
-- **Zeroshot**: Entire sources are held out for testing, simulating a zero-shot learning scenario.
+- **Zeroshot**: Entire sources are held out for testing, simulating a common applied example in which a user applies to model to new data outside of training distributions. 
+- **Crossgeometry**: Combines boxes and points annotations to predict Polygons.
 
 Each split scheme uses the same underlying data, so you don't need to redownload when changing split schemes! 
 

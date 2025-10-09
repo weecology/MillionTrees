@@ -1,22 +1,22 @@
-from datetime import datetime
-from pathlib import Path
 import os
+import fnmatch
+from pathlib import Path
 
-from PIL import Image, ImageDraw
-import pandas as pd
 import numpy as np
+import pandas as pd
+import torch
+from PIL import Image, ImageDraw
 from shapely import from_wkt
+
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+
+from torchvision.tv_tensors import BoundingBoxes, Mask
+from torchvision.ops import masks_to_boxes
+
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import MaskAccuracy
-from torchvision.tv_tensors import BoundingBoxes, Mask
-from torchvision.ops import masks_to_boxes
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
-import torch
-import fnmatch
-from types import SimpleNamespace
-from milliontrees.download_unsupervised import run as run_unsupervised
 
 
 class TreePolygonsDataset(MillionTreesDataset):
@@ -104,6 +104,7 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         # Optionally trigger unsupervised download pipeline
         if unsupervised:
+            from milliontrees.download_unsupervised import run as run_unsupervised
             defaults = {
                 'data_dir':
                     str(self._data_dir),

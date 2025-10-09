@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 import os
 
@@ -13,8 +12,6 @@ from PIL import Image
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import fnmatch
-from types import SimpleNamespace
-from milliontrees.download_unsupervised import run as run_unsupervised
 
 
 class TreePointsDataset(MillionTreesDataset):
@@ -100,6 +97,7 @@ class TreePointsDataset(MillionTreesDataset):
 
         # Optionally trigger unsupervised download pipeline
         if unsupervised:
+            from milliontrees.download_unsupervised import run as run_unsupervised
             defaults = {
                 'data_dir':
                     str(self._data_dir),
