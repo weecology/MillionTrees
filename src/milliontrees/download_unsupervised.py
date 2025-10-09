@@ -18,6 +18,7 @@ except ImportError as exc:
         "Optional dependencies missing: 'dask' and 'deepforest'. If you want to run unsupervised examples, install with `pip install milliontrees[unsupervised]` or `pip install dask deepforest`."
     ) from exc
 
+
 def read_neon_token(token_path: str = "neon_token.txt") -> str:
     """Read NEON API token from a text file."""
     with open(token_path, "r") as file:
