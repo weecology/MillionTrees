@@ -7,11 +7,16 @@ from typing import Optional, Tuple, List
 
 import pandas as pd
 
-# New dependencies for tiling and parallelization
-from dask import delayed, compute
-from dask.diagnostics import ProgressBar
-from deepforest.preprocess import split_raster
-
+# Look if dask is installed, if not prompt user to install milliontrees[unsupervised]
+try:
+    # New dependencies for tiling and parallelization
+    from dask import delayed, compute
+    from dask.diagnostics import ProgressBar
+    from deepforest.preprocess import split_raster
+except ImportError as exc:
+    raise ImportError(
+        "Optional dependencies missing: 'dask' and 'deepforest'. If you want to run unsupervised examples, install with `pip install milliontrees[unsupervised]` or `pip install dask deepforest`."
+    ) from exc
 
 def read_neon_token(token_path: str = "neon_token.txt") -> str:
     """Read NEON API token from a text file."""
