@@ -113,3 +113,7 @@ for metadata, image, targets in train_loader:
     print(f"Annotation shape of the first image: {targets[0]['y'].shape}")
     break
 ```
+
+## Why are there incomplete annotations? Why aren't all annotations perfect?
+
+The MillionTrees dataset is designed to meet the need for a global source while acknowledging the limitations of data collection for training and evaluation data. To capture the breadth of resolutions, backgrounds, and trees at a global extent, we must accommodate a range of annotation geometries and annotation approaches. Rather than reduce the breadth of the dataset in favor of a few ideal datasets, we believe that benchmark datasets should include a wide array of situations accompanied with tools to navigate the differences among datasets. Our hope is that the standardization and centralization of the data will help transcend current limitations in model development. For example, current models cannot easily cross among annotation inputs, a typical neural network uses boxes, or points, or polygons, but not all three. Some models may be much more sensitive to incomplete annotation approaches, requiring them to be trained with less diverse, but higher quality data. The MillionTrees benchmark is designed to bring focus to these challenges in applied machine learning. We opted to include all together, because we hope to put the need first and build architectures that meet that need. 

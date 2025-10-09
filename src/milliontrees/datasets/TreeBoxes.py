@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 import os
 
@@ -8,13 +7,11 @@ import torch
 import albumentations as A
 import torchvision.transforms as T
 import fnmatch
-from types import SimpleNamespace
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import DetectionAccuracy
 from PIL import Image
-from milliontrees.download_unsupervised import run as run_unsupervised
 
 from albumentations.pytorch import ToTensorV2
 
@@ -131,6 +128,7 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         # Optionally trigger unsupervised download pipeline
         if unsupervised:
+            from milliontrees.download_unsupervised import run as run_unsupervised
             # If unsupervised hasn't been downloaded, download it
             if not os.path.exists(
                     self._data_dir /
