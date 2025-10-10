@@ -165,6 +165,31 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 **Location:** Multiple sites across the United States, see [NEON Field Sites](https://www.neonscience.org/field-sites/explore-field-sites)
 
 **Link:** [https://data.neonscience.org/data-products/DP1.10098.001](https://data.neonscience.org/data-products/DP1.10098.001)
+# OFO Unsupervised (Points)
+
+Automatically detected treetop points and crown polygons generated from CHM-based geometric methods (local maxima filtering and multiple segmentation algorithms). Detections are aligned to orthomosaics and achieve reported F-scores of ~0.8–0.9 for overhead-visible trees.
+
+- Source: OFO drone missions on CyVerse DataStore
+- Path structure under missions:
+  - `Community Data/ofo/public/missions/{mission_id}/processed_{photogrammetry_id}/full/orthomosaic.tif`
+  - `Community Data/ofo/public/missions/{mission_id}/itd-0001/treetops.gpkg`
+- Geometry: Points (treetops)
+- How to build locally:
+  1. Ensure OFO missions are accessible locally (sync from CyVerse as needed).
+  2. Run the OFO builder to tile orthomosaics and convert treetops to pixel coordinates.
+
+Example command:
+
+```bash
+python -m milliontrees.download_ofo_unsupervised \
+  --data_dir /path/to/TreePoints_v0.5 \
+  --ofo_root "/path/to/Community Data/ofo/public/missions" \
+  --patch_size 400 \
+  --output_parquet_name TreePoints_OFO_unsupervised.parquet
+```
+
+This creates tiled images under `images/` and a parquet at `unsupervised/TreePoints_OFO_unsupervised.parquet` containing columns `filename, x, y, source, split`.
+
 
 ## Tonga Trees
 
