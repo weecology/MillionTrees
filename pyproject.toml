@@ -47,6 +47,7 @@ dependencies = [
     "shapely",
     "albumentations",
     "torchmetrics",
+    "pyarrow>=17.0.0",
 ]
 
 [project.optional-dependencies]

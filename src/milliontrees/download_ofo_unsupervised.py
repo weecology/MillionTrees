@@ -94,8 +94,30 @@ def _swift_list(endpoint: str, bucket: str, prefix: str, delimiter: str = '/') -
     try:
         return resp.json()
     except Exception:
-        # If not JSON (truncated HTML listing), return empty to fail gracefully
-        return []
+        # If not JSON, try parsing plain text response
+        lines = resp.text.strip().split('\n')
+        items = []
+        
+        if delimiter == '/':
+            # For directory listing, extract unique mission IDs
+            mission_ids = set()
+            for line in lines:
+                if line.strip() and line.startswith(prefix):
+                    # Extract mission ID from path like "drone/missions_01/000029/..."
+                    parts = line.replace(prefix, '').split('/')
+                    if len(parts) > 0 and parts[0]:
+                        mission_ids.add(parts[0])
+            
+            # Convert to expected format
+            for mission_id in sorted(mission_ids):
+                items.append({'subdir': f"{prefix}{mission_id}/"})
+        else:
+            # For file listing
+            for line in lines:
+                if line.strip():
+                    items.append({'name': line.strip()})
+        
+        return items
 
 
 def _stream_download(url: str, dest_path: str, chunk_size: int = 1024 * 1024) -> None:
@@ -173,6 +195,10 @@ def download_ofo_public(
             name = obj.get('name')
             if not name:
                 continue
+            # IMPORTANT: Filter to only files that actually belong to this specific mission
+            # Since Swift prefix matching can return files from other missions (e.g., 000029 matches 000030, 000031, etc.)
+            if not name.startswith(f"drone/missions_01/{mission_id}/"):
+                continue
             # Keep vector and metadata files commonly used for treetops/crowns
             ext = os.path.splitext(name)[1].lower()
             if ext in {'.gpkg', '.geojson', '.json', '.shp', '.shx', '.dbf', '.prj', '.cpg', '.xml', '.csv', '.tif'}:
@@ -205,7 +231,7 @@ def _collect_missions(ofo_root: str, mission_ids: Optional[List[str]]) -> List[s
 def run(
     data_dir: str,
     ofo_root: str,
-    patch_size: int = 400,
+    patch_size: int = 800,
     allow_empty: bool = False,
     mission_ids: Optional[List[str]] = None,
     photogrammetry_glob: str = 'processed_*',
@@ -242,10 +268,23 @@ def run(
         if len(proc_dirs) == 0:
             print(f"No processed_* folder found for mission {mission_id}, skipping")
             continue
-        proc_dir = proc_dirs[0]
+        
+        # Find the processed directory that contains orthomosaic.tif
+        proc_dir = None
+        for candidate_dir in proc_dirs:
+            test_orthomosaic = os.path.join(candidate_dir, 'full', 'orthomosaic.tif')
+            if os.path.exists(test_orthomosaic):
+                proc_dir = candidate_dir
+                break
+        
+        if proc_dir is None:
+            # Fallback to first directory if no orthomosaic found
+            proc_dir = proc_dirs[0]
+        
         orthomosaic = os.path.join(proc_dir, 'full', 'orthomosaic.tif')
         # ITD outputs live under the processed folder in public structure
-        itd_dir = os.path.join(proc_dir, 'itd-0001')
+        # Note: Swift API uses itd_0001 (underscore) not itd-0001 (hyphen)
+        itd_dir = os.path.join(proc_dir, 'itd_0001')
         treetops = None
         # Prefer .gpkg then .geojson
         candidates = [
