@@ -3,6 +3,119 @@ There are three datasets within the MillionTrees package: TreeBoxes, TreePoints,
 
 *Note: The datasets below are processed and will be part of the final release. The current release is pre-release and not final. Only publically available datasets are included at this time.*
 
+## Dataset Filtering and Management
+
+MillionTrees datasets can contain millions of annotations. Use filtering capabilities to manage dataset size and preview data before downloading.
+
+### Source Filtering
+
+List and filter available sources:
+
+```py
+dataset = TreePointsDataset(version="0.5", download=False)
+sources = dataset.get_available_sources()
+print("Available sources:", sources)
+# Available sources: ['Kattenborn_NewZealand', 'NeonTreeEvaluation', 'OFO_unsupervised', 'NEON_unsupervised'...]
+```
+
+Include only specific sources:
+
+```py
+dataset = TreePointsDataset(
+  version="0.5",
+  include_sources=['NeonTreeEvaluation', 'OFO_unsupervised']
+)
+```
+
+Exclude specific sources (exact names or glob patterns supported):
+
+```py
+# Exclude a single source by name
+dataset = TreePointsDataset(version="0.5", exclude_sources=['NEON_unsupervised'])
+
+# Exclude by pattern (wildcards)
+dataset = TreePointsDataset(version="0.5", exclude_sources=['*_unsupervised'])
+```
+
+### Size Management and Preview
+
+Preview datasets before downloading to understand their size:
+
+```py
+# Preview full dataset
+dataset = TreeBoxesDataset(version="0.2", preview_only=True)
+
+# Output shows:
+# Total boxes: 2,456,789
+# Unique sources: 28
+# Boxes by source:
+#   NEON_unsupervised: 2,000,000 boxes (81.4%)
+#   NeonTreeEvaluation: 200,000 boxes (8.1%)
+#   ...
+```
+
+Control dataset size with filtering parameters:
+
+```py
+# Limit samples per source to balance training data
+dataset = TreeBoxesDataset(
+    version="0.2",
+    max_samples_per_source=5000,  # Max 5000 samples per source
+    preview_only=True
+)
+
+# Random sampling for computational constraints
+dataset = TreeBoxesDataset(
+    version="0.2", 
+    sample_fraction=0.1,  # Use 10% of available data
+    preview_only=True
+)
+
+# Combined filtering for fine control
+dataset = TreeBoxesDataset(
+    version="0.2",
+    max_samples_per_source=1000,  # Limit per source
+    sample_fraction=0.05,         # Then 5% sample
+    min_samples_per_source=50,    # Exclude small sources
+    preview_only=True
+)
+```
+
+### Recommended Workflow
+
+1. **Preview first**: Use `preview_only=True` to understand dataset size
+2. **Design filtering**: Choose parameters based on your computational resources
+3. **Preview with filtering**: Verify the filtered dataset size
+4. **Download**: Use same parameters with `preview_only=False`
+
+```py
+# Step 1: Preview full dataset
+full_preview = TreeBoxesDataset(version="0.2", preview_only=True)
+
+# Step 2: Design filtering based on preview
+filtered_preview = TreeBoxesDataset(
+    version="0.2",
+    max_samples_per_source=1000,
+    sample_fraction=0.1,
+    preview_only=True
+)
+
+# Step 3: Download with same parameters
+dataset = TreeBoxesDataset(
+    version="0.2",
+    max_samples_per_source=1000,
+    sample_fraction=0.1,
+    download=True
+)
+```
+
+### Common Filtering Strategies
+
+- **Prototyping**: `max_samples_per_source=100, sample_fraction=0.01` (very small, fast)
+- **Balanced training**: `max_samples_per_source=5000` (prevent source dominance)
+- **Resource-constrained**: `sample_fraction=0.1` (10% of full dataset)
+- **Large-scale training**: `max_samples_per_source=50000` (large but manageable)
+
 # Boxes
 
 ## Dumortier 2025
@@ -14,6 +127,10 @@ Cite: 10.5281/zenodo.15155080
 https://zenodo.org/records/15155081
 
 ## Kaggle Palm Counting
+
+### Source Name: "Kaggle_Palm_Counting"
+
+https://www.kaggle.com/datasets/praneethsaikolla/palm-tree-detection-dataset
 
 ![sample_image](public/Kaggle_Palm_Counting.png)
 
@@ -121,14 +238,6 @@ For more information about the dataset collation, see: Veitch-Michaelis, J. et a
 
 **Location:** Mato Grosso do Sul, Brazil
 
-## Weinstein et al. 2018 - unsupervised
-
-Coregistered LIDAR and RGB were acquired over 27 sites in the National Ecological Observation Network, USA. These sites cover a range of forest habitats. An unsupervised LiDAR tree detection algorithm was used to predict tree locations. These locatons were draped over the RGB data to create a very large weakly supervised dataset. There is currently over 40 million tree locations from the original dataset and more can be generated with ongoing data collection.
-
-**Citation**: Weinstein, B.G.; Marconi, S.; Bohlman, S.; Zare, A.; White, E. Individual Tree-Crown Detection in RGB Imagery Using Semi-Supervised Deep Learning Neural Networks. Remote Sens. 2019, 11, 1309. https://doi.org/10.3390/rs11111309
-
-**Location**: Forest across the United States (NEON)
-
 # Points
 
 ## Amirkolaee et al. 2023
@@ -143,6 +252,7 @@ IEEE Transactions on Geoscience and Remote Sensing (2023)
 
 **Location:** London, England
 
+**GSD** 0.2m 
 
 **Citation:** Lefebvre, I., Laliberté, E. (2024). UAV LiDAR, UAV Imagery, Tree Segmentations and Ground Mesurements for Estimating Tree Biomass in Canadian (Quebec) Plantations. Federated Research Data Repository. https://doi.org/10.20383/103.0979
 
@@ -158,6 +268,8 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 **Location:** Southern California, United States
 
+**GSD:** 0.6m
+
 ## National Ecological Observatory Network
 
 ![sample_image](public/NEON_points.png)
@@ -166,15 +278,18 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 **Link:** [https://data.neonscience.org/data-products/DP1.10098.001](https://data.neonscience.org/data-products/DP1.10098.001)
 
-## Tonga Trees
+**GSD**: 0.1m 
 
-![sample_image](public/Kolovai-Trees.png)
+## Auto-arborist
 
-**Location:** Tonga
+The auto-arborist dataset is a compilation of street-level surveys performed by local cities. Street trees were labeled with points. Annotations are limited to street trees, and do not include non-street trees. MillionTrees datasets are associated with state orthophoto programs that vary in ground resolution, from 20cm to 60cm. 
 
-**Link:** The provenance of this project is unclear, it was used several times in ArcGIS tutorials, but no citation was given.
+https://google.github.io/auto-arborist/
 
-[https://learn.arcgis.com/en/projects/detect-objects-with-a-deep-learning-pretrained-model/](https://learn.arcgis.com/en/projects/detect-objects-with-a-deep-learning-pretrained-model/)
+**Citation**: 
+Sara Beery, Guanhang Wu, Trevor Edwards, Filip Pavetic, Bo Majewski, Shreyasee Mukherjee, Stanley Chan, John Morgan, Vivek Rathod, Jonathan Huang; Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2022, pp. 21294-21307
+
+**GSD**: 0.2m - 0.6m
 
 # Polygons
 
@@ -196,11 +311,15 @@ International Journal of Applied Earth Observation and Geoinformation, 130, 1038
 
 ![sample_image](public/Bohlman_et_al._2008.png)
 
-Unpublished data from Barro Colorado Island
+Unpublished data from Barro Colorado Island, field verified after photo-interpretation.
+
+Both crowns and points are available.
 
 **Location**: BCI, Panama
 
 ## Cloutier et al. 2023
+
+### Source Name: "Cloutier et al. 2023"
 
 ![sample_image](public/Cloutier_et_al._2023.png)
 
@@ -210,6 +329,8 @@ Unpublished data from Barro Colorado Island
 
 ## Feng et al. 2025
 
+## Source Name: 'Feng et al. 2025' 
+
 ![sample_image](public/Feng_et_al._2025.png)
 
 **Link:** [Zenodo](https://zenodo.org/records/14525290)
@@ -218,6 +339,8 @@ Unpublished data from Barro Colorado Island
 *Note this dataset is simulated and therefore somewhat more controvertial in its inclusion. We believe the size, diversity and realism of the images merit inclusion.*
 
 ## Firoze et al. 2023
+
+### Source Name: "Firoze et al. 2023"
 
 ![sample_image](public/Firoze_et_al._2023.png)
 
@@ -241,6 +364,8 @@ Unpublished data from Barro Colorado Island
 
 ## JustDiggit
 
+### Source Name: "Justdiggit 2023"
+
 ![sample_image](public/Justdiggit_2023.png)
 
 **Link:** [JustDigIt](https://justdiggit.org/news/machine-learning-model-to-track-trees/)
@@ -259,11 +384,15 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 ## Lefebvre et al. 2024
 
+### Source Name: "Lefebvre et al. 2024"
+
 ![sample_image](public/Lefebvre_et_al._2024.png)
 
 [Dataset Link](https://www.frdr-dfdr.ca/repo/dataset/9f10a155-c89f-43ee-9864-da28ca436af6)
 
 ## Lucas et al. 2024
+
+### Source Name: "Lucas et al. 2024"
 
 ![sample_image](public/Lucas_et_al._2024.png)
 
@@ -295,6 +424,8 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 ## Takeshige et al. 2025
 
+### Source Name: "Takeshige et al. 2025"
+
 ![sample_image](public/Takeshige_et_al._2025.png)
 
 **Link:** https://esj-journals.onlinelibrary.wiley.com/doi/10.1111/1440-1703.12555
@@ -302,6 +433,8 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 **Location:** Japan
 
 ## Troles et al. 2024
+
+### Source Name: "Troles et al. 2024"
 
 ![sample_image](public/Troles_et_al._2024.png)
 
@@ -325,4 +458,26 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 **Location:** Barro Colorado Island, Panama
 
-There is also a training-only portion of this that was used in conjuction with a model to predict labels that were then verified. 
+There is also a training-only portion of this that was used in conjuction with a model to predict labels that were then verified.   
+
+# Unsupervised
+
+## Weinstein et al. 2018
+
+Coregistered LIDAR and RGB were acquired over 27 sites in the National Ecological Observation Network, USA. These sites cover a range of forest habitats. An unsupervised LiDAR tree detection algorithm was used to predict tree locations. These locatons were draped over the RGB data to create a very large weakly supervised dataset. There is currently over 40 million tree locations from the original dataset and more can be generated with ongoing data collection.
+
+**Citation**: Weinstein, B.G.; Marconi, S.; Bohlman, S.; Zare, A.; White, E. Individual Tree-Crown Detection in RGB Imagery Using Semi-Supervised Deep Learning Neural Networks. Remote Sens. 2019, 11, 1309. https://doi.org/10.3390/rs11111309
+
+**Location**: Forest across the United States (NEON)
+
+## Open Forest Observatory
+
+High resolution drone imagery used to create photogrametry-derived predictions of tree crowns.
+
+https://openforestobservatory.org/
+
+https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.13860
+
+### Source Name: "Young et al. 2025 unsupervised"
+
+***Location*** Forest across the United States

@@ -5,7 +5,11 @@
 
 # Overview
 
+<<<<<<< HEAD
 The MillionTrees benchmark is designed to provide *open*, *reproducible*, and *rigorous* evaluation of tree detection algorithms. This repo is the Python package for rapid data sharing and evaluation. With over 2 million annotations and tens of millions of weak annotations from algorithm derived workflows for pretraining, MillionTrees is the largest tree detection dataset globally.
+=======
+The MillionTrees benchmark is designed to provide *open*, *reproducible*, and *rigorous* evaluation of tree detection algorithms. This repo is the Python package for rapid data sharing and evaluation.
+>>>>>>> 3bd5c82 (OpenForestObservatory unsupervised data and improvements to point dataset)
 
 # Current status
 
@@ -29,6 +33,8 @@ The MillionTrees dataset represents where we are as a community. Many datasets a
 ```
 pip install milliontrees
 ```
+
+Hugging Face dataset loading and sharing functionality is included in the main package.
 
 ### Dev Requirements
 
@@ -62,7 +68,34 @@ Once the installation is complete, you can use the MillionTrees package in your 
 Datasets are documented on ReadTheDocs with sample images overlayed with annotations.
 https://milliontrees.idtrees.org/en/latest/datasets.html
 
+<<<<<<< HEAD
 **Dataset Release Report**: For detailed information about dataset versions, download sizes, and availability, see our [Dataset Release Report](https://milliontrees.idtrees.org/en/latest/dataset_release_report.html).
+=======
+## Key Features
+
+- **Dataset Size Management**: Preview and filter large datasets before downloading
+- **Flexible Filtering**: Control dataset size with per-source limits and sampling
+- **Unsupervised Integration**: Access millions of weakly-labeled tree annotations  
+- **Hugging Face Support**: Upload and share dataset subsets easily
+- **Reproducible Workflows**: Consistent dataset configurations across research teams
+
+## Quick Example
+
+```python
+from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
+
+# Preview dataset size before downloading
+dataset = TreeBoxesDataset(version='0.2', preview_only=True)
+
+# Download a manageable subset
+dataset = TreeBoxesDataset(
+    version='0.2',
+    max_samples_per_source=1000,  # Limit per source
+    sample_fraction=0.1,          # Random 10% sample
+    download=True
+)
+```
+>>>>>>> 3bd5c82 (OpenForestObservatory unsupervised data and improvements to point dataset)
 
 # Citing MillionTrees
 

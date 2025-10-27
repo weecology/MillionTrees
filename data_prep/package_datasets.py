@@ -8,6 +8,7 @@ from deepforest.utilities import read_file
 import cv2
 import rasterio
 import glob
+from pathlib import Path
 
 def remove_alpha_channel(datasets):
     """Remove alpha channels from images in the dataset."""
@@ -26,22 +27,19 @@ def remove_alpha_channel(datasets):
 
 
 def combine_datasets(dataset_paths, debug=False):
-    """Combine multiple datasets into a single DataFrame."""
     datasets = []
-    for dataset in dataset_paths:
-        datasets.append(pd.read_csv(dataset))
+    for dataset_path in dataset_paths:
+        df = pd.read_csv(dataset_path)
+        
+        # Standardize to filename column
+        if "image_path" in df.columns:
+            df = df.drop("filename", errors="ignore")  # Remove existing filename if present
+            df = df.rename(columns={"image_path": "filename"})
+        
+        datasets.append(df)
     
-    df = pd.concat(datasets)
-    df = df.rename(columns={"image_path":"filename"})
-    if debug:
-        df = df.groupby("source").head()
-
-    # Read the source_completeness.csv file
-    #source_completeness = pd.read_csv("source_completeness.csv")
-    #source_completeness = source_completeness[["source", "complete"]]
-    #df = df.merge(source_completeness, on="source", how="left")
+    df = pd.concat(datasets, ignore_index=True)
     df["complete"] = True
-
     return df
 
 
@@ -56,6 +54,7 @@ def split_dataset(datasets, split_column="filename", frac=0.8):
 
 def process_geometry_columns(datasets, geom_type):
     """Process geometry columns based on the dataset type."""
+    
     if geom_type == "box":
         datasets[["xmin", "ymin", "xmax", "ymax"]] = gpd.GeoSeries.from_wkt(datasets["geometry"]).bounds
     elif geom_type == "point":
@@ -120,10 +119,38 @@ def create_mini_datasets(datasets, base_dir, dataset_type, version):
         else:
             plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source)
 
-def create_release_files(base_dir, dataset_type):
+def create_release_files(base_dir, dataset_type, version):
     """Create release files for the dataset."""
     with open(f"{base_dir}{dataset_type}_{version}/RELEASE_{version}.txt", "w") as outfile:
         outfile.write(f"Version: {version}")
+
+def process_splits_and_release(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix=""):
+    """Wrapper function to perform splits and create release files for datasets.
+    
+    Args:
+        TreePolygons_datasets: DataFrame with polygon annotations
+        TreePoints_datasets: DataFrame with point annotations  
+        TreeBoxes_datasets: DataFrame with box annotations
+        base_dir: Base directory for output
+        version: Version string
+        suffix: Optional suffix to append to directory names (e.g., "_supervised")
+    """
+    # Adjust base directory if suffix provided
+    if suffix:
+        adjusted_base_dir = base_dir
+        # Update dataset directories with suffix
+        for dataset_type in ["TreeBoxes", "TreePoints", "TreePolygons"]:
+            os.makedirs(f"{adjusted_base_dir}{dataset_type}_{version}{suffix}", exist_ok=True)
+    
+    # Perform splits
+    zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix)
+    random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix)
+    cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix)
+
+    # Create release files
+    create_release_files(base_dir, f"TreeBoxes{suffix}", version)
+    create_release_files(base_dir, f"TreePoints{suffix}", version)  
+    create_release_files(base_dir, f"TreePolygons{suffix}", version)
 
 def zip_directory(folder_path, zip_path):
     """Zip the contents of a directory."""
@@ -138,51 +165,109 @@ def zip_directory(folder_path, zip_path):
                 arcname = os.path.relpath(file_path, folder_path)
                 zipf.write(file_path, arcname)
 
-def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version):
+def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix=""):
     """Perform random split and save the results."""
-    # Randomly split datasets into train and test (80/20 split)
-    TreePolygons_datasets = split_dataset(TreePolygons_datasets, split_column="filename", frac=0.8)
-    TreePoints_datasets = split_dataset(TreePoints_datasets, split_column="filename", frac=0.8)
-    TreeBoxes_datasets = split_dataset(TreeBoxes_datasets, split_column="filename", frac=0.8)
+    # Randomly split datasets into train and test (90/10 split)
+    TreePolygons_datasets = split_dataset(TreePolygons_datasets, split_column="filename", frac=0.9)
+    TreePoints_datasets = split_dataset(TreePoints_datasets, split_column="filename", frac=0.9)
+    TreeBoxes_datasets = split_dataset(TreeBoxes_datasets, split_column="filename", frac=0.9)
+
+    # remove any source with unsupervised from test
+    TreePolygons_datasets = TreePolygons_datasets[~((TreePolygons_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreePolygons_datasets.split == "test"))]
+    TreePoints_datasets = TreePoints_datasets[~((TreePoints_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreePoints_datasets.split == "test"))]
+    TreeBoxes_datasets = TreeBoxes_datasets[~((TreeBoxes_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test"))]
+    
+    # Select columns
+    columns_to_keep = ["filename", "geometry", "source", "split", "complete"]
+    TreePolygons_datasets = TreePolygons_datasets[columns_to_keep]
+    TreePoints_datasets = TreePoints_datasets[columns_to_keep]
+    TreeBoxes_datasets = TreeBoxes_datasets[columns_to_keep]
+
+    def limit_images_by_source(df: pd.DataFrame, max_images: int = 100) -> pd.DataFrame:
+        """Keep at most `max_images` unique filenames per source; set the rest to train."""
+        for source in df["source"].dropna().unique():
+            files = df.loc[df["source"] == source, "filename"].drop_duplicates()
+            if len(files) > max_images:
+                keep = files.head(n=max_images).tolist()
+                mask = (df["source"] == source) & (~df["filename"].isin(keep))
+                df.loc[mask, "split"] = "train"
+        return df
+
+    # Enforce the 100-image-per-source limit for each dataset
+    TreePolygons_datasets = limit_images_by_source(TreePolygons_datasets, max_images=100)
+    TreePoints_datasets = limit_images_by_source(TreePoints_datasets, max_images=100)
+    TreeBoxes_datasets = limit_images_by_source(TreeBoxes_datasets, max_images=100)
 
     # Save the splits to CSV
-    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons_{version}/random.csv", index=False)
-    TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}/random.csv", index=False)
-    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}/random.csv", index=False)
+    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons_{version}{suffix}/random.csv", index=False)
+    TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}{suffix}/random.csv", index=False)
+    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}{suffix}/random.csv", index=False)
 
-    print("random splits saved:")
-    print(f"TreePolygons: {base_dir}TreePolygons_{version}/random.csv")
-    print(f"TreePoints: {base_dir}TreePoints_{version}/random.csv")
-    print(f"TreeBoxes: {base_dir}TreeBoxes_{version}/random.csv")
+    print(f"random splits saved{' ('+suffix.strip('_')+')' if suffix else ''}:")
+    print(f"TreePolygons: {base_dir}TreePolygons_{version}{suffix}/random.csv")
+    print(f"TreePoints: {base_dir}TreePoints_{version}{suffix}/random.csv")
+    print(f"TreeBoxes: {base_dir}TreeBoxes_{version}{suffix}/random.csv")
 
-def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version):
+def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix=""):
     """Perform cross-geometry split and save the results."""
     # Assign all polygons to train, points to test, and boxes to test
-    TreePolygons_datasets["split"] = "train"
-    TreePoints_datasets["split"] = "test"
-    TreeBoxes_datasets["split"] = "test"
+    TreePolygons_datasets["split"] = "test"
+
+    # Filter which datasets go to polygon tests
+    TreePolygons_datasets = TreePolygons_datasets[TreePolygons_datasets.source.isin([
+        "Troles et al. 2024"
+    ])]
+    TreePoints_datasets["split"] = "train"
+    TreeBoxes_datasets["split"] = "train"
+
+    # remove any source with unsupervised from test
+    TreePolygons_datasets = TreePolygons_datasets[~((TreePolygons_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreePolygons_datasets.split == "test"))]
+    TreePoints_datasets = TreePoints_datasets[~((TreePoints_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreePoints_datasets.split == "test"))]
+    TreeBoxes_datasets = TreeBoxes_datasets[~((TreeBoxes_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test"))]
+    
+    # Select columns
+    columns_to_keep = ["filename", "geometry", "source", "split", "complete"]
+    TreePolygons_datasets = TreePolygons_datasets[columns_to_keep]
+    TreePoints_datasets = TreePoints_datasets[columns_to_keep]
+    TreeBoxes_datasets = TreeBoxes_datasets[columns_to_keep]
+
+    def limit_images_by_source(df: pd.DataFrame, max_images: int = 100) -> pd.DataFrame:
+        """Keep at most `max_images` unique filenames per source; set the rest to train."""
+        for source in df["source"].dropna().unique():
+            files = df.loc[df["source"] == source, "filename"].drop_duplicates()
+            if len(files) > max_images:
+                keep = files.head(n=max_images).tolist()
+                mask = (df["source"] == source) & (~df["filename"].isin(keep))
+                df.loc[mask, "split"] = "train"
+        return df
+
+    # Enforce the 100-image-per-source limit for each dataset
+    TreePolygons_datasets = limit_images_by_source(TreePolygons_datasets, max_images=100)
+    TreePoints_datasets = limit_images_by_source(TreePoints_datasets, max_images=100)
+    TreeBoxes_datasets = limit_images_by_source(TreeBoxes_datasets, max_images=100)
+
 
     # Save the splits to CSV
-    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons_{version}/crossgeometry.csv", index=False)
-    TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}/crossgeometry.csv", index=False)
-    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}/crossgeometry.csv", index=False)
+    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons_{version}{suffix}/crossgeometry.csv", index=False)
+    TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}{suffix}/crossgeometry.csv", index=False)
+    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}{suffix}/crossgeometry.csv", index=False)
 
-    print("Cross-geometry splits saved:")
-    print(f"TreePolygons: {base_dir}TreePolygons_{version}/crossgeometry.csv")
-    print(f"TreePoints: {base_dir}TreePoints_{version}/crossgeometry.csv")
-    print(f"TreeBoxes: {base_dir}TreeBoxes_{version}/crossgeometry.csv")
+    print(f"Cross-geometry splits saved{' ('+suffix.strip('_')+')' if suffix else ''}:")
+    print(f"TreePolygons: {base_dir}TreePolygons_{version}{suffix}/crossgeometry.csv")
+    print(f"TreePoints: {base_dir}TreePoints_{version}{suffix}/crossgeometry.csv")
+    print(f"TreeBoxes: {base_dir}TreeBoxes_{version}{suffix}/crossgeometry.csv")
 
 # Zero-shot split
-def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version):
+def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix=""):
     """Perform zero-shot split and save the results."""
     # Define test and train sources
-    test_sources_polygons = ["Troles et al. 2024"]
+    test_sources_polygons = ["Troles et al. 2024","Bolhman 2008"]
     train_sources_polygons = [x for x in TreePolygons_datasets.source.unique() if x not in test_sources_polygons]
 
     test_sources_points = ["Amirkolaee et al. 2023"]
     train_sources_points = [x for x in TreePoints_datasets.source.unique() if x not in test_sources_points]
 
-    test_sources_boxes = ["Radogoshi et al. 2021"]
+    test_sources_boxes = ["Radogoshi et al. 2021","SelvaBox","NEON_benchmark"]
     train_sources_boxes = [x for x in TreeBoxes_datasets.source.unique() if x not in test_sources_boxes]
 
     # Assign splits for polygons
@@ -198,20 +283,24 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     TreeBoxes_datasets.loc[TreeBoxes_datasets.source.isin(test_sources_boxes), "split"] = "test"
 
     # Save the splits to CSV
-    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons_{version}/zeroshot.csv", index=False)
-    TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}/zeroshot.csv", index=False)
-    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}/zeroshot.csv", index=False)
+    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons_{version}{suffix}/zeroshot.csv", index=False)
+    TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}{suffix}/zeroshot.csv", index=False)
+    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}{suffix}/zeroshot.csv", index=False)
 
-    print("Zero-shot splits saved:")
-    print(f"TreePolygons: {base_dir}TreePolygons_{version}/zeroshot.csv")
-    print(f"TreePoints: {base_dir}TreePoints_{version}/zeroshot.csv")
-    print(f"TreeBoxes: {base_dir}TreeBoxes_{version}/zeroshot.csv")
+    print(f"Zero-shot splits saved{' ('+suffix.strip('_')+')' if suffix else ''}:")
+    print(f"TreePolygons: {base_dir}TreePolygons_{version}{suffix}/zeroshot.csv")
+    print(f"TreePoints: {base_dir}TreePoints_{version}{suffix}/zeroshot.csv")
+    print(f"TreeBoxes: {base_dir}TreeBoxes_{version}{suffix}/zeroshot.csv")
+
+def filter_out_unsupervised(datasets):
+    """Filter out datasets that contain 'unsupervised' in the source name."""
+    return datasets[~datasets['source'].str.contains('unsupervised', case=False, na=False)]
 
 def check_for_updated_annotations(dataset, geometry):
     updated_annotations = [pd.read_csv(x) for x in glob.glob(f"data_prep/annotations/*{geometry}*.csv")]
     updated_annotations = pd.concat(updated_annotations)
 
-    dataset["basename"] = dataset["filename"].apply(lambda x: os.path.basename(x))
+    dataset["basename"] = dataset["filename"].astype(str).apply(lambda x: Path(x).name)
 
     # images to remove
     images_to_remove = updated_annotations[updated_annotations.remove =="Remove image from benchmark"].image_path.unique()
@@ -260,16 +349,20 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
         "/orange/ewhite/DeepForest/OAM_TCD/annotations.csv"
         ,"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
-        "/orange/ewhite/DeepForest/SelvaBox/annotations.csv"
+        "/orange/ewhite/DeepForest/SelvaBox/annotations.csv",
+        #"/orange/ewhite/web/public/MillionTrees/OpenForestObservatory/unsupervised/TreeBoxes_OFO.csv",
+        "/orange/ewhite/DeepForest/unsupervised/TreeBoxes_neon_unsupervised.csv"
    ]
 
     TreePoints = [
         "/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv",
         "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
         "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
-        "/orange/ewhite/DeepForest/Tonga/annotations.csv",
         '/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
-        "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv"
+        "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv",
+        #"/orange/ewhite/web/public/MillionTrees/OpenForestObservatory/unsupervised/TreePoints_OFO_unsupervised.csv",
+        "/orange/ewhite/DeepForest/unsupervised/TreePoints_neon_unsupervised.csv",
+        "/orange/ewhite/DeepForest/Yosemite/tiles/yosemite_all_annotations.csv"
     ]
 
     TreePolygons = [
@@ -292,16 +385,9 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
         "/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
         "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/annotations.csv",
-        "/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv"
+        "/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv",
         ]
-
-    unsupervised = {
-        "TreeBoxes": "/orange/ewhite/DeepForest/unsupervised/TreeBoxes_unsupervised.parquet",
-        "TreePoints": "/orange/ewhite/DeepForest/unsupervised/TreePoints_unsupervised.parquet",
-        "TreePolygons": "/orange/ewhite/DeepForest/unsupervised/TreePolygons_unsupervised.parquet"
-    }
     
-
     # Combine datasets
     TreeBoxes_datasets = combine_datasets(TreeBoxes, debug=debug)
     TreePoints_datasets = combine_datasets(TreePoints, debug=debug)
@@ -310,11 +396,6 @@ def run(version, base_dir, debug=False):
     # Remove rows where xmin equals xmax
     TreeBoxes_datasets = TreeBoxes_datasets[TreeBoxes_datasets["xmin"] != TreeBoxes_datasets["xmax"]]
     TreeBoxes_datasets = TreeBoxes_datasets[TreeBoxes_datasets["ymin"] != TreeBoxes_datasets["ymax"]]
-
-    # Remove alpha channels
-    #remove_alpha_channel(TreeBoxes_datasets)
-    #remove_alpha_channel(TreePoints_datasets)
-    #remove_alpha_channel(TreePolygons_datasets)
 
     # Check for updated annotations
     check_for_updated_annotations(TreeBoxes_datasets, "Boxes")
@@ -356,31 +437,49 @@ def run(version, base_dir, debug=False):
     create_mini_datasets(TreePoints_datasets, base_dir, "TreePoints", version)
     create_mini_datasets(TreePolygons_datasets, base_dir, "TreePolygons", version)
 
-    # Perform splits
-    zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version)
-    random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version)
-    cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version)
+    # Process all sources (including unsupervised)
+    print("\n=== Processing ALL sources (including unsupervised) ===")
+    process_splits_and_release(
+        TreePolygons_datasets.copy(), 
+        TreePoints_datasets.copy(), 
+        TreeBoxes_datasets.copy(), 
+        base_dir, 
+        version
+    )
+    
+    # Process supervised sources only (excluding unsupervised)
+    print("\n=== Processing SUPERVISED sources only (excluding unsupervised) ===")
+    TreeBoxes_supervised = filter_out_unsupervised(TreeBoxes_datasets)
+    TreePoints_supervised = filter_out_unsupervised(TreePoints_datasets)
+    TreePolygons_supervised = filter_out_unsupervised(TreePolygons_datasets)
+    
+    print(f"Filtered datasets:")
+    print(f"  TreeBoxes: {len(TreeBoxes_datasets)} -> {len(TreeBoxes_supervised)} samples")
+    print(f"  TreePoints: {len(TreePoints_datasets)} -> {len(TreePoints_supervised)} samples") 
+    print(f"  TreePolygons: {len(TreePolygons_datasets)} -> {len(TreePolygons_supervised)} samples")
+    
+    process_splits_and_release(
+        TreePolygons_supervised,
+        TreePoints_supervised, 
+        TreeBoxes_supervised,
+        base_dir,
+        version,
+        suffix="_supervised"
+    )
 
-    # Create release files
-    create_release_files(base_dir, "TreeBoxes")
-    create_release_files(base_dir, "TreePoints")
-    create_release_files(base_dir, "TreePolygons")
-
-    # Add unsupervised data to the folders
-    for dataset_type in ["TreeBoxes", "TreePoints", "TreePolygons"]:
-        shutil.copy(unsupervised[dataset_type], f"{base_dir}{dataset_type}_{version}/unsupervised")
-
-    # Zip datasets
-    zip_directory(f"{base_dir}TreeBoxes_{version}", f"{base_dir}TreeBoxes_{version}.zip")
-    zip_directory(f"{base_dir}TreePoints_{version}", f"{base_dir}TreePoints_{version}.zip")
-    zip_directory(f"{base_dir}TreePolygons_{version}", f"{base_dir}TreePolygons_{version}.zip")
+    # Zip datasets (commented out for large datasets to save space/time)
+    # zip_directory(f"{base_dir}TreeBoxes_{version}", f"{base_dir}TreeBoxes_{version}.zip")
+    # zip_directory(f"{base_dir}TreePoints_{version}", f"{base_dir}TreePoints_{version}.zip") 
+    # zip_directory(f"{base_dir}TreePolygons_{version}", f"{base_dir}TreePolygons_{version}.zip")
+    
+    # Zip only mini datasets
     zip_directory(f"{base_dir}MiniTreeBoxes_{version}", f"{base_dir}MiniTreeBoxes_{version}.zip")
     zip_directory(f"{base_dir}MiniTreePoints_{version}", f"{base_dir}MiniTreePoints_{version}.zip")
     zip_directory(f"{base_dir}MiniTreePolygons_{version}", f"{base_dir}MiniTreePolygons_{version}.zip")
 
 
 if __name__ == "__main__":
-    version = "v0.5"
+    version = "v0.6"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     debug = False
     run(version, base_dir, debug)

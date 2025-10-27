@@ -1,16 +1,14 @@
-import os
 import fnmatch
+import os
 from pathlib import Path
-
-import numpy as np
-import pandas as pd
-import torch
-from PIL import Image, ImageDraw
-from shapely import from_wkt
 
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-
+from PIL import Image, ImageDraw
+import numpy as np
+import pandas as pd
+from shapely import from_wkt
+import torch
 from torchvision.tv_tensors import BoundingBoxes, Mask
 from torchvision.ops import masks_to_boxes
 
@@ -52,12 +50,6 @@ class TreePolygonsDataset(MillionTreesDataset):
             'compressed_size':
                 17112645
         },
-        "0.1": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.1.zip",
-            'compressed_size':
-                40277152
-        },
         "0.2": {
             'download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.2.zip",
@@ -81,8 +73,6 @@ class TreePolygonsDataset(MillionTreesDataset):
                  remove_incomplete=False,
                  include_sources=None,
                  exclude_sources=None,
-                 unsupervised=False,
-                 unsupervised_args=None,
                  mini=False):
 
         self._version = version
@@ -99,60 +89,12 @@ class TreePolygonsDataset(MillionTreesDataset):
         # Modify download URLs for mini datasets
         if mini:
             self._versions_dict = self._get_mini_versions_dict()
+
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
 
-        # Optionally trigger unsupervised download pipeline
-        if unsupervised:
-            from milliontrees.download_unsupervised import run as run_unsupervised
-            defaults = {
-                'data_dir':
-                    str(self._data_dir),
-                'annotations_parquet':
-                    self._data_dir /
-                    'unsupervised/TreePolygons_unsupervised.parquet',
-                'max_tiles_per_site':
-                    None,
-                'patch_size':
-                    400,
-                'allow_empty':
-                    False,
-                'num_workers':
-                    4,
-                'token_path':
-                    'neon_token.txt',
-                'data_product':
-                    'DP3.30010.001',
-                'download_dir':
-                    'neon_downloads',
-            }
-            if isinstance(unsupervised_args, dict):
-                defaults.update(unsupervised_args)
-            run_unsupervised(**defaults)
-
         # Load splits
         df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
-
-        # Load unsupervised data if it is included or not excluded
-        if (include_sources and any('unsupervised' in src for src in include_sources)) or \
-           (exclude_sources and not any('unsupervised' in src for src in exclude_sources)):
-            unsupervised_dir = self._data_dir / 'unsupervised'
-            print(
-                f"Loading unsupervised data from {unsupervised_dir}, this may take a while..."
-            )
-            for root, _, files in os.walk(unsupervised_dir):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    try:
-                        if file.endswith('.parquet'):
-                            unsupervised_df = pd.read_parquet(file_path)
-                        elif file.endswith('.csv'):
-                            unsupervised_df = pd.read_csv(file_path)
-                        else:
-                            continue
-                        df = pd.concat([df, unsupervised_df], ignore_index=True)
-                    except Exception as e:
-                        print(f"Warning: failed to read {file_path}: {e}")
 
         # Remove incomplete data based on flag
         if remove_incomplete:

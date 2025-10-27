@@ -78,6 +78,7 @@ def get_counts(g, n_groups):
                                                 return_counts=True)
     counts = torch.zeros(n_groups, device=g.device)
     counts[unique_groups] = unique_counts.float()
+    
     return counts
 
 
@@ -227,8 +228,9 @@ def format_eval_results(results: Dict[str, Any], dataset) -> str:
                 f"Worst-group {metric_name}: {worst_group_score:.3f}")
 
         scores = [row['Score'] for row in source_data]
-        formatted_output.append(f"Min {metric_name}: {min(scores):.3f}")
-        formatted_output.append(f"Max {metric_name}: {max(scores):.3f}")
-        formatted_output.append(f"Std {metric_name}: {np.std(scores):.3f}")
+        if len(scores) > 0:
+            formatted_output.append(f"Min {metric_name}: {min(scores):.3f}")
+            formatted_output.append(f"Max {metric_name}: {max(scores):.3f}")
+            formatted_output.append(f"Std {metric_name}: {np.std(scores):.3f}")
 
     return "\n".join(formatted_output)

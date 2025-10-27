@@ -8,7 +8,7 @@ version = "0.2.1"
 description = "Benchmark dataset for Airborne Tree Machine Learning"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.8,<3.13"
+requires-python = ">=3.10,<3.13"
 classifiers = [
     "Development Status :: 6 - Mature",
     "License :: OSI Approved :: MIT License",
@@ -47,6 +47,9 @@ dependencies = [
     "shapely",
     "albumentations",
     "torchmetrics",
+    "pyarrow>=17.0.0",
+    "datasets",
+    "huggingface_hub",
 ]
 
 [project.optional-dependencies]
@@ -62,7 +65,14 @@ dev = [
     "python-dotenv",
     "outdated",
     "build",
-    "twine"
+    "twine",
+    "deepforest @ git+https://github.com/Weecology/DeepForest.git",
+    "geopandas",
+    "rasterio",
+    "scikit-image",
+    "requests",
+    "neonutilities",
+    "dask[diagnostics]",
 ]
 docs = [
     "sphinx",
@@ -74,11 +84,6 @@ docs = [
     "nbmake",
     "nbsphinx",
     "nbqa",
-]
-unsupervised = [
-    "neonutilities; python_version >= '3.9'",
-    "deepforest",
-    "dask[complete]",
 ]
 
 [tool.setuptools]
