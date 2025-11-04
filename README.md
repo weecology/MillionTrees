@@ -5,11 +5,7 @@
 
 # Overview
 
-<<<<<<< HEAD
-The MillionTrees benchmark is designed to provide *open*, *reproducible*, and *rigorous* evaluation of tree detection algorithms. This repo is the Python package for rapid data sharing and evaluation. With over 2 million annotations and tens of millions of weak annotations from algorithm derived workflows for pretraining, MillionTrees is the largest tree detection dataset globally.
-=======
 The MillionTrees benchmark is designed to provide *open*, *reproducible*, and *rigorous* evaluation of tree detection algorithms. This repo is the Python package for rapid data sharing and evaluation.
->>>>>>> 3bd5c82 (OpenForestObservatory unsupervised data and improvements to point dataset)
 
 # Current status
 

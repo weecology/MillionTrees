@@ -1,10 +1,6 @@
 # Evaluation
 
-<<<<<<< HEAD
-Once you have a trained model, evaluate it on the test split. The evaluation API expects per-image predictions in the same format as the ground truth targets: a dict with keys `y` (geometry tensor), `labels`, and `scores`.
-=======
 Once you have a model, evaluate it on the test split. The evaluation API expects per-image predictions in the same format as the ground truth targets: a dict with keys `y` (geometry tensor), `labels`, and `scores`.
->>>>>>> 3bd5c82 (OpenForestObservatory unsupervised data and improvements to point dataset)
 
 ```python
 from milliontrees.common.data_loaders import get_eval_loader

@@ -16,9 +16,9 @@ uv sync --extra dev
 cd /blue/ewhite/b.weinstein/src/MillionTrees/data_prep
 
 # Configuration
-DATA_DIR="/orange/ewhite/web/public/MillionTrees/OpenForestObservatory"
-OUTPUT_DIR="/orange/ewhite/DeepForest/unsupervised"
-OFO_ROOT="/orange/ewhite/web/public/MillionTrees/OpenForestObservatory"
+DATA_DIR="/orange/ewhite/DeepForest/OpenForestObservatory"
+OUTPUT_DIR="/orange/ewhite/DeepForest/OpenForestObservatory/unsupervised"
+OFO_ROOT="/orange/ewhite/DeepForest/OpenForestObservatory"
 
 # Create necessary directories
 mkdir -p "$OUTPUT_DIR"
@@ -36,9 +36,7 @@ uv run process_ofo_unsupervised.py \
     --ofo_root "$OFO_ROOT" \
     --output_dir "$OUTPUT_DIR" \
     --patch_size 800 \
-    --allow_empty \
     --num_missions 2 \
-    --download_orthomosaics
 
 echo "OFO unsupervised processing completed!"
 

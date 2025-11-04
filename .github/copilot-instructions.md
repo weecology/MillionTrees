@@ -123,3 +123,28 @@ def filter_valid_annotations(annotations: list[dict]) -> list[dict]:
 ## Summary
 
 Write code that is clear, direct, and fails obviously when something goes wrong. Prefer simplicity over robustness, and trust that proper system design and monitoring will catch issues rather than trying to handle every possible error case in the code itself.
+
+### File I/O Patterns
+
+#### Preferred File Reading
+```python
+# Good: Let file operations fail fast and explicitly
+def process_annotations(data_dir: str) -> pd.DataFrame:
+    treetops_file = os.path.join(data_dir, 'treetops.gpkg')
+    return gpd.read_file(treetops_file)  # FileNotFoundError will bubble up clearly
+
+# Good: Use optional return types when files may legitimately not exist
+def load_optional_config(config_path: str) -> Optional[dict]:
+    try:
+        with open(config_path) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None  # Explicit handling of expected case
+
+# Avoid: Silent failures with existence checks
+def process_annotations(data_dir: str) -> Optional[pd.DataFrame]:
+    treetops_file = os.path.join(data_dir, 'treetops.gpkg')
+    if os.path.exists(treetops_file):
+        return gpd.read_file(treetops_file)
+    return None  # Silent failure makes debugging harder
+```

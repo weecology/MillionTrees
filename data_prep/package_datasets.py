@@ -30,17 +30,17 @@ def combine_datasets(dataset_paths, debug=False):
     datasets = []
     for dataset_path in dataset_paths:
         df = pd.read_csv(dataset_path)
-        
-        # Standardize to filename column
         if "image_path" in df.columns:
-            df = df.drop("filename", errors="ignore")  # Remove existing filename if present
+            if "filename" in df.columns:
+                df = df.drop(columns="filename")  # Remove existing filename if present
             df = df.rename(columns={"image_path": "filename"})
-        
+            df.reset_index(drop=True, inplace=True)
         datasets.append(df)
     
-    df = pd.concat(datasets, ignore_index=True)
-    df["complete"] = True
-    return df
+    combined_df = pd.concat(datasets, ignore_index=True)
+    combined_df["complete"] = True
+
+    return combined_df
 
 
 def split_dataset(datasets, split_column="filename", frac=0.8):
@@ -117,7 +117,7 @@ def create_mini_datasets(datasets, base_dir, dataset_type, version):
             height, width, channels = cv2.imread(f"{base_dir}Mini{dataset_type}_{version}/images/" + group.image_path.iloc[0]).shape
             plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source, height=height, width=width)
         else:
-            plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source)
+            plot_results(annotations=group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source)
 
 def create_release_files(base_dir, dataset_type, version):
     """Create release files for the dataset."""
@@ -178,10 +178,17 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
     TreeBoxes_datasets = TreeBoxes_datasets[~((TreeBoxes_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test"))]
     
     # Select columns
-    columns_to_keep = ["filename", "geometry", "source", "split", "complete"]
-    TreePolygons_datasets = TreePolygons_datasets[columns_to_keep]
-    TreePoints_datasets = TreePoints_datasets[columns_to_keep]
-    TreeBoxes_datasets = TreeBoxes_datasets[columns_to_keep]
+    columns_to_keep = ["filename", "geometry", "source", "split", "complete",
+                       "xmin", "ymin", "xmax", "ymax", "x", "y", "polygon"]
+
+    def keep_columns_if_exist(df: pd.DataFrame, cols: list) -> pd.DataFrame:
+        """Return df with only the columns from cols that actually exist in df (preserve order)."""
+        existing = [c for c in cols if c in df.columns]
+        return df[existing]
+
+    TreePolygons_datasets = keep_columns_if_exist(TreePolygons_datasets, columns_to_keep)
+    TreePoints_datasets = keep_columns_if_exist(TreePoints_datasets, columns_to_keep)
+    TreeBoxes_datasets = keep_columns_if_exist(TreeBoxes_datasets, columns_to_keep)
 
     def limit_images_by_source(df: pd.DataFrame, max_images: int = 100) -> pd.DataFrame:
         """Keep at most `max_images` unique filenames per source; set the rest to train."""
@@ -298,42 +305,51 @@ def filter_out_unsupervised(datasets):
 
 def check_for_updated_annotations(dataset, geometry):
     updated_annotations = [pd.read_csv(x) for x in glob.glob(f"data_prep/annotations/*{geometry}*.csv")]
+    if not updated_annotations:
+        return dataset
+        
     updated_annotations = pd.concat(updated_annotations)
+    dataset["basename"] = dataset["filename"].str.split('/').str[-1]
 
-    dataset["basename"] = dataset["filename"].astype(str).apply(lambda x: Path(x).name)
+    # Remove images marked for removal (vectorized)
+    images_to_remove = updated_annotations[updated_annotations.remove == "Remove image from benchmark"]["image_path"].unique()
+    dataset = dataset[~dataset["basename"].isin(images_to_remove)]
 
-    # images to remove
-    images_to_remove = updated_annotations[updated_annotations.remove =="Remove image from benchmark"].image_path.unique()
-    dataset = dataset[~dataset.basename.isin(images_to_remove)]
-
-    updated_annotations = updated_annotations[~(updated_annotations.label.isnull())]
-
-    # Check the filenames
-    updated_filenames = updated_annotations["image_path"].unique()
-    dataset_filenames = dataset["basename"].unique()
-
-    # Check if any updated filenames are in the dataset
-    for filename in updated_filenames:
-        if filename in dataset_filenames:
-            print(f"Updated annotation found for {filename}")
-            
-            # Update the dataset with the new annotation
-            original_annotations = dataset[dataset["basename"] == filename]
-            updated_image_annotations = updated_annotations[updated_annotations["image_path"] == filename].copy(deep=True)
-            updated_image_annotations["source"] = original_annotations["source"].values[0]
-            updated_image_annotations = read_file(updated_image_annotations, root_dir=os.path.dirname(dataset["filename"].values[0]))
-            
-            root_dir = os.path.dirname(dataset["filename"].values[0])
-            updated_image_annotations["filename"] = updated_image_annotations["image_path"].apply(lambda x: os.path.join(x,root_dir))
-            
-            # Remove the original annotations
-            dataset = dataset[dataset["basename"] != filename]
-
-            # Append the updated annotations
-            dataset = pd.concat([dataset, updated_image_annotations], ignore_index=True)
-        else:
-            continue
-
+    # Filter valid annotations
+    updated_annotations = updated_annotations[updated_annotations["label"].notna()]
+    
+    # Use set intersection for fast lookup
+    updated_filenames = set(updated_annotations["image_path"].unique())
+    dataset_filenames = set(dataset["basename"].unique())
+    matching_files = updated_filenames & dataset_filenames
+    
+    if not matching_files:
+        return dataset
+        
+    # Batch process all updates
+    root_dir = os.path.dirname(dataset["filename"].iloc[0])
+    
+    # Remove all old annotations at once
+    dataset = dataset[~dataset["basename"].isin(matching_files)]
+    
+    # Process all updates in batch
+    new_annotations = []
+    for filename in matching_files:
+        original_source = dataset[dataset["basename"] == filename]["source"].iloc[0] if len(dataset[dataset["basename"] == filename]) > 0 else "Unknown"
+        
+        updated_batch = updated_annotations[updated_annotations["image_path"] == filename].copy()
+        updated_batch["source"] = original_source
+        updated_batch["filename"] = updated_batch["image_path"].apply(lambda x: os.path.join(root_dir, x))
+        
+        new_annotations.append(updated_batch)
+    
+    if new_annotations:
+        # Single concat operation
+        all_new = pd.concat(new_annotations, ignore_index=True)
+        all_new = read_file(all_new, root_dir=root_dir)
+        dataset = pd.concat([dataset, all_new], ignore_index=True)
+    
+    return dataset
 def run(version, base_dir, debug=False):
     TreeBoxes = [
         "/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
@@ -350,8 +366,8 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/OAM_TCD/annotations.csv"
         ,"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
         "/orange/ewhite/DeepForest/SelvaBox/annotations.csv",
-        #"/orange/ewhite/web/public/MillionTrees/OpenForestObservatory/unsupervised/TreeBoxes_OFO.csv",
-        "/orange/ewhite/DeepForest/unsupervised/TreeBoxes_neon_unsupervised.csv"
+        "/orange/ewhite/DeepForest/unsupervised/unsupervised/unsupervised_neon_tiled.csv",
+        "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreeBoxes_OFO_unsupervised.csv"
    ]
 
     TreePoints = [
@@ -360,9 +376,8 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
         '/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
         "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv",
-        #"/orange/ewhite/web/public/MillionTrees/OpenForestObservatory/unsupervised/TreePoints_OFO_unsupervised.csv",
-        "/orange/ewhite/DeepForest/unsupervised/TreePoints_neon_unsupervised.csv",
-        "/orange/ewhite/DeepForest/Yosemite/tiles/yosemite_all_annotations.csv"
+        "/orange/ewhite/DeepForest/Yosemite/tiles/yosemite_all_annotations.csv",
+        "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreePoints_OFO_unsupervised.csv"
     ]
 
     TreePolygons = [

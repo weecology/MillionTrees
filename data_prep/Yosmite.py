@@ -74,6 +74,8 @@ def process_tiles(data_array, label_array, save_dir, patch_size=800, padding=400
             tile_count += 1
     
     all_sites = pd.concat(saved_tiles, ignore_index=True)
+    # image_path is fullpath
+    all_sites['image_path'] = all_sites['image_path'].apply(lambda x: os.path.join(save_dir, x))
     all_sites.to_csv(os.path.join(save_dir, 'yosemite_all_annotations.csv'))
 
     return saved_tiles

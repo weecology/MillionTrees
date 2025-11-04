@@ -282,7 +282,7 @@ def download_and_tile_neon_data(annotations_path: str, data_dir: str, max_tiles_
         )
 
         # Normalize schema for MillionTrees TreeBoxes
-        tiled_df['filename'] = tiled_df['image_path'].apply(lambda x: os.path.join(images_dir, x))
+        tiled_df['filename'] = tiled_df['image_path'].apply(lambda x: os.path.join(tiled_output_dir, x))
         tiled_df['source'] = 'Weinstein et al. 2018 unsupervised'
         tiled_df['split'] = 'train'
 
@@ -307,6 +307,7 @@ def download_and_tile_neon_data(annotations_path: str, data_dir: str, max_tiles_
 
     if crop_annotations:
         crop_annotations = pd.concat(crop_annotations, ignore_index=True)
+        crop_annotations = read_file(crop_annotations)
         output_path = os.path.join(data_dir, 'unsupervised', 'unsupervised_neon_tiled.csv')
         crop_annotations.to_csv(output_path, index=False)
         print(f"Saved {len(crop_annotations)} tiled annotations to {output_path}")
