@@ -105,6 +105,7 @@ def create_mini_datasets(datasets, base_dir, dataset_type, version):
 
     # Generate visualizations for each source
     for source, group in mini_annotations.groupby("source"):
+        print(source)
         group["image_path"] = group["filename"]
         group = read_file(group, root_dir=f"{base_dir}Mini{dataset_type}_{version}/images/")
         group.root_dir = f"{base_dir}Mini{dataset_type}_{version}/images/"
@@ -113,11 +114,8 @@ def create_mini_datasets(datasets, base_dir, dataset_type, version):
         source = source.replace(" ", "_")
         
         # Handle polygons specifically to include image dimensions
-        if dataset_type == "TreePolygons":
-            height, width, channels = cv2.imread(f"{base_dir}Mini{dataset_type}_{version}/images/" + group.image_path.iloc[0]).shape
-            plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source, height=height, width=width)
-        else:
-            plot_results(annotations=group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source)
+        height, width, channels = cv2.imread(f"{base_dir}Mini{dataset_type}_{version}/images/" + group.image_path.iloc[0]).shape
+        plot_results(group, savedir="/home/b.weinstein/MillionTrees/docs/public/", basename=source, height=height, width=width)
 
 def create_release_files(base_dir, dataset_type, version):
     """Create release files for the dataset."""
@@ -140,7 +138,7 @@ def process_splits_and_release(TreePolygons_datasets, TreePoints_datasets, TreeB
         adjusted_base_dir = base_dir
         # Update dataset directories with suffix
         for dataset_type in ["TreeBoxes", "TreePoints", "TreePolygons"]:
-            os.makedirs(f"{adjusted_base_dir}{dataset_type}_{version}{suffix}", exist_ok=True)
+            os.makedirs(f"{adjusted_base_dir}{dataset_type}_{suffix}_{version}", exist_ok=True)
     
     # Perform splits
     zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix)
