@@ -4,13 +4,57 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        
         {
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
-        }
+        },
+        {
+            "name": "Debug NEON Unsupervised Processing",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/data_prep/process_neon_unsupervised.py",
+            "args": [
+                "--csv_glob_pattern", "/blue/ewhite/veitchmichaelisj/deeplidar/output/*.csv",
+                "--format_output_dir", "/orange/ewhite/DeepForest/unsupervised",
+                "--data_dir", "/orange/ewhite/DeepForest/unsupervised",
+                "--max_tiles_per_site", "1",
+                "--max_tiles", "2",
+                "--patch_size", "400",
+                "--token_path", "/blue/ewhite/b.weinstein/src/MillionTrees/neon_token.txt",
+                "--data_product", "DP3.30010.001",
+                "--download_dir", "/orange/ewhite/DeepForest/unsupervised"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/data_prep",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}:${env:PYTHONPATH}"
+            },
+            "justMyCode": false,
+            "stopOnEntry": false
+        },
+        {
+            "name": "Debug OFO Unsupervised Processing",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/data_prep/process_ofo_unsupervised.py",
+            "args": [
+                "--data_dir", "/blue/ewhite/b.weinstein/test_ofo_unsupervised",
+                "--ofo_root", "/blue/ewhite/b.weinstein/test_ofo_unsupervised/downloads",
+                "--output_dir", "/blue/ewhite/b.weinstein/test_ofo_unsupervised/formatted",
+                "--num_missions", "3",
+                "--patch_size", "800",
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/data_prep",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}:${env:PYTHONPATH}"
+            },
+            "justMyCode": false,
+            "stopOnEntry": false
+        },
+        
     ]
 }

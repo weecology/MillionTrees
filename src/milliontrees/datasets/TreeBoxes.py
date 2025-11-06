@@ -1,8 +1,10 @@
 from pathlib import Path
 import os
+from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+from PIL import Image
 import torch
 import albumentations as A
 import torchvision.transforms as T
@@ -65,27 +67,11 @@ class TreeBoxesDataset(MillionTreesDataset):
     """
     _dataset_name = 'TreeBoxes'
     _versions_dict = {
-        '0.0': {
+        "0.8": {
             'download_url':
-                'https://github.com/weecology/MillionTrees/releases/download/0.0.0-dev1/TreeBoxes_v0.0.zip',
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.8.zip",
             'compressed_size':
-                5940337
-        },
-        "0.1": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.1.zip",
-            'compressed_size':
-                3476300
-        },
-        "0.2": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.2.zip",
-            'compressed_size':
-                6717977561
-        },
-        "0.5": {
-            'download_url': "",
-            'compressed_size': "41108312"
+                45304108
         }
     }
 
@@ -100,8 +86,6 @@ class TreeBoxesDataset(MillionTreesDataset):
                  image_size=448,
                  include_sources=None,
                  exclude_sources=None,
-                 unsupervised=False,
-                 unsupervised_args=None,
                  mini=False):
 
         self._version = version
@@ -109,7 +93,6 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.geometry_name = geometry_name
         self.eval_score_threshold = eval_score_threshold
         self.image_size = image_size
-        self.unsupervised = unsupervised
         self.mini = mini
 
         if self._split_scheme not in ['random', 'zeroshot', 'crossgeometry']:
@@ -125,41 +108,6 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         # Load splits
         df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
-
-        # Optionally trigger unsupervised download pipeline
-        if unsupervised:
-            from milliontrees.download_unsupervised import run as run_unsupervised
-            # If unsupervised hasn't been downloaded, download it
-            if not os.path.exists(
-                    self._data_dir /
-                    'unsupervised/unsupervised_annotations_tiled..'):
-                defaults = {
-                    'data_dir':
-                        str(self._data_dir),
-                    'annotations_parquet':
-                        str(self._data_dir /
-                            'unsupervised/TreeBoxes_unsupervised.parquet'),
-                    'max_tiles_per_site':
-                        None,
-                    'patch_size':
-                        400,
-                    'allow_empty':
-                        False,
-                    'num_workers':
-                        4,
-                    'token_path':
-                        'neon_token.txt',
-                    'data_product':
-                        'DP3.30010.001',
-                    'download_dir':
-                        str(self._data_dir / 'unsupervised/neon_downloads'),
-                }
-                if isinstance(unsupervised_args, dict):
-                    defaults.update(unsupervised_args)
-                run_unsupervised(**defaults)
-
-        # (moved) Unsupervised data will be appended later, after include/exclude filters,
-        # unless it is explicitly excluded.
 
         # Remove incomplete data based on flag
         if remove_incomplete:
@@ -190,29 +138,13 @@ class TreeBoxesDataset(MillionTreesDataset):
                 fnmatch.fnmatch(s, p) for p in patterns_exclude_lower))
             df = df[~mask_exclude]
 
-        # After applying filters to labeled data, optionally append unsupervised data additively
-        if self.unsupervised:
-            unsupervised_dir = self._data_dir / 'unsupervised'
-            print(
-                f"Loading unsupervised data from {unsupervised_dir}, this may take a while..."
-            )
-            for root, _, files in os.walk(unsupervised_dir):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    if file.endswith('.parquet'):
-                        unsupervised_df = pd.read_parquet(file_path)
-                        unsupervised_df["split"] = "train"
-                        df = pd.concat([df, unsupervised_df], ignore_index=True)
-
         # Splits
         self._split_dict = {
             'train': 0,
-            'val': 1,
-            'test': 2,
+            'test': 1,
         }
         self._split_names = {
             'train': 'Train',
-            'val': 'Validation (OOD/Trans)',
             'test': 'Test (OOD/Trans)',
         }
 
