@@ -26,7 +26,7 @@ class TreePointsDataset(MillionTreesDataset):
     Input (x):
         RGB images from camera traps
     Label (y):
-        y is a n x 4-dimensional vector where each line represents a box coordinate (x_min, y_min, x_max, y_max)
+        y is an n x 2 matrix where each row represents a keypoint (x, y)
     Metadata:
         Each image is annotated with the following metadata
             - location (int): location id
@@ -36,21 +36,11 @@ class TreePointsDataset(MillionTreesDataset):
     """
     _dataset_name = 'TreePoints'
     _versions_dict = {
-        '0.0': {
+        "0.8": {
             'download_url':
-                'https://github.com/weecology/MillionTrees/releases/download/0.0.0-dev1/TreePoints_v0.0.zip',
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.8.zip",
             'compressed_size':
-                523312564
-        },
-        "0.2": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.2.zip",
-            'compressed_size':
-                1459676926
-        },
-        "0.6": {
-            'download_url': "",
-            'compressed_size': "160815024"
+                160910816
         }
     }
 
@@ -118,12 +108,10 @@ class TreePointsDataset(MillionTreesDataset):
         # Splits
         self._split_dict = {
             'train': 0,
-            'val': 1,
-            'test': 2,
+            'test': 1,
         }
         self._split_names = {
             'train': 'Train',
-            'val': 'Validation',
             'test': 'Test',
         }
 
@@ -219,16 +207,19 @@ class TreePointsDataset(MillionTreesDataset):
             results[metric] = result
             results_str += result_str
 
-        detection_accs = []
-        for k, v in results.items():
-            if k.startswith('detection_acc_source:'):
+        # Compute average keypoint accuracy across sources (domains)
+        kp_accs = []
+        kp_results = results.get("KeypointAccuracy", {})
+        for k, v in kp_results.items():
+            if k.startswith('keypoint_acc_source:'):
                 d = k.split(':')[1]
-                count = results[f'source:{d}']
+                count = kp_results.get(f'count_source:{d}', 0)
                 if count > 0:
-                    detection_accs.append(v)
-        detection_acc_avg_dom = np.array(detection_accs).mean()
-        results['detection_acc_avg_dom'] = detection_acc_avg_dom
-        results_str = f'Average detection_acc across source: {detection_acc_avg_dom:.3f}\n' + results_str
+                    kp_accs.append(v)
+        if len(kp_accs) > 0:
+            keypoint_acc_avg_dom = np.array(kp_accs).mean()
+            results['keypoint_acc_avg_dom'] = keypoint_acc_avg_dom
+            results_str = f'Average keypoint_acc across source: {keypoint_acc_avg_dom:.3f}\n' + results_str
 
         # Format results with tables
         formatted_results = format_eval_results(results, self)

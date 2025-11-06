@@ -336,18 +336,12 @@ def main():
     tiled_boxes = pd.concat(tiled_boxes)
     
     tiled_boxes["image_path"] = tiled_boxes["filename"].apply(lambda x: os.path.join(images_dir,x))
-    tiled_boxes = read_file(tiled_boxes, root_dir=images_dir)
-
-    tiled_boxes["image_path"] = tiled_boxes["image_path"].apply(lambda x: os.path.join(images_dir,x))
     tiled_boxes = tiled_boxes.drop(columns=['filename'])
     tiled_boxes.to_csv(os.path.join(images_dir, 'TreeBoxes_OFO_unsupervised.csv'), index=False)
 
     tiled_points = pd.concat(tiled_points)
 
     tiled_points["image_path"] = tiled_points["filename"].apply(lambda x: os.path.join(images_dir,x))
-    tiled_points = read_file(tiled_points, root_dir=images_dir)
-
-    tiled_points["image_path"] = tiled_points["image_path"].apply(lambda x: os.path.join(images_dir,x))
     
     # remove filename column to avoid confusion
     tiled_points = tiled_points.drop(columns=['filename'])

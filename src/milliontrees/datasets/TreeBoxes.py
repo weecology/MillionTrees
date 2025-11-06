@@ -67,21 +67,11 @@ class TreeBoxesDataset(MillionTreesDataset):
     """
     _dataset_name = 'TreeBoxes'
     _versions_dict = {
-        '0.0': {
+        "0.8": {
             'download_url':
-                'https://github.com/weecology/MillionTrees/releases/download/0.0.0-dev1/TreeBoxes_v0.0.zip',
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.8.zip",
             'compressed_size':
-                5940337
-        },
-        "0.2": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.2.zip",
-            'compressed_size':
-                6717977561
-        },
-        "0.6": {
-            'download_url': "",
-            'compressed_size': "41108312"
+                45304108
         }
     }
 
@@ -151,12 +141,10 @@ class TreeBoxesDataset(MillionTreesDataset):
         # Splits
         self._split_dict = {
             'train': 0,
-            'val': 1,
-            'test': 2,
+            'test': 1,
         }
         self._split_names = {
             'train': 'Train',
-            'val': 'Validation (OOD/Trans)',
             'test': 'Test (OOD/Trans)',
         }
 

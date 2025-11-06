@@ -199,7 +199,7 @@ def format_eval_results(results: Dict[str, Any], dataset) -> str:
                 source_data.append({
                     'Source': source_names[group_id],
                     'Score': value,
-                    'Count': metric_results.get(f'count_group:{group_id}', 0)
+                    'Count': metric_results.get(f'count_source:{group_id}', 0)
                 })
 
         # Create source table

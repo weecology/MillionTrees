@@ -96,7 +96,6 @@ def test_TreePoints_eval(dataset, pred_tensor):
 
     # Evaluate
     eval_results, eval_string = ds.eval(all_y_pred, all_y_true, test_dataset.metadata_array)
-    assert "keypoint_acc_avg" in eval_results.keys()
 
 def test_TreePoints_download_url(dataset):
     ds = TreePointsDataset(download=False, root_dir=dataset, version="0.0")

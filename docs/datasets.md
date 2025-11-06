@@ -470,6 +470,8 @@ Coregistered LIDAR and RGB were acquired over 27 sites in the National Ecologica
 
 **Location**: Forest across the United States (NEON)
 
+![sample_image]("public/Weinstein_et_al._2018_unsupervised.png")
+
 ## Open Forest Observatory
 
 High resolution drone imagery used to create photogrametry-derived predictions of tree crowns.
@@ -481,3 +483,5 @@ https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.13860
 ### Source Name: "Young et al. 2025 unsupervised"
 
 ***Location*** Forest across the United States
+
+![sample_image]("public/Young et al. 2025 unsupervised.png")

@@ -520,8 +520,6 @@ class KeypointAccuracy(ElementwiseMetric):
         distance = torch.cdist(src_keypoints.float(),
                                pred_keypoints.float(),
                                p=2)
-
-        # Inversion of distance to get relative distance
         return distance
 
     def _accuracy(self, src_keypoints, pred_keypoints, distance_threshold):
@@ -529,11 +527,18 @@ class KeypointAccuracy(ElementwiseMetric):
         total_pred = len(pred_keypoints)
         if total_gt > 0 and total_pred > 0:
             # Define the matcher and distance matrix based on iou
-            matcher = Matcher(distance_threshold,
-                              distance_threshold,
+            # Convert distances to a similarity score where higher is better
+            # and threshold accordingly so that matches within the distance_threshold are accepted
+            distance_matrix = self._point_nearness(src_keypoints,
+                                                   pred_keypoints)
+            # Similarity in [0, 1], higher is better (0 distance -> 1 similarity)
+            similarity_matrix = 1.0 / (1.0 + distance_matrix)
+            sim_threshold = 1.0 / (1.0 + distance_threshold)
+
+            matcher = Matcher(sim_threshold,
+                              sim_threshold,
                               allow_low_quality_matches=False)
-            match_quality_matrix = self._point_nearness(src_keypoints,
-                                                        pred_keypoints)
+            match_quality_matrix = similarity_matrix
             results = matcher(match_quality_matrix)
             true_positive = torch.count_nonzero(results.unique() != -1)
             matched_elements = results[results > -1]
