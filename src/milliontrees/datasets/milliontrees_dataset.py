@@ -114,7 +114,7 @@ class MillionTreesDataset:
         # Check splits
         assert self.split_dict.keys() == self.split_names.keys()
         assert 'train' in self.split_dict
-        assert 'val' in self.split_dict
+        assert 'test' in self.split_dict
 
         # Check the form of the required arrays
         assert isinstance(self.y_array, np.ndarray) or isinstance(

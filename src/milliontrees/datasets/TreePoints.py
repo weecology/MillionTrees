@@ -7,7 +7,9 @@ import torch
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
-from milliontrees.common.metrics.all_metrics import KeypointAccuracy
+from milliontrees.common.metrics.all_metrics import KeypointAccuracy, CountingError
+from milliontrees.common.utils import format_eval_results
+
 from PIL import Image
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
@@ -24,7 +26,7 @@ class TreePointsDataset(MillionTreesDataset):
     Input (x):
         RGB images from camera traps
     Label (y):
-        y is a n x 4-dimensional vector where each line represents a box coordinate (x_min, y_min, x_max, y_max)
+        y is an n x 2 matrix where each row represents a keypoint (x, y)
     Metadata:
         Each image is annotated with the following metadata
             - location (int): location id
@@ -34,33 +36,11 @@ class TreePointsDataset(MillionTreesDataset):
     """
     _dataset_name = 'TreePoints'
     _versions_dict = {
-        '0.0': {
+        "0.8": {
             'download_url':
-                'https://github.com/weecology/MillionTrees/releases/download/0.0.0-dev1/TreePoints_v0.0.zip',
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.8.zip",
             'compressed_size':
-                523312564
-        },
-        "0.1": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.1.zip",
-            'compressed_size':
-                170340
-        },
-        "0.2": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.2.zip",
-            'compressed_size':
-                1459676926
-        },
-        "0.4": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.4.zip",
-            'compressed_size':
-                1459676926
-        },
-        "0.5": {
-            'download_url': "",
-            'compressed_size': "160815024"
+                160910816
         }
     }
 
@@ -74,8 +54,6 @@ class TreePointsDataset(MillionTreesDataset):
                  distance_threshold=0.1,
                  include_sources=None,
                  exclude_sources=None,
-                 unsupervised=False,
-                 unsupervised_args=None,
                  mini=False):
 
         self._version = version
@@ -91,62 +69,12 @@ class TreePointsDataset(MillionTreesDataset):
         # Modify download URLs for mini datasets
         if mini:
             self._versions_dict = self._get_mini_versions_dict()
-
+            
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
 
-        # Optionally trigger unsupervised download pipeline
-        if unsupervised:
-            from milliontrees.download_unsupervised import run as run_unsupervised
-            defaults = {
-                'data_dir':
-                    str(self._data_dir),
-                'annotations_parquet':
-                    self._data_dir /
-                    'unsupervised/TreePoints_unsupervised.parquet',
-                'max_tiles_per_site':
-                    None,
-                'patch_size':
-                    400,
-                'allow_empty':
-                    False,
-                'num_workers':
-                    4,
-                'token_path':
-                    'neon_token.txt',
-                'data_product':
-                    'DP3.30010.001',
-                'download_dir':
-                    'neon_downloads',
-            }
-            if isinstance(unsupervised_args, dict):
-                defaults.update(unsupervised_args)
-            run_unsupervised(**defaults)
-
         # Load splits
         self.df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
-
-        # Load unsupervised data if it is included or not excluded
-        if (include_sources and any('unsupervised' in src for src in include_sources)) or \
-           (exclude_sources and not any('unsupervised' in src for src in exclude_sources)):
-            unsupervised_dir = self._data_dir / 'unsupervised'
-            print(
-                f"Loading unsupervised data from {unsupervised_dir}, this may take a while..."
-            )
-            for root, _, files in os.walk(unsupervised_dir):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    try:
-                        if file.endswith('.parquet'):
-                            unsupervised_df = pd.read_parquet(file_path)
-                        elif file.endswith('.csv'):
-                            unsupervised_df = pd.read_csv(file_path)
-                        else:
-                            continue
-                        self.df = pd.concat([self.df, unsupervised_df],
-                                            ignore_index=True)
-                    except Exception as e:
-                        print(f"Warning: failed to read {file_path}: {e}")
 
         if remove_incomplete:
             self.df = self.df[self.df['complete'] == True]
@@ -180,12 +108,10 @@ class TreePointsDataset(MillionTreesDataset):
         # Splits
         self._split_dict = {
             'train': 0,
-            'val': 1,
-            'test': 2,
+            'test': 1,
         }
         self._split_names = {
             'train': 'Train',
-            'val': 'Validation',
             'test': 'Test',
         }
 
@@ -235,8 +161,12 @@ class TreePointsDataset(MillionTreesDataset):
             subset="filename_id", inplace=False).reset_index(drop=True)
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
         self._metadata_fields = ['filename_id', 'source_id']
+        
+        self.metrics = {
+            "KeypointAccuracy": KeypointAccuracy(distance_threshold=distance_threshold),
+            "CountingAccuracy": CountingError()
+        }   
 
-        self._metric = KeypointAccuracy(distance_threshold=distance_threshold)
         self._collate = TreePointsDataset._collate_fn
 
         # eval grouper
@@ -267,24 +197,31 @@ class TreePointsDataset(MillionTreesDataset):
     def eval(self, y_pred, y_true, metadata):
         """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
         detection accuracies of each domain."""
-        results, results_str = self.standard_group_eval(self._metric,
-                                                        self._eval_grouper,
-                                                        y_pred, y_true,
-                                                        metadata)
+        
+        results = {}
+        results_str = ''
+        for metric in self.metrics:
+            result, result_str = self.standard_group_eval(
+                self.metrics[metric], self._eval_grouper, y_pred, y_true,
+                metadata)
+            results[metric] = result
+            results_str += result_str
 
-        detection_accs = []
-        for k, v in results.items():
-            if k.startswith('detection_acc_source:'):
+        # Compute average keypoint accuracy across sources (domains)
+        kp_accs = []
+        kp_results = results.get("KeypointAccuracy", {})
+        for k, v in kp_results.items():
+            if k.startswith('keypoint_acc_source:'):
                 d = k.split(':')[1]
-                count = results[f'source:{d}']
+                count = kp_results.get(f'count_source:{d}', 0)
                 if count > 0:
-                    detection_accs.append(v)
-        detection_acc_avg_dom = np.array(detection_accs).mean()
-        results['detection_acc_avg_dom'] = detection_acc_avg_dom
-        results_str = f'Average detection_acc across source: {detection_acc_avg_dom:.3f}\n' + results_str
+                    kp_accs.append(v)
+        if len(kp_accs) > 0:
+            keypoint_acc_avg_dom = np.array(kp_accs).mean()
+            results['keypoint_acc_avg_dom'] = keypoint_acc_avg_dom
+            results_str = f'Average keypoint_acc across source: {keypoint_acc_avg_dom:.3f}\n' + results_str
 
         # Format results with tables
-        from milliontrees.common.utils import format_eval_results
         formatted_results = format_eval_results(results, self)
         results_str = formatted_results + '\n' + results_str
 

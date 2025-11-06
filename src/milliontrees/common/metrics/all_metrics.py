@@ -4,10 +4,9 @@ import torch
 import torch.nn.functional as F
 from torchvision.ops.boxes import box_iou
 from torchvision.models.detection._utils import Matcher
-from torchvision.ops import nms, box_convert
 from milliontrees.common.metrics.metric import Metric, ElementwiseMetric, MultiTaskMetric
 from milliontrees.common.metrics.loss import ElementwiseLoss
-from milliontrees.common.utils import avg_over_groups, minimum, maximum, get_counts
+from milliontrees.common.utils import minimum, maximum, get_counts
 import sklearn.metrics
 from scipy.stats import pearsonr
 
@@ -346,7 +345,7 @@ def mse_loss(out, targets):
         losses = torch.mean(losses, dim=reduce_dims)
         return losses
 
-
+    
 class MSE(ElementwiseLoss):
 
     def __init__(self, name=None):
@@ -521,21 +520,25 @@ class KeypointAccuracy(ElementwiseMetric):
         distance = torch.cdist(src_keypoints.float(),
                                pred_keypoints.float(),
                                p=2)
-
-        # Inverson of distance to get relative distance
-        relative_distance = 1 / distance
-        return relative_distance
+        return distance
 
     def _accuracy(self, src_keypoints, pred_keypoints, distance_threshold):
         total_gt = len(src_keypoints)
         total_pred = len(pred_keypoints)
         if total_gt > 0 and total_pred > 0:
             # Define the matcher and distance matrix based on iou
-            matcher = Matcher(distance_threshold,
-                              distance_threshold,
+            # Convert distances to a similarity score where higher is better
+            # and threshold accordingly so that matches within the distance_threshold are accepted
+            distance_matrix = self._point_nearness(src_keypoints,
+                                                   pred_keypoints)
+            # Similarity in [0, 1], higher is better (0 distance -> 1 similarity)
+            similarity_matrix = 1.0 / (1.0 + distance_matrix)
+            sim_threshold = 1.0 / (1.0 + distance_threshold)
+
+            matcher = Matcher(sim_threshold,
+                              sim_threshold,
                               allow_low_quality_matches=False)
-            match_quality_matrix = self._point_nearness(src_keypoints,
-                                                        pred_keypoints)
+            match_quality_matrix = similarity_matrix
             results = matcher(match_quality_matrix)
             true_positive = torch.count_nonzero(results.unique() != -1)
             matched_elements = results[results > -1]
@@ -645,3 +648,40 @@ class MaskAccuracy(ElementwiseMetric):
 
     def worst(self, metrics):
         return minimum(metrics)
+
+
+class CountingError(ElementwiseMetric):
+    """Mean Absolute Error between ground truth and predicted detection counts.
+    
+    Calculates MAE between the number of detections in ground truth vs predictions
+    for each sample in the batch.
+    """
+
+    def __init__(self, 
+                 score_threshold=0.1,
+                 name=None,
+                 geometry_name="y"):
+        self.score_threshold = score_threshold
+        self.geometry_name = geometry_name
+        if name is None:
+            name = "counting_mae"
+        super().__init__(name=name)
+
+    def _compute_element_wise(self, y_pred, y_true):
+        batch_results = []
+        for gt, target in zip(y_true, y_pred):
+            # Count ground truth detections
+            gt_count = len(gt[self.geometry_name])
+            
+            # Count predicted detections above threshold
+            target_scores = target["scores"]
+            pred_count = (target_scores > self.score_threshold).sum().item()
+            
+            # Calculate absolute error
+            mae = abs(gt_count - pred_count)
+            batch_results.append(mae)
+        
+        return torch.tensor(batch_results, dtype=torch.float)
+
+    def worst(self, metrics):
+        return maximum(metrics)

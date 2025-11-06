@@ -12,15 +12,27 @@ pip install MillionTrees
 pip install numpy==1.26.4
 ```
 
-### Optional: Unsupervised submodule
+## Mini Datasets for Development
 
-MillionTrees comes with tens of millions of weakly labeled tree detections. There are extra dependencies for downloading and filtering these datasets. These data are large and optional, only needed for training large scale models.
+**Recommended for Development**: Before working with the full datasets (which can be several GB), we recommend starting with the mini versions for development and testing. Mini datasets contain a small subset of the data but maintain the same structure and format.
 
+```python
+from milliontrees import get_dataset
+
+# Download a mini version of TreeBoxes (~few MB instead of ~several GB)
+dataset = get_dataset('TreeBoxes', download=True, mini=True)
+
+# This works the same as the full dataset but much faster to download
+train_dataset = dataset.get_subset("train")
+print(f"Mini dataset size: {len(train_dataset)} images")
 ```
-pip install milliontrees[unsupervised]
-```
 
-For more information, refer to the section on unsupervised datasets.
+Mini datasets are available for all three dataset types:
+- `TreeBoxes` → `MiniTreeBoxes` 
+- `TreePoints` → `MiniTreePoints`
+- `TreePolygons` → `MiniTreePolygons`
+
+Once you've developed and tested your code with the mini datasets, simply remove `mini=True` to use the full datasets for training and evaluation.
 
 ## Mini Datasets for Development
 

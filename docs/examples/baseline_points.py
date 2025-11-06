@@ -10,7 +10,7 @@ import torch
 from deepforest import main as df_main
 from deepforest.utilities import read_file, format_geometry
 from deepforest.visualize import plot_results
-
+import geopandas as gpd
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
@@ -56,7 +56,7 @@ def format_deepforest_predictions(
             formatted_pred = read_file(formatted_pred)
             
             # Convert boxes to centroids
-            formatted_pred["geometry"] = formatted_pred["geometry"].centroid
+            formatted_pred["geometry"] = gpd.GeoSeries(formatted_pred["geometry"]).centroid
             formatted_pred[["x", "y"]] = formatted_pred["geometry"].apply(lambda g: pd.Series([g.x, g.y]))
             formatted_pred["image_path"] = basename
 
@@ -95,7 +95,7 @@ def plot_eval_result(
     # Predictions
     if isinstance(pred_df, pd.DataFrame) and len(pred_df) > 0:
         pred_vis_df = read_file(pred_df, root_dir=os.path.join(dataset._data_dir._str, "images"))
-        pred_vis_df["geometry"] = pred_vis_df["geometry"].centroid
+        pred_vis_df["geometry"] = gpd.GeoSeries(pred_vis_df["geometry"]).centroid
         pred_vis_df[["x", "y"]] = pred_vis_df["geometry"].apply(lambda g: pd.Series([g.x, g.y]))
         if "label" not in pred_vis_df.columns:
             pred_vis_df["label"] = "Tree"
@@ -117,11 +117,11 @@ def main():
     parser.add_argument(
         "--root-dir",
         type=str,
-        default=os.environ.get("MT_ROOT", "/orange/ewhite/DeepForest/MillionTrees/"),
+        default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees/"),
         help="Dataset root directory",
     )
     parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--plot-interval", type=int, default=250, help="Plot every Nth image; set 0 to disable plotting")
+    parser.add_argument("--plot-interval", type=int, default=1000, help="Plot every Nth image; set 0 to disable plotting")
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--max-batches", type=int, default=None)
     args = parser.parse_args()
@@ -158,7 +158,7 @@ def main():
             break
 
     # Evaluate using dataset's metric implementation
-    results, results_str = point_dataset.eval(all_y_pred, all_y_true, test_subset.metadata_array)
+    results, results_str = point_dataset.eval(all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)])
     print(results_str)
 
     if args.output_dir:
