@@ -211,10 +211,7 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
     out_ortho = os.path.join(os.path.dirname(orthomosaic), f"{mission_id}_ortho.tif")
     with rio.open(out_ortho, 'w', **profile) as dst:
         dst.write(arr3)
-    
-    points_tiled = None
-    boxes_tiled = None
-    
+        
     # Tile points
     treetops_file = os.path.join(itd_dir,f'{mission_id}_treetops.gpkg')
     gdf = gpd.read_file(treetops_file)
@@ -232,10 +229,8 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
         allow_empty=False
     )
     
-    if len(points_tiled) > 0:
-        points_tiled['source'] = 'Young et al. 2025 unsupervised'
-        points_tiled['split'] = 'train'
-        points_tiled = points_tiled.rename(columns={'image_path': 'filename'})
+    points_tiled['source'] = 'Young et al. 2025 unsupervised'
+    points_tiled = points_tiled.rename(columns={'image_path': 'filename'})
 
     # Tile boxes
     crowns_file = os.path.join(itd_dir, f'{mission_id}_crowns-silva.gpkg')
@@ -349,3 +344,23 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+    # Load and plot samples from boxes and polygons
+    from deepforest import utilities, visualize
+    from matplotlib import pyplot as plt
+    args = parse_args()
+    df = utilities.read_file(os.path.join(args.data_dir, 'images', 'TreeBoxes_OFO_unsupervised.csv'))
+    for filename in df['image_path'].unique()[:10]:
+        image_df = df.loc[df['image_path'] == filename]
+        image_df.root_dir = os.path.dirname(filename)
+        visualize.plot_annotations(image_df)
+        plt.savefig(f"sample_boxes_{os.path.basename(filename)}.png")
+        plt.close()
+
+    df = utilities.read_file(os.path.join(args.data_dir, 'images', 'TreePoints_OFO_unsupervised.csv'))
+    for filename in df['image_path'].unique()[:10]:
+        image_df = df.loc[df['image_path'] == filename]
+        image_df.root_dir = os.path.dirname(filename)
+        visualize.plot_annotations(image_df)
+        plt.savefig(f"sample_points_{os.path.basename(filename)}.png")
+        plt.close()
