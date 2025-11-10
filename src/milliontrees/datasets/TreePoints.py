@@ -76,6 +76,8 @@ class TreePointsDataset(MillionTreesDataset):
         # Load splits
         self.df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
 
+        self.sources = self.df['source'].unique()
+        
         if remove_incomplete:
             self.df = self.df[self.df['complete'] == True]
 

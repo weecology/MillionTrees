@@ -12,8 +12,9 @@ MillionTrees datasets can contain millions of annotations. Use filtering capabil
 List and filter available sources:
 
 ```py
-dataset = TreePointsDataset(version="0.5", download=False)
-sources = dataset.get_available_sources()
+from milliontrees.datasets.TreePoints import TreePointsDataset
+dataset = TreePointsDataset()
+sources = dataset.sources
 print("Available sources:", sources)
 # Available sources: ['Kattenborn_NewZealand', 'NeonTreeEvaluation', 'OFO_unsupervised', 'NEON_unsupervised'...]
 ```
@@ -22,8 +23,7 @@ Include only specific sources:
 
 ```py
 dataset = TreePointsDataset(
-  version="0.5",
-  include_sources=['NeonTreeEvaluation', 'OFO_unsupervised']
+  include_sources=['Amirkolaee et al. 2023']
 )
 ```
 
@@ -31,91 +31,19 @@ Exclude specific sources (exact names or glob patterns supported):
 
 ```py
 # Exclude a single source by name
-dataset = TreePointsDataset(version="0.5", exclude_sources=['NEON_unsupervised'])
+dataset = TreePointsDataset(exclude_sources=['NEON_unsupervised'])
 
 # Exclude by pattern (wildcards)
-dataset = TreePointsDataset(version="0.5", exclude_sources=['*_unsupervised'])
+dataset = TreePointsDataset(exclude_sources=['*_unsupervised'])
 ```
 
-### Size Management and Preview
+## Mini-datasets
 
-Preview datasets before downloading to understand their size:
+Each dataset comes with a mini version for testing. This contains one image per source.
 
-```py
-# Preview full dataset
-dataset = TreeBoxesDataset(version="0.2", preview_only=True)
-
-# Output shows:
-# Total boxes: 2,456,789
-# Unique sources: 28
-# Boxes by source:
-#   NEON_unsupervised: 2,000,000 boxes (81.4%)
-#   NeonTreeEvaluation: 200,000 boxes (8.1%)
-#   ...
 ```
-
-Control dataset size with filtering parameters:
-
-```py
-# Limit samples per source to balance training data
-dataset = TreeBoxesDataset(
-    version="0.2",
-    max_samples_per_source=5000,  # Max 5000 samples per source
-    preview_only=True
-)
-
-# Random sampling for computational constraints
-dataset = TreeBoxesDataset(
-    version="0.2", 
-    sample_fraction=0.1,  # Use 10% of available data
-    preview_only=True
-)
-
-# Combined filtering for fine control
-dataset = TreeBoxesDataset(
-    version="0.2",
-    max_samples_per_source=1000,  # Limit per source
-    sample_fraction=0.05,         # Then 5% sample
-    min_samples_per_source=50,    # Exclude small sources
-    preview_only=True
-)
+dataset = TreePointsDataset(mini=True)
 ```
-
-### Recommended Workflow
-
-1. **Preview first**: Use `preview_only=True` to understand dataset size
-2. **Design filtering**: Choose parameters based on your computational resources
-3. **Preview with filtering**: Verify the filtered dataset size
-4. **Download**: Use same parameters with `preview_only=False`
-
-```py
-# Step 1: Preview full dataset
-full_preview = TreeBoxesDataset(version="0.2", preview_only=True)
-
-# Step 2: Design filtering based on preview
-filtered_preview = TreeBoxesDataset(
-    version="0.2",
-    max_samples_per_source=1000,
-    sample_fraction=0.1,
-    preview_only=True
-)
-
-# Step 3: Download with same parameters
-dataset = TreeBoxesDataset(
-    version="0.2",
-    max_samples_per_source=1000,
-    sample_fraction=0.1,
-    download=True
-)
-```
-
-### Common Filtering Strategies
-
-- **Prototyping**: `max_samples_per_source=100, sample_fraction=0.01` (very small, fast)
-- **Balanced training**: `max_samples_per_source=5000` (prevent source dominance)
-- **Resource-constrained**: `sample_fraction=0.1` (10% of full dataset)
-- **Large-scale training**: `max_samples_per_source=50000` (large but manageable)
-
 # Boxes
 
 ## Dumortier 2025

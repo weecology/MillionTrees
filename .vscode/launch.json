@@ -49,11 +49,7 @@
             ],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/data_prep",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}:${env:PYTHONPATH}"
-            },
-            "justMyCode": false,
-            "stopOnEntry": false
+            "justMyCode": true,
         },
         
     ]

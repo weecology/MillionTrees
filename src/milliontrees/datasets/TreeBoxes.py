@@ -109,6 +109,8 @@ class TreeBoxesDataset(MillionTreesDataset):
         # Load splits
         df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
 
+        self.sources = df['source'].unique()
+        
         # Remove incomplete data based on flag
         if remove_incomplete:
             df = df[df['complete'] == True]
