@@ -5,8 +5,6 @@ Examples
    :maxdepth: 2
    :caption: Example Notebooks and Scripts:
 
-   ../examples/torchvision_fasterrcnn_treeboxes.md
-
 Python Examples
 ---------------
 
