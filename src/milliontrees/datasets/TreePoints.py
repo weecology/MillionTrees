@@ -17,8 +17,7 @@ import fnmatch
 
 
 class TreePointsDataset(MillionTreesDataset):
-    """The TreePoints dataset is a collection of tree annotations annotated as
-    x,y locations.
+    """The TreePoints dataset is a collection of tree annotations annotated as x,y locations.
 
     Dataset Splits:
         - random: For each source, 80% of the data is used for training and 20% for testing.
@@ -38,8 +37,10 @@ class TreePointsDataset(MillionTreesDataset):
     _dataset_name = 'TreePoints'
     _versions_dict = {
         '0.0': {
-            'download_url': '',
-            'compressed_size': 105525592
+            'download_url':
+                '',
+            'compressed_size':
+                105525592
         },
         "0.8": {
             'download_url':
@@ -74,12 +75,15 @@ class TreePointsDataset(MillionTreesDataset):
         # Modify download URLs for mini datasets
         if mini:
             self._versions_dict = self._get_mini_versions_dict()
-
+            
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
 
         # Load splits
         self.df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
+
+        # Cache available sources for convenience
+        self.sources = self.df['source'].unique()
 
         if remove_incomplete:
             self.df = self.df[self.df['complete'] == True]
@@ -166,13 +170,11 @@ class TreePointsDataset(MillionTreesDataset):
             subset="filename_id", inplace=False).reset_index(drop=True)
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
         self._metadata_fields = ['filename_id', 'source_id']
-
+        
         self.metrics = {
-            "KeypointAccuracy":
-                KeypointAccuracy(distance_threshold=distance_threshold),
-            "CountingAccuracy":
-                CountingError()
-        }
+            "KeypointAccuracy": KeypointAccuracy(distance_threshold=distance_threshold),
+            "CountingAccuracy": CountingError()
+        }   
 
         self._collate = TreePointsDataset._collate_fn
 
@@ -184,8 +186,7 @@ class TreePointsDataset(MillionTreesDataset):
         super().__init__(root_dir, download, split_scheme)
 
     def _get_mini_versions_dict(self):
-        """Generate mini versions dict with modified URLs for smaller
-        datasets."""
+        """Generate mini versions dict with modified URLs for smaller datasets."""
         mini_versions = {}
         for version, info in self._versions_dict.items():
             mini_info = info.copy()
@@ -203,9 +204,9 @@ class TreePointsDataset(MillionTreesDataset):
         return self._y_array[indices]
 
     def eval(self, y_pred, y_true, metadata):
-        """The main evaluation metric, detection_acc_avg_dom, measures the
-        simple average of the detection accuracies of each domain."""
-
+        """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
+        detection accuracies of each domain."""
+        
         results = {}
         results_str = ''
         for metric in self.metrics:
@@ -255,8 +256,8 @@ class TreePointsDataset(MillionTreesDataset):
     def _collate_fn(batch):
         """Stack x (batch[1]) and metadata (batch[0]), but not y.
 
-        originally, batch = (item1, item2, item3, item4) after zip,
-        batch = [(item1[0], item2[0], ..), ..]
+        originally, batch = (item1, item2, item3, item4) after zip, batch = [(item1[0], item2[0],
+        ..), ..]
         """
         batch = list(zip(*batch))
         batch[1] = torch.stack(batch[1])

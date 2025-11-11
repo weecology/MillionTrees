@@ -18,8 +18,8 @@ from milliontrees.common.metrics.all_metrics import MaskAccuracy
 
 
 class TreePolygonsDataset(MillionTreesDataset):
-    """The TreePolygons dataset is a collection of tree annotations annotated
-    as multi-point polygon locations.
+    """The TreePolygons dataset is a collection of tree annotations annotated as multi-point polygon
+    locations.
 
     The dataset is comprised of many sources from across the world.
 
@@ -45,8 +45,10 @@ class TreePolygonsDataset(MillionTreesDataset):
     _dataset_name = 'TreePolygons'
     _versions_dict = {
         '0.0': {
-            'download_url': '',
-            'compressed_size': 105525592
+            'download_url':
+                '',
+            'compressed_size':
+                105525592
         },
         "0.8": {
             'download_url':
@@ -91,6 +93,9 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         # Load splits
         df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
+
+        # Cache available sources for convenience
+        self.sources = df['source'].unique()
 
         # Remove incomplete data based on flag
         if remove_incomplete:
@@ -212,9 +217,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         y_indices = self._input_lookup[self._input_array[idx]]
         y_polygons = [self._y_array[i] for i in y_indices]
         mask_imgs = [
-            self.create_polygon_mask(width=x.shape[1],
-                                     height=x.shape[0],
-                                     vertices=y_polygon)
+            self.create_polygon_mask(width=x.shape[1], height=x.shape[0], vertices=y_polygon)
             for y_polygon in y_polygons
         ]
         masks = torch.stack([Mask(mask_img) for mask_img in mask_imgs])
@@ -233,8 +236,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         return metadata, x, targets
 
     def create_polygon_mask(self, width, height, vertices):
-        """Create a grayscale image with a white polygonal area on a black
-        background.
+        """Create a grayscale image with a white polygonal area on a black background.
 
         Parameters:
         - width (int): Width of the output image.
@@ -261,8 +263,8 @@ class TreePolygonsDataset(MillionTreesDataset):
         return mask_img
 
     def eval(self, y_pred, y_true, metadata):
-        """The main evaluation metric, detection_acc_avg_dom, measures the
-        simple average of the detection accuracies of each domain."""
+        """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
+        detection accuracies of each domain."""
 
         results = {}
         results_str = ''
@@ -292,8 +294,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         return results, results_str
 
     def _get_mini_versions_dict(self):
-        """Generate mini versions dict with modified URLs for smaller
-        datasets."""
+        """Generate mini versions dict with modified URLs for smaller datasets."""
         mini_versions = {}
         for version, info in self._versions_dict.items():
             mini_info = info.copy()
@@ -335,13 +336,11 @@ class TreePolygonsDataset(MillionTreesDataset):
 
     @staticmethod
     def _collate_fn(batch):
-        """Custom collate function to handle batching of metadata, inputs, and
-        targets."""
-        metadata, images, targets = zip(*batch)
+        """Custom collate function to handle batching of metadata, inputs, and targets.
+        """
+        batch = list(zip(*batch))
+        batch[0] = torch.stack(batch[0])
+        batch[1] = torch.stack(batch[1])
+        batch[2] = list(batch[2])
 
-        return (
-            torch.stack(metadata),
-            torch.stack(images),
-            list(targets
-                )  # Keep as list of individual target dicts for consistency
-        )
+        return tuple(batch)
