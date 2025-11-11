@@ -45,10 +45,8 @@ class TreePolygonsDataset(MillionTreesDataset):
     _dataset_name = 'TreePolygons'
     _versions_dict = {
         '0.0': {
-            'download_url':
-                '',
-            'compressed_size':
-                105525592
+            'download_url': '',
+            'compressed_size': 105525592
         },
         "0.8": {
             'download_url':
@@ -217,7 +215,9 @@ class TreePolygonsDataset(MillionTreesDataset):
         y_indices = self._input_lookup[self._input_array[idx]]
         y_polygons = [self._y_array[i] for i in y_indices]
         mask_imgs = [
-            self.create_polygon_mask(width=x.shape[1], height=x.shape[0], vertices=y_polygon)
+            self.create_polygon_mask(width=x.shape[1],
+                                     height=x.shape[0],
+                                     vertices=y_polygon)
             for y_polygon in y_polygons
         ]
         masks = torch.stack([Mask(mask_img) for mask_img in mask_imgs])
