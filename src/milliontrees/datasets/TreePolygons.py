@@ -18,8 +18,8 @@ from milliontrees.common.metrics.all_metrics import MaskAccuracy
 
 
 class TreePolygonsDataset(MillionTreesDataset):
-    """The TreePolygons dataset is a collection of tree annotations annotated
-    as multi-point polygon locations.
+    """The TreePolygons dataset is a collection of tree annotations annotated as multi-point polygon
+    locations.
 
     The dataset is comprised of many sources from across the world.
 
@@ -236,8 +236,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         return metadata, x, targets
 
     def create_polygon_mask(self, width, height, vertices):
-        """Create a grayscale image with a white polygonal area on a black
-        background.
+        """Create a grayscale image with a white polygonal area on a black background.
 
         Parameters:
         - width (int): Width of the output image.
@@ -264,8 +263,8 @@ class TreePolygonsDataset(MillionTreesDataset):
         return mask_img
 
     def eval(self, y_pred, y_true, metadata):
-        """The main evaluation metric, detection_acc_avg_dom, measures the
-        simple average of the detection accuracies of each domain."""
+        """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
+        detection accuracies of each domain."""
 
         results = {}
         results_str = ''
@@ -295,8 +294,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         return results, results_str
 
     def _get_mini_versions_dict(self):
-        """Generate mini versions dict with modified URLs for smaller
-        datasets."""
+        """Generate mini versions dict with modified URLs for smaller datasets."""
         mini_versions = {}
         for version, info in self._versions_dict.items():
             mini_info = info.copy()
@@ -338,8 +336,7 @@ class TreePolygonsDataset(MillionTreesDataset):
 
     @staticmethod
     def _collate_fn(batch):
-        """Custom collate function to handle batching of metadata, inputs, and
-        targets."""
+        """Custom collate function to handle batching of metadata, inputs, and targets."""
         batch = list(zip(*batch))
         batch[0] = torch.stack(batch[0])
         batch[1] = torch.stack(batch[1])
