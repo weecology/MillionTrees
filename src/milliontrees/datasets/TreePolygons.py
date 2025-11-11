@@ -44,6 +44,12 @@ class TreePolygonsDataset(MillionTreesDataset):
     """
     _dataset_name = 'TreePolygons'
     _versions_dict = {
+        '0.0': {
+            'download_url':
+                '',
+            'compressed_size':
+                105525592
+        },
         "0.8": {
             'download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.8.zip",
@@ -327,11 +333,11 @@ class TreePolygonsDataset(MillionTreesDataset):
 
     @staticmethod
     def _collate_fn(batch):
-        """Custom collate function to handle batching of metadata, inputs, and targets.
-        """
-        batch = list(zip(*batch))
-        batch[0] = torch.stack(batch[0])
-        batch[1] = torch.stack(batch[1])
-        batch[2] = list(batch[2])
+        """Custom collate function to handle batching of metadata, inputs, and targets."""
+        metadata, images, targets = zip(*batch)
 
-        return tuple(batch)
+        return (
+            torch.stack(metadata),
+            torch.stack(images), 
+            list(targets)  # Keep as list of individual target dicts for consistency
+        )

@@ -67,6 +67,13 @@ class TreeBoxesDataset(MillionTreesDataset):
     """
     _dataset_name = 'TreeBoxes'
     _versions_dict = {
+        # 0.0 is a placeholder for the testing dataset
+        '0.0': {
+            'download_url':
+                '',
+            'compressed_size':
+                105525592
+        },
         "0.8": {
             'download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.8.zip",
