@@ -336,8 +336,7 @@ class TreePolygonsDataset(MillionTreesDataset):
 
     @staticmethod
     def _collate_fn(batch):
-        """Custom collate function to handle batching of metadata, inputs, and targets.
-        """
+        """Custom collate function to handle batching of metadata, inputs, and targets."""
         batch = list(zip(*batch))
         batch[0] = torch.stack(batch[0])
         batch[1] = torch.stack(batch[1])
