@@ -5,7 +5,7 @@ supported_datasets = ['TreePoints', 'TreePolygons', 'TreeBoxes']
 
 benchmark_datasets = [
     'TreePoints',
-    'TreeBoxes', 
+    'TreeBoxes',
     'TreePolygons',
 ]
 

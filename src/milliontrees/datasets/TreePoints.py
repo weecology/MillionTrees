@@ -37,10 +37,8 @@ class TreePointsDataset(MillionTreesDataset):
     _dataset_name = 'TreePoints'
     _versions_dict = {
         '0.0': {
-            'download_url':
-                '',
-            'compressed_size':
-                105525592
+            'download_url': '',
+            'compressed_size': 105525592
         },
         "0.8": {
             'download_url':
@@ -75,7 +73,7 @@ class TreePointsDataset(MillionTreesDataset):
         # Modify download URLs for mini datasets
         if mini:
             self._versions_dict = self._get_mini_versions_dict()
-            
+
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
 
@@ -167,11 +165,13 @@ class TreePointsDataset(MillionTreesDataset):
             subset="filename_id", inplace=False).reset_index(drop=True)
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
         self._metadata_fields = ['filename_id', 'source_id']
-        
+
         self.metrics = {
-            "KeypointAccuracy": KeypointAccuracy(distance_threshold=distance_threshold),
-            "CountingAccuracy": CountingError()
-        }   
+            "KeypointAccuracy":
+                KeypointAccuracy(distance_threshold=distance_threshold),
+            "CountingAccuracy":
+                CountingError()
+        }
 
         self._collate = TreePointsDataset._collate_fn
 
@@ -203,7 +203,7 @@ class TreePointsDataset(MillionTreesDataset):
     def eval(self, y_pred, y_true, metadata):
         """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
         detection accuracies of each domain."""
-        
+
         results = {}
         results_str = ''
         for metric in self.metrics:

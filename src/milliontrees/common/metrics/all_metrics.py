@@ -345,7 +345,7 @@ def mse_loss(out, targets):
         losses = torch.mean(losses, dim=reduce_dims)
         return losses
 
-    
+
 class MSE(ElementwiseLoss):
 
     def __init__(self, name=None):
@@ -657,10 +657,7 @@ class CountingError(ElementwiseMetric):
     for each sample in the batch.
     """
 
-    def __init__(self, 
-                 score_threshold=0.1,
-                 name=None,
-                 geometry_name="y"):
+    def __init__(self, score_threshold=0.1, name=None, geometry_name="y"):
         self.score_threshold = score_threshold
         self.geometry_name = geometry_name
         if name is None:
@@ -672,15 +669,15 @@ class CountingError(ElementwiseMetric):
         for gt, target in zip(y_true, y_pred):
             # Count ground truth detections
             gt_count = len(gt[self.geometry_name])
-            
+
             # Count predicted detections above threshold
             target_scores = target["scores"]
             pred_count = (target_scores > self.score_threshold).sum().item()
-            
+
             # Calculate absolute error
             mae = abs(gt_count - pred_count)
             batch_results.append(mae)
-        
+
         return torch.tensor(batch_results, dtype=torch.float)
 
     def worst(self, metrics):

@@ -78,7 +78,7 @@ def get_counts(g, n_groups):
                                                 return_counts=True)
     counts = torch.zeros(n_groups, device=g.device)
     counts[unique_groups] = unique_counts.float()
-    
+
     return counts
 
 
