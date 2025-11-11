@@ -44,6 +44,12 @@ class TreePolygonsDataset(MillionTreesDataset):
     """
     _dataset_name = 'TreePolygons'
     _versions_dict = {
+        '0.0': {
+            'download_url':
+                '',
+            'compressed_size':
+                105525592
+        },
         "0.8": {
             'download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.8.zip",
@@ -88,8 +94,9 @@ class TreePolygonsDataset(MillionTreesDataset):
         # Load splits
         df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
 
+        # Cache available sources for convenience
         self.sources = df['source'].unique()
-        
+
         # Remove incomplete data based on flag
         if remove_incomplete:
             df = df[df['complete'] == True]
