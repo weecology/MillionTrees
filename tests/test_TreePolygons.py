@@ -46,43 +46,43 @@ def test_get_train_dataloader(dataset, batch_size):
     train_dataset = ds.get_subset("train")
     train_loader = get_train_loader('standard', train_dataset, batch_size=batch_size)
     for metadata, x, targets in train_loader:
-        masks = targets["y"]
-        boxes = targets["bboxes"]
+        for i in targets:
+            assert i["y"].shape == (1,448, 448)
+            assert i["bboxes"].shape == (1,4)
+            assert i["labels"].shape == (1,)
+        
         assert x.shape == (batch_size, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
-        assert masks.shape == (batch_size, 1,448, 448)
-        assert boxes.shape == (batch_size, 1, 4)
         assert len(metadata) == batch_size
-        break
 
 def test_get_test_dataloader(dataset):
     ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0") 
     test_dataset = ds.get_subset("test")
     
     for metadata, image, targets in test_dataset:
-        masks = targets["y"]
-        boxes = targets["bboxes"]
-        labels = targets["labels"]
-
-        assert boxes.shape == torch.Size([1, 4])
+        assert targets["y"].shape == (1,448, 448)
+        assert targets["labels"].shape == torch.Size([1])
+        assert targets["bboxes"].shape == torch.Size([1, 4])
         assert image.shape == (3,448, 448)
         assert image.dtype == torch.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
-        assert masks.shape == (1,448, 448)
-        assert labels.shape == torch.Size([1])
         assert metadata.shape == torch.Size([2])
-        break
     
     test_loader = get_eval_loader('standard', test_dataset, batch_size=1)
     for metadata, x, targets in test_loader:
-        masks = targets["y"]
+        for i in targets:
+            masks = i["y"]
+            boxes = i["bboxes"]
+            labels = i["labels"]
+            assert masks.shape == (1,448, 448)
+            assert labels.shape == torch.Size([1])
+            assert boxes.shape == torch.Size([1, 4])
+
         assert x.shape == (1, 3, 448, 448)
         assert x.dtype == torch.float32
         assert x.min() >= 0.0 and x.max() <= 1.0
-        assert masks.shape == (1,1,448, 448)
         assert len(metadata) == 1
-        break
 
 def test_TreePolygons_eval(dataset):
     ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0") 
@@ -91,19 +91,19 @@ def test_TreePolygons_eval(dataset):
 
     all_y_pred = []
     all_y_true = []
-    all_metadata = []
     
     # Get predictions for the full test set
     for metadata, x, y_true in test_loader:
         # Construct the mask for true positive for image1.jpg
         polygon = from_wkt("POLYGON((10 15, 50 15, 50 55, 10 55, 10 15))")
-        pred_mask = ds.create_polygon_mask(vertices=polygon, image_size=(448, 448))
+        height, width = x.shape[2], x.shape[3]
+        pred_mask = ds.create_polygon_mask(width=width, height=height, vertices=polygon)
         pred_box = torch.tensor([10, 15, 50, 55]).unsqueeze(0)
-        batch = {'y': torch.tensor([pred_mask]), 'bboxes':pred_box,'labels': torch.tensor([0]), 'scores': torch.tensor([0.54])}
+        batch = [{'y': torch.tensor([pred_mask]), 'bboxes':pred_box,'labels': torch.tensor([0]), 'scores': torch.tensor([0.54])}]
         
         # Accumulate y_true, y_pred, metadata
-        all_y_pred.append(batch)
-        all_y_true.append(y_true)
+        all_y_pred.extend(batch)
+        all_y_true.extend(y_true)
 
     # Evaluate
     eval_results, eval_string = ds.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=test_dataset.metadata_array)

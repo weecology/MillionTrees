@@ -169,11 +169,10 @@ def generate_point_dataset(image_dir):
     y = [15, 25, 35, 20, 40, 45]
     locations = [0, 0, 1, 0, 1, 1]
     locations = [SOURCE_MAP[l] for l in locations]
-    resolution = [1, 1, 10, 1, 10, 5]
     image_files = ['image1.jpg', 'image2.jpg', 'image3.jpg', 'image1.jpg', 'image3.jpg', 'image4.jpg']
 
     # Create a pandas DataFrame
-    df = pd.DataFrame({'x': x, 'y': y, 'filename': image_files, "source": locations, "resolution": resolution})
+    df = pd.DataFrame({'x': x, 'y': y, 'filename': image_files, "source": locations})
 
     # Create images and save them to disk within image_dir
     for i, row in df.iterrows():
