@@ -194,7 +194,7 @@ def main():
             break
 
     results, results_str = polygon_dataset.eval(all_y_pred, all_y_true,
-                                                test_subset.metadata_array)
+                                                test_subset.metadata_array[:len(all_y_true)])
     print(results_str)
 
     if args.output_dir:
