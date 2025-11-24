@@ -186,6 +186,9 @@ cython_debug/
 # IDE
 /.vscode/
 
+# Local logs directory
+/logs/
+
 # Ignore large/local datasets
 /data/
 /docs/examples/data/

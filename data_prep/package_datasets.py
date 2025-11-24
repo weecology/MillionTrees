@@ -178,31 +178,48 @@ def zip_directory(folder_path, zip_path):
 
 def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix=""):
     """Perform random split and save the results."""
-    # Randomly split datasets into train and test (90/10 split)
-    TreePolygons_datasets = split_dataset(TreePolygons_datasets, split_column="filename", frac=0.9)
-    TreePoints_datasets = split_dataset(TreePoints_datasets, split_column="filename", frac=0.9)
-    TreeBoxes_datasets = split_dataset(TreeBoxes_datasets, split_column="filename", frac=0.9)
-
-    # remove any source with unsupervised from test
-    TreePolygons_datasets = TreePolygons_datasets[~((TreePolygons_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreePolygons_datasets.split == "test"))]
-    TreePoints_datasets = TreePoints_datasets[~((TreePoints_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreePoints_datasets.split == "test"))]
-    TreeBoxes_datasets = TreeBoxes_datasets[~((TreeBoxes_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test"))]
-
-    def limit_images_by_source(df: pd.DataFrame, max_images: int = 100) -> pd.DataFrame:
-        """Keep at most `max_images` unique filenames per source; set the rest to train."""
-        for source in df["source"].dropna().unique():
-            files = df.loc[df["source"] == source, "filename"].drop_duplicates()
-            if len(files) > max_images:
-                keep = files.head(n=max_images).tolist()
-                mask = (df["source"] == source) & (~df["filename"].isin(keep))
-                df.loc[mask, "split"] = "train"
+    
+    # Helper function to create the "split" column based on instructions
+    def apply_split(df):
+        df = df.copy()
+        # If "existing_split" is present and value is "test", set "split" to "test"
+        if "existing_split" in df.columns:
+            mask = df["existing_split"] == "test"
+            df.loc[mask, "split"] = "test"
+            needs_split = ~mask
+        else:
+            needs_split = pd.Series([True]*len(df), index=df.index)
+        # For each source not yet assigned "test", random split 0.9/0.1
+        remaining = df.loc[needs_split].copy()
+        if not remaining.empty:
+            for source in remaining["source"].dropna().unique():
+                idx = remaining[remaining["source"] == source].index
+                n = len(idx)
+                if n == 0:
+                    continue
+                n_test = max(1, int(round(n * 0.1))) if n > 1 else 0
+                test_idx = idx[:n_test]
+                train_idx = idx[n_test:]
+                if n_test > 0:
+                    df.loc[test_idx, "split"] = "test"
+                if len(train_idx) > 0:
+                    df.loc[train_idx, "split"] = "train"
         return df
 
-    # Enforce the 100-image-per-source limit for each dataset
-    TreePolygons_datasets = limit_images_by_source(TreePolygons_datasets, max_images=100)
-    TreePoints_datasets = limit_images_by_source(TreePoints_datasets, max_images=100)
-    TreeBoxes_datasets = limit_images_by_source(TreeBoxes_datasets, max_images=100)
+    TreePolygons_datasets = apply_split(TreePolygons_datasets)
+    TreePoints_datasets = apply_split(TreePoints_datasets)
+    TreeBoxes_datasets = apply_split(TreeBoxes_datasets)
 
+    # Remove from test split any entries with 'unsupervised' in the source column
+    def remove_unsupervised_test_entries(df):
+        if "split" in df.columns and "source" in df.columns:
+            mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised", case=False, na=False))
+            return df.loc[~mask]
+        return df
+
+    TreePolygons_datasets = remove_unsupervised_test_entries(TreePolygons_datasets)
+    TreePoints_datasets = remove_unsupervised_test_entries(TreePoints_datasets)
+    TreeBoxes_datasets = remove_unsupervised_test_entries(TreeBoxes_datasets)
     # Save the splits to CSV
     TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/random.csv", index=False)
     TreePoints_datasets.to_csv(f"{base_dir}TreePoints{suffix}_{version}/random.csv", index=False)

@@ -21,6 +21,7 @@ benchmark_annotations = pd.concat(annotation_list, ignore_index=True)
 
 benchmark_annotations["source"] = "NEON_benchmark"
 benchmark_annotations["label"] = "Tree"
+benchmark_annotations["existing_split"] = "test"
 
 for image_path in benchmark_annotations.image_path.unique():
     dst = os.path.join(BENCHMARK_PATH, "evaluation/RGB/", image_path)
