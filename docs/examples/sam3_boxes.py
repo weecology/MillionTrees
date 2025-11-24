@@ -146,7 +146,9 @@ def main() -> None:
         if args.max_batches is not None and (b_idx + 1) >= args.max_batches:
             break
 
-    results, results_str = dataset.eval(all_y_pred, all_y_true, metadata=test_dataset.metadata_array)
+    results, results_str = dataset.eval(
+        all_y_pred, all_y_true, metadata=test_dataset.metadata_array[:len(all_y_true)]
+    )
     print(results_str)
 
 
