@@ -3,7 +3,6 @@ import glob
 import shutil
 import pandas as pd
 from scipy.io import loadmat
-from data_prep.utilities import tag_existing_split
 
 def Treeformer():
     def convert_mat(path):
@@ -45,15 +44,13 @@ def Treeformer():
     val_ground_truth.to_csv("/orange/ewhite/DeepForest/TreeFormer/all_images/validation.csv")
 
     #Label splits and recombine
-    test_ground_truth["split"] = "test"
-    train_ground_truth["split"] = "train"
-    val_ground_truth["split"] = "validation"
+    test_ground_truth["existing_split"] = "test"
+    train_ground_truth["existing_split"] = "train"
+    val_ground_truth["existing_split"] = "validation"
     annotations = pd.concat([test_ground_truth, train_ground_truth, val_ground_truth])
 
     # Create wkt geometries
     annotations["geometry"] = annotations.apply(lambda x: "POINT ({} {})".format(x.x, x.y), axis=1)
-    # Tag existing split based on folder structure (valid/test -> 'test')
-    annotations = tag_existing_split(annotations)
     annotations.to_csv("/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv")
 
 

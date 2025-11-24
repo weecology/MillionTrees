@@ -79,8 +79,12 @@ def main() -> None:
     # Load model and processor
     try:
         if use_transformers:
-            model = Sam3Model.from_pretrained("facebook/sam3", token=args.hf_token).to(device)
-            processor = Sam3Processor.from_pretrained("facebook/sam3", token=args.hf_token)
+            try:
+                model = Sam3Model.from_pretrained("facebook/sam3", token=args.hf_token).to(device)
+                processor = Sam3Processor.from_pretrained("facebook/sam3", token=args.hf_token)
+            except Exception:
+                model = Sam3Model.from_pretrained("facebook/sam3", use_auth_token=args.hf_token).to(device)
+                processor = Sam3Processor.from_pretrained("facebook/sam3", use_auth_token=args.hf_token)
         else:
             model = build_sam3_image_model()
             processor = NativeSam3Processor(model)
