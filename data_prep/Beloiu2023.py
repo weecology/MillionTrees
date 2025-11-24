@@ -89,8 +89,8 @@ def Beloiu_2023():
     train = annotations[annotations.image_path.isin(train_images)]
     test = annotations[~(annotations.image_path.isin(train_images))]
 
-    train["split"] = "train"
-    test["split"] = "test"
+    train["existing_split"] = "train"
+    test["existing_split"] = "test"
 
     to_save = pd.concat([train,test])
     to_save.to_csv("/orange/ewhite/DeepForest/Beloiu_2023/annotations.csv")

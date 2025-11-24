@@ -37,6 +37,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--version", type=str, default="0.2", help="Dataset version (e.g., 0.2)")
     parser.add_argument("--batch_size", type=int, default=8, help="Eval batch size")
     parser.add_argument("--num_workers", type=int, default=2, help="DataLoader workers")
+    parser.add_argument("--mini", action="store_true", help="Use mini datasets for fast dev")
+    parser.add_argument("--download", action="store_true", help="Download dataset if missing")
     parser.add_argument(
         "--device",
         type=str,
@@ -93,7 +95,11 @@ def main() -> None:
     device = select_device(args.device)
 
     # Load dataset and test split
-    dataset = get_dataset("TreeBoxes", version=args.version, root_dir=args.root_dir, download=False)
+    dataset = get_dataset("TreeBoxes",
+                          version=args.version,
+                          root_dir=args.root_dir,
+                          download=args.download,
+                          mini=args.mini)
     test_dataset = dataset.get_subset("test")
     test_loader = get_eval_loader(
         "standard", test_dataset, batch_size=args.batch_size, num_workers=args.num_workers

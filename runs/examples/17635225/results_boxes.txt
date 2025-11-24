@@ -1,0 +1,95 @@
+
+============================================================
+ACCURACY RESULTS
+============================================================
+
+Source-wise Results:
+--------------------------------------------------
+Source                    Score      Count     
+--------------------------------------------------
+Radogoshi et al. 2021     0.575      0         
+NEON_benchmark            0.529      0         
+SelvaBox                  0.379      0         
+Weecology_University_Florida 0.273      0         
+Kwon et al. 2023          0.242      0         
+Velasquez-Camacho et al. 2023 0.159      0         
+Reiersen et al. 2022      0.100      0         
+Dumortier et al. 2025     0.098      0         
+Sun et al. 2022           0.083      0         
+OAM-TCD                   0.032      0         
+Weinstein et al. 2018 unsupervised nan        0         
+World Resources Institute 0.096      0         
+Santos et al. 2019        0.000      0         
+Young et al. 2025 unsupervised nan        0         
+Zamboni et al. 2021       0.172      0         
+
+Summary Statistics:
+----------------------------------------
+Average accuracy: 0.230
+Worst-group accuracy: 0.000
+Min accuracy: 0.000
+Max accuracy: 0.575
+Std accuracy: nan
+
+============================================================
+RECALL RESULTS
+============================================================
+
+Source-wise Results:
+--------------------------------------------------
+Source                    Score      Count     
+--------------------------------------------------
+NEON_benchmark            0.908      0         
+SelvaBox                  0.733      0         
+Radogoshi et al. 2021     0.731      0         
+Velasquez-Camacho et al. 2023 0.461      0         
+Weecology_University_Florida 0.392      0         
+Kwon et al. 2023          0.268      0         
+Reiersen et al. 2022      0.159      0         
+Sun et al. 2022           0.086      0         
+OAM-TCD                   0.049      0         
+Weinstein et al. 2018 unsupervised nan        0         
+World Resources Institute 0.155      0         
+Dumortier et al. 2025     0.113      0         
+Santos et al. 2019        0.000      0         
+Young et al. 2025 unsupervised nan        0         
+Zamboni et al. 2021       0.396      0         
+
+Summary Statistics:
+----------------------------------------
+Average recall: 0.366
+Worst-group recall: 0.000
+Min recall: 0.000
+Max recall: 0.908
+Std recall: nan
+Average detection_acc across source: nan
+Average detection_accuracy: 0.230
+  source_id = 0  [n =      6]:	detection_accuracy = 0.098
+  source_id = 1  [n =      2]:	detection_accuracy = 0.242
+  source_id = 2  [n =     11]:	detection_accuracy = 0.529
+  source_id = 3  [n =      9]:	detection_accuracy = 0.032
+  source_id = 4  [n =     13]:	detection_accuracy = 0.575
+  source_id = 5  [n =      7]:	detection_accuracy = 0.100
+  source_id = 6  [n =     11]:	detection_accuracy = 0.000
+  source_id = 7  [n =      8]:	detection_accuracy = 0.379
+  source_id = 8  [n =      8]:	detection_accuracy = 0.083
+  source_id = 9  [n =      3]:	detection_accuracy = 0.159
+  source_id = 10  [n =      6]:	detection_accuracy = 0.273
+  source_id = 12  [n =     10]:	detection_accuracy = 0.096
+  source_id = 14  [n =      9]:	detection_accuracy = 0.172
+Worst-group detection_accuracy: 0.000
+Average detection_recall: 0.366
+  source_id = 0  [n =      6]:	detection_recall = 0.113
+  source_id = 1  [n =      2]:	detection_recall = 0.268
+  source_id = 2  [n =     11]:	detection_recall = 0.908
+  source_id = 3  [n =      9]:	detection_recall = 0.049
+  source_id = 4  [n =     13]:	detection_recall = 0.731
+  source_id = 5  [n =      7]:	detection_recall = 0.159
+  source_id = 6  [n =     11]:	detection_recall = 0.000
+  source_id = 7  [n =      8]:	detection_recall = 0.733
+  source_id = 8  [n =      8]:	detection_recall = 0.086
+  source_id = 9  [n =      3]:	detection_recall = 0.461
+  source_id = 10  [n =      6]:	detection_recall = 0.392
+  source_id = 12  [n =     10]:	detection_recall = 0.155
+  source_id = 14  [n =      9]:	detection_recall = 0.396
+Worst-group detection_recall: 0.000

@@ -12,6 +12,7 @@ import numpy as np
 from deepforest.utilities import xml_to_annotations
 import warnings
 import shapely
+import re
 
 # Utilities Module
 def read_config(config_path):
@@ -141,6 +142,42 @@ def determine_geometry_type(df, verbose=True):
     
     return geometry_type
 
+def infer_existing_split_from_path_string(path: str):
+    """
+    Infer existing split from a path string.
+    Any indication of validation/val/eval/holdout/test maps to 'test'.
+    Train remains None.
+    """
+    if not isinstance(path, str):
+        return None
+    s = path.lower()
+    # Split into tokens by common path separators
+    tokens = re.split(r"[\\/]", s)
+    # Simple checks for common folder/file indicators
+    test_indicators = ["val", "valid", "validation", "eval", "holdout", "test"]
+    if any(tok in test_indicators for tok in tokens):
+        return "test"
+    # Also check word boundaries in the whole string to catch e.g. *_val_*
+    if re.search(r"\b(val|valid|validation|eval|holdout|test)\b", s):
+        return "test"
+    # If it explicitly says train, treat as not test (return None)
+    if "train" in tokens or re.search(r"\btrain\b", s):
+        return None
+    return None
+
+def tag_existing_split(df: pd.DataFrame, path_columns: list[str] | None = None) -> pd.DataFrame:
+    """
+    Add an 'existing split' column to df if any path-like columns are present.
+    We mark rows as 'test' when path hints at validation/test-style folders.
+    """
+    columns_to_check = path_columns or ["image_path", "filename", "rgb", "image"]
+    for col in columns_to_check:
+        if col in df.columns:
+            df = df.copy(deep=True)
+            df["existing split"] = df[col].astype(str).apply(infer_existing_split_from_path_string)
+            break
+    return df
+
 def read_file(input, rgb):
     """Read a file and return a geopandas dataframe. This is the main entry point for reading annotations into deepforest.
     Args:
@@ -197,6 +234,13 @@ def read_file(input, rgb):
     
     # remove any of the csv columns
     df = df.drop(columns=["polygon", "x", "y","xmin","ymin","xmax","ymax"], errors="ignore")
+    
+    # Try to infer existing data split (val/test -> 'test') from path-like columns
+    # We intentionally keep this simple and fail fast.
+    for col in ["image_path", "filename", "rgb", "image"]:
+        if col in df.columns:
+            df["existing split"] = df[col].astype(str).apply(infer_existing_split_from_path_string)
+            break
                         
     return df
 

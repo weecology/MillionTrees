@@ -3,6 +3,7 @@ import pandas as pd
 import os
 from deepforest.utilities import read_file
 import shutil
+from data_prep.utilities import tag_existing_split
 
 def Ventura2022():
     all_csvs = glob.glob("/blue/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/csv/*.csv")
@@ -23,6 +24,9 @@ def Ventura2022():
     annotations.loc[annotations.image_path.apply(lambda x: os.path.splitext(x)[0]).isin(train_images),"split"] = "train"
     annotations.loc[annotations.image_path.apply(lambda x: os.path.splitext(x)[0]).isin(test_images),"split"] = "test"
     annotations.loc[annotations.image_path.apply(lambda x: os.path.splitext(x)[0]).isin(val_images),"split"] = "val"
+    # Existing split: map val/test to 'test', others remain None
+    annotations["existing split"] = None
+    annotations.loc[annotations["split"].isin(["test", "val", "validation"]), "existing split"] = "test"
 
     # Split into x and y
     annotations["x"] = annotations.geometry.apply(lambda x: x.x)

@@ -1,0 +1,7 @@
+usage: baseline_points.py [-h] [--root-dir ROOT_DIR] [--batch-size BATCH_SIZE]
+                          [--plot-interval PLOT_INTERVAL]
+                          [--output-dir OUTPUT_DIR]
+                          [--max-batches MAX_BATCHES]
+baseline_points.py: error: unrecognized arguments: --out-dir=runs/examples/16579725
+UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+WARNING:root:The milliontrees package is out of date. Your version is 0.1.2, while the latest version is 0.2.1.

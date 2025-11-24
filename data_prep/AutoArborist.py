@@ -20,6 +20,7 @@ from deepforest.visualize import plot_results
 import argparse
 import glob
 import matplotlib.pyplot as plt
+from data_prep.utilities import tag_existing_split
 
 # ArcGIS Rest Server endpoints for various cities
 IMAGERY_SOURCES = {
@@ -500,6 +501,8 @@ def process_city(city_name, csv_path, output_dir, create_plots=True):
         
         # Combine all annotations
         annotations = pd.concat(all_annotations, ignore_index=True)
+        # Tag any existing split hints from path structure if present
+        annotations = tag_existing_split(annotations)
         
         # Save annotations
         annotations_path = os.path.join(output_dir, f"{city_name.lower()}_annotations.csv")

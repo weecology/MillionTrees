@@ -1,0 +1,47 @@
+
+============================================================
+KEYPOINTACCURACY RESULTS
+============================================================
+
+Source-wise Results:
+--------------------------------------------------
+Source                    Score      Count     
+--------------------------------------------------
+Bohlman et al. 2008       nan        0         
+NEON_points               0.102      0         
+Ventura et al. 2022       0.080      0         
+Beery et al. 2022         0.070      0         
+Chen & Shang (2022)       0.050      0         
+Amirkolaee et al. 2023    0.026      0         
+
+Summary Statistics:
+----------------------------------------
+Average KeypointAccuracy: 0.064
+Worst-group KeypointAccuracy: 0.026
+Min KeypointAccuracy: nan
+Max KeypointAccuracy: nan
+Std KeypointAccuracy: nan
+
+============================================================
+COUNTINGACCURACY RESULTS
+============================================================
+
+Summary Statistics:
+----------------------------------------
+Average CountingAccuracy: 49.234
+Worst-group CountingAccuracy: 121.222
+Average detection_acc across source: nan
+Average keypoint_acc: 0.064
+  source_id = 0  [n =      9]:	keypoint_acc = 0.026
+  source_id = 1  [n =     15]:	keypoint_acc = 0.070
+  source_id = 3  [n =      7]:	keypoint_acc = 0.050
+  source_id = 4  [n =      4]:	keypoint_acc = 0.102
+  source_id = 5  [n =     12]:	keypoint_acc = 0.080
+Worst-group keypoint_acc: 0.026
+Average counting_mae: 49.234
+  source_id = 0  [n =      9]:	counting_mae = 121.222
+  source_id = 1  [n =     15]:	counting_mae = 28.667
+  source_id = 3  [n =      7]:	counting_mae = 62.286
+  source_id = 4  [n =      4]:	counting_mae = 13.250
+  source_id = 5  [n =     12]:	counting_mae = 25.333
+Worst-group counting_mae: 121.222

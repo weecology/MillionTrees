@@ -42,7 +42,7 @@ class TreePointsDataset(MillionTreesDataset):
         },
         "0.8": {
             'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.8.zip",
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.8.zip",
             'compressed_size':
                 160910816
         }

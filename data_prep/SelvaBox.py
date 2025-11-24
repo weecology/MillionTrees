@@ -132,6 +132,21 @@ def download_selvabox():
     # full path
     annotations_df["image_path"] = annotations_df["image_path"].apply(lambda x: os.path.join(images_dir, x))
     
+    # Infer existing split from filename patterns (e.g., train_*, val_*, validation_*, test_*)
+    def infer_split_from_filename(p: str):
+        name = os.path.basename(p).lower()
+        if name.startswith("train_") or "_train_" in name or name.endswith("_train.png"):
+            return "train"
+        if name.startswith("test_") or "_test_" in name or name.endswith("_test.png"):
+            return "test"
+        if name.startswith("validation_") or "_validation_" in name or name.endswith("_validation.png"):
+            return "validation"
+        if name.startswith("val_") or "_val_" in name or name.endswith("_val.png"):
+            return "validation"
+        return None
+    
+    annotations_df["existing_split"] = annotations_df["image_path"].apply(infer_split_from_filename)
+    
     if len(annotations_df) == 0:
         print("No annotations found!")
         return
