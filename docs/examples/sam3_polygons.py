@@ -16,6 +16,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--root-dir", type=str, default=os.environ.get("MT_ROOT", "data"), help="Dataset root directory")
     parser.add_argument("--batch-size", type=int, default=8, help="Eval batch size")
     parser.add_argument("--num-workers", type=int, default=2, help="DataLoader workers")
+    parser.add_argument("--backend", type=str, choices=["native", "transformers"], default="native", help="SAM3 backend (default: native)")
     parser.add_argument("--mini", action="store_true", help="Use mini datasets for fast dev")
     parser.add_argument("--download", action="store_true", help="Download dataset if missing")
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"], help="Device")
@@ -47,11 +48,14 @@ def main() -> None:
     args = parse_args()
     device = select_device(args.device)
 
-    # Lazy import to avoid hard dependency unless requested via extras
-    try:
-        from transformers import Sam3Processor, Sam3Model  # type: ignore
-    except Exception:
-        use_transformers = False
+    # Lazy import with selectable backend
+    use_transformers = (args.backend == "transformers")
+    if use_transformers:
+        try:
+            from transformers import Sam3Processor, Sam3Model  # type: ignore
+        except Exception:
+            use_transformers = False
+    if not use_transformers:
         try:
             from sam3.model_builder import build_sam3_image_model  # type: ignore
             from sam3.model.sam3_image_processor import Sam3Processor as NativeSam3Processor  # type: ignore
