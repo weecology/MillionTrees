@@ -143,6 +143,8 @@ def main():
     parser.add_argument("--gallery-dpi", type=int, default=72)
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--max-batches", type=int, default=None)
+    parser.add_argument("--mini", action="store_true", help="Use mini datasets for fast dev")
+    parser.add_argument("--download", action="store_true", help="Download dataset if missing")
     args = parser.parse_args()
 
     # Load model
@@ -152,7 +154,8 @@ def main():
 
     # Load dataset
     box_dataset = get_dataset("TreeBoxes",
-                              download=False,
+                              download=args.download,
+                              mini=args.mini,
                               root_dir=args.root_dir)
     test_subset = box_dataset.get_subset("test")
     test_loader = get_eval_loader("standard",

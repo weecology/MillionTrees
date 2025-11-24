@@ -248,7 +248,7 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     test_sources_polygons = ["Troles et al. 2024","Bolhman 2008"]
     train_sources_polygons = [x for x in TreePolygons_datasets.source.unique() if x not in test_sources_polygons]
 
-    test_sources_points = ["Amirkolaee et al. 2023"]
+    test_sources_points = ["Amirkolaee et al. 2023","NEON_points"]
     train_sources_points = [x for x in TreePoints_datasets.source.unique() if x not in test_sources_points]
 
     test_sources_boxes = ["Radogoshi et al. 2021","SelvaBox","NEON_benchmark"]
@@ -378,6 +378,7 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
         #"/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
         "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/annotations.csv",
+        "/orange/ewhite/DeepForest/Schutte_Germany/annotations.csv",
         #"/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv",
     ]
     

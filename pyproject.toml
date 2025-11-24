@@ -85,6 +85,12 @@ docs = [
     "nbsphinx",
     "nbqa",
 ]
+sam3 = [
+    "transformers>=4.46.0",
+    "accelerate>=0.34.0",
+    "safetensors>=0.4.5",
+    "matplotlib>=3.8",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
