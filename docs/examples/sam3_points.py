@@ -151,9 +151,9 @@ def main() -> None:
                     "scores": torch.zeros((0,), dtype=torch.float32),
                 }
             else:
-                masks_t = torch.as_tensor(masks, dtype=torch.bool)
-                centroids = masks_to_centroids(masks_t)
-                scores_t = torch.as_tensor(scores, dtype=torch.float32)
+                masks_t = torch.as_tensor(masks, dtype=torch.bool, device=device)
+                centroids = masks_to_centroids(masks_t).detach().to("cpu")
+                scores_t = torch.as_tensor(scores, dtype=torch.float32).detach().to("cpu")
                 labels_t = torch.zeros((centroids.shape[0],), dtype=torch.int64)
                 y_pred = {"y": centroids, "labels": labels_t, "scores": scores_t}
 
