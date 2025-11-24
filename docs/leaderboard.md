@@ -118,14 +118,14 @@ Reproduce:
   `uv run python docs/examples/baseline_points.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --batch-size 4 --max-batches 2`  
   `uv run python docs/examples/baseline_boxes.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --batch-size 4 --max-batches 2`
 
-## Full dataset quick results (shared root)
+## Full dataset
 
-Root dir: `/orange/ewhite/web/public/MillionTrees` (no downloads)
+Version: 0.8
 
 | Model (script) | Task | Key metrics |
 |---|---|---|
-| sam3_points.py (SAM3 native, GPU) | TreePoints | KeypointAccuracy: 0.000; Counting MAE: 91.700 |
-| sam3_boxes.py (SAM3 native, GPU) | TreeBoxes | Detection Acc: 0.037; Recall: 0.041 |
+| sam3_points.py (SAM3) | TreePoints | KeypointAccuracy: 0.000; Counting MAE: 91.700 |
+| sam3_boxes.py (SAM3) | TreeBoxes | Detection Acc: 0.037; Recall: 0.041 |
 | baseline_points.py (DeepForest) | TreePoints | KeypointAccuracy: 0.000; Counting MAE: 104.250 |
 | baseline_boxes.py (DeepForest) | TreeBoxes | Detection Acc: 0.559; Recall: 0.794 |
 | sam3_polygons.py / baseline_polygons.py | TreePolygons | N/A on this root (missing 'polygon' column) |

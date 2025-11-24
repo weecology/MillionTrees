@@ -29,6 +29,8 @@ tif_files = [os.path.join(tif_dir, f) for f in os.listdir(tif_dir) if f.endswith
 
 train_annotations = pd.concat([get_image_annotations(tif, train_crowns) for tif in tif_files], ignore_index=True)
 test_annotations = pd.concat([get_image_annotations(tif, test_crowns) for tif in tif_files], ignore_index=True)
+test_annotations["existing_split"] = "test"
+train_annotations["existing_split"] = "train"
 
 annotations = pd.concat([train_annotations, test_annotations], ignore_index=True)
 annotations['source'] = source

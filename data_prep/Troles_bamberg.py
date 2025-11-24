@@ -1,5 +1,4 @@
 import pandas as pd
-from deepforest.utilities import xml_to_annotations
 from deepforest import get_data
 import glob
 import json
@@ -28,22 +27,6 @@ if not os.path.exists(target_dir):
 else:
     print("Target directory already exists.")
     
-"""
-# If we wanted just the bounding boxes
-    coco_train = globox.AnnotationSet.from_coco(train_set)
-    coco_train.save_pascal_voc("/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/instances_tree_train2023")
-    xmls = glob.glob("/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/instances_tree_train2023/*.xml")
-    train_records = []
-    for xml in xmls:
-        try:
-            df = xml_to_annotations(xml)
-            train_records.append(df)
-        except Exception as e:
-            print(f"Failed to process file: {xml}")
-            print(f"Error: {e}")
-    train_records = pd.concat(train_records)
-"""
-
 
 def create_shapely_polygons_from_coco_segmentation_json(json_file):
   """Creates Shapely polygons from COCO segmentation JSON.
@@ -80,10 +63,10 @@ eval_polygons = create_shapely_polygons_from_coco_segmentation_json(eval_set)
 test1_polygons = create_shapely_polygons_from_coco_segmentation_json(test_set1)
 test2_polygons = create_shapely_polygons_from_coco_segmentation_json(test_set2)
 
-train_polygons["split"] = "train"
-eval_polygons["split"] = "eval"
-test1_polygons["split"] = "test1"
-test2_polygons["split"] = "test2"
+train_polygons["existing_split"] = "train"
+eval_polygons["existing_split"] = "eval"
+test1_polygons["existing_split"] = "test1"
+test2_polygons["existing_split"] = "test2"
 
 df = pd.concat([train_polygons, eval_polygons, test1_polygons, test2_polygons])
 df["source"] = "Troles et al. 2024"
