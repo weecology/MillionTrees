@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "/blue/ewhite/b.weinstein/src/MillionTrees/docs/examples/baseline_boxes.py", line 10, in <module>
+    from deepforest import main as df_main
+  File "/blue/ewhite/b.weinstein/src/MillionTrees/.venv/lib/python3.12/site-packages/deepforest/main.py", line 19, in <module>
+    from deepforest import dataset, visualize, get_data, utilities, predict
+  File "/blue/ewhite/b.weinstein/src/MillionTrees/.venv/lib/python3.12/site-packages/deepforest/dataset.py", line 20, in <module>
+    from albumentations import functional as F
+ImportError: cannot import name 'functional' from 'albumentations' (/blue/ewhite/b.weinstein/src/MillionTrees/.venv/lib/python3.12/site-packages/albumentations/__init__.py)
+Traceback (most recent call last):
+  File "/blue/ewhite/b.weinstein/src/MillionTrees/docs/examples/baseline_polygons.py", line 10, in <module>
+    from deepforest import main as df_main
+  File "/blue/ewhite/b.weinstein/src/MillionTrees/.venv/lib/python3.12/site-packages/deepforest/main.py", line 19, in <module>
+    from deepforest import dataset, visualize, get_data, utilities, predict
+  File "/blue/ewhite/b.weinstein/src/MillionTrees/.venv/lib/python3.12/site-packages/deepforest/dataset.py", line 20, in <module>
+    from albumentations import functional as F
+ImportError: cannot import name 'functional' from 'albumentations' (/blue/ewhite/b.weinstein/src/MillionTrees/.venv/lib/python3.12/site-packages/albumentations/__init__.py)
+Traceback (most recent call last):
+  File "/blue/ewhite/b.weinstein/src/MillionTrees/docs/examples/baseline_points.py", line 10, in <module>
+    from deepforest import main as df_main
+  File "/blue/ewhite/b.weinstein/src/MillionTrees/.venv/lib/python3.12/site-packages/deepforest/main.py", line 19, in <module>
+    from deepforest import dataset, visualize, get_data, utilities, predict
+  File "/blue/ewhite/b.weinstein/src/MillionTrees/.venv/lib/python3.12/site-packages/deepforest/dataset.py", line 20, in <module>
+    from albumentations import functional as F
+ImportError: cannot import name 'functional' from 'albumentations' (/blue/ewhite/b.weinstein/src/MillionTrees/.venv/lib/python3.12/site-packages/albumentations/__init__.py)

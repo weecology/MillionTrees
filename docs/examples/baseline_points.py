@@ -124,6 +124,8 @@ def main():
     parser.add_argument("--plot-interval", type=int, default=1000, help="Plot every Nth image; set 0 to disable plotting")
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--max-batches", type=int, default=None)
+    parser.add_argument("--mini", action="store_true", help="Use mini datasets for fast dev")
+    parser.add_argument("--download", action="store_true", help="Download dataset if missing")
     args = parser.parse_args()
 
     # Load model
@@ -132,7 +134,7 @@ def main():
     model.eval()
 
     # Load dataset
-    point_dataset = get_dataset("TreePoints", root_dir=args.root_dir)
+    point_dataset = get_dataset("TreePoints", root_dir=args.root_dir, mini=args.mini, download=args.download)
     test_subset = point_dataset.get_subset("test")
     test_loader = get_eval_loader("standard", test_subset, batch_size=args.batch_size)
 

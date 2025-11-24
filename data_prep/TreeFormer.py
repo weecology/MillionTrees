@@ -44,9 +44,9 @@ def Treeformer():
     val_ground_truth.to_csv("/orange/ewhite/DeepForest/TreeFormer/all_images/validation.csv")
 
     #Label splits and recombine
-    test_ground_truth["split"] = "test"
-    train_ground_truth["split"] = "train"
-    val_ground_truth["split"] = "validation"
+    test_ground_truth["existing_split"] = "test"
+    train_ground_truth["existing_split"] = "train"
+    val_ground_truth["existing_split"] = "validation"
     annotations = pd.concat([test_ground_truth, train_ground_truth, val_ground_truth])
 
     # Create wkt geometries
