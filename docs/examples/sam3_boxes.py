@@ -54,13 +54,14 @@ def main() -> None:
             from transformers import Sam3Processor, Sam3Model  # type: ignore
         except Exception:
             use_transformers = False
+    if not use_transformers:
         try:
             from sam3.model_builder import build_sam3_image_model  # type: ignore
             from sam3.model.sam3_image_processor import Sam3Processor as NativeSam3Processor  # type: ignore
         except Exception as exc:
             raise SystemExit(
-                \"SAM3 is required (either Transformers integration or native package). "
-                "Install with `pip install -e .[sam3]`.\"
+                "SAM3 is required (either Transformers integration or native package). "
+                "Install with `pip install -e .[sam3]`."
             ) from exc
 
     dataset = get_dataset("TreeBoxes",
@@ -86,8 +87,9 @@ def main() -> None:
             processor = NativeSam3Processor(model)
     except Exception as exc:
         raise SystemExit(
-            "Unable to load facebook/sam3. Accept the terms and set HF_TOKEN. See https://huggingface.co/facebook/sam3"
-        ) from exc
+            f"Unable to initialize SAM3 backend ({'transformers' if use_transformers else 'native'}): {exc}. "
+            "If using Transformers, accept the model terms and ensure HF_TOKEN is valid: https://huggingface.co/facebook/sam3"
+        )
 
     all_y_pred: List[Dict[str, Any]] = []
     all_y_true: List[Dict[str, Any]] = []
@@ -127,9 +129,14 @@ def main() -> None:
                     "scores": torch.zeros((0,), dtype=torch.float32),
                 }
             else:
-                masks_t = torch.as_tensor(masks, dtype=torch.bool)
-                boxes = masks_to_boxes(masks_t.to(torch.uint8))  # Nx4
-                scores_t = torch.as_tensor(scores, dtype=torch.float32)
+                masks_t = torch.as_tensor(masks, dtype=torch.uint8, device=device)
+                # Normalize mask shape to [N, H, W]
+                if masks_t.dim() == 2:
+                    masks_t = masks_t.unsqueeze(0)
+                if masks_t.dim() == 4 and masks_t.shape[1] == 1:
+                    masks_t = masks_t[:, 0]
+                boxes = masks_to_boxes(masks_t).detach().to("cpu")  # Nx4
+                scores_t = torch.as_tensor(scores, dtype=torch.float32).detach().to("cpu")
                 labels_t = torch.zeros((boxes.shape[0],), dtype=torch.int64)
                 y_pred = {"y": boxes, "labels": labels_t, "scores": scores_t}
 
