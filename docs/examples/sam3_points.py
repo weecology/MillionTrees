@@ -45,10 +45,12 @@ def to_pil_list(images: torch.Tensor) -> List[Image.Image]:
 
 def masks_to_centroids(masks: torch.Tensor) -> torch.Tensor:
     # masks: (N, H, W) boolean or 0/1
+    device = masks.device
     masks_u8 = masks.to(torch.uint8)
+    H, W = masks_u8.shape[1], masks_u8.shape[2]
     ys, xs = torch.meshgrid(
-        torch.arange(masks_u8.shape[1], dtype=torch.float32),
-        torch.arange(masks_u8.shape[2], dtype=torch.float32),
+        torch.arange(H, dtype=torch.float32, device=device),
+        torch.arange(W, dtype=torch.float32, device=device),
         indexing="ij",
     )
     centroids: List[torch.Tensor] = []
@@ -74,6 +76,7 @@ def main() -> None:
             from transformers import Sam3Processor, Sam3Model  # type: ignore
         except Exception:
             use_transformers = False
+    if not use_transformers:
         try:
             from sam3.model_builder import build_sam3_image_model  # type: ignore
             from sam3.model.sam3_image_processor import Sam3Processor as NativeSam3Processor  # type: ignore
@@ -106,8 +109,9 @@ def main() -> None:
             processor = NativeSam3Processor(model)
     except Exception as exc:
         raise SystemExit(
-            "Unable to load facebook/sam3. Accept the terms and set HF_TOKEN. See https://huggingface.co/facebook/sam3"
-        ) from exc
+            f"Unable to initialize SAM3 backend ({'transformers' if use_transformers else 'native'}): {exc}. "
+            "If using Transformers, accept the model terms and ensure HF_TOKEN is valid: https://huggingface.co/facebook/sam3"
+        )
 
     all_y_pred: List[Dict[str, Any]] = []
     all_y_true: List[Dict[str, Any]] = []
