@@ -90,10 +90,9 @@ def main() -> None:
             processor = NativeSam3Processor(model)
     except Exception as exc:
         raise SystemExit(
-            "Unable to load facebook/sam3. This model is gated on Hugging Face. "
-            "Set HF_TOKEN env var or pass --hf-token after accepting the model terms at "
-            "https://huggingface.co/facebook/sam3"
-        ) from exc
+            f"Unable to initialize SAM3 backend ({'transformers' if use_transformers else 'native'}): {exc}. "
+            "If using Transformers, accept the model terms and ensure HF_TOKEN is valid: https://huggingface.co/facebook/sam3"
+        )
 
     all_y_pred: List[Dict[str, Any]] = []
     all_y_true: List[Dict[str, Any]] = []
@@ -134,8 +133,13 @@ def main() -> None:
                 }
             else:
                 # masks: list of HxW arrays or a tensor shaped (N, H, W)
-                masks_t = torch.as_tensor(masks, dtype=torch.bool)
-                scores_t = torch.as_tensor(scores, dtype=torch.float32)
+                masks_t = torch.as_tensor(masks, dtype=torch.uint8, device=device)
+                if masks_t.dim() == 2:
+                    masks_t = masks_t.unsqueeze(0)
+                if masks_t.dim() == 4 and masks_t.shape[1] == 1:
+                    masks_t = masks_t[:, 0]
+                masks_t = masks_t.bool().detach().to("cpu")
+                scores_t = torch.as_tensor(scores, dtype=torch.float32).detach().to("cpu")
                 labels_t = torch.zeros((masks_t.shape[0],), dtype=torch.int64)
                 y_pred = {"y": masks_t, "labels": labels_t, "scores": scores_t}
 
