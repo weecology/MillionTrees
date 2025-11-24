@@ -1,5 +1,13 @@
 # GitHub Copilot Instructions
 
+
+# To set up a development environment with all dependencies (including extras for development and testing),
+# use uv (https://github.com/astral-sh/uv):
+
+
+uv sync --dev extra
+uv run python
+
 ## Coding Philosophy
 
 ### Code Style Preferences

@@ -97,3 +97,36 @@ Once you have trained a model and evaluated its performance, you can submit your
 ### Boxes to Polygons
 
 
+## Mini dataset quick results
+
+These runs use the mini datasets (one image per source) for fast validation.
+
+| Model (script) | Task | Root dir | Key metrics |
+|---|---|---|---|
+| sam3_points.py (SAM3 native, GPU) | TreePoints | data-mini | KeypointAccuracy: 0.000; Counting MAE: 1164.000 |
+| sam3_boxes.py (SAM3 native, GPU) | TreeBoxes | data-mini | Detection Acc: 0.083; Recall: 0.084 |
+| baseline_points.py (DeepForest) | TreePoints | /orange/ewhite/web/public/MillionTrees | KeypointAccuracy: 0.000; Counting MAE: 104.250 |
+| baseline_boxes.py (DeepForest) | TreeBoxes | /orange/ewhite/web/public/MillionTrees | Detection Acc: 0.559; Recall: 0.794 |
+| sam3_polygons.py (SAM3) | TreePolygons | data-mini | Pending (reduce batch/frames if OOM) |
+| torchvision_fasterrcnn_treeboxes.py | TreeBoxes | — | Pending |
+| yolo_treeboxes.py | TreeBoxes | — | Pending |
+
+Reproduce:
+- Points (SAM3 native, GPU): `uv run python docs/examples/sam3_points.py --backend native --root-dir data-mini --mini --download --device cuda --batch-size 2 --num-workers 0 --max-batches 2`
+- Boxes (SAM3 native, GPU): `uv run python docs/examples/sam3_boxes.py --backend native --root-dir data-mini --mini --download --device cuda --batch-size 2 --num-workers 0 --max-batches 2`
+- Points/Boxes (DeepForest, shared root):  
+  `uv run python docs/examples/baseline_points.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --batch-size 4 --max-batches 2`  
+  `uv run python docs/examples/baseline_boxes.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --batch-size 4 --max-batches 2`
+
+## Full dataset
+
+Version: 0.8
+
+| Model (script) | Task | Key metrics |
+|---|---|---|
+| sam3_points.py (SAM3) | TreePoints | KeypointAccuracy: 0.000; Counting MAE: 91.700 |
+| sam3_boxes.py (SAM3) | TreeBoxes | Detection Acc: 0.037; Recall: 0.041 |
+| baseline_points.py (DeepForest) | TreePoints | KeypointAccuracy: 0.000; Counting MAE: 104.250 |
+| baseline_boxes.py (DeepForest) | TreeBoxes | Detection Acc: 0.559; Recall: 0.794 |
+| sam3_polygons.py / baseline_polygons.py | TreePolygons | N/A on this root (missing 'polygon' column) |
+

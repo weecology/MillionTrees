@@ -1,8 +1,11 @@
 import os
 import glob
+from tkinter import Image
 import pandas as pd
 import geopandas as gpd
-from deepforest.preprocess import split_raster, read_file
+from deepforest.preprocess import split_raster
+from deepforest.utilities import read_file
+
 import rasterio as rio
 from deepforest.visualize import plot_results
 import matplotlib.pyplot as plt
@@ -12,7 +15,7 @@ def process_takeshige2025():
     # Directories
     base_dir = "/orange/ewhite/DeepForest/takeshige2025"
     ortho_dir = os.path.join(base_dir, "Ortho")
-    crown_dir = os.path.join(base_dir, "Crown")
+    crown_dir = os.path.join(base_dir, "Crown_ver2")
     output_dir = os.path.join(base_dir, "crops")
     os.makedirs(output_dir, exist_ok=True)
 
@@ -45,6 +48,10 @@ def process_takeshige2025():
         gdf["image_path"] = os.path.basename(ortho_path)
         gdf["label"] = "tree"
 
+        # # Save temporary cleaned shapefile
+        # temp_shapefile = os.path.join(output_dir, f"{base_id}_cleaned.shp")
+        # gdf.to_file(temp_shapefile)
+
         # Read as MillionTrees annotation
         annotation = read_file(gdf, root_dir=ortho_dir)
 
@@ -58,11 +65,31 @@ def process_takeshige2025():
             image = np.nan_to_num(image, nan=0)
             # Ensure values are in uint8 range
             image = np.clip(image, 0, 255).astype(np.uint8)
-            
+
+        # Optionally, save cleaned image
+        cleaned_image_path = os.path.join(output_dir, f"{base_id}_cleaned.tif")
+        with rio.open(
+            cleaned_image_path,
+            'w',
+            driver='GTiff',
+            height=image.shape[0],
+            width=image.shape[1],
+            count=image.shape[2],
+            dtype=image.dtype,
+            crs=src.crs,
+            transform=src.transform,
+        ) as dst:
+            for i in range(image.shape[2]):
+                dst.write(image[:,:,i], i+1)
+
+        # Turn off PIL size limit warning
+        from PIL import Image
+        Image.MAX_IMAGE_PIXELS = None
+        
         # Split raster into patches using the cleaned image
         crop_annotations = split_raster(
             annotation,
-            numpy_image=image,
+            cleaned_image_path,
             patch_size=1000,  # Using 1000px windows as requested
             allow_empty=False,
             image_name=os.path.basename(ortho_path),
