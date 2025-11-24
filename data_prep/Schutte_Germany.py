@@ -4,6 +4,7 @@ import os
 import glob
 from shapely.geometry import Polygon
 from deepforest.utilities import read_file
+from data_prep.utilities import tag_existing_split
 
 def _gpkg_to_tif_name(gpkg_basename: str, raster_dir: str) -> str:
     """
@@ -83,6 +84,8 @@ def build_annotations() -> pd.DataFrame:
             # Make full paths after read_file normalization
             ann["image_path"] = ann["image_path"].apply(lambda x: os.path.join(raster_dir, x))
             ann["source"] = "Schütte et al. 2025"
+            # Tag existing split where filenames indicate validation/test
+            ann = tag_existing_split(ann)
             all_annotations.append(ann)
 
     if not all_annotations:

@@ -345,6 +345,7 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/SelvaBox/annotations.csv",
         "/orange/ewhite/DeepForest/neon_unsupervised/TreeBoxes_neon_unsupervised.csv",
         "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreeBoxes_OFO_unsupervised.csv"
+        #"/orange/ewhite/DeepForest/Beloiu_2023/annotations.csv",
    ]
 
     TreePoints = [

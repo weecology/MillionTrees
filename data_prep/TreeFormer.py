@@ -3,6 +3,7 @@ import glob
 import shutil
 import pandas as pd
 from scipy.io import loadmat
+from data_prep.utilities import tag_existing_split
 
 def Treeformer():
     def convert_mat(path):
@@ -51,6 +52,8 @@ def Treeformer():
 
     # Create wkt geometries
     annotations["geometry"] = annotations.apply(lambda x: "POINT ({} {})".format(x.x, x.y), axis=1)
+    # Tag existing split based on folder structure (valid/test -> 'test')
+    annotations = tag_existing_split(annotations)
     annotations.to_csv("/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv")
 
 

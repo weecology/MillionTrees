@@ -50,10 +50,16 @@ def main() -> None:
     # Lazy import to avoid hard dependency unless requested via extras
     try:
         from transformers import Sam3Processor, Sam3Model  # type: ignore
-    except Exception as exc:
-        raise SystemExit(
-            "Transformers with SAM3 support is required. Install with `pip install -e .[sam3]`."
-        ) from exc
+    except Exception:
+        use_transformers = False
+        try:
+            from sam3.model_builder import build_sam3_image_model  # type: ignore
+            from sam3.model.sam3_image_processor import Sam3Processor as NativeSam3Processor  # type: ignore
+        except Exception as exc:
+            raise SystemExit(
+                "SAM3 is required (either Transformers integration or native package). "
+                "Install with `pip install -e .[sam3]`."
+            ) from exc
 
     # Load dataset and test split (mini recommended)
     dataset = get_dataset("TreePolygons",
@@ -68,8 +74,12 @@ def main() -> None:
 
     # Load model and processor
     try:
-        model = Sam3Model.from_pretrained("facebook/sam3", token=args.hf_token).to(device)
-        processor = Sam3Processor.from_pretrained("facebook/sam3", token=args.hf_token)
+        if use_transformers:
+            model = Sam3Model.from_pretrained("facebook/sam3", token=args.hf_token).to(device)
+            processor = Sam3Processor.from_pretrained("facebook/sam3", token=args.hf_token)
+        else:
+            model = build_sam3_image_model()
+            processor = NativeSam3Processor(model)
     except Exception as exc:
         raise SystemExit(
             "Unable to load facebook/sam3. This model is gated on Hugging Face. "
@@ -85,16 +95,25 @@ def main() -> None:
         pil_images = to_pil_list(images)
         texts = [args.text_prompt] * len(pil_images)
 
-        inputs = processor(images=pil_images, text=texts, return_tensors="pt").to(device)
-        with torch.no_grad():
-            outputs = model(**inputs)
-
-        results = processor.post_process_instance_segmentation(
-            outputs,
-            threshold=args.score_threshold,
-            mask_threshold=args.mask_threshold,
-            target_sizes=inputs.get("original_sizes").tolist(),
-        )
+        if use_transformers:
+            inputs = processor(images=pil_images, text=texts, return_tensors="pt").to(device)
+            with torch.no_grad():
+                outputs = model(**inputs)
+            results = processor.post_process_instance_segmentation(
+                outputs,
+                threshold=args.score_threshold,
+                mask_threshold=args.mask_threshold,
+                target_sizes=inputs.get("original_sizes").tolist(),
+            )
+        else:
+            results = []
+            for im in pil_images:
+                state = processor.set_image(im)
+                out = processor.set_text_prompt(state=state, prompt=args.text_prompt)
+                results.append({
+                    "masks": out.get("masks", []),
+                    "scores": out.get("scores", []),
+                })
 
         for res, target in zip(results, targets):
             masks = res.get("masks", None)

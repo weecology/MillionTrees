@@ -90,6 +90,8 @@ sam3 = [
     "accelerate>=0.34.0",
     "safetensors>=0.4.5",
     "matplotlib>=3.8",
+    "sam3>=0.1.0",
+    "opencv-python>=4.8",
 ]
 
 [tool.setuptools]
