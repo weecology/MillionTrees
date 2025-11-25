@@ -20,6 +20,7 @@ def load_json_annotations(json_dir):
         image_name = os.path.basename(json_file).replace(".json", ".png")
         number = image_name.replace("annotation_", "").replace(".png", "")
         filename = read_rgb_channels(json_dir, number)
+        print(filename)
         for poly in data.get("Trees", []):
             # Swap x and y for each coordinate pair
             swapped_poly = [(y, x) for x, y in poly]
@@ -32,10 +33,10 @@ def load_json_annotations(json_dir):
     
     gdf = gpd.GeoDataFrame(annotation_list, geometry="geometry")
     gdf["source"] = "Li et al. 2023"
-
-    df = read_file(gdf)
-
-    df["image_path"] = df["image_path"].apply(lambda x: os.path.join(json_dir, x))
+    gdf["image_path"] = gdf["image_path"].apply(lambda x: os.path.join(json_dir, x))
+    # Set to pandas dataframe with wkt geometry
+    gdf["geometry"] = gdf["geometry"].to_wkt()
+    df = pd.DataFrame(gdf)
     df.to_csv(os.path.join(json_dir, "annotations.csv"), index=False)
 
     return df
@@ -48,6 +49,7 @@ def read_rgb_channels(image_dir, base_name):
     rgb = Image.merge("RGB", (r, g, b))
     filename = os.path.join(image_dir, f"rgb_{base_name}.png")
     rgb.save(filename)
+    
     return filename
 
 def plot_example(df, idx=0):
@@ -69,6 +71,6 @@ if __name__ == "__main__":
 
     # add source columns
     print(df.head())
-    plot_example(df, 0)
+    #plot_example(df, 0)
 
 

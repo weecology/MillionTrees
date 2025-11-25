@@ -266,6 +266,11 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     TreeBoxes_datasets.loc[TreeBoxes_datasets.source.isin(train_sources_boxes), "split"] = "train"
     TreeBoxes_datasets.loc[TreeBoxes_datasets.source.isin(test_sources_boxes), "split"] = "test"
 
+    # If there any rows with 'split' == 'test' and existing_split for 'train', remove them
+    TreePolygons_datasets = TreePolygons_datasets[~(TreePolygons_datasets['split'] == "test") & (TreePolygons_datasets['existing_split'] == "train")]
+    TreePoints_datasets = TreePoints_datasets[~(TreePoints_datasets['split'] == "test") & (TreePoints_datasets['existing_split'] == "train")]
+    TreeBoxes_datasets = TreeBoxes_datasets[~(TreeBoxes_datasets['split'] == "test") & (TreeBoxes_datasets['existing_split'] == "train")]
+
     # Save the splits to CSV
     TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/zeroshot.csv", index=False)
     TreePoints_datasets.to_csv(f"{base_dir}TreePoints{suffix}_{version}/zeroshot.csv", index=False)
