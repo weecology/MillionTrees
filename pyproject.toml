@@ -93,11 +93,6 @@ sam3 = [
     "sam3>=0.1.0",
     "opencv-python>=4.8",
 ]
-detectree2 = [
-    "detectree2 @ git+https://github.com/PatBall1/detectree2.git",
-    "geopandas",
-    "rasterio",
-]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
