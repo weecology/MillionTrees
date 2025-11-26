@@ -371,6 +371,7 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
         #'/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
         "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv",
+        "/orange/ewhite/DeepForest/Kaggle_LiDAR_RGB/annotations.csv",
         "/orange/ewhite/DeepForest/Yosemite/tiles/yosemite_all_annotations.csv",
         "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreePoints_OFO_unsupervised.csv",
         #'/orange/ewhite/DeepForest/Miraki/annotations.csv'

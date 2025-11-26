@@ -108,7 +108,7 @@ Version: 0.8
 
 | Model | Task | Split | Dataset | Size | Script |
 |---|---|---|---|---|---|
-| sam3_points.py | TreePoints | zeroshot | TreePoints | mini | `uv run python docs/examples/sam3_points.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --max-batches 2 --mini --split-scheme zeroshot` |
-| sam3_boxes.py | TreeBoxes | zeroshot | TreeBoxes | mini | `uv run python docs/examples/sam3_boxes.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --max-batches 2 --mini --split-scheme zeroshot` |
-| baseline_points.py | TreePoints | zeroshot | TreePoints | mini | `uv run python docs/examples/baseline_points.py --root-dir /orange/ewhite/web/public/MillionTrees --max-batches 2 --mini --split-scheme zeroshot` |
-| baseline_boxes.py | TreeBoxes | zeroshot | TreeBoxes | mini | `uv run python docs/examples/baseline_boxes.py --root-dir /orange/ewhite/web/public/MillionTrees --max-batches 2 --mini --split-scheme zeroshot` |
+| sam3_points.py | TreePoints | random | TreePoints | full | `uv run python docs/examples/sam3_points.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --split-scheme random` |
+| sam3_boxes.py | TreeBoxes | random | TreeBoxes | full | `uv run python docs/examples/sam3_boxes.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --split-scheme random` |
+| baseline_points.py | TreePoints | random | TreePoints | full | `uv run python docs/examples/baseline_points.py --root-dir /orange/ewhite/web/public/MillionTrees --split-scheme random` |
+| baseline_boxes.py | TreeBoxes | random | TreeBoxes | full | `uv run python docs/examples/baseline_boxes.py --root-dir /orange/ewhite/web/public/MillionTrees --split-scheme random` |

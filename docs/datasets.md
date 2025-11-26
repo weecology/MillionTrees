@@ -219,6 +219,14 @@ Sara Beery, Guanhang Wu, Trevor Edwards, Filip Pavetic, Bo Majewski, Shreyasee M
 
 **GSD**: 0.2m - 0.6m
 
+## Kaggle LiDAR+RGB (Quebec plantations)
+
+**Link:** [Kaggle Dataset](https://www.kaggle.com/datasets/sentinel3734/tree-detection-lidar-rgb)
+
+UAV orthomosaics with accompanying field-survey tree locations. We include the field survey points as per-image point annotations for individual trees.
+
+**Location:** Quebec, Canada
+
 # Polygons
 
 ## Araujo et al. 2020

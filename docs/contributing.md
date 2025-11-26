@@ -2,7 +2,7 @@
 
 ## Data
 
-The essential data are
+The essential data are:
 
 1. **Airborne imagery**
 
@@ -43,126 +43,17 @@ To contribute a new dataset, you need to process the data into the required form
 
 The Harz Mountains dataset consists of shapefiles with tree annotations and corresponding `.tif` images. The goal is to process these files into a single `annotations.csv` file that can be used by the MillionTrees framework.
 
-Here is the processing logic:
+This file should have each annotation as seperate row with the columns
 
-1. **Load Shapefiles**:
-   - Use `geopandas` to read the shapefiles containing tree annotations.
-   - Filter out invalid geometries (e.g., `MultiPolygons`).
+* image_path: the full pathname to the image on disk
+* source: the citation author for the dataset, e.g. 'Lucas et al. 2025'
+* geometry: A shapely wkt object of the annotation. The coordinates are in the image pixels, not geographic coordinates.
 
-2. **Convert Z Polygons to 2D**:
-   - If the polygons have a Z-dimension (x, y, z), convert them to 2D (x, y) using `shapely`.
-
-3. **Update Image Paths**:
-   - Match each shapefile to its corresponding `.tif` image.
-   - Convert the `.tif` images to `.png` format for compatibility and update the `image_path` field.
-
-4. **Generate Annotations**:
-   - Use the `deepforest.utilities.read_file` function to convert the processed data into the required format.
-   - Add additional fields such as `label` (e.g., "tree") and `source` (e.g., "Harz Mountains").
-
-5. **Save the Annotations**:
-   - Combine all processed data into a single `annotations.csv` file.
-
-### Example Code for Harz Mountains Data
-
-The following code processes the Harz Mountains dataset:
-
-```python
-import geopandas as gpd
-import pandas as pd
-import glob
-import os
-from shapely.geometry import Polygon
-from deepforest.utilities import read_file
-from PIL import Image
-
-# Load all train and test shapefiles
-shapefiles = glob.glob("/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/test/annotations/*.shp") + \
-             glob.glob("/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/train/annotations/*.shp")
-
-annotations = []
-for shapefile in shapefiles:
-    print(f"Processing: {shapefile}")
-    try:
-        gdf = gpd.read_file(shapefile)
-        # Remove MultiPolygons
-        gdf = gdf[gdf.geometry.type == "Polygon"]
-
-        # Convert Z polygons to 2D
-        gdf = gdf.set_geometry(gdf.geometry.apply(
-            lambda geom: Polygon([(x, y) for x, y, z in geom.exterior.coords]) if geom.has_z else geom
-        ))
-
-        # Update image paths
-        gdf["image_path"] = os.path.basename(shapefile).replace(".shp", ".tif")
-        gdf["image_path"] = gdf["image_path"].apply(lambda x: "aerial_" + x)
-
-        # Convert .tif to .png
-        for idx, row in gdf.iterrows():
-            tif_path = os.path.join("/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/all_images", row["image_path"])
-            png_path = tif_path.replace(".tif", ".png")
-            try:
-                with Image.open(tif_path) as img:
-                    img = img.convert("RGB")
-                    img.save(png_path, "PNG")
-                gdf.at[idx, "image_path"] = os.path.basename(png_path)
-            except Exception as e:
-                print(f"Could not convert {tif_path} to PNG: {e}")
-                continue
-
-        gdf["label"] = "tree"
-        annotation = read_file(gdf, root_dir="/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/all_images")
-        annotations.append(annotation)
-
-    except Exception as e:
-        print(f"Could not process {shapefile}: {e}")
-        continue
-
-# Combine all annotations
-annotations = pd.concat(annotations)
-
-# Update full image paths
-annotations["image_path"] = annotations["image_path"].apply(
-    lambda x: os.path.join("/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/all_images", x)
-)
-
-# Set the source
-annotations["source"] = "Harz Mountains"
-
-# Save combined annotations
-output_csv = "/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv"
-annotations.to_csv(output_csv, index=False)
-print(f"Annotations saved to {output_csv}")
+```
+>>> df[["source","image_path","geometry"]].iloc[0]
+source                                        Lucas et al. 2024
+image_path    /orange/ewhite/DeepForest/Harz_Mountains/ML_Tr...
+geometry      POLYGON ((115.68613306900687 272.6810018740152...
+Name: 0, dtype: object
 ```
 
-## Packaging Logic
-
-The `package_datasets.py` script is responsible for preparing datasets for release. It performs the following steps:
-
-1. **Combining Datasets**:
-   - Reads multiple `annotations.csv` files for different dataset types (e.g., `TreeBoxes`, `TreePoints`, `TreePolygons`).
-   - Combines them into a single DataFrame for each type.
-
-2. **Splitting Data**:
-   - Randomly splits the data into training and testing sets (80/20 split by default).
-   - Ensures that images are not duplicated across splits.
-
-3. **Geometry Processing**:
-   - Converts geometries (e.g., polygons, points, boxes) into formats required for training (e.g., bounding box coordinates, centroids).
-
-4. **Validation**:
-   - Ensures that geometry bounds are within expected ranges (e.g., no geographic coordinates).
-
-5. **Packaging**:
-   - Creates directories for each dataset type and version.
-   - Copies images and annotations into these directories.
-   - Saves the final datasets as CSV files.
-
-6. **Mini Datasets**:
-   - Creates smaller versions of the datasets for testing purposes.
-   - Selects one image per source to create a representative sample.
-
-7. **Zipping**:
-   - Compresses the datasets into `.zip` files for easy distribution.
-
-To add a new dataset, create a processing script in `data_prep`, generate an `annotations.csv` file, and include it in the appropriate list in `package_datasets.py`. Submit a pull request with your changes.
