@@ -149,6 +149,11 @@ def main():
     parser.add_argument("--max-batches", type=int, default=None)
     parser.add_argument("--mini", action="store_true", help="Use mini datasets for fast dev")
     parser.add_argument("--download", action="store_true", help="Download dataset if missing")
+    parser.add_argument("--split-scheme",
+                        type=str,
+                        default="random",
+                        choices=["random", "zeroshot", "crossgeometry"],
+                        help="Dataset split scheme")
     args = parser.parse_args()
 
     # Load model
@@ -159,7 +164,8 @@ def main():
     polygon_dataset = get_dataset("TreePolygons",
                                   root_dir=args.root_dir,
                                   mini=args.mini,
-                                  download=args.download)
+                                  download=args.download,
+                                  split_scheme=args.split_scheme)
     test_subset = polygon_dataset.get_subset("test")
     test_loader = get_eval_loader("standard",
                                   test_subset,

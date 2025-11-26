@@ -13,11 +13,13 @@ ROOT_DIR=${MT_ROOT:-/orange/ewhite/web/public/MillionTrees}
 OUT_DIR=${OUT_DIR:-runs/examples/${SLURM_JOB_ID:-local}}
 mkdir -p "$OUT_DIR"
 
-# echo "Running baseline_boxes.py"
-uv run python docs/examples/baseline_boxes.py --root-dir=$ROOT_DIR --output-dir=$OUT_DIR
+## Random split
+uv run python scripts/run_examples.py --root-dir $ROOT_DIR --split-scheme random --mini --device cuda --max-batches 2
+uv run python scripts/run_examples.py --root-dir $ROOT_DIR --split-scheme random --device cuda
 
-# echo "Running baseline_polygons.py"
-uv run python docs/examples/baseline_polygons.py --root-dir=$ROOT_DIR --output-dir=$OUT_DIR
+## Zero-shot split
+uv run python scripts/run_examples.py --root-dir $ROOT_DIR --split-scheme zeroshot --mini --device cuda --max-batches 2
+uv run python scripts/run_examples.py --root-dir $ROOT_DIR --split-scheme zeroshot --device cuda
 
-echo "Running baseline_points.py"
-uv run python docs/examples/baseline_points.py --root-dir=$ROOT_DIR --output-dir=$OUT_DIR
+## Cross-geometry split (not ready)
+# uv run python scripts/run_examples.py --root-dir $ROOT_DIR --split-scheme crossgeometry --mini --device cuda --max-batches 2

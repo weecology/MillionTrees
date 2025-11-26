@@ -71,32 +71,6 @@ Once you have trained a model and evaluated its performance, you can submit your
    - Example prediction visualizations
    - Instructions for reproducing results
 
-## Random
-
-| Name | Citation | Random Split | 
-|------|----------|----------------|
-|       |            |                  |
-|       |            |                  |
-|       |            |                  |
-
-## Zero-shot
-
-
-| Name | Citation | Zero-shot Split |
-|------|----------|----------------|
-|       |            |                  |
-|       |            |                  |
-|       |            |                  |
-
-## Cross-geometry
-
-### Points to Polygons
-
-### Points to Boxes
-
-### Boxes to Polygons
-
-
 ## Mini dataset quick results
 
 These runs use the mini datasets (one image per source) for fast validation.
@@ -130,3 +104,11 @@ Version: 0.8
 | baseline_boxes.py (DeepForest) | TreeBoxes | Detection Acc: 0.559; Recall: 0.794 |
 | sam3_polygons.py / baseline_polygons.py | TreePolygons | N/A on this root (missing 'polygon' column) |
 
+## Generated results
+
+| Model | Task | Split | Dataset | Size | Script |
+|---|---|---|---|---|---|
+| sam3_points.py | TreePoints | zeroshot | TreePoints | mini | `uv run python docs/examples/sam3_points.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --max-batches 2 --mini --split-scheme zeroshot` |
+| sam3_boxes.py | TreeBoxes | zeroshot | TreeBoxes | mini | `uv run python docs/examples/sam3_boxes.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --max-batches 2 --mini --split-scheme zeroshot` |
+| baseline_points.py | TreePoints | zeroshot | TreePoints | mini | `uv run python docs/examples/baseline_points.py --root-dir /orange/ewhite/web/public/MillionTrees --max-batches 2 --mini --split-scheme zeroshot` |
+| baseline_boxes.py | TreeBoxes | zeroshot | TreeBoxes | mini | `uv run python docs/examples/baseline_boxes.py --root-dir /orange/ewhite/web/public/MillionTrees --max-batches 2 --mini --split-scheme zeroshot` |

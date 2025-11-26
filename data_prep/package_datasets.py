@@ -146,7 +146,7 @@ def process_splits_and_release(TreePolygons_datasets, TreePoints_datasets, TreeB
         
     # Select columns
     columns_to_keep = ["filename", "geometry", "source", "split", "complete",
-                       "xmin", "ymin", "xmax", "ymax", "x", "y", "polygon"]
+                       "xmin", "ymin", "xmax", "ymax", "x", "y", "polygon","existing_split"]
 
 
     TreePolygons_datasets = keep_columns_if_exist(TreePolygons_datasets, columns_to_keep)
