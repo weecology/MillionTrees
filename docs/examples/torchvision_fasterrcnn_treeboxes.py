@@ -34,7 +34,7 @@ from milliontrees.common.data_loaders import get_eval_loader
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Torchvision Faster R-CNN on MillionTrees TreeBoxes")
     parser.add_argument("--root_dir", type=str, default="data", help="Dataset root directory")
-    parser.add_argument("--version", type=str, default="0.2", help="Dataset version (e.g., 0.2)")
+    parser.add_argument("--version", type=str, default="0.8", help="Dataset version (e.g., 0.2)")
     parser.add_argument("--batch_size", type=int, default=8, help="Eval batch size")
     parser.add_argument("--num_workers", type=int, default=2, help="DataLoader workers")
     parser.add_argument("--mini", action="store_true", help="Use mini datasets for fast dev")
