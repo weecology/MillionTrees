@@ -19,6 +19,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--backend", type=str, choices=["native", "transformers"], default="native", help="SAM3 backend (default: native)")
     parser.add_argument("--mini", action="store_true", help="Use mini datasets for fast dev")
     parser.add_argument("--download", action="store_true", help="Download dataset if missing")
+    parser.add_argument("--split-scheme",
+                        type=str,
+                        default="random",
+                        choices=["random", "zeroshot", "crossgeometry"],
+                        help="Dataset split scheme")
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"], help="Device")
     parser.add_argument("--text-prompt", type=str, default="tree", help="Open-vocabulary text prompt")
     parser.add_argument("--score-threshold", type=float, default=0.5, help="Confidence threshold for masks")
@@ -69,7 +74,8 @@ def main() -> None:
     dataset = get_dataset("TreePolygons",
                           root_dir=args.root_dir,
                           download=args.download,
-                          mini=args.mini)
+                          mini=args.mini,
+                          split_scheme=args.split_scheme)
     test_dataset = dataset.get_subset("test")
     test_loader = get_eval_loader("standard",
                                   test_dataset,

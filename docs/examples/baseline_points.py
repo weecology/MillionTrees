@@ -126,6 +126,11 @@ def main():
     parser.add_argument("--max-batches", type=int, default=None)
     parser.add_argument("--mini", action="store_true", help="Use mini datasets for fast dev")
     parser.add_argument("--download", action="store_true", help="Download dataset if missing")
+    parser.add_argument("--split-scheme",
+                        type=str,
+                        default="random",
+                        choices=["random", "zeroshot", "crossgeometry"],
+                        help="Dataset split scheme")
     args = parser.parse_args()
 
     # Load model
@@ -134,7 +139,11 @@ def main():
     model.eval()
 
     # Load dataset
-    point_dataset = get_dataset("TreePoints", root_dir=args.root_dir, mini=args.mini, download=args.download)
+    point_dataset = get_dataset("TreePoints",
+                                root_dir=args.root_dir,
+                                mini=args.mini,
+                                download=args.download,
+                                split_scheme=args.split_scheme)
     test_subset = point_dataset.get_subset("test")
     test_loader = get_eval_loader("standard", test_subset, batch_size=args.batch_size)
 

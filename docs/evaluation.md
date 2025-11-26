@@ -28,8 +28,6 @@ print(results_str)
 ```
 
 The evaluation returns a dictionary of metrics and a formatted string with per-source breakdowns and averages.
-<<<<<<< HEAD
-
 
 ## TreeBoxes
 
@@ -146,5 +144,3 @@ Worst-group detection_recall: 0.016
 ```
 
 To see more examples for formatted and output of models, see examples/ in the git repo. 
-=======
->>>>>>> 3bd5c82 (OpenForestObservatory unsupervised data and improvements to point dataset)
