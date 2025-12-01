@@ -373,7 +373,7 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv",
         "/orange/ewhite/DeepForest/Yosemite/tiles/yosemite_all_annotations.csv",
         "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreePoints_OFO_unsupervised.csv",
-        "/orange/ewhite/DeepForest/Kaggle_LiDAR_RGB/annotations.csv",
+        "/orange/ewhite/DeepForest/Kaggle_LiDAR_RGB/pngs/annotations.csv",
         #'/orange/ewhite/DeepForest/Miraki/annotations.csv'
     ]
 
@@ -382,6 +382,7 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
         "/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
         "/orange/ewhite/DeepForest/Firoze2023/annotations.csv",
+        "/orange/ewhite/DeepForest/paracou_ball/pngs/annotations.csv",
         #"/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
         #"/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
         "/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",

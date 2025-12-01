@@ -38,3 +38,84 @@ geometry: a shapely geometry column in wkt with the annotation coordinates in th
 
 
 There are useful utilities in the [DeepForest](https://deepforest.readthedocs.io/en/stable/user_guide/01_Reading_data.html) python package for converting from geographic to image coordinate systems. 
+
+### Tiling large .tif files
+
+Many datasets come with large orthomosaics that are too memory intensive to fit into model training or prediction as a single chunk. Deepforest has a utility, deepforest.preprocess.split_tile that takes in annotations and a path to an image and returns the annotations for each tiled piece of the image.
+
+```python```
+# Example: Splitting large images and annotation files into smaller tiles for training
+from pathlib import Path
+import pandas as pd
+import os
+import rasterio
+import geopandas as gpd
+from deepforest.utilities import read_file
+from deepforest.preprocess import split_raster
+
+def split_images_and_annotations(
+    annotations_csv: str,                # Path to annotation CSV (see table format above)
+    output_dir: str,                     # Directory to save tiled images and annotations
+    patch_size: int = 500                # Size of split patches in pixels
+) -> pd.DataFrame:
+    """
+    Split large images and corresponding annotations into smaller tiles for efficient training.
+    Saves new tiled image crops and an updated annotations CSV in output_dir.
+
+    Args:
+        annotations_csv: Path to the preprocessed MillionTrees-format CSV.
+        output_dir: Directory where cropped images and tile annotations will be saved.
+        patch_size: Size (in pixels) for tiles.
+    
+    Returns:
+        DataFrame of updated (tiled) annotations.
+    """
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    df = pd.read_csv(annotations_csv)
+    unique_images = df["image_path"].unique()
+    all_tile_annotations = []
+
+    for img_path in unique_images:
+        # Select annotations for this image
+        img_annotations = df[df["image_path"] == img_path].copy(deep=True)
+        
+        # Load image data as numpy array
+        with rasterio.open(img_path) as src:
+            image_array = src.read()
+        
+        # Optionally, convert image-relative paths
+        img_annotations["image_path"] = img_annotations["image_path"].apply(os.path.basename)
+        
+        # Convert DataFrame to geodataframe, map annotations to new tile crops
+        gdf = read_file(img_annotations, root_dir=os.path.dirname(img_path), label="Tree")
+        gdf = gpd.GeoDataFrame(gdf)
+        
+        # Use DeepForest utility to split raster and annotations to tiles
+        split_tiles = split_raster(
+            image_name=os.path.basename(img_path),
+            annotations_file=gdf,
+            numpy_image=image_array,
+            patch_size=patch_size,
+            allow_empty=False,
+            save_dir=out_dir,
+            root_dir=out_dir
+        )
+        all_tile_annotations.append(split_tiles)
+    
+    # Concatenate annotation DataFrames for all tiles
+    tile_annotations = pd.concat(all_tile_annotations, ignore_index=True)
+    
+    # Update image_path to full (or relative) location in output_dir
+    tile_annotations["image_path"] = tile_annotations["image_path"].apply(lambda x: str(out_dir / x))
+    
+    # Set a new source string or retain existing if preferred
+    tile_annotations["source"] = "YourSourceNameHere"
+    
+    # Save updated annotations CSV
+    annotations_out_csv = out_dir / "annotations.csv"
+    tile_annotations.to_csv(annotations_out_csv, index=False)
+    
+    return tile_annotations
+```

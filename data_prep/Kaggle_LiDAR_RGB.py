@@ -22,13 +22,12 @@ from typing import Iterable
 
 import cv2
 import pandas as pd
-try:
-    import rasterio  # type: ignore
-except Exception:
-    rasterio = None  # lazy fallback if environment lacks rasterio
+import rasterio
 from shapely.geometry import Point
 from shapely import wkt as shapely_wkt
-
+from deepforest.preprocess import split_raster
+from deepforest.utilities import read_file
+import geopandas as gpd
 
 DATASET_ROOT = Path(os.environ.get("DUBROVIN_DATASET_ROOT", "/orange/ewhite/DeepForest/Kaggle_LiDAR_RGB")).resolve()
 FIELD_SURVEY = DATASET_ROOT / "field_survey.geojson"
@@ -113,8 +112,7 @@ def build_annotations() -> str:
     return str(OUT_CSV)
 
 
-def generate_previews(csv_path: str, out_dir: Path, n: int = 3) -> list[str]:
-    df = pd.read_csv(csv_path)
+def generate_previews(df: pd.DataFrame, out_dir: Path, n: int = 3) -> list[str]:
     if df.empty:
         return []
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -128,26 +126,57 @@ def generate_previews(csv_path: str, out_dir: Path, n: int = 3) -> list[str]:
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         subset = df[df["image_path"] == img_path]
         for _, r in subset.iterrows():
-            try:
-                geom = shapely_wkt.loads(r["geometry"])
-            except Exception:
-                continue
+            geom = r["geometry"]
             if isinstance(geom, Point):
                 x, y = int(round(geom.x)), int(round(geom.y))
                 cv2.circle(img_rgb, (x, y), 3, (255, 0, 0), -1)
         out_path = out_dir / f"preview_{i}.png"
         cv2.imwrite(str(out_path), cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR))
         outputs.append(str(out_path))
+    
     return outputs
 
 
+def split_tifs(out_csv: str):
+    df = pd.read_csv(out_csv)
+    images = df["image_path"].unique()
+    split_annotations = []
+    for image in images:
+        annotations = df[df["image_path"] == image]
+        annotations = annotations.copy(deep=True)
+        # Open the image with rasterio and pass the numpy array to split_raster
+        with rasterio.open(image) as src:
+            numpy_image = src.read()
+        gdf = read_file(annotations, root_dir=DATASET_ROOT,label="Tree")
+        gdf = gpd.GeoDataFrame(gdf)
+        gdf["image_path"] = gdf["image_path"].apply(lambda x: os.path.basename(x))
+        split_image_annotations =split_raster(
+            image_name=os.path.basename(image), 
+            annotations_file=gdf, 
+            numpy_image=numpy_image, 
+            patch_size=500, 
+            allow_empty=False, 
+            save_dir=DATASET_ROOT / "pngs",
+            root_dir=DATASET_ROOT
+            )
+        split_annotations.append(split_image_annotations)
+    
+    split_annotations = pd.concat(split_annotations)
+    split_annotations["image_path"] = split_annotations["image_path"].apply(lambda x: os.path.join(DATASET_ROOT / "pngs", x))
+    split_annotations["source"] = "Dubrovin et al. 2024"
+    split_annotations.to_csv(os.path.join(DATASET_ROOT, "pngs", "annotations.csv"))
+    
+    return split_annotations
+
 def main():
     out_csv = build_annotations()
+    split_annotations = split_tifs(out_csv)
     print(f"Wrote: {out_csv}")
-    previews = generate_previews(out_csv, PREVIEWS_DIR, n=3)
+    previews = generate_previews(split_annotations, PREVIEWS_DIR, n=3)
     for p in previews:
         print(f"Plot: {p}")
-
+    
+    return split_annotations
 
 if __name__ == "__main__":
     main()
