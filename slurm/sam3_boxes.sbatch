@@ -8,6 +8,8 @@
 #SBATCH --mem=48G
 #SBATCH --gres=gpu:1
 
+export OPENBLAS_NUM_THREADS=1
+
 set -euo pipefail
 cd /blue/ewhite/b.weinstein/src/MillionTrees
 mkdir -p logs/slurm

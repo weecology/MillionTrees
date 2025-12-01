@@ -220,7 +220,8 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
     TreePolygons_datasets = remove_unsupervised_test_entries(TreePolygons_datasets)
     TreePoints_datasets = remove_unsupervised_test_entries(TreePoints_datasets)
     TreeBoxes_datasets = remove_unsupervised_test_entries(TreeBoxes_datasets)
-    # Save the splits to CSV
+   
+   # Save the splits to CSV
     TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/random.csv", index=False)
     TreePoints_datasets.to_csv(f"{base_dir}TreePoints{suffix}_{version}/random.csv", index=False)
     TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes{suffix}_{version}/random.csv", index=False)
@@ -426,11 +427,6 @@ def run(version, base_dir, debug=False):
     create_directories(base_dir, "TreeBoxes")
     create_directories(base_dir, "TreePoints")
     create_directories(base_dir, "TreePolygons")
-
-    # Save the default random split
-    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes_{version}/random.csv", index=False)
-    TreePoints_datasets.to_csv(f"{base_dir}TreePoints_{version}/random.csv", index=False)
-    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons_{version}/random.csv", index=False)
 
     # Process geometry columns
     TreeBoxes_datasets = process_geometry_columns(TreeBoxes_datasets, "box")
