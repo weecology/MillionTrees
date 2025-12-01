@@ -373,6 +373,7 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv",
         "/orange/ewhite/DeepForest/Yosemite/tiles/yosemite_all_annotations.csv",
         "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreePoints_OFO_unsupervised.csv",
+        "/orange/ewhite/DeepForest/Kaggle_LiDAR_RGB/pngs/annotations.csv",
         #'/orange/ewhite/DeepForest/Miraki/annotations.csv'
     ]
 
@@ -381,6 +382,7 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
         "/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
         "/orange/ewhite/DeepForest/Firoze2023/annotations.csv",
+        "/orange/ewhite/DeepForest/paracou_ball/pngs/annotations.csv",
         #"/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
         #"/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
         "/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",
@@ -398,6 +400,7 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/annotations.csv",
         "/orange/ewhite/DeepForest/Schutte_Germany/annotations.csv",
         #"/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv",
+        
     ]
     
     # Combine datasets
@@ -496,7 +499,7 @@ def run(version, base_dir, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.8"
+    version = "v0.9"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     debug = False
     run(version, base_dir, debug)

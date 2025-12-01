@@ -135,7 +135,7 @@ def main():
         "--root-dir",
         type=str,
         default=os.environ.get("MT_ROOT",
-                               "/orange/ewhite/DeepForest/MillionTrees/"),
+                               "/orange/ewhite/web/public/MillionTrees/"),
         help="Dataset root directory",
     )
     parser.add_argument("--batch-size", type=int, default=32)
