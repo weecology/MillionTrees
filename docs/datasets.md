@@ -184,6 +184,22 @@ IEEE Transactions on Geoscience and Remote Sensing (2023)
 
 **Citation:** Lefebvre, I., Laliberté, E. (2024). UAV LiDAR, UAV Imagery, Tree Segmentations and Ground Mesurements for Estimating Tree Biomass in Canadian (Quebec) Plantations. Federated Research Data Repository. https://doi.org/10.20383/103.0979
 
+## Dubrovin et al. 2024
+
+**Link:** [Kaggle Dataset](https://www.kaggle.com/datasets/sentinel3734/tree-detection-lidar-rgb)
+
+UAV orthomosaics with accompanying field-survey tree locations. We include the field survey points as per-image point annotations for individual trees.
+
+**Location:** Perm Krai, Russia
+
+**Citation:**: Dubrovin, I., Fortin, C. & Kedrov, A. An open dataset for individual tree detection in UAV LiDAR point clouds and RGB orthophotos in dense mixed forests. Sci Rep 14, 21938 (2024). https://doi.org/10.1038/s41598-024-72669-5
+
+
+https://www.nature.com/articles/s41598-024-72669-5
+
+
+
+
 ## Ventura et al. 2022
 
 ![sample_image](public/Ventura_et_al._2022.png)

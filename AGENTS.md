@@ -1,12 +1,12 @@
-# GitHub Copilot Instructions
-
+# Agent Instructions
 
 # To set up a development environment with all dependencies (including extras for development and testing),
 # use uv (https://github.com/astral-sh/uv):
 
-
+```python
 uv sync --dev extra
 uv run python
+```
 
 ## Coding Philosophy
 
@@ -48,6 +48,7 @@ uv run python
 - Don't catch broad exceptions (Exception, BaseException) unless absolutely necessary
 - Don't suppress errors with pass statements in except blocks
 - Don't add configuration options for things that don't need to be configurable
+- Avoid over-use of argparse and CLI for simple scripts.
 
 ## Specific Patterns
 
@@ -155,3 +156,8 @@ def process_annotations(data_dir: str) -> Optional[pd.DataFrame]:
     if os.path.exists(treetops_file):
         return gpd.read_file(treetops_file)
     return None  # Silent failure makes debugging harder
+```
+
+## Adding Datasets to MillionTrees
+
+Follow the docs/contributing.md for adding new datasets. 
