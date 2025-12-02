@@ -16,7 +16,6 @@ SCRIPTS=(
   slurm/sam3_points.sbatch
   slurm/sam3_boxes.sbatch
   slurm/sam3_polygons.sbatch
-  slurm/yolo_boxes.sbatch
 )
 
 for s in "${SCRIPTS[@]}"; do
