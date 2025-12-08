@@ -64,18 +64,10 @@ Once the installation is complete, you can use the MillionTrees package in your 
 Datasets are documented on ReadTheDocs with sample images overlayed with annotations.
 https://milliontrees.idtrees.org/en/latest/datasets.html
 
-# Mini dataset quick results
+# Leaderboard
 
-Fast sanity-check runs on mini datasets (one image per source):
-
-| Model (script) | Task | Root dir | Key metrics |
-|---|---|---|---|
-| sam3_points.py (SAM3 native, GPU) | TreePoints | data-mini | KeypointAccuracy: 0.000; Counting MAE: 1164.000 |
-| sam3_boxes.py (SAM3 native, GPU) | TreeBoxes | data-mini | Detection Acc: 0.083; Recall: 0.084 |
-| baseline_points.py (DeepForest) | TreePoints | /orange/ewhite/web/public/MillionTrees | KeypointAccuracy: 0.000; Counting MAE: 104.250 |
-| baseline_boxes.py (DeepForest) | TreeBoxes | /orange/ewhite/web/public/MillionTrees | Detection Acc: 0.559; Recall: 0.794 |
-
-See more in `docs/leaderboard.md`. To reproduce, use the example commands in that file.
+See the latest results on the leaderboard.
+https://milliontrees.idtrees.org/en/latest/leaderboard.html
 
 # Citing MillionTrees
 

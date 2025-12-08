@@ -161,3 +161,8 @@ def process_annotations(data_dir: str) -> Optional[pd.DataFrame]:
 ## Adding Datasets to MillionTrees
 
 Follow the docs/contributing.md for adding new datasets. 
+
+# Update the leaderboard
+
+For reproducible update to the leaderboard, run all the scripts in docs/examples. For SLURM systems, a wrapper function is available in slurm/submit_all.sh
+The logs are available in /logs and will report the performance of each model. Update the leaderboard with the top-level metrics. 

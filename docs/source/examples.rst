@@ -35,15 +35,6 @@ Baseline Polygons Example
    :language: python
    :linenos:
 
-YOLO TreeBoxes Example
-~~~~~~~~~~~~~~~~~~~~~~
-
-:download:`Download yolo_treeboxes.py <../examples/yolo_treeboxes.py>`
-
-.. literalinclude:: ../examples/yolo_treeboxes.py
-   :language: python
-   :linenos:
-
 View Examples on GitHub
 -----------------------
 
@@ -52,5 +43,4 @@ All example files are also available on GitHub:
 * `baseline_boxes.py <https://github.com/weecology/MillionTrees/blob/main/docs/examples/baseline_boxes.py>`_
 * `baseline_points.py <https://github.com/weecology/MillionTrees/blob/main/docs/examples/baseline_points.py>`_
 * `baseline_polygons.py <https://github.com/weecology/MillionTrees/blob/main/docs/examples/baseline_polygons.py>`_
-* `yolo_treeboxes.py <https://github.com/weecology/MillionTrees/blob/main/docs/examples/yolo_treeboxes.py>`_
 * `torchvision_fasterrcnn_treeboxes.md <https://github.com/weecology/MillionTrees/blob/main/docs/examples/torchvision_fasterrcnn_treeboxes.md>`_

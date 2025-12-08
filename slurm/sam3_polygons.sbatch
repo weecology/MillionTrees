@@ -21,10 +21,10 @@ SPLITS=(random zeroshot crossgeometry)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 uv run python docs/examples/sam3_polygons.py \
-  --backend native \
   --root-dir "$ROOT_DIR" \
   --device cuda \
   --split-scheme "$SPLIT" \
-  --batch-size 8
+  --batch-size 8 \
+  --hf-token "$HF_TOKEN"
 
 
