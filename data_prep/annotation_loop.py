@@ -63,6 +63,116 @@ LABEL_CONFIGS = {
     """
 }
 
+def _load_test_records(base_dir: str, version: str, dataset_type: str, split_name: str) -> pd.DataFrame:
+    """Load split CSV and return only test rows (if split column exists)."""
+    csv_path = Path(base_dir) / f"{dataset_type}_{version}" / f"{split_name}.csv"
+    df = pd.read_csv(csv_path)
+    return df[df["split"].eq("test")] if "split" in df.columns else df
+
+def _build_preannotations(df: pd.DataFrame, dataset_type: str, images_root: Path, select_filenames: list[str]) -> tuple[list[Path], list[pd.DataFrame]]:
+    """Create image paths and per-image DataFrames as preannotations for upload."""
+    df = df[df["filename"].isin(select_filenames)].copy()
+    images: list[Path] = [images_root / fname for fname in sorted(df["filename"].unique())]
+    preannotations: list[pd.DataFrame] = []
+    for fname in sorted(df["filename"].unique()):
+        rows = df[df["filename"] == fname].copy()
+        if dataset_type == "TreePoints":
+            cols = [c for c in ("x", "y") if c in rows.columns]
+            rows = rows[cols].copy()
+            rows.insert(0, "image_path", fname)
+            rows["label"] = "Tree"
+        elif dataset_type == "TreeBoxes":
+            cols = [c for c in ("xmin", "ymin", "xmax", "ymax") if c in rows.columns]
+            rows = rows[cols].copy()
+            rows.insert(0, "image_path", fname)
+            rows["label"] = "Tree"
+        else:
+            if "geometry" in rows.columns:
+                rows = rows[["geometry"]].copy()
+                rows.insert(0, "image_path", fname)
+                rows["label"] = "Tree"
+        preannotations.append(rows.reset_index(drop=True))
+    return images, preannotations
+
+def upload_eval_splits(version: str, base_dir: str = "/orange/ewhite/web/public/MillionTrees/", num_images: int = 100) -> None:
+    """Upload up to `num_images` test images per dataset/split with preannotations to Label Studio.
+    
+    Projects created: MillionTrees-Eval-<dataset_type>-<split>
+    """
+    images_to_annotate_dir = Path("data_prep") / "images_to_annotate"
+    annotated_images_dir = Path("data_prep") / "images_annotated"
+    csv_dir = Path("data_prep") / "annotations"
+    for d in (images_to_annotate_dir, annotated_images_dir, csv_dir):
+        d.mkdir(parents=True, exist_ok=True)
+
+    sftp_client = create_sftp_client(
+        user=os.getenv("USER"),
+        host=os.getenv("HOST"),
+        key_filename=os.path.expanduser(os.getenv("KEY_FILENAME"))
+    )
+
+    for dataset_type in ("TreeBoxes", "TreePoints"):
+        for split_name in ("random", "zeroshot"):
+            df = _load_test_records(base_dir, version, dataset_type, split_name)
+            if df.empty:
+                print(f"No test records for {dataset_type} {split_name}, skipping.")
+                continue
+            filenames = df["filename"].dropna().unique().tolist()
+            if not filenames:
+                print(f"No filenames found for {dataset_type} {split_name}, skipping.")
+                continue
+            selected = filenames[:min(num_images, len(filenames))]
+            images_root = Path(base_dir) / f"{dataset_type}_{version}" / "images"
+            images, preannotations = _build_preannotations(df, dataset_type, images_root, selected)
+
+            project_name = f"MillionTrees-Eval-{dataset_type}-{split_name}"
+            _ = connect_to_label_studio(
+                url=os.getenv("LABEL_STUDIO_URL"),
+                project_name=project_name,
+                label_config=LABEL_CONFIGS[dataset_type]
+            )
+            upload_to_label_studio(
+                images=images,
+                sftp_client=sftp_client,
+                dataset_type=dataset_type,
+                url=os.getenv("LABEL_STUDIO_URL"),
+                project_name=project_name,
+                images_to_annotate_dir=images_root,
+                folder_name=os.getenv("LABEL_STUDIO_DATA_DIR"),
+                preannotations=preannotations,
+                batch_size=10
+            )
+            print(f"Uploaded {len(images)} {dataset_type} {split_name} images to {project_name}.")
+
+def download_eval_annotations(version: str, base_dir: str = "/orange/ewhite/web/public/MillionTrees/") -> None:
+    """Download completed eval annotations into data_prep/annotations for all dataset/split combos."""
+    images_to_annotate_dir = Path("data_prep") / "images_to_annotate"
+    annotated_images_dir = Path("data_prep") / "images_annotated"
+    csv_dir = Path("data_prep") / "annotations"
+    for d in (images_to_annotate_dir, annotated_images_dir, csv_dir):
+        d.mkdir(parents=True, exist_ok=True)
+
+    sftp_client = create_sftp_client(
+        user=os.getenv("USER"),
+        host=os.getenv("HOST"),
+        key_filename=os.path.expanduser(os.getenv("KEY_FILENAME"))
+    )
+
+    for dataset_type in ("TreeBoxes", "TreePoints"):
+        for split_name in ("random", "zeroshot"):
+            project_name = f"MillionTrees-Eval-{dataset_type}-{split_name}"
+            print(f"Checking for completed annotations: {project_name}")
+            _ = check_for_new_annotations(
+                sftp_client=sftp_client,
+                url=os.getenv("LABEL_STUDIO_URL"),
+                project_name=project_name,
+                csv_dir=csv_dir,
+                images_to_annotate_dir=images_to_annotate_dir,
+                annotated_images_dir=annotated_images_dir,
+                folder_name=os.getenv("LABEL_STUDIO_DATA_DIR"),
+                dataset_type=dataset_type
+            )
+
 def format_annotations(dataset_type, boxes, image_path):
     """Format annotations based on dataset type"""
     if dataset_type == 'TreePoints':
@@ -185,4 +295,5 @@ def main():
         # )
 
 if __name__ == "__main__":
-    main() 
+    #main() 
+    upload_eval_splits(version="v0.9", base_dir="/orange/ewhite/web/public/MillionTrees/", num_images=100)

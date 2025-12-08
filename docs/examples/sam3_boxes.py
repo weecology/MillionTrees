@@ -16,7 +16,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--root-dir", type=str, default=os.environ.get("MT_ROOT", "data"), help="Dataset root directory")
     parser.add_argument("--batch-size", type=int, default=8, help="Eval batch size")
     parser.add_argument("--num-workers", type=int, default=2, help="DataLoader workers")
-    parser.add_argument("--backend", type=str, choices=["native", "transformers"], default="native", help="SAM3 backend (default: native)")
     parser.add_argument("--mini", action="store_true", help="Use mini datasets for fast dev")
     parser.add_argument("--download", action="store_true", help="Download dataset if missing")
     parser.add_argument("--split-scheme",
@@ -53,21 +52,11 @@ def main() -> None:
     args = parse_args()
     device = select_device(args.device)
 
-    use_transformers = (args.backend == "transformers")
-    if use_transformers:
-        try:
-            from transformers import Sam3Processor, Sam3Model  # type: ignore
-        except Exception:
-            use_transformers = False
-    if not use_transformers:
-        try:
-            from sam3.model_builder import build_sam3_image_model  # type: ignore
-            from sam3.model.sam3_image_processor import Sam3Processor as NativeSam3Processor  # type: ignore
-        except Exception as exc:
-            raise SystemExit(
-                "SAM3 is required (either Transformers integration or native package). "
-                "Install with `pip install -e .[sam3]`."
-            ) from exc
+    # Always use Transformers backend
+    try:
+        from transformers import Sam3Processor, Sam3Model  # type: ignore
+    except Exception as exc:
+        raise SystemExit("Transformers with SAM3 is required. Install extras and try again.") from exc
 
     dataset = get_dataset("TreeBoxes",
                           root_dir=args.root_dir,
@@ -80,21 +69,18 @@ def main() -> None:
                                   batch_size=args.batch_size,
                                   num_workers=args.num_workers)
 
+    # Load model and processor from HF
     try:
-        if use_transformers:
-            try:
-                model = Sam3Model.from_pretrained("facebook/sam3", token=args.hf_token).to(device)
-                processor = Sam3Processor.from_pretrained("facebook/sam3", token=args.hf_token)
-            except Exception:
-                model = Sam3Model.from_pretrained("facebook/sam3", use_auth_token=args.hf_token).to(device)
-                processor = Sam3Processor.from_pretrained("facebook/sam3", use_auth_token=args.hf_token)
-        else:
-            model = build_sam3_image_model()
-            processor = NativeSam3Processor(model)
+        try:
+            model = Sam3Model.from_pretrained("facebook/sam3", token=args.hf_token).to(device)
+            processor = Sam3Processor.from_pretrained("facebook/sam3", token=args.hf_token)
+        except Exception:
+            model = Sam3Model.from_pretrained("facebook/sam3", use_auth_token=args.hf_token).to(device)
+            processor = Sam3Processor.from_pretrained("facebook/sam3", use_auth_token=args.hf_token)
     except Exception as exc:
         raise SystemExit(
-            f"Unable to initialize SAM3 backend ({'transformers' if use_transformers else 'native'}): {exc}. "
-            "If using Transformers, accept the model terms and ensure HF_TOKEN is valid: https://huggingface.co/facebook/sam3"
+            f"Unable to initialize SAM3 (transformers): {exc}. "
+            "Accept the model terms and ensure HF_TOKEN is valid: https://huggingface.co/facebook/sam3"
         )
 
     all_y_pred: List[Dict[str, Any]] = []
@@ -105,46 +91,40 @@ def main() -> None:
         pil_images = to_pil_list(images)
         texts = [args.text_prompt] * len(pil_images)
 
-        if use_transformers:
-            inputs = processor(images=pil_images, text=texts, return_tensors="pt").to(device)
-            with torch.no_grad():
-                outputs = model(**inputs)
-            results = processor.post_process_instance_segmentation(
-                outputs,
-                threshold=args.score_threshold,
-                mask_threshold=args.mask_threshold,
-                target_sizes=inputs.get("original_sizes").tolist(),
-            )
-        else:
-            results = []
-            for im in pil_images:
-                state = processor.set_image(im)
-                out = processor.set_text_prompt(state=state, prompt=args.text_prompt)
-                results.append({
-                    "masks": out.get("masks", []),
-                    "scores": out.get("scores", []),
-                })
+        inputs = processor(images=pil_images, text=texts, return_tensors="pt").to(device)
+        with torch.no_grad():
+            outputs = model(**inputs)
+        results = processor.post_process_instance_segmentation(
+            outputs,
+            threshold=args.score_threshold,
+            mask_threshold=args.mask_threshold,
+            target_sizes=inputs.get("original_sizes").tolist(),
+        )
 
         for res, target in zip(results, targets):
             masks = res.get("masks", None)
+            boxes_out = res.get("boxes", None)
             scores = res.get("scores", None)
-            if masks is None or len(masks) == 0:
+            if (boxes_out is None or len(boxes_out) == 0) and (masks is None or len(masks) == 0):
                 y_pred = {
                     "y": torch.zeros((0, 4), dtype=torch.float32),
                     "labels": torch.zeros((0,), dtype=torch.int64),
                     "scores": torch.zeros((0,), dtype=torch.float32),
                 }
             else:
-                masks_t = torch.as_tensor(masks, dtype=torch.uint8, device=device)
-                # Normalize mask shape to [N, H, W]
-                if masks_t.dim() == 2:
-                    masks_t = masks_t.unsqueeze(0)
-                if masks_t.dim() == 4 and masks_t.shape[1] == 1:
-                    masks_t = masks_t[:, 0]
-                boxes = masks_to_boxes(masks_t).detach().to("cpu")  # Nx4
-                scores_t = torch.as_tensor(scores, dtype=torch.float32).detach().to("cpu")
-                labels_t = torch.zeros((boxes.shape[0],), dtype=torch.int64)
-                y_pred = {"y": boxes, "labels": labels_t, "scores": scores_t}
+                if boxes_out is not None and len(boxes_out) > 0:
+                    boxes_t = torch.as_tensor(boxes_out, dtype=torch.float32).detach().to("cpu")
+                else:
+                    masks_t = torch.as_tensor(masks, dtype=torch.uint8, device=device)
+                    # Normalize mask shape to [N, H, W]
+                    if masks_t.dim() == 2:
+                        masks_t = masks_t.unsqueeze(0)
+                    if masks_t.dim() == 4 and masks_t.shape[1] == 1:
+                        masks_t = masks_t[:, 0]
+                    boxes_t = masks_to_boxes(masks_t).detach().to("cpu")  # Nx4
+                scores_t = torch.as_tensor(scores, dtype=torch.float32).detach().to("cpu") if scores is not None else torch.zeros((boxes_t.shape[0],), dtype=torch.float32)
+                labels_t = torch.zeros((boxes_t.shape[0],), dtype=torch.int64)
+                y_pred = {"y": boxes_t, "labels": labels_t, "scores": scores_t}
 
             all_y_pred.append(y_pred)
             all_y_true.append(target)

@@ -75,39 +75,76 @@ Once you have trained a model and evaluated its performance, you can submit your
 
 ## TreePoints
 
-| Model | Task | Split | Dataset | Size | Script |
-|---|---|---|---|---|---|
-| DeepForest baseline (`baseline_points.py`) | TreePoints | random | TreePoints | mini | `uv run python docs/examples/baseline_points.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --split-scheme random --max-batches 2` |
-| DeepForest baseline (`baseline_points.py`) | TreePoints | zeroshot | TreePoints | mini | `uv run python docs/examples/baseline_points.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --split-scheme zeroshot --max-batches 2` |
-| DeepForest baseline (`baseline_points.py`) | TreePoints | crossgeometry | TreePoints | mini | `uv run python docs/examples/baseline_points.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --split-scheme crossgeometry --max-batches 2` |
-| SAM3 (`sam3_points.py`) | TreePoints | random | TreePoints | mini | `uv run python docs/examples/sam3_points.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --mini --split-scheme random --max-batches 2` |
-| SAM3 (`sam3_points.py`) | TreePoints | zeroshot | TreePoints | mini | `uv run python docs/examples/sam3_points.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --mini --split-scheme zeroshot --max-batches 2` |
-| SAM3 (`sam3_points.py`) | TreePoints | crossgeometry | TreePoints | mini | `uv run python docs/examples/sam3_points.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --mini --split-scheme crossgeometry --max-batches 2` |
+### Random
+
+| Model | Task | Dataset | Avg Recall | Script |
+|---|---|---|---|---|
+| DeepForest baseline (`baseline_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/baseline_points.py --split-scheme random`</small> |
+| SAM3 (`sam3_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+
+### Zero-shot
+
+| Model | Task | Dataset | Avg Recall | Script |
+|---|---|---|---|---|
+| DeepForest baseline (`baseline_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/baseline_points.py --split-scheme zeroshot`</small> |
+| SAM3 (`sam3_points.py`) | TreePoints | TreePoints | 0.001 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+
+### Cross-geometry
+
+| Model | Task | Dataset | Avg Recall | Script |
+|---|---|---|---|---|
+| DeepForest baseline (`baseline_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/baseline_points.py --split-scheme crossgeometry`</small> |
+| SAM3 (`sam3_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
 
 ## TreeBoxes
 
-| Model | Task | Split | Dataset | Size | Script |
-|---|---|---|---|---|---|
-| DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | random | TreeBoxes | mini | `uv run python docs/examples/baseline_boxes.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --split-scheme random --max-batches 2` |
-| DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | zeroshot | TreeBoxes | mini | `uv run python docs/examples/baseline_boxes.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --split-scheme zeroshot --max-batches 2` |
-| DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | crossgeometry | TreeBoxes | mini | `uv run python docs/examples/baseline_boxes.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --split-scheme crossgeometry --max-batches 2` |
-| SAM3 (`sam3_boxes.py`) | TreeBoxes | random | TreeBoxes | mini | `uv run python docs/examples/sam3_boxes.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --mini --split-scheme random --max-batches 2` |
-| SAM3 (`sam3_boxes.py`) | TreeBoxes | zeroshot | TreeBoxes | mini | `uv run python docs/examples/sam3_boxes.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --mini --split-scheme zeroshot --max-batches 2` |
-| SAM3 (`sam3_boxes.py`) | TreeBoxes | crossgeometry | TreeBoxes | mini | `uv run python docs/examples/sam3_boxes.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --mini --split-scheme crossgeometry --max-batches 2` |
-| Torchvision Faster R-CNN (`torchvision_fasterrcnn_treeboxes.py`) | TreeBoxes | random | TreeBoxes | mini | `uv run python docs/examples/torchvision_fasterrcnn_treeboxes.py --root_dir /orange/ewhite/web/public/MillionTrees --mini --split_scheme random` |
-| Torchvision Faster R-CNN (`torchvision_fasterrcnn_treeboxes.py`) | TreeBoxes | zeroshot | TreeBoxes | mini | `uv run python docs/examples/torchvision_fasterrcnn_treeboxes.py --root_dir /orange/ewhite/web/public/MillionTrees --mini --split_scheme zeroshot` |
-| Torchvision Faster R-CNN (`torchvision_fasterrcnn_treeboxes.py`) | TreeBoxes | crossgeometry | TreeBoxes | mini | `uv run python docs/examples/torchvision_fasterrcnn_treeboxes.py --root_dir /orange/ewhite/web/public/MillionTrees --mini --split_scheme crossgeometry` |
-| Ultralytics YOLO (`yolo_treeboxes.py`) | TreeBoxes | random | TreeBoxes | mini | `uv run python docs/examples/yolo_treeboxes.py --root_dir /orange/ewhite/web/public/MillionTrees --mini --split_scheme random --weights yolov8n.pt` |
-| Ultralytics YOLO (`yolo_treeboxes.py`) | TreeBoxes | zeroshot | TreeBoxes | mini | `uv run python docs/examples/yolo_treeboxes.py --root_dir /orange/ewhite/web/public/MillionTrees --mini --split_scheme zeroshot --weights yolov8n.pt` |
-| Ultralytics YOLO (`yolo_treeboxes.py`) | TreeBoxes | crossgeometry | TreeBoxes | mini | `uv run python docs/examples/yolo_treeboxes.py --root_dir /orange/ewhite/web/public/MillionTrees --mini --split_scheme crossgeometry --weights yolov8n.pt` |
+### Random
+
+| Model | Task | Dataset | Avg Recall | Script |
+|---|---|---|---|---|
+| DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme random`</small> |
+| SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| Torchvision Faster R-CNN (`torchvision_fasterrcnn_treeboxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/torchvision_fasterrcnn_treeboxes.py --split_scheme random`</small> |
+| Ultralytics YOLO (`yolo_treeboxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/yolo_treeboxes.py --split_scheme random --weights yolov8n.pt`</small> |
+
+### Zero-shot
+
+| Model | Task | Dataset | Avg Recall | Script |
+|---|---|---|---|---|
+| DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | TreeBoxes | 0.546 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme zeroshot`</small> |
+| SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes | 0.212 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| Torchvision Faster R-CNN (`torchvision_fasterrcnn_treeboxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/torchvision_fasterrcnn_treeboxes.py --split_scheme zeroshot`</small> |
+| Ultralytics YOLO (`yolo_treeboxes.py`) | TreeBoxes | TreeBoxes | 0.004 | <small>`uv run python docs/examples/yolo_treeboxes.py --split_scheme zeroshot --weights yolov8n.pt`</small> |
+
+### Cross-geometry
+
+| Model | Task | Dataset | Avg Recall | Script |
+|---|---|---|---|---|
+| DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | TreeBoxes | 0.000 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme crossgeometry`</small> |
+| SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes | 0.000 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
+| Torchvision Faster R-CNN (`torchvision_fasterrcnn_treeboxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/torchvision_fasterrcnn_treeboxes.py --split_scheme crossgeometry`</small> |
+| Ultralytics YOLO (`yolo_treeboxes.py`) | TreeBoxes | TreeBoxes | 0.000 | <small>`uv run python docs/examples/yolo_treeboxes.py --split_scheme crossgeometry --weights yolov8n.pt`</small> |
 
 ## TreePolygons
 
-| Model | Task | Split | Dataset | Size | Script |
-|---|---|---|---|---|---|
-| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | random | TreePolygons | mini | `uv run python docs/examples/baseline_polygons.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --split-scheme random --max-batches 2` |
-| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | zeroshot | TreePolygons | mini | `uv run python docs/examples/baseline_polygons.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --split-scheme zeroshot --max-batches 2` |
-| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | crossgeometry | TreePolygons | mini | `uv run python docs/examples/baseline_polygons.py --root-dir /orange/ewhite/web/public/MillionTrees --mini --split-scheme crossgeometry --max-batches 2` |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | random | TreePolygons | mini | `uv run python docs/examples/sam3_polygons.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --mini --split-scheme random --max-batches 2` |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | zeroshot | TreePolygons | mini | `uv run python docs/examples/sam3_polygons.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --mini --split-scheme zeroshot --max-batches 2` |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | crossgeometry | TreePolygons | mini | `uv run python docs/examples/sam3_polygons.py --backend native --root-dir /orange/ewhite/web/public/MillionTrees --device cuda --mini --split-scheme crossgeometry --max-batches 2` |
+### Random
+
+| Model | Task | Dataset | Avg Recall | Script |
+|---|---|---|---|---|
+| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme random`</small> |
+| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+
+### Zero-shot
+
+| Model | Task | Dataset | Avg Recall | Script |
+|---|---|---|---|---|
+| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme zeroshot`</small> |
+| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+
+### Cross-geometry
+
+| Model | Task | Dataset | Avg Recall | Script |
+|---|---|---|---|---|
+| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme crossgeometry`</small> |
+| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
+
