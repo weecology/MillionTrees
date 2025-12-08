@@ -80,21 +80,21 @@ Once you have trained a model and evaluated its performance, you can submit your
 | Model | Task | Dataset | Avg Recall | Script |
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/baseline_points.py --split-scheme random`</small> |
-| SAM3 (`sam3_points.py`) | TreePoints | TreePoints |  | <small>`uv run python docs/examples/sam3_points.py --backend native --device cuda --split-scheme random`</small> |
+| SAM3 (`sam3_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 
 ### Zero-shot
 
 | Model | Task | Dataset | Avg Recall | Script |
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/baseline_points.py --split-scheme zeroshot`</small> |
-| SAM3 (`sam3_points.py`) | TreePoints | TreePoints |  | <small>`uv run python docs/examples/sam3_points.py --backend native --device cuda --split-scheme zeroshot`</small> |
+| SAM3 (`sam3_points.py`) | TreePoints | TreePoints | 0.001 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 
 ### Cross-geometry
 
 | Model | Task | Dataset | Avg Recall | Script |
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/baseline_points.py --split-scheme crossgeometry`</small> |
-| SAM3 (`sam3_points.py`) | TreePoints | TreePoints |  | <small>`uv run python docs/examples/sam3_points.py --backend native --device cuda --split-scheme crossgeometry`</small> |
+| SAM3 (`sam3_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
 
 ## TreeBoxes
 
@@ -103,7 +103,7 @@ Once you have trained a model and evaluated its performance, you can submit your
 | Model | Task | Dataset | Avg Recall | Script |
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme random`</small> |
-| SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/sam3_boxes.py --backend native --device cuda --split-scheme random`</small> |
+| SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 | Torchvision Faster R-CNN (`torchvision_fasterrcnn_treeboxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/torchvision_fasterrcnn_treeboxes.py --split_scheme random`</small> |
 | Ultralytics YOLO (`yolo_treeboxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/yolo_treeboxes.py --split_scheme random --weights yolov8n.pt`</small> |
 
@@ -112,7 +112,7 @@ Once you have trained a model and evaluated its performance, you can submit your
 | Model | Task | Dataset | Avg Recall | Script |
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | TreeBoxes | 0.546 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme zeroshot`</small> |
-| SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/sam3_boxes.py --backend native --device cuda --split-scheme zeroshot`</small> |
+| SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes | 0.212 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 | Torchvision Faster R-CNN (`torchvision_fasterrcnn_treeboxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/torchvision_fasterrcnn_treeboxes.py --split_scheme zeroshot`</small> |
 | Ultralytics YOLO (`yolo_treeboxes.py`) | TreeBoxes | TreeBoxes | 0.004 | <small>`uv run python docs/examples/yolo_treeboxes.py --split_scheme zeroshot --weights yolov8n.pt`</small> |
 
@@ -121,7 +121,7 @@ Once you have trained a model and evaluated its performance, you can submit your
 | Model | Task | Dataset | Avg Recall | Script |
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | TreeBoxes | 0.000 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme crossgeometry`</small> |
-| SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/sam3_boxes.py --backend native --device cuda --split-scheme crossgeometry`</small> |
+| SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes | 0.000 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
 | Torchvision Faster R-CNN (`torchvision_fasterrcnn_treeboxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/torchvision_fasterrcnn_treeboxes.py --split_scheme crossgeometry`</small> |
 | Ultralytics YOLO (`yolo_treeboxes.py`) | TreeBoxes | TreeBoxes | 0.000 | <small>`uv run python docs/examples/yolo_treeboxes.py --split_scheme crossgeometry --weights yolov8n.pt`</small> |
 
@@ -132,19 +132,19 @@ Once you have trained a model and evaluated its performance, you can submit your
 | Model | Task | Dataset | Avg Recall | Script |
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme random`</small> |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/sam3_polygons.py --backend native --device cuda --split-scheme random`</small> |
+| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 
 ### Zero-shot
 
 | Model | Task | Dataset | Avg Recall | Script |
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme zeroshot`</small> |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/sam3_polygons.py --backend native --device cuda --split-scheme zeroshot`</small> |
+| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 
 ### Cross-geometry
 
 | Model | Task | Dataset | Avg Recall | Script |
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme crossgeometry`</small> |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/sam3_polygons.py --backend native --device cuda --split-scheme crossgeometry`</small> |
+| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
 

@@ -9,6 +9,8 @@ import cv2
 import rasterio
 import glob
 from pathlib import Path
+from shapely.geometry.base import BaseGeometry
+import shapely.wkt
 
 def remove_alpha_channel(datasets):
     """Remove alpha channels from images in the dataset."""
@@ -58,15 +60,33 @@ def keep_columns_if_exist(df: pd.DataFrame, cols: list) -> pd.DataFrame:
 
 def process_geometry_columns(datasets, geom_type):
     """Process geometry columns based on the dataset type."""
+    # Build a GeoSeries from either WKT strings or shapely geometries
+
+    def convert_to_shapely(value):
+        if type(value) == str:
+            return shapely.wkt.loads(value)
+        elif isinstance(value, BaseGeometry):
+            return value
+        else:
+            raise ValueError(f"Invalid geometry type: {type(value)}")
+    shapely_geometries = gpd.GeoSeries(datasets["geometry"].apply(convert_to_shapely))
+    
     if geom_type == "box":
-        datasets[["xmin", "ymin", "xmax", "ymax"]] = gpd.GeoSeries.from_wkt(datasets["geometry"]).bounds
+        bounds = shapely_geometries.bounds
+        datasets[["xmin", "ymin", "xmax", "ymax"]] = bounds[["minx", "miny", "maxx", "maxy"]].to_numpy()
+        datasets["geometry"] = shapely_geometries.to_wkt()
     elif geom_type == "point":
-        datasets["x"] = gpd.GeoSeries.from_wkt(datasets["geometry"]).centroid.x
-        datasets["y"] = gpd.GeoSeries.from_wkt(datasets["geometry"]).centroid.y
-    elif geom_type == "polygon":
-        datasets["polygon"] = gpd.GeoDataFrame(datasets.geometry).to_wkt()
-        # Remove multipolygons
-        datasets = datasets[datasets["geometry"].apply(lambda x: gpd.GeoSeries.from_wkt([x]).geom_type[0] != "MultiPolygon")]
+        centroids = shapely_geometries.centroid
+        datasets["x"] = centroids.x
+        datasets["y"] = centroids.y
+        datasets["geometry"] = shapely_geometries.to_wkt()
+    elif geom_type == "polygon":    
+        # Remove multipolygons, then store polygon WKT
+        mask = shapely_geometries.geom_type != "MultiPolygon"
+        shapely_geometries = shapely_geometries.loc[mask].copy()
+        datasets["polygon"] = shapely_geometries.to_wkt()
+        datasets["geometry"] = shapely_geometries.to_wkt()
+    
     return datasets
 
 
@@ -413,10 +433,10 @@ def run(version, base_dir, debug=False):
     TreeBoxes_datasets = TreeBoxes_datasets[TreeBoxes_datasets["xmin"] != TreeBoxes_datasets["xmax"]]
     TreeBoxes_datasets = TreeBoxes_datasets[TreeBoxes_datasets["ymin"] != TreeBoxes_datasets["ymax"]]
 
-    # Check for updated annotations
-    check_for_updated_annotations(TreeBoxes_datasets, "Boxes")
-    check_for_updated_annotations(TreePoints_datasets, "Points")
-    #check_for_updated_annotations(TreePolygons_datasets, "Polygons")
+    # Check for updated annotations (from Label Studio review) and apply them
+    TreeBoxes_datasets = check_for_updated_annotations(TreeBoxes_datasets, "Boxes")
+    TreePoints_datasets = check_for_updated_annotations(TreePoints_datasets, "Points")
+    # TreePolygons_datasets = check_for_updated_annotations(TreePolygons_datasets, "Polygons")
 
     # Split datasets
     TreeBoxes_datasets = split_dataset(TreeBoxes_datasets)
