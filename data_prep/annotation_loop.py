@@ -108,7 +108,7 @@ def upload_eval_splits(version: str, base_dir: str = "/orange/ewhite/web/public/
     sftp_client = create_sftp_client(
         user=os.getenv("USER"),
         host=os.getenv("HOST"),
-        key_filename=os.path.expanduser(os.getenv("KEY"))
+        key_filename=os.path.expanduser(os.getenv("KEY_FILENAME"))
     )
 
     for dataset_type in ("TreeBoxes", "TreePoints"):

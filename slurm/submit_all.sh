@@ -7,7 +7,7 @@ mkdir -p logs/slurm
 RUN_ID="$(date +%Y%m%d-%H%M%S)"
 RUN_DIR="logs/slurm/${RUN_ID}"
 mkdir -p "${RUN_DIR}"
-ln -sfn "${RUN_DIR}" logs/slurm/latest
+ln -sfn "${RUN_ID}" logs/slurm/latest
 
 SCRIPTS=(
   slurm/df_points.sbatch
