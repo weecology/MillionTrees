@@ -38,11 +38,11 @@ class TreePointsDataset(MillionTreesDataset):
     _versions_dict = {
         '0.0': {
             'download_url': '',
-            'compressed_size': 105525592
+            'compressed_size': 160938856
         },
-        "0.8": {
+        "0.9": {
             'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.8.zip",
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.9.zip",
             'compressed_size':
                 160910816
         }
