@@ -414,7 +414,7 @@ Coregistered LIDAR and RGB were acquired over 27 sites in the National Ecologica
 
 **Location**: Forest across the United States (NEON)
 
-![sample_image](public/Weinstein_et_al._2018_weak_supervised.png)
+![sample_image](public/Weinstein_et_al._2018_unsupervised.png)
 
 ## Open Forest Observatory
 
@@ -428,4 +428,4 @@ https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.13860
 
 ***Location*** Forest across the United States
 
-![sample_image](public/Young_et_al._2025_weak_supervised.png)
+![sample_image](public/Young_et_al._2025_unsupervised.png)
