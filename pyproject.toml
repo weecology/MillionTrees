@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "milliontrees"
-version = "0.4.0"
+version = "0.4.2"
 description = "Benchmark dataset for Airborne Tree Machine Learning"
 readme = "README.md"
 license = { text = "MIT" }
@@ -45,7 +45,6 @@ dependencies = [
     "tqdm",
     "scikit-learn",
     "shapely",
-    "albumentations",
     "torchmetrics",
     "pyarrow>=17.0.0",
     "datasets",
@@ -72,9 +71,11 @@ dev = [
     "requests",
     "neonutilities",
     "dask[diagnostics]",
-    "transformers @ git+https://github.com/huggingface/transformers.git",
+    "transformers>=5.0.0rc1",
     "accelerate",
     "safetensors",
+    "huggingface-hub>=1.0.0",
+    "tokenizers>=0.20.0",
     "matplotlib",
     "opencv-python",
 ]

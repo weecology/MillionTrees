@@ -11,18 +11,12 @@
 #SBATCH --error=/home/b.weinstein/logs/MillionTrees_test_release_%j.err
 #SBATCH --gpus=1
 
-source /blue/ewhite/b.weinstein/miniconda3/etc/profile.d/conda.sh
-conda activate MillionTrees
-
-# Add to path
-export PYTHONPATH=$PYTHONPATH:/home/b.weinstein/MillionTrees
-
 # Create a timestamped log directory
-LOG_DIR="/home/b.weinstein/logs/test_release_$(date +%Y%m%d_%H%M%S)"
+LOG_DIR="/blue/ewhite/b.weinstein/src/MillionTrees/logs/test_release_$(date +%Y%m%d_%H%M%S)"
 mkdir -p $LOG_DIR
 
 # Change to the MillionTrees directory
-cd /home/b.weinstein/MillionTrees
+cd /blue/ewhite/b.weinstein/src/MillionTrees
 
 echo "Starting MillionTrees test_release validation at $(date)"
 echo "Log directory: $LOG_DIR"

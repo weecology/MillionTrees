@@ -45,11 +45,11 @@ class TreeBoxesDataset(MillionTreesDataset):
         image_size (int): The size of the image to use.
         include_sources (list): The sources to include.
         exclude_sources (list): The sources to exclude.
-        unsupervised (bool): If True, include unsupervised data in addition to
+        weak_supervised (bool): If True, include weak supervised data in addition to
             any other selected sources (unless explicitly excluded).
         mini (bool): If True, download mini versions of datasets for development.
             Mini datasets are smaller subsets that maintain the same structure.
-        unsupervised_args (dict): The arguments to pass to the unsupervised download pipeline.
+        weak_supervised_args (dict): The arguments to pass to the weak supervised download pipeline.
 
     References:
         Website: https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
@@ -72,11 +72,11 @@ class TreeBoxesDataset(MillionTreesDataset):
             'download_url': '',
             'compressed_size': 105525592
         },
-        "0.8": {
+        "0.9": {
             'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.8.zip",
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.9.zip",
             'compressed_size':
-                45304108
+                41920048
         }
     }
 

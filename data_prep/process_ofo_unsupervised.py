@@ -229,7 +229,7 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
         allow_empty=False
     )
     
-    points_tiled['source'] = 'Young et al. 2025 unsupervised'
+    points_tiled['source'] = 'Young et al. 2025 weak supervised'
     points_tiled = points_tiled.rename(columns={'image_path': 'filename'})
 
     # Tile boxes
@@ -248,7 +248,7 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
         allow_empty=False
     )
     
-    boxes_tiled['source'] = 'Young et al. 2025 unsupervised'
+    boxes_tiled['source'] = 'Young et al. 2025 weak supervised'
     boxes_tiled = boxes_tiled.rename(columns={'image_path': 'filename'})
 
     return points_tiled, boxes_tiled
@@ -332,7 +332,7 @@ def main():
     
     tiled_boxes["image_path"] = tiled_boxes["filename"].apply(lambda x: os.path.join(images_dir,x))
     tiled_boxes = tiled_boxes.drop(columns=['filename'])
-    tiled_boxes.to_csv(os.path.join(images_dir, 'TreeBoxes_OFO_unsupervised.csv'), index=False)
+    tiled_boxes.to_csv(os.path.join(images_dir, 'TreeBoxes_OFO_weak_supervised.csv'), index=False)
 
     tiled_points = pd.concat(tiled_points)
 
@@ -340,7 +340,7 @@ def main():
     
     # remove filename column to avoid confusion
     tiled_points = tiled_points.drop(columns=['filename'])
-    tiled_points.to_csv(os.path.join(images_dir, 'TreePoints_OFO_unsupervised.csv'), index=False)
+    tiled_points.to_csv(os.path.join(images_dir, 'TreePoints_OFO_weak_supervised.csv'), index=False)
 
 if __name__ == '__main__':
     main()
@@ -349,7 +349,7 @@ if __name__ == '__main__':
     from deepforest import utilities, visualize
     from matplotlib import pyplot as plt
     args = parse_args()
-    df = utilities.read_file(os.path.join(args.data_dir, 'images', 'TreeBoxes_OFO_unsupervised.csv'))
+    df = utilities.read_file(os.path.join(args.data_dir, 'images', 'TreeBoxes_OFO_weak_supervised.csv'))
     for filename in df['image_path'].unique()[:10]:
         image_df = df.loc[df['image_path'] == filename]
         image_df.root_dir = os.path.dirname(filename)
@@ -357,7 +357,7 @@ if __name__ == '__main__':
         plt.savefig(f"sample_boxes_{os.path.basename(filename)}.png")
         plt.close()
 
-    df = utilities.read_file(os.path.join(args.data_dir, 'images', 'TreePoints_OFO_unsupervised.csv'))
+    df = utilities.read_file(os.path.join(args.data_dir, 'images', 'TreePoints_OFO_weak_supervised.csv'))
     for filename in df['image_path'].unique()[:10]:
         image_df = df.loc[df['image_path'] == filename]
         image_df.root_dir = os.path.dirname(filename)

@@ -51,6 +51,22 @@
             "cwd": "${workspaceFolder}/data_prep",
             "justMyCode": true,
         },
+        {
+            "name": "Debug test_release.py",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "${workspaceFolder}/tests/test_release.py",
+                "-v"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}:${env:PYTHONPATH}"
+            },
+            "justMyCode": false
+        }
         
     ]
 }
