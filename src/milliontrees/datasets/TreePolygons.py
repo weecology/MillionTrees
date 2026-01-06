@@ -48,11 +48,11 @@ class TreePolygonsDataset(MillionTreesDataset):
             'download_url': '',
             'compressed_size': 105525592
         },
-        "0.8": {
+        "0.9": {
             'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.8.zip",
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.9.zip",
             'compressed_size':
-                105525592
+                103609548
         }
     }
 
@@ -100,14 +100,14 @@ class TreePolygonsDataset(MillionTreesDataset):
             df = df[df['complete'] == True]
 
         # Filter by include/exclude source names with wildcard support
-        # Default: exclude sources containing 'unsupervised'
+        # Default: exclude sources containing 'weak supervised'
         include_patterns = None
         if include_sources is not None and include_sources != []:
             include_patterns = include_sources if isinstance(
                 include_sources, (list, tuple)) else [include_sources]
         exclude_patterns = exclude_sources
         if exclude_patterns is None:
-            exclude_patterns = ['*unsupervised*']
+            exclude_patterns = ['*weak supervised*']
         elif not isinstance(exclude_patterns, (list, tuple)):
             exclude_patterns = [exclude_patterns]
 

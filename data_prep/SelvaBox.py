@@ -5,17 +5,31 @@ import requests
 from tqdm import tqdm
 from PIL import Image
 import json
-import ast
 from deepforest.utilities import read_file
 
-def download_selvabox():
-    """Download and process the SelvaBox dataset from HuggingFace"""
+def download_selvabox(force_download=False):
+    """Download and process the SelvaBox dataset from HuggingFace
+    
+    Args:
+        force_download (bool): If True, re-download parquet files even if cached
+    """
     
     # Create output directory (using standard MillionTrees path structure)
     output_dir = "/orange/ewhite/DeepForest/SelvaBox"
     images_dir = os.path.join(output_dir, "images")
+    cache_dir = os.path.join(output_dir, "cache")
+    annotations_csv = os.path.join(output_dir, "annotations.csv")
+    
+    # Check if dataset already exists locally
+    if not force_download and os.path.exists(annotations_csv) and os.path.exists(images_dir):
+        print(f"Dataset already exists at {output_dir}")
+        print(f"Found {len(os.listdir(images_dir))} images and annotations at {annotations_csv}")
+        print("Use force_download=True to re-download the dataset")
+        return annotations_csv
+    
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(images_dir, exist_ok=True)
+    os.makedirs(cache_dir, exist_ok=True)
     
     print("Downloading SelvaBox dataset from HuggingFace...")
     
@@ -36,10 +50,25 @@ def download_selvabox():
         split = file_info['split'] 
         parquet_url = file_info['url']
         
-        print(f"Processing {split} split from {parquet_url}")
+        # Cache parquet files locally
+        parquet_filename = os.path.basename(parquet_url.split('?')[0])  # Remove query params
+        cached_parquet_path = os.path.join(cache_dir, f"{split}_{parquet_filename}")
         
-        # Read the parquet file directly from HuggingFace
-        df = pd.read_parquet(parquet_url)
+        # Download parquet file if not cached or if force_download is True
+        if force_download or not os.path.exists(cached_parquet_path):
+            print(f"Downloading {split} split parquet file...")
+            parquet_response = requests.get(parquet_url, stream=True)
+            parquet_response.raise_for_status()
+            
+            with open(cached_parquet_path, 'wb') as f:
+                for chunk in parquet_response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            print(f"Cached {split} split to {cached_parquet_path}")
+        else:
+            print(f"Using cached {split} split from {cached_parquet_path}")
+        
+        # Read from cached file
+        df = pd.read_parquet(cached_parquet_path)
         
         print(f"Loaded {len(df)} rows from {split} split")
         
@@ -60,8 +89,12 @@ def download_selvabox():
                     
                     image_path = os.path.join(images_dir, image_filename)
                     
+                    # Skip saving if image already exists (unless force_download is True)
+                    if not force_download and os.path.exists(image_path):
+                        # Image exists, skip saving but continue to annotations
+                        pass
                     # Save image from bytes
-                    if isinstance(image_data, dict) and 'bytes' in image_data:
+                    elif isinstance(image_data, dict) and 'bytes' in image_data:
                         try:
                             image_bytes = image_data['bytes']
                             
@@ -72,7 +105,6 @@ def download_selvabox():
                             
                             # Convert to PNG and verify dimensions
                             with Image.open(temp_tif_path) as img:
-                                img_width, img_height = img.size
                                 # Convert to RGB if necessary
                                 if img.mode != 'RGB':
                                     img = img.convert('RGB')
@@ -159,15 +191,14 @@ def download_selvabox():
     print(f"Annotation bounds - ymax: [{annotations_df['ymax'].min():.2f}, {annotations_df['ymax'].max():.2f}]")
     
     # Save annotations
-    output_csv = os.path.join(output_dir, "annotations.csv")
-    annotations_df.to_csv(output_csv, index=False)
-    print(f"Annotations saved to {output_csv}")
+    annotations_df.to_csv(annotations_csv, index=False)
+    print(f"Annotations saved to {annotations_csv}")
     
     # Show sample of the data
     print("\nSample annotations:")
     print(annotations_df.head())
     
-    return output_csv
+    return annotations_csv
 
 if __name__ == "__main__":
     download_selvabox()

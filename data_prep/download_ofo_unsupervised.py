@@ -17,7 +17,7 @@ def _read_geopandas(path: str):
         import geopandas as gpd  # type: ignore
     except ImportError as exc:
         raise ImportError(
-            "Optional dependency missing: 'geopandas'. Install with `pip install milliontrees[unsupervised]` or `pip install geopandas`."
+            "Optional dependency missing: 'geopandas'. Install with `pip install milliontrees[weak_supervised]` or `pip install geopandas`."
         ) from exc
     return gpd.read_file(path)
 
@@ -28,7 +28,7 @@ def _open_raster(path: str):
         from rasterio.windows import Window  # noqa: F401
     except ImportError as exc:
         raise ImportError(
-            "Optional dependency missing: 'rasterio'. Install with `pip install milliontrees[unsupervised]` or `pip install rasterio`."
+            "Optional dependency missing: 'rasterio'. Install with `pip install milliontrees[weak_supervised]` or `pip install rasterio`."
         ) from exc
     return __import__('rasterio').open(path)
 
@@ -77,7 +77,7 @@ def _require_requests():
         import requests  # type: ignore
     except ImportError as exc:
         raise ImportError(
-            "Optional dependency missing: 'requests'. Install with `pip install milliontrees[unsupervised]` or `pip install requests`."
+            "Optional dependency missing: 'requests'. Install with `pip install milliontrees[weak_supervised]` or `pip install requests`."
         ) from exc
     return __import__('requests')
 
@@ -236,7 +236,7 @@ def run(
     allow_empty: bool = False,
 ):
     """
-    Build an unsupervised OFO points parquet by tiling orthomosaics and mapping treetops points.
+    Build a weak supervised OFO points parquet by tiling orthomosaics and mapping treetops points.
 
     Args:
         parquet_path: Input parquet file to load annotations and get missions to download
@@ -249,7 +249,7 @@ def run(
 
     images_dir = os.path.join(milliontrees_image_dir, 'images')
     ensure_dir(images_dir)
-    out_dir = os.path.join(milliontrees_image_dir, 'unsupervised')
+    out_dir = os.path.join(milliontrees_image_dir, 'weak_supervised')
     ensure_dir(out_dir)
 
     # Read annotations parquet to get mission IDs
@@ -354,7 +354,7 @@ def run(
                             'filename': out_name,
                             'x': (pts_tile['x'] - x0).astype(int).values,
                             'y': (pts_tile['y'] - y0).astype(int).values,
-                            'source': 'OFO treetops unsupervised',
+                            'source': 'OFO treetops weak supervised',
                             'split': 'train',
                         })
                         records.append(df_tile)
@@ -364,7 +364,7 @@ def run(
                             'filename': [out_name],
                             'x': [np.nan],
                             'y': [np.nan],
-                            'source': ['OFO treetops unsupervised'],
+                            'source': ['OFO treetops weak supervised'],
                             'split': ['train'],
                         }))
         finally:
@@ -377,13 +377,13 @@ def run(
     df = pd.concat(records, ignore_index=True)
     # Remove NaN rows if any
     df = df.dropna(subset=['x', 'y'])
-    out_path = os.path.join(out_dir, "TreePoints_OFO_unsupervised.parquet")
+    out_path = os.path.join(out_dir, "TreePoints_OFO_weak_supervised.parquet")
     df.to_parquet(out_path, index=False)
-    print(f"Wrote OFO unsupervised points to {out_path}")
+    print(f"Wrote OFO weak supervised points to {out_path}")
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Build OFO unsupervised points dataset')
+    parser = argparse.ArgumentParser(description='Build OFO weak supervised points dataset')
     parser.add_argument('--data_dir', required=True, help='MillionTrees dataset directory')
     parser.add_argument('--patch_size', type=int, default=800)
     parser.add_argument('--allow_empty', action='store_true')

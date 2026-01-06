@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Combined script to format NEON unsupervised annotations and download tiles.
+Combined script to format NEON weak supervised annotations and download tiles.
 This script:
-1. Reads unsupervised NEON detection results from CSV files
+1. Reads weak supervised NEON detection results from CSV files
 2. Formats them for TreeBoxes, TreePoints, and TreePolygons datasets
 3. Downloads corresponding NEON tiles based on annotations
 4. Tiles the downloaded images and creates patch-level annotations
@@ -25,7 +25,7 @@ from deepforest.visualize import plot_results
 
 def format_neon_annotations(csv_glob_pattern: str, output_dir: str) -> Tuple[str, str, str]:
     """
-    Format NEON unsupervised annotations into TreeBoxes, TreePoints, and TreePolygons formats.
+    Format NEON weak supervised annotations into TreeBoxes, TreePoints, and TreePolygons formats.
     
     Args:
         csv_glob_pattern: Glob pattern to find CSV files with NEON detections
@@ -34,9 +34,9 @@ def format_neon_annotations(csv_glob_pattern: str, output_dir: str) -> Tuple[str
     Returns:
         Tuple of paths to the three output CSV files (boxes, points, polygons)
     """
-    print("=== FORMATTING NEON UNSUPERVISED ANNOTATIONS ===")
+    print("=== FORMATTING NEON WEAK SUPERVISED ANNOTATIONS ===")
     
-    # Read the unsupervised NEON annotations
+    # Read the weak supervised NEON annotations
     csvs = glob.glob(csv_glob_pattern)
     if not csvs:
         raise ValueError(f"No CSV files found matching pattern: {csv_glob_pattern}")
@@ -46,7 +46,7 @@ def format_neon_annotations(csv_glob_pattern: str, output_dir: str) -> Tuple[str
     annotations = []
     for csv in csvs[:2]:
         df = pd.read_csv(csv)
-        df["source"] = "Weinstein et al. 2018 unsupervised"
+        df["source"] = "Weinstein et al. 2018 weak supervised"
         annotations.append(df)
     annotations = pd.concat(annotations, ignore_index=True)
 
@@ -69,10 +69,10 @@ def format_neon_annotations(csv_glob_pattern: str, output_dir: str) -> Tuple[str
 
     os.makedirs(output_dir, exist_ok=True)
 
-    boxes_path = os.path.join(output_dir, "TreeBoxes_neon_unsupervised.csv")
+    boxes_path = os.path.join(output_dir, "TreeBoxes_neon_weak_supervised.csv")
     
     boxes_annotations = read_file(boxes_annotations)
-    boxes_annotations["source"] = "Weinstein et al. 2018 unsupervised"
+    boxes_annotations["source"] = "Weinstein et al. 2018 weak supervised"
 
     input_dir = os.path.dirname(csv_glob_pattern)
     copy_neon_images(boxes_annotations, input_dir, output_dir)
@@ -101,6 +101,6 @@ def copy_neon_images(annotations: pd.DataFrame, input_dir: str, output_dir: str)
 
 if __name__ == "__main__":
     csv_glob_pattern = "/blue/ewhite/veitchmichaelisj/deeplidar/output/*.csv"
-    output_dir = "/orange/ewhite/DeepForest/neon_unsupervised/"
+    output_dir = "/orange/ewhite/DeepForest/neon_weak_supervised/"
     os.makedirs(output_dir, exist_ok=True)
     annotations = format_neon_annotations(csv_glob_pattern, output_dir)

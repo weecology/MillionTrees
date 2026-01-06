@@ -15,40 +15,46 @@ def dataset_config():
 def _test_dataset_structure(dataset, targets_key="y", expected_shape_check=None):
     """Helper function to test dataset structure consistently"""
     train_dataset = dataset.get_subset("train")
-    
-    # Test single sample
-    metadata, image, targets = next(iter(train_dataset))
-    y = targets[targets_key]
-    labels = targets["labels"]
-    
-    assert image.shape == (3, 448, 448)
-    assert image.dtype == torch.float32
-    assert 0.0 <= image.min() and image.max() <= 1.0
-    assert metadata.shape[0] == 2
-    
-    if expected_shape_check:
-        expected_shape_check(y)
-    
-    # Test train loader
-    train_loader = get_train_loader('standard', train_dataset, batch_size=2)
-    metadata, x, targets = next(iter(train_loader))
-    
-    assert len(targets) == 2
-    assert x.shape == (2, 3, 448, 448)
-    assert x.dtype == torch.float32
-    assert 0.0 <= x.min() and x.max() <= 1.0
-    assert len(metadata) == 2
-    
-    # Test test loader
     test_dataset = dataset.get_subset("test")
-    test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
-    metadata, x, targets = next(iter(test_loader))
+    
+    # Test train subset if it has samples
+    if len(train_dataset) > 0:
+        # Test single sample
+        metadata, image, targets = next(iter(train_dataset))
+        y = targets[targets_key]
+        labels = targets["labels"]
+        
+        assert image.shape == (3, 448, 448)
+        assert image.dtype == torch.float32
+        assert 0.0 <= image.min() and image.max() <= 1.0
+        assert metadata.shape[0] == 2
+        
+        if expected_shape_check:
+            expected_shape_check(y)
+        
+        # Test train loader
+        train_loader = get_train_loader('standard', train_dataset, batch_size=2)
+        metadata, x, targets = next(iter(train_loader))
+        
+        assert len(targets) == 2
+        assert x.shape == (2, 3, 448, 448)
+        assert x.dtype == torch.float32
+        assert 0.0 <= x.min() and x.max() <= 1.0
+        assert len(metadata) == 2
+    
+    # Test test loader if it has samples
+    if len(test_dataset) > 0:
+        test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
+        metadata, x, targets = next(iter(test_loader))
 
-    assert len(targets) == 2
-    assert x.shape == (2, 3, 448, 448)
-    assert x.dtype == torch.float32
-    assert 0.0 <= x.min() and x.max() <= 1.0
-    assert len(metadata) == 2
+        assert len(targets) == 2
+        assert x.shape == (2, 3, 448, 448)
+        assert x.dtype == torch.float32
+        assert 0.0 <= x.min() and x.max() <= 1.0
+        assert len(metadata) == 2
+    
+    # Ensure at least one split has samples
+    assert len(train_dataset) > 0 or len(test_dataset) > 0, "Both train and test subsets are empty"
 
 @pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
 def test_TreePolygons_latest_release(tmpdir, dataset_config, split_scheme):

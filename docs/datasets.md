@@ -16,7 +16,7 @@ from milliontrees.datasets.TreePoints import TreePointsDataset
 dataset = TreePointsDataset()
 sources = dataset.sources
 print("Available sources:", sources)
-# Available sources: ['Kattenborn_NewZealand', 'NeonTreeEvaluation', 'OFO_unsupervised', 'NEON_unsupervised'...]
+# Available sources: ['Kattenborn_NewZealand', 'NeonTreeEvaluation', 'OFO_weak_supervised', 'NEON_weak_supervised'...]
 ```
 
 Include only specific sources:
@@ -31,10 +31,10 @@ Exclude specific sources (exact names or glob patterns supported):
 
 ```py
 # Exclude a single source by name
-dataset = TreePointsDataset(exclude_sources=['NEON_unsupervised'])
+dataset = TreePointsDataset(exclude_sources=['NEON_weak_supervised'])
 
 # Exclude by pattern (wildcards)
-dataset = TreePointsDataset(exclude_sources=['*_unsupervised'])
+dataset = TreePointsDataset(exclude_sources=['*_weak_supervised'])
 ```
 
 ## Mini-datasets
@@ -404,17 +404,17 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 There is also a training-only portion of this that was used in conjuction with a model to predict labels that were then verified.   
 
-# Unsupervised
+# Weak Supervised
 
 ## Weinstein et al. 2018
 
-Coregistered LIDAR and RGB were acquired over 27 sites in the National Ecological Observation Network, USA. These sites cover a range of forest habitats. An unsupervised LiDAR tree detection algorithm was used to predict tree locations. These locatons were draped over the RGB data to create a very large weakly supervised dataset. There is currently over 40 million tree locations from the original dataset and more can be generated with ongoing data collection.
+Coregistered LIDAR and RGB were acquired over 27 sites in the National Ecological Observation Network, USA. These sites cover a range of forest habitats. A weakly supervised LiDAR tree detection algorithm was used to predict tree locations. These locatons were draped over the RGB data to create a very large weakly supervised dataset. There is currently over 40 million tree locations from the original dataset and more can be generated with ongoing data collection.
 
 **Citation**: Weinstein, B.G.; Marconi, S.; Bohlman, S.; Zare, A.; White, E. Individual Tree-Crown Detection in RGB Imagery Using Semi-Supervised Deep Learning Neural Networks. Remote Sens. 2019, 11, 1309. https://doi.org/10.3390/rs11111309
 
 **Location**: Forest across the United States (NEON)
 
-![sample_image](public/Weinstein_et_al._2018_unsupervised.png)
+![sample_image](public/Weinstein_et_al._2018_weak_supervised.png)
 
 ## Open Forest Observatory
 
@@ -424,8 +424,8 @@ https://openforestobservatory.org/
 
 https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.13860
 
-### Source Name: "Young et al. 2025 unsupervised"
+### Source Name: "Young et al. 2025 weak supervised"
 
 ***Location*** Forest across the United States
 
-![sample_image](public/Young_et_al._2025_unsupervised.png)
+![sample_image](public/Young_et_al._2025_weak_supervised.png)

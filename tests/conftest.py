@@ -1,7 +1,6 @@
 import pytest
 import os
 import tempfile
-import shutil
 import pandas as pd
 import numpy as np
 from PIL import Image

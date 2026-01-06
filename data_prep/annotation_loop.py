@@ -94,7 +94,7 @@ def _build_preannotations(df: pd.DataFrame, dataset_type: str, images_root: Path
         preannotations.append(rows.reset_index(drop=True))
     return images, preannotations
 
-def upload_eval_splits(version: str, base_dir: str = "/orange/ewhite/web/public/MillionTrees/", num_images: int = 100) -> None:
+def upload_eval_splits(version: str, base_dir: str = "/orange/ewhite/web/public/MillionTrees/", num_images: int = 5) -> None:
     """Upload up to `num_images` test images per dataset/split with preannotations to Label Studio.
     
     Projects created: MillionTrees-Eval-<dataset_type>-<split>
@@ -108,11 +108,13 @@ def upload_eval_splits(version: str, base_dir: str = "/orange/ewhite/web/public/
     sftp_client = create_sftp_client(
         user=os.getenv("USER"),
         host=os.getenv("HOST"),
-        key_filename=os.path.expanduser(os.getenv("KEY_FILENAME"))
+        key_filename=os.path.expanduser(os.getenv("KEY"))
     )
 
-    for dataset_type in ("TreeBoxes", "TreePoints"):
-        for split_name in ("random", "zeroshot"):
+    #for dataset_type in ("TreeBoxes", "TreePoints"):
+       # for split_name in ("random", "zeroshot"):
+    for dataset_type in (["TreeBoxes"]):
+        for split_name in (["zeroshot"]):
             df = _load_test_records(base_dir, version, dataset_type, split_name)
             if df.empty:
                 print(f"No test records for {dataset_type} {split_name}, skipping.")
@@ -296,4 +298,4 @@ def main():
 
 if __name__ == "__main__":
     #main() 
-    upload_eval_splits(version="v0.9", base_dir="/orange/ewhite/web/public/MillionTrees/", num_images=100)
+    upload_eval_splits(version="v0.9", base_dir="/orange/ewhite/web/public/MillionTrees/", num_images=200)
