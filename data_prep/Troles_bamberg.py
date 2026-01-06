@@ -64,7 +64,8 @@ test1_polygons = create_shapely_polygons_from_coco_segmentation_json(test_set1)
 test2_polygons = create_shapely_polygons_from_coco_segmentation_json(test_set2)
 
 train_polygons["existing_split"] = "train"
-eval_polygons["existing_split"] = "eval"
+# The nomenclature is a bit confusing here, but val is the MillionTrees test set and test1 and test2 are the validation sets from the original paper
+eval_polygons["existing_split"] = "test"
 test1_polygons["existing_split"] = "test1"
 test2_polygons["existing_split"] = "test2"
 

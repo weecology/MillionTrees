@@ -90,10 +90,8 @@ def label_studio_format(local_image_dir, preannotations, dataset_type):
                 "value": {
                     "x": float(row['x']/original_width*100),  # Ensure float
                     "y": float(row['y']/original_height*100),  # Ensure float
-                    "width": 1.0,  # Add fixed width for visibility
                     "keypointlabels": ["tree"]  # Use fixed label
                 },
-                "score": 1.0,
                 "to_name": "image",
                 "type": "keypointlabels",
                 "from_name": "label",
@@ -113,7 +111,6 @@ def label_studio_format(local_image_dir, preannotations, dataset_type):
                     "rotation": 0,
                     "rectanglelabels": ["tree"]  # Use fixed label
                 },
-                "score": 1.0,
                 "to_name": "image",
                 "type": "rectanglelabels",
                 "from_name": "label",
@@ -122,7 +119,13 @@ def label_studio_format(local_image_dir, preannotations, dataset_type):
             }
             results.append(result)
     
-    return {"result": results}
+    # Return a prediction object compatible with Label Studio expectations.
+    # Score belongs to the prediction, not individual results.
+    return {
+        "result": results,
+        "score": 1.0,
+        "model_version": "ground-truth"
+    }
 
 # check_if_complete label studio images are done
 def check_if_complete(annotations):
@@ -319,7 +322,7 @@ def import_image_tasks(label_studio_project, image_names, local_image_dir, datas
         
         for j, image_name in enumerate(batch_images):
             print(f"Preparing {image_name} for Label Studio import")
-            data_dict = {'image': os.path.join("/data/local-files/?d=input/", os.path.basename(image_name))}
+            data_dict = {'image': os.path.join("/data/local-files/?d=MillionTrees/input/", os.path.basename(image_name))}
             
             if predictions is not None:
                 prediction = predictions[i + j]
