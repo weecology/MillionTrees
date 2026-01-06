@@ -22,14 +22,14 @@ echo "Starting MillionTrees test_release validation at $(date)"
 echo "Log directory: $LOG_DIR"
 
 # Run the test_release.py tests with verbose output and capture results
-python -m pytest tests/test_release.py -v --tb=long --capture=no 2>&1 | tee $LOG_DIR/test_results.log
+uv run python -m pytest tests/test_release.py -v --tb=long --capture=no 2>&1 | tee $LOG_DIR/test_results.log
 
 # Capture the exit code from pytest
 PYTEST_EXIT_CODE=${PIPESTATUS[0]}
 
 # Generate dataset size report
 echo "Generating dataset size report..."
-python generate_dataset_report.py --output $LOG_DIR/dataset_release_report.md --test-exit-code $PYTEST_EXIT_CODE 2>&1 | tee $LOG_DIR/report_generation.log
+uv run python generate_dataset_report.py --output $LOG_DIR/dataset_release_report.md --test-exit-code $PYTEST_EXIT_CODE 2>&1 | tee $LOG_DIR/report_generation.log
 
 # Check if report generation was successful
 if [ -f "$LOG_DIR/dataset_release_report.md" ]; then
