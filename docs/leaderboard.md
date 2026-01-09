@@ -59,8 +59,6 @@ All point sources are used to train and predict all box sources.
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | TreeBoxes | 0.397 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme random`</small> |
 | SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes | 0.165 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
-| Torchvision Faster R-CNN (`torchvision_fasterrcnn_treeboxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/torchvision_fasterrcnn_treeboxes.py --split_scheme random`</small> |
-| Ultralytics YOLO (`yolo_treeboxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/yolo_treeboxes.py --split_scheme random --weights yolov8n.pt`</small> |
 
 ### Zero-shot
 
@@ -68,8 +66,6 @@ All point sources are used to train and predict all box sources.
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | TreeBoxes | 0.534 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme zeroshot`</small> |
 | SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes | 0.208 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
-| Torchvision Faster R-CNN (`torchvision_fasterrcnn_treeboxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/torchvision_fasterrcnn_treeboxes.py --split_scheme zeroshot`</small> |
-| Ultralytics YOLO (`yolo_treeboxes.py`) | TreeBoxes | TreeBoxes | 0.004 | <small>`uv run python docs/examples/yolo_treeboxes.py --split_scheme zeroshot --weights yolov8n.pt`</small> |
 
 ### Cross-geometry
 
@@ -77,8 +73,6 @@ All point sources are used to train and predict all box sources.
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | TreeBoxes | 0.000 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme crossgeometry`</small> |
 | SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes | 0.000 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
-| Torchvision Faster R-CNN (`torchvision_fasterrcnn_treeboxes.py`) | TreeBoxes | TreeBoxes |  | <small>`uv run python docs/examples/torchvision_fasterrcnn_treeboxes.py --split_scheme crossgeometry`</small> |
-| Ultralytics YOLO (`yolo_treeboxes.py`) | TreeBoxes | TreeBoxes | 0.000 | <small>`uv run python docs/examples/yolo_treeboxes.py --split_scheme crossgeometry --weights yolov8n.pt`</small> |
 
 ## TreePolygons
 
