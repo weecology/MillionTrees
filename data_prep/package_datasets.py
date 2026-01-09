@@ -91,6 +91,25 @@ def process_geometry_columns(datasets, geom_type):
     return datasets
 
 
+def filter_degenerate_polygons(datasets):
+    """Filter out polygons that would create invalid bounding boxes (zero width or height)."""
+    def convert_to_shapely(value):
+        if type(value) == str:
+            return shapely.wkt.loads(value)
+        elif isinstance(value, BaseGeometry):
+            return value
+        else:
+            raise ValueError(f"Invalid geometry type: {type(value)}")
+    
+    shapely_geometries = gpd.GeoSeries(datasets["polygon"].apply(convert_to_shapely))
+    bounds = shapely_geometries.bounds
+    
+    # Filter out polygons where xmin == xmax or ymin == ymax
+    valid_mask = (bounds["minx"] != bounds["maxx"]) & (bounds["miny"] != bounds["maxy"])
+    
+    return datasets.loc[valid_mask].copy()
+
+
 def create_directories(base_dir, dataset_type):
     """Create directories for the dataset."""
     os.makedirs(f"{base_dir}{dataset_type}_{version}/images", exist_ok=True)
@@ -492,6 +511,9 @@ def run(version, base_dir, debug=False):
     TreeBoxes_datasets = process_geometry_columns(TreeBoxes_datasets, "box")
     TreePoints_datasets = process_geometry_columns(TreePoints_datasets, "point")
     TreePolygons_datasets = process_geometry_columns(TreePolygons_datasets, "polygon")
+
+    # Remove degenerate polygons (those that would create invalid bounding boxes)
+    TreePolygons_datasets = filter_degenerate_polygons(TreePolygons_datasets)
 
     # Copy images
     copy_images(TreeBoxes_datasets, base_dir, "TreeBoxes")
