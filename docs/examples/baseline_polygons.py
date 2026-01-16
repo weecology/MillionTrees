@@ -112,7 +112,6 @@ def plot_eval_result(
                                                           torch.zeros(
                                                               (0, 4))),
                                                iou_threshold=0.3)
-
     # Plot
     try:
         fig = plot_results(pred_vis_df, gt_df, image=image.astype("int32"))

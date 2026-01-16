@@ -10,11 +10,11 @@ mkdir -p "${RUN_DIR}"
 ln -sfn "${RUN_ID}" logs/slurm/latest
 
 SCRIPTS=(
-  slurm/df_points.sbatch
-  slurm/df_boxes.sbatch
+  #slurm/df_points.sbatch
+  #slurm/df_boxes.sbatch
   slurm/df_polygons.sbatch
-  slurm/sam3_points.sbatch
-  slurm/sam3_boxes.sbatch
+  #slurm/sam3_points.sbatch
+  #slurm/sam3_boxes.sbatch
   slurm/sam3_polygons.sbatch
 )
 

@@ -104,8 +104,23 @@ def filter_degenerate_polygons(datasets):
     shapely_geometries = gpd.GeoSeries(datasets["polygon"].apply(convert_to_shapely))
     bounds = shapely_geometries.bounds
     
-    # Filter out polygons where xmin == xmax or ymin == ymax
-    valid_mask = (bounds["minx"] != bounds["maxx"]) & (bounds["miny"] != bounds["maxy"])
+    # Filter out polygons where xmin >= xmax or ymin >= ymax
+    # Using >= instead of != to catch cases where max < min due to precision issues
+    # Also filter polygons that are extremely small (< 1 pixel in either dimension)
+    # as they will create degenerate masks when rounded to integer coordinates
+    valid_mask = (bounds["maxx"] > bounds["minx"]) & (bounds["maxy"] > bounds["miny"])
+    
+    # Additional check: filter polygons smaller than 1 pixel (would round to zero width/height)
+    # This is a conservative check - we assume images are at least 100x100 pixels
+    # In practice, degenerate masks can still occur, so filtering also happens in __getitem__
+    width = bounds["maxx"] - bounds["minx"]
+    height = bounds["maxy"] - bounds["miny"]
+    size_mask = (width >= 1.0) & (height >= 1.0)
+    valid_mask = valid_mask & size_mask
+    
+    n_filtered = len(datasets) - valid_mask.sum()
+    if n_filtered > 0:
+        print(f"Filtered out {n_filtered} degenerate polygons (zero width or height)")
     
     return datasets.loc[valid_mask].copy()
 
