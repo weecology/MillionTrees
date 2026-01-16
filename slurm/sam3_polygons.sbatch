@@ -20,11 +20,18 @@ ROOT_DIR=/orange/ewhite/web/public/MillionTrees
 SPLITS=(random zeroshot crossgeometry)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
+# Use smaller batch size for random split to avoid OOM
+if [[ "$SPLIT" == "random" ]]; then
+  BATCH_SIZE=4
+else
+  BATCH_SIZE=8
+fi
+
 uv run python docs/examples/sam3_polygons.py \
   --root-dir "$ROOT_DIR" \
   --device cuda \
   --split-scheme "$SPLIT" \
-  --batch-size 8 \
+  --batch-size "$BATCH_SIZE" \
   --hf-token "$HF_TOKEN"
 
 
