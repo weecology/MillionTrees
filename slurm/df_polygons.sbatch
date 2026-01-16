@@ -16,10 +16,17 @@ ROOT_DIR=/orange/ewhite/web/public/MillionTrees
 SPLITS=(random zeroshot crossgeometry)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
+# Use smaller batch size for random split to avoid OOM
+if [[ "$SPLIT" == "random" ]]; then
+  BATCH_SIZE=16
+else
+  BATCH_SIZE=32
+fi
+
 uv run python docs/examples/baseline_polygons.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --plot-interval 0 \
-  --batch-size 32
+  --batch-size "$BATCH_SIZE"
 
 
