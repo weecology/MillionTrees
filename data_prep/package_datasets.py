@@ -92,12 +92,7 @@ def process_geometry_columns(datasets, geom_type):
 
 
 def filter_degenerate_polygons(datasets):
-    """Filter out polygons that would create invalid bounding boxes (zero width or height).
-    
-    This filters based on raw polygon bounds. However, degenerate bboxes can still occur
-    during mask rasterization when polygons are very thin and round to the same pixel.
-    Additional filtering happens in TreePolygonsDataset.__getitem__ after mask creation.
-    """
+    """Filter out polygons that would create invalid bounding boxes (zero width or height)."""
     def convert_to_shapely(value):
         if type(value) == str:
             return shapely.wkt.loads(value)
