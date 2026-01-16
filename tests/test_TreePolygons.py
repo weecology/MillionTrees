@@ -123,3 +123,129 @@ def test_TreePolygons_download_url(dataset):
             continue
         response = requests.head(url, allow_redirects=True)
         assert response.status_code == 200, f"URL {url} is not accessible"
+
+def test_TreePolygons_empty_masks(dataset):
+    """Test that images with no polygons are handled correctly."""
+    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
+    
+    # Find an image that might have no polygons, or create a mock scenario
+    # For now, we'll test that the dataset can handle empty masks gracefully
+    # by checking the structure when masks might be empty after filtering
+    
+    # Test that empty masks create correct tensor shapes
+    test_dataset = ds.get_subset("test")
+    test_loader = get_eval_loader('standard', test_dataset, batch_size=1)
+    
+    # Iterate through and verify structure is correct even with potential empty cases
+    for metadata, x, targets in test_loader:
+        masks = targets[0]["y"]
+        boxes = targets[0]["bboxes"]
+        labels = targets[0]["labels"]
+        
+        # Masks should be a tensor, even if empty
+        assert isinstance(masks, torch.Tensor)
+        assert masks.dim() == 3  # [N, H, W] where N can be 0
+        assert masks.shape[1] == 448  # Height
+        assert masks.shape[2] == 448  # Width
+        
+        # Boxes should be a tensor or numpy array, even if empty
+        # (albumentations may return numpy arrays)
+        assert isinstance(boxes, (torch.Tensor, np.ndarray))
+        if isinstance(boxes, np.ndarray):
+            boxes = torch.from_numpy(boxes)
+        assert boxes.dim() == 2  # [N, 4] where N can be 0
+        if len(boxes) > 0:
+            assert boxes.shape[1] == 4
+        
+        # Labels should match number of masks
+        assert isinstance(labels, torch.Tensor)
+        assert len(labels) == len(masks)
+        
+        # Only check first batch
+        break
+
+def test_TreePolygons_empty_masks_eval(dataset):
+    """Test evaluation with empty predictions and empty ground truth."""
+    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
+    test_dataset = ds.get_subset("test")
+    
+    # Test case 1: Empty predictions, non-empty ground truth
+    y_pred_empty = [{
+        'y': torch.zeros((0, 448, 448), dtype=torch.uint8),
+        'labels': torch.zeros((0,), dtype=torch.int64),
+        'scores': torch.zeros((0,), dtype=torch.float32),
+    }]
+    
+    # Get one real ground truth
+    test_loader = get_eval_loader('standard', test_dataset, batch_size=1)
+    for metadata, x, y_true in test_loader:
+        # Evaluate with empty predictions
+        results, results_str = ds.eval(
+            y_pred=y_pred_empty,
+            y_true=y_true,
+            metadata=metadata[:1]
+        )
+        
+        # Should complete without error
+        assert "accuracy" in results.keys()
+        assert "recall" in results.keys()
+        break
+    
+    # Test case 2: Non-empty predictions, empty ground truth
+    polygon = from_wkt("POLYGON((10 15, 50 15, 50 55, 10 55, 10 15))")
+    pred_mask = ds.create_polygon_mask(width=448, height=448, vertices=polygon)
+    y_pred = [{
+        'y': torch.tensor([pred_mask], dtype=torch.uint8),
+        'labels': torch.tensor([0], dtype=torch.int64),
+        'scores': torch.tensor([0.8], dtype=torch.float32),
+    }]
+    
+    y_true_empty = [{
+        'y': torch.zeros((0, 448, 448), dtype=torch.uint8),
+        'bboxes': torch.zeros((0, 4), dtype=torch.float32),
+        'labels': torch.zeros((0,), dtype=torch.int64),
+    }]
+    
+    # Should handle empty ground truth gracefully
+    results, results_str = ds.eval(
+        y_pred=y_pred,
+        y_true=y_true_empty,
+        metadata=torch.tensor([[0, 0]], dtype=torch.int64)
+    )
+    assert "accuracy" in results.keys()
+    assert "recall" in results.keys()
+
+def test_TreePolygons_box_to_mask_conversion(dataset):
+    """Test that bounding boxes can be converted to masks for evaluation."""
+    from milliontrees.common.metrics.all_metrics import MaskAccuracy
+    
+    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
+    metric = MaskAccuracy(geometry_name='y', iou_threshold=0.5, score_threshold=0.1)
+    
+    # Create ground truth masks
+    polygon = from_wkt("POLYGON((10 15, 50 15, 50 55, 10 55, 10 15))")
+    gt_mask = ds.create_polygon_mask(width=448, height=448, vertices=polygon)
+    gt_masks = torch.tensor([gt_mask], dtype=torch.uint8)
+    
+    # Create predictions as bounding boxes (simulating DeepForest output)
+    pred_boxes = torch.tensor([[10, 15, 50, 55]], dtype=torch.float32)
+    
+    # Test that _mask_iou can handle boxes
+    iou = metric._mask_iou(gt_masks, pred_boxes)
+    
+    # Should return IoU matrix
+    assert iou.shape == (1, 1)  # [N_gt, N_pred]
+    assert iou.dtype == torch.float32
+    # IoU should be > 0 since boxes overlap with mask
+    assert iou[0, 0] > 0.0
+    
+    # Test with empty boxes
+    empty_boxes = torch.zeros((0, 4), dtype=torch.float32)
+    # Empty boxes should return zero IoU matrix
+    iou_empty = metric._mask_iou(gt_masks, empty_boxes)
+    assert iou_empty.shape == (1, 0)
+    
+    # Test with empty masks and boxes
+    empty_masks = torch.zeros((0, 448, 448), dtype=torch.uint8)
+    iou_both_empty = metric._mask_iou(empty_masks, empty_boxes)
+    assert iou_both_empty.shape == (0, 0)
