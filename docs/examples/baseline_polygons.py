@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 
 from deepforest import main as df_main
-from deepforest.utilities import read_file
+from deepforest.utilities import read_file, format_geometry
 from deepforest.visualize import plot_results
 
 from milliontrees import get_dataset
@@ -61,19 +61,19 @@ def format_deepforest_predictions(
                                                    "images")
             formatted_pred["image_path"] = basename
         else:
-            pred.root_dir = os.path.join(dataset._data_dir._str, "images")
-            pred["image_path"] = basename
+            formatted_pred = format_geometry(pred)
+            formatted_pred.root_dir = os.path.join(dataset._data_dir._str,
+                                                   "images")
+            formatted_pred["image_path"] = basename
 
             y_pred = {
                 "y": torch.tensor(
-                    pred[["xmin", "ymin", "xmax", "ymax"]].values.astype(
+                    formatted_pred[["xmin", "ymin", "xmax", "ymax"]].values.astype(
                         "float32")),
-                "labels": torch.tensor(pred.label.values.astype(np.int64)),
+                "labels": torch.tensor(formatted_pred.label.values.astype(np.int64)),
                 "scores": torch.tensor(
-                    pred.score.values.astype("float32")),
+                    formatted_pred.score.values.astype("float32")),
             }
-
-            formatted_pred = pred
 
         batch_y_pred.append(y_pred)
         formatted_predictions.append(formatted_pred)
@@ -94,8 +94,8 @@ def plot_eval_result(
 
     # Ground truth
     gt_df = read_file(
-        pd.DataFrame(image_targets["y"].numpy(),
-                     columns=["xmin", "ymin", "xmax", "ymax"]))
+        pd.DataFrame(image_targets["bboxes"],
+                     columns=["xmin", "ymin", "xmax", "ymax"]), label="Tree")
     gt_df["label"] = "Tree"
 
     # Predictions
@@ -107,12 +107,11 @@ def plot_eval_result(
     image = image_tensor.permute(1, 2, 0).numpy() * 255
 
     # Simple recall example for logging
-    recall = dataset.metrics["recall"]._recall(image_targets["y"],
-                                               y_pred.get("y",
+    recall = dataset.metrics["recall"]._recall(image_targets["bboxes"],
+                                               y_pred.get("bboxes",
                                                           torch.zeros(
                                                               (0, 4))),
                                                iou_threshold=0.3)
-
     # Plot
     try:
         fig = plot_results(pred_vis_df, gt_df, image=image.astype("int32"))
@@ -159,6 +158,7 @@ def main():
     # Load model
     model = df_main.deepforest()
     model.load_model("weecology/deepforest-tree")
+    model.eval()
 
     # Load dataset
     polygon_dataset = get_dataset("TreePolygons",

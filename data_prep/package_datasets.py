@@ -91,6 +91,40 @@ def process_geometry_columns(datasets, geom_type):
     return datasets
 
 
+def filter_degenerate_polygons(datasets):
+    """Filter out polygons that would create invalid bounding boxes (zero width or height)."""
+    def convert_to_shapely(value):
+        if type(value) == str:
+            return shapely.wkt.loads(value)
+        elif isinstance(value, BaseGeometry):
+            return value
+        else:
+            raise ValueError(f"Invalid geometry type: {type(value)}")
+    
+    shapely_geometries = gpd.GeoSeries(datasets["polygon"].apply(convert_to_shapely))
+    bounds = shapely_geometries.bounds
+    
+    # Filter out polygons where xmin >= xmax or ymin >= ymax
+    # Using >= instead of != to catch cases where max < min due to precision issues
+    # Also filter polygons that are extremely small (< 1 pixel in either dimension)
+    # as they will create degenerate masks when rounded to integer coordinates
+    valid_mask = (bounds["maxx"] > bounds["minx"]) & (bounds["maxy"] > bounds["miny"])
+    
+    # Additional check: filter polygons smaller than 1 pixel (would round to zero width/height)
+    # This is a conservative check - we assume images are at least 100x100 pixels
+    # In practice, degenerate masks can still occur, so filtering also happens in __getitem__
+    width = bounds["maxx"] - bounds["minx"]
+    height = bounds["maxy"] - bounds["miny"]
+    size_mask = (width >= 1.0) & (height >= 1.0)
+    valid_mask = valid_mask & size_mask
+    
+    n_filtered = len(datasets) - valid_mask.sum()
+    if n_filtered > 0:
+        print(f"Filtered out {n_filtered} degenerate polygons (zero width or height)")
+    
+    return datasets.loc[valid_mask].copy()
+
+
 def create_directories(base_dir, dataset_type):
     """Create directories for the dataset."""
     os.makedirs(f"{base_dir}{dataset_type}_{version}/images", exist_ok=True)
@@ -492,6 +526,9 @@ def run(version, base_dir, debug=False):
     TreeBoxes_datasets = process_geometry_columns(TreeBoxes_datasets, "box")
     TreePoints_datasets = process_geometry_columns(TreePoints_datasets, "point")
     TreePolygons_datasets = process_geometry_columns(TreePolygons_datasets, "polygon")
+
+    # Remove degenerate polygons (those that would create invalid bounding boxes)
+    TreePolygons_datasets = filter_degenerate_polygons(TreePolygons_datasets)
 
     # Copy images
     copy_images(TreeBoxes_datasets, base_dir, "TreeBoxes")

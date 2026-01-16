@@ -590,17 +590,101 @@ class MaskAccuracy(ElementwiseMetric):
             target_scores = target["scores"]
 
             gt_masks = gt[self.geometry_name]
+            # Convert to tensors if needed
+            if not isinstance(target_scores, torch.Tensor):
+                target_scores = torch.as_tensor(target_scores, dtype=torch.float32)
+            
             pred_masks = target_masks[target_scores > self.score_threshold]
             det_accuracy = self._accuracy(gt_masks, pred_masks,
                                           self.iou_threshold)
             batch_results.append(det_accuracy)
         return torch.tensor(batch_results)
 
+    def _boxes_to_masks(self, boxes, height, width):
+        """Convert bounding boxes [N, 4] (xyxy format) to masks [N, H, W]."""
+        if len(boxes) == 0:
+            device = boxes.device if isinstance(boxes, torch.Tensor) else 'cpu'
+            return torch.zeros((0, height, width), dtype=torch.bool, device=device)
+        
+        # Convert to tensor if needed
+        if not isinstance(boxes, torch.Tensor):
+            boxes = torch.as_tensor(boxes, dtype=torch.float32)
+        
+        boxes = boxes.clone()
+        # Clamp boxes to image bounds
+        boxes[:, 0] = torch.clamp(boxes[:, 0], 0, width)
+        boxes[:, 1] = torch.clamp(boxes[:, 1], 0, height)
+        boxes[:, 2] = torch.clamp(boxes[:, 2], 0, width)
+        boxes[:, 3] = torch.clamp(boxes[:, 3], 0, height)
+        
+        device = boxes.device
+        masks = torch.zeros((len(boxes), height, width), dtype=torch.bool, device=device)
+        for i, box in enumerate(boxes):
+            x1, y1, x2, y2 = box.int()
+            # Ensure valid box
+            if x2 > x1 and y2 > y1:
+                masks[i, y1:y2, x1:x2] = True
+        return masks
+
     def _mask_iou(self, src_masks, pred_masks):
-        intersection = (src_masks & pred_masks).float().sum((1, 2))
-        union = (src_masks | pred_masks).float().sum((1, 2))
-        iou = intersection / union
-        return iou
+        # Convert to tensors if needed (preserve original dtype for shape detection)
+        src_is_tensor = isinstance(src_masks, torch.Tensor)
+        pred_is_tensor = isinstance(pred_masks, torch.Tensor)
+        
+        if not src_is_tensor:
+            src_masks = torch.as_tensor(src_masks)
+        if not pred_is_tensor:
+            pred_masks = torch.as_tensor(pred_masks)
+        
+        # Handle case where pred_masks are actually bounding boxes [M, 4]
+        # Check if pred_masks are boxes (shape [M, 4]) instead of masks [M, H, W]
+        # For empty tensors, check the shape tuple
+        is_pred_boxes = (pred_masks.dim() == 2 and 
+                        (len(pred_masks) == 0 or (pred_masks.shape[1] == 4 and pred_masks.dim() == 2)))
+        if is_pred_boxes:
+            # Get image dimensions from src_masks
+            if len(src_masks) > 0 and src_masks.dim() == 3:
+                height, width = src_masks.shape[1], src_masks.shape[2]
+                # Convert boxes to masks
+                pred_masks = self._boxes_to_masks(pred_masks, height, width)
+            else:
+                # If no ground truth masks, return zero IoU
+                device = pred_masks.device if isinstance(pred_masks, torch.Tensor) else 'cpu'
+                return torch.zeros((0, len(pred_masks)), dtype=torch.float32, device=device)
+        
+        # Handle case where src_masks are boxes (shouldn't happen, but handle gracefully)
+        is_src_boxes = (src_masks.dim() == 2 and 
+                       (len(src_masks) == 0 or (src_masks.shape[1] == 4 and src_masks.dim() == 2)))
+        if is_src_boxes:
+            if len(pred_masks) > 0 and pred_masks.dim() == 3:
+                height, width = pred_masks.shape[1], pred_masks.shape[2]
+                src_masks = self._boxes_to_masks(src_masks, height, width)
+            else:
+                device = src_masks.device if isinstance(src_masks, torch.Tensor) else 'cpu'
+                return torch.zeros((len(src_masks), 0), dtype=torch.float32, device=device)
+        
+        # Ensure masks are bool type for bitwise operations
+        if src_masks.dtype != torch.bool:
+            src_masks = src_masks.bool()
+        if pred_masks.dtype != torch.bool:
+            pred_masks = pred_masks.bool()
+        
+        # src_masks: [N, H, W], pred_masks: [M, H, W]
+        # Expand dimensions for broadcasting: [N, 1, H, W] and [1, M, H, W]
+        # This allows pairwise comparison, resulting in [N, M, H, W]
+        src_expanded = src_masks.unsqueeze(1)  # [N, 1, H, W]
+        pred_expanded = pred_masks.unsqueeze(0)  # [1, M, H, W]
+        
+        # Compute intersection and union for all pairs
+        intersection = (src_expanded & pred_expanded).float().sum((2, 3))  # [N, M]
+        union = (src_expanded | pred_expanded).float().sum((2, 3))  # [N, M]
+        
+        # Compute IoU, handling division by zero (empty unions)
+        iou = intersection / union.clamp(min=1e-6)
+        # Set IoU to 0 where union is 0 (both masks are empty)
+        iou[union == 0] = 0.0
+        
+        return iou  # Returns [N, M] matrix
 
     def _recall(self, src_masks, pred_masks, iou_threshold):
         total_gt = len(src_masks)
