@@ -78,24 +78,26 @@ All point sources are used to train and predict all box sources.
 
 ### Random
 
-| Model | Task | Dataset | Avg Recall | Script |
+| Model | Task | Dataset | Avg Mask Accuracy | Script |
 |---|---|---|---|---|
-| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme random`</small> |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons | OOM | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme random`</small> |
+| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons | OOM | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 
 ### Zero-shot
 
-| Model | Task | Dataset | Avg Recall | Script |
+| Model | Task | Dataset | Avg Mask Accuracy | Script |
 |---|---|---|---|---|
-| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme zeroshot`</small> |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons | 0.071 | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme zeroshot`</small> |
+| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons | 0.322 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 
 ### Cross-geometry
 
-| Model | Task | Dataset | Avg Recall | Script |
+| Model | Task | Dataset | Avg Mask Accuracy | Script |
 |---|---|---|---|---|
-| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme crossgeometry`</small> |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons |  | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
+| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons | 0.071 | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme crossgeometry`</small> |
+| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons | 0.322 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
+
+![Model Predictions Across Datasets and Splits](leaderboard_predictions.png)
 
 # Submissions
 

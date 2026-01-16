@@ -509,7 +509,13 @@ class MillionTreesSubset(MillionTreesDataset):
                                        labels=targets["labels"])
 
             y = augmented['masks']
-            y = torch.stack(y, dim=0)
+            # Handle empty masks case
+            if len(y) == 0:
+                # Get image dimensions from augmented image
+                img_h, img_w = augmented['image'].shape[1], augmented['image'].shape[2]
+                y = torch.zeros((0, img_h, img_w), dtype=torch.uint8)
+            else:
+                y = torch.stack(y, dim=0)
             bboxes = augmented['bboxes']
 
         x = augmented['image']

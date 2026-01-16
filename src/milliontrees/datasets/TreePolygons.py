@@ -214,17 +214,59 @@ class TreePolygonsDataset(MillionTreesDataset):
         x = self.get_input(idx)
         y_indices = self._input_lookup[self._input_array[idx]]
         y_polygons = [self._y_array[i] for i in y_indices]
-        mask_imgs = [
-            self.create_polygon_mask(width=x.shape[1],
-                                     height=x.shape[0],
-                                     vertices=y_polygon)
-            for y_polygon in y_polygons
-        ]
-        masks = torch.stack([Mask(mask_img) for mask_img in mask_imgs])
-        bboxes = BoundingBoxes(data=masks_to_boxes(masks),
-                               format='xyxy',
-                               canvas_size=x.shape[:2])
-        masks = np.stack([mask.numpy() for mask in masks])
+        
+        # Handle empty case (no polygons for this image)
+        if len(y_polygons) == 0:
+            bboxes = BoundingBoxes(data=torch.zeros(0, 4, dtype=torch.float32),
+                                   format='xyxy',
+                                   canvas_size=x.shape[:2])
+            masks = np.zeros((0, x.shape[0], x.shape[1]), dtype=np.uint8)
+        else:
+            mask_imgs = [
+                self.create_polygon_mask(width=x.shape[1],
+                                         height=x.shape[0],
+                                         vertices=y_polygon)
+                for y_polygon in y_polygons
+            ]
+            masks = torch.stack([Mask(mask_img) for mask_img in mask_imgs])
+            
+            # Filter out empty masks (all zeros) before calling masks_to_boxes
+            # This can happen if polygons are outside image bounds or degenerate
+            if len(masks) > 0:
+                # Check which masks are non-empty (have at least one non-zero pixel)
+                mask_sums = masks.sum(dim=(1, 2))  # Sum over H and W dimensions
+                non_empty_mask = mask_sums > 0
+                masks = masks[non_empty_mask]
+            
+            # Handle empty case (no valid masks)
+            if len(masks) == 0:
+                bboxes = BoundingBoxes(data=torch.zeros(0, 4, dtype=torch.float32),
+                                       format='xyxy',
+                                       canvas_size=x.shape[:2])
+                masks = np.zeros((0, x.shape[0], x.shape[1]), dtype=np.uint8)
+            else:
+                bbox_data = masks_to_boxes(masks)
+                
+                # Filter out degenerate bboxes (zero width or height)
+                # This can happen when polygons are very thin and round to same pixel
+                valid_mask = (bbox_data[:, 2] > bbox_data[:, 0]) & (bbox_data[:, 3] > bbox_data[:, 1])
+                
+                if not valid_mask.all():
+                    # Filter out invalid bboxes and corresponding masks/labels
+                    bbox_data = bbox_data[valid_mask]
+                    masks = masks[valid_mask]
+                
+                # Handle empty case (all masks filtered out)
+                if len(bbox_data) == 0:
+                    bboxes = BoundingBoxes(data=torch.zeros(0, 4, dtype=torch.float32),
+                                           format='xyxy',
+                                           canvas_size=x.shape[:2])
+                    masks = np.zeros((0, x.shape[0], x.shape[1]), dtype=np.uint8)
+                else:
+                    bboxes = BoundingBoxes(data=bbox_data,
+                                           format='xyxy',
+                                           canvas_size=x.shape[:2])
+                    masks = np.stack([mask.numpy() for mask in masks])
 
         metadata = self._metadata_array[idx]
         targets = {
