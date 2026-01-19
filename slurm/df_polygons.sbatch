@@ -13,7 +13,7 @@ cd /blue/ewhite/b.weinstein/src/MillionTrees
 mkdir -p logs/slurm
 
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
-SPLITS=(random zeroshot crossgeometry)
+SPLITS=(random)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 # Use smaller batch size for random split to avoid OOM

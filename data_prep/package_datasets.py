@@ -60,10 +60,18 @@ def keep_columns_if_exist(df: pd.DataFrame, cols: list) -> pd.DataFrame:
 
 def process_geometry_columns(datasets, geom_type):
     """Process geometry columns based on the dataset type."""
+    # Filter out rows with None geometries before processing
+    if "geometry" in datasets.columns:
+        datasets = datasets[datasets["geometry"].notna()].copy()
+    
+    if len(datasets) == 0:
+        return datasets
+    
     # Build a GeoSeries from either WKT strings or shapely geometries
-
     def convert_to_shapely(value):
-        if type(value) == str:
+        if value is None:
+            return None
+        elif type(value) == str:
             return shapely.wkt.loads(value)
         elif isinstance(value, BaseGeometry):
             return value
@@ -265,16 +273,34 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
     TreePoints_datasets = apply_split(TreePoints_datasets)
     TreeBoxes_datasets = apply_split(TreeBoxes_datasets)
 
-    # Remove from test split any entries with 'weak supervised' in the source column
+    # Remove from test split any entries with 'weak supervised' in the source column or Feng source
     def remove_weak_supervised_test_entries(df):
         if "split" in df.columns and "source" in df.columns:
-            mask = (df["split"] == "test") & (df["source"].str.contains("weak supervised", case=False, na=False))
+            weak_supervised_mask = (df["split"] == "test") & (df["source"].str.contains("weak supervised", case=False, na=False))
+            feng_mask = (df["split"] == "test") & (df["source"] == "Feng et al. 2025")
+            mask = weak_supervised_mask | feng_mask
             return df.loc[~mask]
         return df
 
     TreePolygons_datasets = remove_weak_supervised_test_entries(TreePolygons_datasets)
     TreePoints_datasets = remove_weak_supervised_test_entries(TreePoints_datasets)
     TreeBoxes_datasets = remove_weak_supervised_test_entries(TreeBoxes_datasets)
+    
+    # Limit test images to 100 per source
+    # Get all sources that have test data
+    def get_test_sources(df):
+        if "split" in df.columns and "source" in df.columns:
+            test_data = df[df["split"] == "test"]
+            return test_data["source"].unique().tolist() if not test_data.empty else []
+        return []
+    
+    test_sources_polygons = get_test_sources(TreePolygons_datasets)
+    test_sources_points = get_test_sources(TreePoints_datasets)
+    test_sources_boxes = get_test_sources(TreeBoxes_datasets)
+    
+    TreePolygons_datasets = limit_test_images(TreePolygons_datasets, test_sources_polygons)
+    TreePoints_datasets = limit_test_images(TreePoints_datasets, test_sources_points)
+    TreeBoxes_datasets = limit_test_images(TreeBoxes_datasets, test_sources_boxes)
    
    # Save the splits to CSV
     TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/random.csv", index=False)
@@ -299,10 +325,18 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
     TreePoints_datasets["split"] = "train"
     TreeBoxes_datasets["split"] = "train"
 
-    # remove any source with weak supervised from test
-    TreePolygons_datasets = TreePolygons_datasets[~((TreePolygons_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreePolygons_datasets.split == "test"))]
-    TreePoints_datasets = TreePoints_datasets[~((TreePoints_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreePoints_datasets.split == "test"))]
-    TreeBoxes_datasets = TreeBoxes_datasets[~((TreeBoxes_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test"))]
+    # remove any source with weak supervised or Feng from test
+    weak_supervised_mask_polygons = (TreePolygons_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreePolygons_datasets.split == "test")
+    feng_mask_polygons = (TreePolygons_datasets.source == "Feng et al. 2025") & (TreePolygons_datasets.split == "test")
+    TreePolygons_datasets = TreePolygons_datasets[~(weak_supervised_mask_polygons | feng_mask_polygons)]
+    
+    weak_supervised_mask_points = (TreePoints_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreePoints_datasets.split == "test")
+    feng_mask_points = (TreePoints_datasets.source == "Feng et al. 2025") & (TreePoints_datasets.split == "test")
+    TreePoints_datasets = TreePoints_datasets[~(weak_supervised_mask_points | feng_mask_points)]
+    
+    weak_supervised_mask_boxes = (TreeBoxes_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test")
+    feng_mask_boxes = (TreeBoxes_datasets.source == "Feng et al. 2025") & (TreeBoxes_datasets.split == "test")
+    TreeBoxes_datasets = TreeBoxes_datasets[~(weak_supervised_mask_boxes | feng_mask_boxes)]
 
     # Save the splits to CSV (use consistent folder naming: <DatasetName><suffix>_<version>)
     TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/crossgeometry.csv", index=False)
@@ -315,8 +349,8 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
     print(f"TreeBoxes: {base_dir}TreeBoxes{suffix}_{version}/crossgeometry.csv")
 
 
-# Limit test datasets to 150 images per source (unless existing split column exists)
-def limit_test_images(df, test_sources, max_images=150):
+# Limit test datasets to 50 images per source (unless existing split column exists)
+def limit_test_images(df, test_sources, max_images=50):
     """Limit test split to max_images per source, unless existing_split column exists."""
     # Check if existing_split column exists
     if "existing_split" in df.columns:
@@ -378,6 +412,20 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     TreePoints_datasets = limit_test_images(TreePoints_datasets, test_sources_points)
     TreeBoxes_datasets = limit_test_images(TreeBoxes_datasets, test_sources_boxes)
 
+    # Remove Feng and weak supervised from test (shouldn't be there, but filter for safety)
+    def remove_feng_and_weak_supervised_from_test(df):
+        if "split" in df.columns and "source" in df.columns:
+            weak_supervised_mask = (df["split"] == "test") & (df["source"].str.contains("weak supervised", case=False, na=False))
+            feng_mask = (df["split"] == "test") & (df["source"] == "Feng et al. 2025")
+            mask = weak_supervised_mask | feng_mask
+            if mask.any():
+                df.loc[mask, "split"] = "train"
+        return df
+    
+    TreePolygons_datasets = remove_feng_and_weak_supervised_from_test(TreePolygons_datasets)
+    TreePoints_datasets = remove_feng_and_weak_supervised_from_test(TreePoints_datasets)
+    TreeBoxes_datasets = remove_feng_and_weak_supervised_from_test(TreeBoxes_datasets)
+
     # Save the splits to CSV
     TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/zeroshot.csv", index=False)
     TreePoints_datasets.to_csv(f"{base_dir}TreePoints{suffix}_{version}/zeroshot.csv", index=False)
@@ -415,27 +463,67 @@ def check_for_updated_annotations(dataset, geometry):
     if not matching_files:
         return dataset
         
-    # Batch process all updates
-    root_dir = os.path.dirname(dataset["filename"].iloc[0])
+    # Create mappings from basename to root_dir and source for each file
+    # This ensures we use the correct root_dir for each source
+    # We need to capture this BEFORE removing old annotations
+    basename_to_root_dir = {}
+    basename_to_source = {}
+    for _, row in dataset.iterrows():
+        basename = row["basename"]
+        if basename in matching_files:
+            if basename not in basename_to_root_dir:
+                basename_to_root_dir[basename] = os.path.dirname(row["filename"])
+            if basename not in basename_to_source:
+                basename_to_source[basename] = row["source"]
     
     # Remove all old annotations at once
     dataset = dataset[~dataset["basename"].isin(matching_files)]
     
     # Process all updates in batch
     new_annotations = []
+    skipped_files = []
     for filename in matching_files:
-        original_source = dataset[dataset["basename"] == filename]["source"].iloc[0] if len(dataset[dataset["basename"] == filename]) > 0 else "Unknown"
+        # Get the original root_dir and source for this specific file
+        root_dir = basename_to_root_dir.get(filename)
+        original_source = basename_to_source.get(filename, "Unknown")
+        
+        if root_dir is None:
+            # Fallback: use first filename's directory (shouldn't happen, but safe)
+            root_dir = os.path.dirname(dataset["filename"].iloc[0]) if len(dataset) > 0 else ""
         
         updated_batch = updated_annotations[updated_annotations["image_path"] == filename].copy()
         updated_batch["source"] = original_source
         updated_batch["filename"] = updated_batch["image_path"].apply(lambda x: os.path.join(root_dir, x))
         
-        new_annotations.append(updated_batch)
+        # Check if image file exists before processing
+        image_path = updated_batch["filename"].iloc[0] if len(updated_batch) > 0 else None
+        if image_path and not os.path.exists(image_path):
+            print(f"Warning: Image file does not exist, skipping annotations for {filename}: {image_path}")
+            skipped_files.append((filename, image_path))
+            continue
+        
+        # Process with read_file using the correct root_dir for this file
+        updated_batch = read_file(updated_batch, root_dir=root_dir)
+        
+        # Filter out rows with None geometries (e.g., from empty images or invalid annotations)
+        if "geometry" in updated_batch.columns:
+            none_count = updated_batch["geometry"].isna().sum()
+            if none_count > 0:
+                print(f"Warning: Found {none_count} annotations with None geometry for {filename}, filtering them out")
+            updated_batch = updated_batch[updated_batch["geometry"].notna()].copy()
+        
+        if len(updated_batch) > 0:
+            new_annotations.append(updated_batch)
+        else:
+            print(f"Warning: No valid annotations after processing for {filename}")
+            skipped_files.append((filename, "No valid geometries"))
+    
+    if skipped_files:
+        print(f"Skipped {len(skipped_files)} files with issues during annotation update")
     
     if new_annotations:
         # Single concat operation
         all_new = pd.concat(new_annotations, ignore_index=True)
-        all_new = read_file(all_new, root_dir=root_dir)
         dataset = pd.concat([dataset, all_new], ignore_index=True)
     
     return dataset
@@ -592,7 +680,7 @@ def run(version, base_dir, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.9"
+    version = "v0.10"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     debug = False
     run(version, base_dir, debug)

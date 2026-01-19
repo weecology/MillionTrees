@@ -17,7 +17,7 @@ if [[ -f .hf_token ]]; then
 fi
 
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
-SPLITS=(random zeroshot crossgeometry)
+SPLITS=(random)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 # Use smaller batch size for random split to avoid OOM
