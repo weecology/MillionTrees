@@ -4,8 +4,8 @@
 #SBATCH --error=logs/slurm/sam3_polygons_%x_%A_%a.err
 #SBATCH --array=0-2
 #SBATCH --time=48:00:00
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=150G
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=200G
 #SBATCH --gres=gpu:1
 
 set -euo pipefail
