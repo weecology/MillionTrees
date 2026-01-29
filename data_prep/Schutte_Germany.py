@@ -4,7 +4,8 @@ import os
 import glob
 from shapely.geometry import Polygon
 from deepforest.utilities import read_file
-from data_prep.utilities import tag_existing_split
+from deepforest.preprocess import split_raster
+import rasterio
 
 def _gpkg_to_tif_name(gpkg_basename: str, raster_dir: str) -> str:
     """
@@ -30,6 +31,8 @@ def _read_polygons_fix(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         except TypeError:
             # for older geopandas versions without index_parts
             gdf = gdf.explode()
+            gdf = gdf.reset_index(drop=True)
+
     # Keep only polygons
     gdf = gdf[gdf.geometry.geom_type == "Polygon"]
     # Convert Z polygons to 2D
@@ -44,6 +47,8 @@ def _read_polygons_fix(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def build_annotations() -> pd.DataFrame:
     base_dir = "/orange/ewhite/DeepForest/Schutte_Germany/ITCD_Urban_Berlin_Osnabrueck"
+    crop_dir = "/orange/ewhite/DeepForest/Schutte_Germany/crops"
+    os.makedirs(crop_dir, exist_ok=True)
     cities = ["Berlin", "Osnabrueck"]
     all_annotations = []
 
@@ -81,12 +86,35 @@ def build_annotations() -> pd.DataFrame:
 
             # Standardize to expected annotation format
             ann = read_file(gdf, root_dir=raster_dir)
-            # Make full paths after read_file normalization
-            ann["image_path"] = ann["image_path"].apply(lambda x: os.path.join(raster_dir, x))
             ann["source"] = "Schütte et al. 2025"
-            # Tag existing split where filenames indicate validation/test
-            ann = tag_existing_split(ann)
-            all_annotations.append(ann)
+            ann.root_dir = raster_dir
+            
+            # match crs from raster to annotations
+            with rasterio.open(tif_path) as src:
+                raster_crs = src.crs
+
+            ann.crs = raster_crs
+            # Split raster into smaller chunks and get cropped annotations
+            print(f"Splitting {tif_path} into smaller chunks...")
+            ann.reset_index(drop=True, inplace=True)
+            try:
+                crop_annotations =split_raster(
+                ann,
+                path_to_raster=tif_path,
+                save_dir=crop_dir,
+                patch_size=1000,
+                patch_overlap=0,
+                allow_empty=False
+            )
+            except Exception as e:
+                print(f"Error splitting {tif_path}: {e}")
+                continue
+            # Update image paths to full paths for cropped images
+            crop_annotations["image_path"] = crop_annotations["image_path"].apply(
+                lambda x: os.path.join(crop_dir, x)
+            )
+            
+            all_annotations.append(crop_annotations)
 
     if not all_annotations:
         return pd.DataFrame()
