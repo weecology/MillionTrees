@@ -4,7 +4,7 @@ import os
 import logging
 from threading import Thread
 
-__version__ = "0.4.3"
+__version__ = "0.5.0"
 
 try:
     os.environ['OUTDATED_IGNORE'] = '1'
