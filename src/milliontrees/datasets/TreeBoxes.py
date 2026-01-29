@@ -73,11 +73,11 @@ class TreeBoxesDataset(MillionTreesDataset):
             'download_url': '',
             'compressed_size': 105525592
         },
-        "0.9": {
+        "0.10": {
             'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.9.zip",
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.10.zip",
             'compressed_size':
-                41920048
+                42922274383
         }
     }
 
