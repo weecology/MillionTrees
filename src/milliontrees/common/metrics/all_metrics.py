@@ -593,8 +593,9 @@ class MaskAccuracy(ElementwiseMetric):
             gt_masks = gt[self.geometry_name]
             # Convert to tensors if needed
             if not isinstance(target_scores, torch.Tensor):
-                target_scores = torch.as_tensor(target_scores, dtype=torch.float32)
-            
+                target_scores = torch.as_tensor(target_scores,
+                                                dtype=torch.float32)
+
             pred_masks = target_masks[target_scores > self.score_threshold]
             det_accuracy = self._accuracy(gt_masks, pred_masks,
                                           self.iou_threshold)
@@ -605,21 +606,25 @@ class MaskAccuracy(ElementwiseMetric):
         """Convert bounding boxes [N, 4] (xyxy format) to masks [N, H, W]."""
         if len(boxes) == 0:
             device = boxes.device if isinstance(boxes, torch.Tensor) else 'cpu'
-            return torch.zeros((0, height, width), dtype=torch.bool, device=device)
-        
+            return torch.zeros((0, height, width),
+                               dtype=torch.bool,
+                               device=device)
+
         # Convert to tensor if needed
         if not isinstance(boxes, torch.Tensor):
             boxes = torch.as_tensor(boxes, dtype=torch.float32)
-        
+
         boxes = boxes.clone()
         # Clamp boxes to image bounds
         boxes[:, 0] = torch.clamp(boxes[:, 0], 0, width)
         boxes[:, 1] = torch.clamp(boxes[:, 1], 0, height)
         boxes[:, 2] = torch.clamp(boxes[:, 2], 0, width)
         boxes[:, 3] = torch.clamp(boxes[:, 3], 0, height)
-        
+
         device = boxes.device
-        masks = torch.zeros((len(boxes), height, width), dtype=torch.bool, device=device)
+        masks = torch.zeros((len(boxes), height, width),
+                            dtype=torch.bool,
+                            device=device)
         for i, box in enumerate(boxes):
             x1, y1, x2, y2 = box.int()
             # Ensure valid box
@@ -631,17 +636,18 @@ class MaskAccuracy(ElementwiseMetric):
         # Convert to tensors if needed (preserve original dtype for shape detection)
         src_is_tensor = isinstance(src_masks, torch.Tensor)
         pred_is_tensor = isinstance(pred_masks, torch.Tensor)
-        
+
         if not src_is_tensor:
             src_masks = torch.as_tensor(src_masks)
         if not pred_is_tensor:
             pred_masks = torch.as_tensor(pred_masks)
-        
+
         # Handle case where pred_masks are actually bounding boxes [M, 4]
         # Check if pred_masks are boxes (shape [M, 4]) instead of masks [M, H, W]
         # For empty tensors, check the shape tuple
-        is_pred_boxes = (pred_masks.dim() == 2 and 
-                        (len(pred_masks) == 0 or (pred_masks.shape[1] == 4 and pred_masks.dim() == 2)))
+        is_pred_boxes = (pred_masks.dim() == 2 and
+                         (len(pred_masks) == 0 or
+                          (pred_masks.shape[1] == 4 and pred_masks.dim() == 2)))
         if is_pred_boxes:
             # Get image dimensions from src_masks
             if len(src_masks) > 0 and src_masks.dim() == 3:
@@ -650,35 +656,42 @@ class MaskAccuracy(ElementwiseMetric):
                 pred_masks = self._boxes_to_masks(pred_masks, height, width)
             else:
                 # If no ground truth masks, return zero IoU
-                device = pred_masks.device if isinstance(pred_masks, torch.Tensor) else 'cpu'
-                return torch.zeros((0, len(pred_masks)), dtype=torch.float32, device=device)
-        
+                device = pred_masks.device if isinstance(
+                    pred_masks, torch.Tensor) else 'cpu'
+                return torch.zeros((0, len(pred_masks)),
+                                   dtype=torch.float32,
+                                   device=device)
+
         # Handle case where src_masks are boxes (shouldn't happen, but handle gracefully)
-        is_src_boxes = (src_masks.dim() == 2 and 
-                       (len(src_masks) == 0 or (src_masks.shape[1] == 4 and src_masks.dim() == 2)))
+        is_src_boxes = (src_masks.dim() == 2 and
+                        (len(src_masks) == 0 or
+                         (src_masks.shape[1] == 4 and src_masks.dim() == 2)))
         if is_src_boxes:
             if len(pred_masks) > 0 and pred_masks.dim() == 3:
                 height, width = pred_masks.shape[1], pred_masks.shape[2]
                 src_masks = self._boxes_to_masks(src_masks, height, width)
             else:
-                device = src_masks.device if isinstance(src_masks, torch.Tensor) else 'cpu'
-                return torch.zeros((len(src_masks), 0), dtype=torch.float32, device=device)
-        
+                device = src_masks.device if isinstance(src_masks,
+                                                        torch.Tensor) else 'cpu'
+                return torch.zeros((len(src_masks), 0),
+                                   dtype=torch.float32,
+                                   device=device)
+
         # Ensure masks are bool type for bitwise operations
         if src_masks.dtype != torch.bool:
             src_masks = src_masks.bool()
         if pred_masks.dtype != torch.bool:
             pred_masks = pred_masks.bool()
-        
+
         # Memory optimization: Use bbox IoU to pre-filter before computing expensive mask IoU
         # This reduces memory usage from O(N*M*H*W) to O(N*M) for filtering, then only
         # compute mask IoU for candidate pairs
         device = src_masks.device
         N, M = len(src_masks), len(pred_masks)
-        
+
         if N == 0 or M == 0:
             return torch.zeros((N, M), dtype=torch.float32, device=device)
-        
+
         # Compute bboxes from masks for pre-filtering.
         # Torchvision's masks_to_boxes errors if any individual mask is empty (all zeros),
         # so compute boxes only for non-empty masks and zero-fill the rest.
@@ -691,81 +704,90 @@ class MaskAccuracy(ElementwiseMetric):
         if src_nonempty.any():
             src_boxes[src_nonempty] = masks_to_boxes(src_masks[src_nonempty])
         if pred_nonempty.any():
-            pred_boxes[pred_nonempty] = masks_to_boxes(pred_masks[pred_nonempty])
-        
+            pred_boxes[pred_nonempty] = masks_to_boxes(
+                pred_masks[pred_nonempty])
+
         # Compute bbox IoU for all pairs (cheap: O(N*M))
         bbox_iou = box_iou(src_boxes, pred_boxes)  # [N, M]
         bbox_iou[~src_nonempty, :] = 0.0
         bbox_iou[:, ~pred_nonempty] = 0.0
-        
+
         # Initialize IoU matrix with bbox IoU values (will be refined for ambiguous cases)
         iou = bbox_iou.clone()
-        
+
         # Option 3: Hybrid bbox/mask IoU - use bbox IoU as approximation for obvious cases
         # For very low bbox IoU (< 0.1), no mask overlap is possible
         iou[bbox_iou < 0.1] = 0.0
-        
+
         # For very high bbox IoU (> 0.9), bbox IoU is a good approximation of mask IoU
         # Only compute expensive mask IoU for ambiguous cases (0.1 <= bbox_iou <= 0.9)
         ambiguous_mask = (bbox_iou >= 0.1) & (bbox_iou <= 0.9)
-        
+
         if ambiguous_mask.any():
             # Get indices of ambiguous pairs that need mask IoU computation
-            ambiguous_gt_indices, ambiguous_pred_indices = torch.where(ambiguous_mask)
+            ambiguous_gt_indices, ambiguous_pred_indices = torch.where(
+                ambiguous_mask)
             num_ambiguous = len(ambiguous_gt_indices)
-            
+
             # Process ambiguous pairs in chunks to avoid creating huge tensors
             # Even with downsampling, U_gt * U_pred * H * W can be massive
             chunk_size = 500  # Process 500 ambiguous pairs at a time
             target_size = 224  # Downsample to 224x224 for memory efficiency
-            
+
             for chunk_start in range(0, num_ambiguous, chunk_size):
                 chunk_end = min(chunk_start + chunk_size, num_ambiguous)
                 chunk_gt_idx = ambiguous_gt_indices[chunk_start:chunk_end]
                 chunk_pred_idx = ambiguous_pred_indices[chunk_start:chunk_end]
-                
+
                 # Get unique indices for this chunk to avoid redundant mask loading
                 unique_gt_idx = torch.unique(chunk_gt_idx)
                 unique_pred_idx = torch.unique(chunk_pred_idx)
-                
+
                 # Load masks for this chunk
                 chunk_src_masks = src_masks[unique_gt_idx]  # [U_gt, H, W]
                 chunk_pred_masks = pred_masks[unique_pred_idx]  # [U_pred, H, W]
-                
+
                 # Option 1: Downsample masks for IoU computation to reduce memory
                 if chunk_src_masks.shape[1] > target_size:
                     # Downsample using nearest neighbor to preserve binary nature
                     chunk_src_masks = F.interpolate(
                         chunk_src_masks.unsqueeze(1).float(),
                         size=(target_size, target_size),
-                        mode='nearest'
-                    ).squeeze(1).bool()
+                        mode='nearest').squeeze(1).bool()
                     chunk_pred_masks = F.interpolate(
                         chunk_pred_masks.unsqueeze(1).float(),
                         size=(target_size, target_size),
-                        mode='nearest'
-                    ).squeeze(1).bool()
-                
+                        mode='nearest').squeeze(1).bool()
+
                 # Create mapping from original indices to chunk indices
-                gt_idx_map = {int(idx): i for i, idx in enumerate(unique_gt_idx)}
-                pred_idx_map = {int(idx): i for i, idx in enumerate(unique_pred_idx)}
-                
+                gt_idx_map = {
+                    int(idx): i for i, idx in enumerate(unique_gt_idx)
+                }
+                pred_idx_map = {
+                    int(idx): i for i, idx in enumerate(unique_pred_idx)
+                }
+
                 # Compute mask IoU for chunk pairs using vectorized operations
                 src_expanded = chunk_src_masks.unsqueeze(1)  # [U_gt, 1, H, W]
-                pred_expanded = chunk_pred_masks.unsqueeze(0)  # [1, U_pred, H, W]
-                intersection = (src_expanded & pred_expanded).float().sum((2, 3))  # [U_gt, U_pred]
-                union = (src_expanded | pred_expanded).float().sum((2, 3))  # [U_gt, U_pred]
+                pred_expanded = chunk_pred_masks.unsqueeze(
+                    0)  # [1, U_pred, H, W]
+                intersection = (src_expanded & pred_expanded).float().sum(
+                    (2, 3))  # [U_gt, U_pred]
+                union = (src_expanded | pred_expanded).float().sum(
+                    (2, 3))  # [U_gt, U_pred]
                 chunk_mask_iou = intersection / union.clamp(min=1e-6)
                 chunk_mask_iou[union == 0] = 0.0
-                
+
                 # Map chunk results back to original indices
                 for i, j in zip(chunk_gt_idx, chunk_pred_idx):
                     orig_gt_idx = int(i)
                     orig_pred_idx = int(j)
                     chunk_gt_pos = gt_idx_map[orig_gt_idx]
                     chunk_pred_pos = pred_idx_map[orig_pred_idx]
-                    iou[orig_gt_idx, orig_pred_idx] = chunk_mask_iou[chunk_gt_pos, chunk_pred_pos]
-        
+                    iou[orig_gt_idx,
+                        orig_pred_idx] = chunk_mask_iou[chunk_gt_pos,
+                                                        chunk_pred_pos]
+
         return iou  # Returns [N, M] matrix
 
     def _recall(self, src_masks, pred_masks, iou_threshold):
