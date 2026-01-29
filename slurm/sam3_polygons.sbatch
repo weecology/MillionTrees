@@ -4,8 +4,8 @@
 #SBATCH --error=logs/slurm/sam3_polygons_%x_%A_%a.err
 #SBATCH --array=0-2
 #SBATCH --time=48:00:00
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=150G
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=50G
 #SBATCH --gres=gpu:1
 
 set -euo pipefail
@@ -20,12 +20,8 @@ ROOT_DIR=/orange/ewhite/web/public/MillionTrees
 SPLITS=(random zeroshot crossgeometry)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
-# Use smaller batch size for random split to avoid OOM
-if [[ "$SPLIT" == "random" ]]; then
-  BATCH_SIZE=4
-else
-  BATCH_SIZE=8
-fi
+# Batch size - can be increased due to chunked evaluation optimization
+BATCH_SIZE=8
 
 uv run python docs/examples/sam3_polygons.py \
   --root-dir "$ROOT_DIR" \

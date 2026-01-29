@@ -64,7 +64,8 @@ def main() -> None:
                           root_dir=args.root_dir,
                           download=args.download,
                           mini=args.mini,
-                          split_scheme=args.split_scheme)
+                          split_scheme=args.split_scheme,
+                          image_size=224)
     test_dataset = dataset.get_subset("test")
     test_loader = get_eval_loader("standard",
                                   test_dataset,

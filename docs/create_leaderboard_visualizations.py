@@ -335,14 +335,84 @@ def plot_polygons_prediction(ax, image, gt, pred, title=""):
                         ax.add_patch(rect)
 
 
-def create_panel_figure(root_dir: str, output_path: str, device: str = "cuda", hf_token: str = None):
-    """Create a panel figure with predictions for all datasets and splits."""
-    
-    # Initialize models
+def _create_single_task_figure(
+    root_dir: str,
+    output_path: str,
+    dataset_name: str,
+    dataset_type: str,
+    df_model,
+    sam3_model,
+    sam3_processor,
+    device: str,
+) -> None:
+    """Create one figure for a single task: 3 rows (splits) x 2 cols (DeepForest, SAM3)."""
+    splits = ["random", "zeroshot", "crossgeometry"]
+    fig = plt.figure(figsize=(10, 10))
+    gs = GridSpec(3, 2, figure=fig, hspace=0.06, wspace=0.01,
+                  left=0.04, right=0.97, top=0.96, bottom=0.06)
+    for row, split in enumerate(splits):
+        try:
+            dataset = get_dataset(dataset_name, root_dir=root_dir, split_scheme=split, download=False)
+            metadata, image_tensor, target = get_sample_image(
+                dataset, split, index=0, dataset_type=dataset_type
+            )
+            if metadata is None:
+                continue
+            image = (image_tensor.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
+            gt = target.get("y", target.get("bboxes"))
+            ax_df = fig.add_subplot(gs[row, 0])
+            if dataset_type == "points":
+                pred_df = predict_deepforest_points(image_tensor, df_model, dataset)
+                plot_points_prediction(ax_df, image, target["y"], pred_df, "DeepForest")
+            elif dataset_type == "boxes":
+                pred_df = predict_deepforest_boxes(image_tensor, df_model, dataset)
+                plot_boxes_prediction(ax_df, image, target["y"], pred_df, "DeepForest")
+            else:
+                pred_df = predict_deepforest_polygons(image_tensor, df_model, dataset)
+                plot_polygons_prediction(ax_df, image, gt, pred_df, "DeepForest")
+            ax_sam3 = fig.add_subplot(gs[row, 1])
+            if sam3_model is not None:
+                if dataset_type == "points":
+                    pred_sam3 = predict_sam3_points(image_tensor, sam3_model, sam3_processor, device)
+                    plot_points_prediction(ax_sam3, image, target["y"], pred_sam3, "SAM3")
+                elif dataset_type == "boxes":
+                    pred_sam3 = predict_sam3_boxes(image_tensor, sam3_model, sam3_processor, device)
+                    plot_boxes_prediction(ax_sam3, image, target["y"], pred_sam3, "SAM3")
+                else:
+                    pred_sam3 = predict_sam3_polygons(image_tensor, sam3_model, sam3_processor, device)
+                    plot_polygons_prediction(ax_sam3, image, gt, pred_sam3, "SAM3")
+            else:
+                ax_sam3.text(0.5, 0.5, "SAM3\nNot Available",
+                             ha='center', va='center', transform=ax_sam3.transAxes)
+                ax_sam3.axis('off')
+        except Exception as e:
+            print(f"Error processing {dataset_name} {split}: {e}")
+    for row, split in enumerate(splits):
+        fig.text(0.01, 0.83 - row * 0.31, split.replace('_', ' ').title(),
+                 ha='center', va='center', fontsize=10, fontweight='bold', rotation=90)
+    fig.suptitle(f"{dataset_name}: Model Predictions by Split", fontsize=12, fontweight='bold', y=0.995)
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor='purple', alpha=0.4, label='Ground Truth'),
+        Patch(facecolor='orange', alpha=0.4, label='Prediction'),
+    ]
+    fig.legend(handles=legend_elements, loc='lower center', ncol=2, fontsize=9,
+               frameon=True, bbox_to_anchor=(0.5, 0.005), borderaxespad=0.2)
+    plt.savefig(output_path, dpi=150, bbox_inches='tight', pad_inches=0.02)
+    plt.close(fig)
+    print(f"Saved {dataset_name} visualization to {output_path}")
+
+
+def create_task_figures(
+    root_dir: str,
+    output_dir: str,
+    device: str = "cuda",
+    hf_token: str = None,
+) -> None:
+    """Create one figure per task (TreePoints, TreeBoxes, TreePolygons) for manuscript use."""
     df_model = df_main.deepforest()
     df_model.load_model("weecology/deepforest-tree")
     df_model.eval()
-    
     try:
         from transformers import Sam3Processor, Sam3Model
         if hf_token:
@@ -355,113 +425,117 @@ def create_panel_figure(root_dir: str, output_path: str, device: str = "cuda", h
         print(f"Warning: Could not load SAM3: {e}")
         sam3_model = None
         sam3_processor = None
-    
+    os.makedirs(output_dir, exist_ok=True)
+    for dataset_name, dataset_type, basename in [
+        ("TreePoints", "points", "leaderboard_predictions_points.png"),
+        ("TreeBoxes", "boxes", "leaderboard_predictions_boxes.png"),
+        ("TreePolygons", "polygons", "leaderboard_predictions_polygons.png"),
+    ]:
+        out_path = os.path.join(output_dir, basename)
+        _create_single_task_figure(
+            root_dir, out_path, dataset_name, dataset_type,
+            df_model, sam3_model, sam3_processor, device,
+        )
+
+
+def create_panel_figure(root_dir: str, output_path: str, device: str = "cuda", hf_token: str = None):
+    """Create a panel figure with predictions for all datasets and splits."""
+    df_model = df_main.deepforest()
+    df_model.load_model("weecology/deepforest-tree")
+    df_model.eval()
+    try:
+        from transformers import Sam3Processor, Sam3Model
+        if hf_token:
+            sam3_model = Sam3Model.from_pretrained("facebook/sam3", token=hf_token).to(device)
+            sam3_processor = Sam3Processor.from_pretrained("facebook/sam3", token=hf_token)
+        else:
+            sam3_model = Sam3Model.from_pretrained("facebook/sam3").to(device)
+            sam3_processor = Sam3Processor.from_pretrained("facebook/sam3")
+    except Exception as e:
+        print(f"Warning: Could not load SAM3: {e}")
+        sam3_model = None
+        sam3_processor = None
     splits = ["random", "zeroshot", "crossgeometry"]
     datasets_info = [
         ("TreePoints", "points"),
         ("TreeBoxes", "boxes"),
         ("TreePolygons", "polygons")
     ]
-    
-    # Create figure with subplots: 3 rows (datasets) x 6 columns (3 splits x 2 models)
     fig = plt.figure(figsize=(18, 12))
-    gs = GridSpec(3, 6, figure=fig, hspace=0.15, wspace=0.15, 
-                  left=0.05, right=0.98, top=0.93, bottom=0.08)
-    
+    gs = GridSpec(3, 6, figure=fig, hspace=0.06, wspace=0.02,
+                  left=0.03, right=0.99, top=0.96, bottom=0.05)
     for row, (dataset_name, dataset_type) in enumerate(datasets_info):
         for col, split in enumerate(splits):
             try:
-                # Load dataset
                 dataset = get_dataset(dataset_name, root_dir=root_dir, split_scheme=split, download=False)
-                # For polygons, try to find a better image
                 metadata, image_tensor, target = get_sample_image(dataset, split, index=0, dataset_type=dataset_type)
-                
                 if metadata is None:
                     continue
-                
-                # Convert image for display
                 image = image_tensor.permute(1, 2, 0).numpy() * 255
                 image = image.astype(np.uint8)
-                
-                # DeepForest predictions
                 ax_df = fig.add_subplot(gs[row, col*2])
                 if dataset_type == "points":
                     pred_df = predict_deepforest_points(image_tensor, df_model, dataset)
-                    plot_points_prediction(ax_df, image, target["y"], pred_df, 
-                                         f"{split} - DeepForest")
+                    plot_points_prediction(ax_df, image, target["y"], pred_df, f"{split} - DeepForest")
                 elif dataset_type == "boxes":
                     pred_df = predict_deepforest_boxes(image_tensor, df_model, dataset)
-                    plot_boxes_prediction(ax_df, image, target["y"], pred_df,
-                                        f"{split} - DeepForest")
-                else:  # polygons
+                    plot_boxes_prediction(ax_df, image, target["y"], pred_df, f"{split} - DeepForest")
+                else:
                     pred_df = predict_deepforest_polygons(image_tensor, df_model, dataset)
-                    plot_polygons_prediction(ax_df, image, target.get("y", target.get("bboxes")), pred_df,
-                                           f"{split} - DeepForest")
-                
-                # SAM3 predictions
+                    plot_polygons_prediction(ax_df, image, target.get("y", target.get("bboxes")), pred_df, f"{split} - DeepForest")
                 ax_sam3 = fig.add_subplot(gs[row, col*2+1])
                 if sam3_model is not None:
                     if dataset_type == "points":
                         pred_sam3 = predict_sam3_points(image_tensor, sam3_model, sam3_processor, device)
-                        plot_points_prediction(ax_sam3, image, target["y"], pred_sam3,
-                                            f"{split} - SAM3")
+                        plot_points_prediction(ax_sam3, image, target["y"], pred_sam3, f"{split} - SAM3")
                     elif dataset_type == "boxes":
                         pred_sam3 = predict_sam3_boxes(image_tensor, sam3_model, sam3_processor, device)
-                        plot_boxes_prediction(ax_sam3, image, target["y"], pred_sam3,
-                                            f"{split} - SAM3")
-                    else:  # polygons
+                        plot_boxes_prediction(ax_sam3, image, target["y"], pred_sam3, f"{split} - SAM3")
+                    else:
                         pred_sam3 = predict_sam3_polygons(image_tensor, sam3_model, sam3_processor, device)
-                        plot_polygons_prediction(ax_sam3, image, target.get("y", target.get("bboxes")), pred_sam3,
-                                                f"{split} - SAM3")
+                        plot_polygons_prediction(ax_sam3, image, target.get("y", target.get("bboxes")), pred_sam3, f"{split} - SAM3")
                 else:
-                    ax_sam3.text(0.5, 0.5, "SAM3\nNot Available", 
-                               ha='center', va='center', transform=ax_sam3.transAxes)
+                    ax_sam3.text(0.5, 0.5, "SAM3\nNot Available", ha='center', va='center', transform=ax_sam3.transAxes)
                     ax_sam3.axis('off')
-                
             except Exception as e:
                 print(f"Error processing {dataset_name} {split}: {e}")
                 continue
-    
-    # Add row labels
     for row, (dataset_name, _) in enumerate(datasets_info):
-        fig.text(0.01, 0.85 - row*0.33, dataset_name, rotation=90, 
-                ha='center', va='center', fontsize=11, fontweight='bold')
-    
-    # Add column headers
+        fig.text(0.008, 0.83 - row*0.31, dataset_name, rotation=90, ha='center', va='center', fontsize=11, fontweight='bold')
     for col, split in enumerate(splits):
-        fig.text(0.15 + col*0.33, 0.96, split.replace('_', ' ').title(), 
-                ha='center', va='center', fontsize=9, fontweight='bold')
-    
-    plt.suptitle("Model Predictions Across Datasets and Splits", fontsize=13, fontweight='bold', y=0.98)
-    
-    # Add legend in a dedicated area at the bottom with minimal padding
+        fig.text(0.17 + col*0.32, 0.99, split.replace('_', ' ').title(), ha='center', va='center', fontsize=9, fontweight='bold')
+    plt.suptitle("Model Predictions Across Datasets and Splits", fontsize=13, fontweight='bold', y=0.998)
     from matplotlib.patches import Patch
     legend_elements = [
         Patch(facecolor='purple', alpha=0.4, label='Ground Truth'),
         Patch(facecolor='orange', alpha=0.4, label='Prediction'),
     ]
-    fig.legend(handles=legend_elements, loc='lower center', ncol=2, 
-              fontsize=9, frameon=True, bbox_to_anchor=(0.5, 0.01), 
-              borderaxespad=0.2, handletextpad=0.5, columnspacing=1.0)
-    
-    plt.savefig(output_path, dpi=150, bbox_inches='tight', pad_inches=0.1)
+    fig.legend(handles=legend_elements, loc='lower center', ncol=2, fontsize=9, frameon=True,
+               bbox_to_anchor=(0.5, 0.004), borderaxespad=0.2, handletextpad=0.5, columnspacing=1.0)
+    plt.savefig(output_path, dpi=150, bbox_inches='tight', pad_inches=0.02)
     print(f"Saved visualization to {output_path}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Create leaderboard visualization panels")
-    parser.add_argument("--root-dir", type=str, 
+    parser.add_argument("--root-dir", type=str,
                        default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees/"),
                        help="Dataset root directory")
     parser.add_argument("--output", type=str, default="docs/leaderboard_predictions.png",
-                       help="Output path for the figure")
+                       help="Output path for the combined figure")
+    parser.add_argument("--output-dir", type=str, default="docs",
+                       help="Output directory for per-task figures (used with --split-by-task)")
+    parser.add_argument("--split-by-task", action="store_true",
+                       help="Create one figure per task for manuscript")
     parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"],
                        help="Device for SAM3")
     parser.add_argument("--hf-token", type=str, default=os.environ.get("HF_TOKEN"),
                        help="Hugging Face token for SAM3")
     args = parser.parse_args()
-    
-    create_panel_figure(args.root_dir, args.output, args.device, args.hf_token)
+    if args.split_by_task:
+        create_task_figures(args.root_dir, args.output_dir, args.device, args.hf_token)
+    else:
+        create_panel_figure(args.root_dir, args.output, args.device, args.hf_token)
 
 
 if __name__ == "__main__":

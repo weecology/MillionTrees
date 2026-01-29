@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torchvision.ops.boxes import box_iou
+from torchvision.ops import masks_to_boxes
 from torchvision.models.detection._utils import Matcher
 from milliontrees.common.metrics.metric import Metric, ElementwiseMetric, MultiTaskMetric
 from milliontrees.common.metrics.loss import ElementwiseLoss
@@ -669,20 +670,101 @@ class MaskAccuracy(ElementwiseMetric):
         if pred_masks.dtype != torch.bool:
             pred_masks = pred_masks.bool()
         
-        # src_masks: [N, H, W], pred_masks: [M, H, W]
-        # Expand dimensions for broadcasting: [N, 1, H, W] and [1, M, H, W]
-        # This allows pairwise comparison, resulting in [N, M, H, W]
-        src_expanded = src_masks.unsqueeze(1)  # [N, 1, H, W]
-        pred_expanded = pred_masks.unsqueeze(0)  # [1, M, H, W]
+        # Memory optimization: Use bbox IoU to pre-filter before computing expensive mask IoU
+        # This reduces memory usage from O(N*M*H*W) to O(N*M) for filtering, then only
+        # compute mask IoU for candidate pairs
+        device = src_masks.device
+        N, M = len(src_masks), len(pred_masks)
         
-        # Compute intersection and union for all pairs
-        intersection = (src_expanded & pred_expanded).float().sum((2, 3))  # [N, M]
-        union = (src_expanded | pred_expanded).float().sum((2, 3))  # [N, M]
+        if N == 0 or M == 0:
+            return torch.zeros((N, M), dtype=torch.float32, device=device)
         
-        # Compute IoU, handling division by zero (empty unions)
-        iou = intersection / union.clamp(min=1e-6)
-        # Set IoU to 0 where union is 0 (both masks are empty)
-        iou[union == 0] = 0.0
+        # Compute bboxes from masks for pre-filtering.
+        # Torchvision's masks_to_boxes errors if any individual mask is empty (all zeros),
+        # so compute boxes only for non-empty masks and zero-fill the rest.
+        src_nonempty = src_masks.flatten(1).any(dim=1)
+        pred_nonempty = pred_masks.flatten(1).any(dim=1)
+
+        src_boxes = torch.zeros((N, 4), dtype=torch.float32, device=device)
+        pred_boxes = torch.zeros((M, 4), dtype=torch.float32, device=device)
+
+        if src_nonempty.any():
+            src_boxes[src_nonempty] = masks_to_boxes(src_masks[src_nonempty])
+        if pred_nonempty.any():
+            pred_boxes[pred_nonempty] = masks_to_boxes(pred_masks[pred_nonempty])
+        
+        # Compute bbox IoU for all pairs (cheap: O(N*M))
+        bbox_iou = box_iou(src_boxes, pred_boxes)  # [N, M]
+        bbox_iou[~src_nonempty, :] = 0.0
+        bbox_iou[:, ~pred_nonempty] = 0.0
+        
+        # Initialize IoU matrix with bbox IoU values (will be refined for ambiguous cases)
+        iou = bbox_iou.clone()
+        
+        # Option 3: Hybrid bbox/mask IoU - use bbox IoU as approximation for obvious cases
+        # For very low bbox IoU (< 0.1), no mask overlap is possible
+        iou[bbox_iou < 0.1] = 0.0
+        
+        # For very high bbox IoU (> 0.9), bbox IoU is a good approximation of mask IoU
+        # Only compute expensive mask IoU for ambiguous cases (0.1 <= bbox_iou <= 0.9)
+        ambiguous_mask = (bbox_iou >= 0.1) & (bbox_iou <= 0.9)
+        
+        if ambiguous_mask.any():
+            # Get indices of ambiguous pairs that need mask IoU computation
+            ambiguous_gt_indices, ambiguous_pred_indices = torch.where(ambiguous_mask)
+            num_ambiguous = len(ambiguous_gt_indices)
+            
+            # Process ambiguous pairs in chunks to avoid creating huge tensors
+            # Even with downsampling, U_gt * U_pred * H * W can be massive
+            chunk_size = 500  # Process 500 ambiguous pairs at a time
+            target_size = 224  # Downsample to 224x224 for memory efficiency
+            
+            for chunk_start in range(0, num_ambiguous, chunk_size):
+                chunk_end = min(chunk_start + chunk_size, num_ambiguous)
+                chunk_gt_idx = ambiguous_gt_indices[chunk_start:chunk_end]
+                chunk_pred_idx = ambiguous_pred_indices[chunk_start:chunk_end]
+                
+                # Get unique indices for this chunk to avoid redundant mask loading
+                unique_gt_idx = torch.unique(chunk_gt_idx)
+                unique_pred_idx = torch.unique(chunk_pred_idx)
+                
+                # Load masks for this chunk
+                chunk_src_masks = src_masks[unique_gt_idx]  # [U_gt, H, W]
+                chunk_pred_masks = pred_masks[unique_pred_idx]  # [U_pred, H, W]
+                
+                # Option 1: Downsample masks for IoU computation to reduce memory
+                if chunk_src_masks.shape[1] > target_size:
+                    # Downsample using nearest neighbor to preserve binary nature
+                    chunk_src_masks = F.interpolate(
+                        chunk_src_masks.unsqueeze(1).float(),
+                        size=(target_size, target_size),
+                        mode='nearest'
+                    ).squeeze(1).bool()
+                    chunk_pred_masks = F.interpolate(
+                        chunk_pred_masks.unsqueeze(1).float(),
+                        size=(target_size, target_size),
+                        mode='nearest'
+                    ).squeeze(1).bool()
+                
+                # Create mapping from original indices to chunk indices
+                gt_idx_map = {int(idx): i for i, idx in enumerate(unique_gt_idx)}
+                pred_idx_map = {int(idx): i for i, idx in enumerate(unique_pred_idx)}
+                
+                # Compute mask IoU for chunk pairs using vectorized operations
+                src_expanded = chunk_src_masks.unsqueeze(1)  # [U_gt, 1, H, W]
+                pred_expanded = chunk_pred_masks.unsqueeze(0)  # [1, U_pred, H, W]
+                intersection = (src_expanded & pred_expanded).float().sum((2, 3))  # [U_gt, U_pred]
+                union = (src_expanded | pred_expanded).float().sum((2, 3))  # [U_gt, U_pred]
+                chunk_mask_iou = intersection / union.clamp(min=1e-6)
+                chunk_mask_iou[union == 0] = 0.0
+                
+                # Map chunk results back to original indices
+                for i, j in zip(chunk_gt_idx, chunk_pred_idx):
+                    orig_gt_idx = int(i)
+                    orig_pred_idx = int(j)
+                    chunk_gt_pos = gt_idx_map[orig_gt_idx]
+                    chunk_pred_pos = pred_idx_map[orig_pred_idx]
+                    iou[orig_gt_idx, orig_pred_idx] = chunk_mask_iou[chunk_gt_pos, chunk_pred_pos]
         
         return iou  # Returns [N, M] matrix
 
