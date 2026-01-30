@@ -85,7 +85,7 @@ All point sources are used to train and predict all box sources.
 | Model | Task | Dataset | Avg Mask Accuracy | Script |
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons | 0.090 | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme random`</small> |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons | 0.090 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons | 0.167 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 
 ### Zero-shot
 
