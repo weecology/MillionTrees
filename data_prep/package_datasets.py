@@ -387,13 +387,13 @@ def limit_test_images(df, test_sources, max_images=50):
 def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix=""):
     """Perform zero-shot split and save the results."""
     # Define test and train sources
-    test_sources_polygons = ["Troles et al. 2024","Bolhman 2008","Lefebvre et al. 2024"]
+    test_sources_polygons = ["Troles et al. 2024","Bolhman 2008","Lefebvre et al. 2024","NEON MultiTemporal"]
     train_sources_polygons = [x for x in TreePolygons_datasets.source.unique() if x not in test_sources_polygons]
 
-    test_sources_points = ["Amirkolaee et al. 2023","NEON_points"]
+    test_sources_points = ["Amirkolaee et al. 2023","NEON_points","NEON MultiTemporal"]
     train_sources_points = [x for x in TreePoints_datasets.source.unique() if x not in test_sources_points]
 
-    test_sources_boxes = ["Radogoshi et al. 2021","SelvaBox","NEON_benchmark"]
+    test_sources_boxes = ["Radogoshi et al. 2021","SelvaBox","NEON_benchmark","NEON MultiTemporal"]
     train_sources_boxes = [x for x in TreeBoxes_datasets.source.unique() if x not in test_sources_boxes]
 
     # Assign splits for polygons
@@ -544,7 +544,8 @@ def run(version, base_dir, debug=False):
         ,"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
         "/orange/ewhite/DeepForest/SelvaBox/annotations.csv",
         "/orange/ewhite/DeepForest/neon_unsupervised/TreeBoxes_neon_unsupervised.csv",
-        "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreeBoxes_OFO_unsupervised.csv"
+        "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreeBoxes_OFO_unsupervised.csv",
+        "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreeBoxes_NEON_MultiTemporal.csv",
         #"/orange/ewhite/DeepForest/Beloiu_2023/annotations.csv",
    ]
 
@@ -553,10 +554,11 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
         "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
         #'/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
-        "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv",
+        "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations_tcd_filtered.csv",
         "/orange/ewhite/DeepForest/Yosemite/tiles/yosemite_all_annotations.csv",
         "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreePoints_OFO_unsupervised.csv",
         "/orange/ewhite/DeepForest/Kaggle_LiDAR_RGB/pngs/annotations.csv",
+        "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreePoints_NEON_MultiTemporal.csv",
         #'/orange/ewhite/DeepForest/Miraki/annotations.csv'
     ]
 
@@ -582,10 +584,11 @@ def run(version, base_dir, debug=False):
         #"/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
         "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/crops/annotations.csv",
         "/orange/ewhite/DeepForest/Schutte_Germany/annotations.csv",
+        "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreePolygons_NEON_MultiTemporal.csv",
         #"/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv",
         
     ]
-    
+
     # Combine datasets
     TreeBoxes_datasets = combine_datasets(TreeBoxes, debug=debug)
     TreePoints_datasets = combine_datasets(TreePoints, debug=debug)
@@ -680,7 +683,7 @@ def run(version, base_dir, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.10"
+    version = "v0.11"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     debug = False
     run(version, base_dir, debug)

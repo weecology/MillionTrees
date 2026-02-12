@@ -212,8 +212,10 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
     with rio.open(out_ortho, 'w', **profile) as dst:
         dst.write(arr3)
         
-    # Tile points
-    treetops_file = os.path.join(itd_dir,f'{mission_id}_treetops.gpkg')
+    # Tile points (OFO may use treetops.gpkg or {mission_id}_treetops.gpkg)
+    treetops_file = os.path.join(itd_dir, f'{mission_id}_treetops.gpkg')
+    if not os.path.exists(treetops_file):
+        treetops_file = os.path.join(itd_dir, 'treetops.gpkg')
     gdf = gpd.read_file(treetops_file)
     gdf["image_path"] = os.path.basename(out_ortho)
     gdf["label"] = "Tree"
@@ -232,8 +234,10 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
     points_tiled['source'] = 'Young et al. 2025 weak supervised'
     points_tiled = points_tiled.rename(columns={'image_path': 'filename'})
 
-    # Tile boxes
+    # Tile boxes (OFO may use crowns-silva.gpkg or {mission_id}_crowns-silva.gpkg)
     crowns_file = os.path.join(itd_dir, f'{mission_id}_crowns-silva.gpkg')
+    if not os.path.exists(crowns_file):
+        crowns_file = os.path.join(itd_dir, 'crowns-silva.gpkg')
     gdf = gpd.read_file(crowns_file)
     gdf["image_path"] = os.path.basename(out_ortho)
     gdf["label"] = "Tree"
@@ -253,6 +257,35 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
 
     return points_tiled, boxes_tiled
 
+def write_sample_overlays(images_dir: str, savedir: str, max_samples: int = 10) -> None:
+    """Write sample overlay plots (boxes and points on imagery) for QC. savedir is created if needed."""
+    from deepforest import utilities, visualize
+    from matplotlib import pyplot as plt
+
+    ensure_dir(savedir)
+    boxes_csv = os.path.join(images_dir, 'TreeBoxes_OFO_weak_supervised.csv')
+    points_csv = os.path.join(images_dir, 'TreePoints_OFO_weak_supervised.csv')
+
+    if os.path.exists(boxes_csv):
+        df = utilities.read_file(pd.read_csv(boxes_csv), root_dir=images_dir)
+        for filename in df['image_path'].unique()[:max_samples]:
+            image_df = df.loc[df['image_path'] == filename].copy()
+            image_df.root_dir = images_dir
+            visualize.plot_annotations(image_df)
+            plt.savefig(os.path.join(savedir, f"sample_boxes_{os.path.basename(filename)}.png"))
+            plt.close()
+
+    if os.path.exists(points_csv):
+        df = utilities.read_file(pd.read_csv(points_csv), root_dir=images_dir)
+        for filename in df['image_path'].unique()[:max_samples]:
+            image_df = df.loc[df['image_path'] == filename].copy()
+            image_df.root_dir = images_dir
+            visualize.plot_annotations(image_df)
+            plt.savefig(os.path.join(savedir, f"sample_points_{os.path.basename(filename)}.png"))
+            plt.close()
+
+    print(f"Sample overlay plots written to {savedir}")
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Process OFO data")
     parser.add_argument('--data_dir', required=True, help='Dataset directory')
@@ -261,6 +294,8 @@ def parse_args():
     parser.add_argument('--mission_ids', help='Comma-separated mission IDs')
     parser.add_argument('--num_missions', type=int, default=3, help='Max missions to process')
     parser.add_argument('--patch_size', type=int, default=800, help='Tile size in pixels')
+    parser.add_argument('--sample_plots', action='store_true', help='Write overlay QC plots')
+    parser.add_argument('--sample_plots_dir', help='Directory for overlay plots (default: output_dir/sample_plots)')
     return parser.parse_args()
 
 def main():
@@ -342,25 +377,9 @@ def main():
     tiled_points = tiled_points.drop(columns=['filename'])
     tiled_points.to_csv(os.path.join(images_dir, 'TreePoints_OFO_weak_supervised.csv'), index=False)
 
+    if getattr(args, 'sample_plots', False):
+        savedir = args.sample_plots_dir or os.path.join(args.output_dir, 'sample_plots')
+        write_sample_overlays(images_dir, savedir)
+
 if __name__ == '__main__':
     main()
-
-    # Load and plot samples from boxes and polygons
-    from deepforest import utilities, visualize
-    from matplotlib import pyplot as plt
-    args = parse_args()
-    df = utilities.read_file(os.path.join(args.data_dir, 'images', 'TreeBoxes_OFO_weak_supervised.csv'))
-    for filename in df['image_path'].unique()[:10]:
-        image_df = df.loc[df['image_path'] == filename]
-        image_df.root_dir = os.path.dirname(filename)
-        visualize.plot_annotations(image_df)
-        plt.savefig(f"sample_boxes_{os.path.basename(filename)}.png")
-        plt.close()
-
-    df = utilities.read_file(os.path.join(args.data_dir, 'images', 'TreePoints_OFO_weak_supervised.csv'))
-    for filename in df['image_path'].unique()[:10]:
-        image_df = df.loc[df['image_path'] == filename]
-        image_df.root_dir = os.path.dirname(filename)
-        visualize.plot_annotations(image_df)
-        plt.savefig(f"sample_points_{os.path.basename(filename)}.png")
-        plt.close()
