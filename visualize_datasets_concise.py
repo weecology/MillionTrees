@@ -2,6 +2,9 @@
 """
 Concise visualization script for MillionTrees datasets.
 Loops through all datasets, overlays annotations, and creates reviewer splits.
+
+See also: visualize_release_annotations.py - creates annotation count bar chart from
+the most recent release (saved as SVG for scientific figures).
 """
 
 import pandas as pd
