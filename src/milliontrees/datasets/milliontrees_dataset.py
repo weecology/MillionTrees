@@ -42,7 +42,7 @@ class MillionTreesDataset:
         x = self.get_input(idx)
         y_indices = self._input_lookup[self._input_array[idx]]
         y = torch.tensor(self.y_array[y_indices])
-        metadata = torch.tensor(self.metadata_array[idx])
+        metadata = self.metadata_array[idx].clone()
         targets = {self.geometry_name: y, "labels": np.zeros(len(y), dtype=int)}
 
         return metadata, x, targets
@@ -359,6 +359,10 @@ class MillionTreesDataset:
             print(
                 f"\nIt took {round(download_time_in_minutes, 2)} minutes to download and uncompress the dataset.\n"
             )
+
+            version_file = os.path.join(data_dir, f'RELEASE_v{self.version}.txt')
+            with open(version_file, 'w') as f:
+                f.write(f'v{self.version}\n')
         except Exception as e:
             print(
                 f"\n{os.path.join(data_dir, 'archive.zip')} may be corrupted. Please try deleting it and rerunning this command.\n"

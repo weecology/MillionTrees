@@ -2,6 +2,18 @@
 
 Once you have a model, evaluate it on the test split. The evaluation API expects per-image predictions in the same format as the ground truth targets: a dict with keys `y` (geometry tensor), `labels`, and `scores`.
 
+### Expected Prediction Format
+
+Each prediction is a dict with the following keys:
+
+| Task         | Key        | Shape / Dtype                 | Description                                 |
+|--------------|------------|-------------------------------|---------------------------------------------|
+| TreeBoxes    | `"y"`      | `Tensor[N, 4]` float32        | Bounding boxes `[xmin, ymin, xmax, ymax]`   |
+| TreePoints   | `"y"`      | `Tensor[N, 2]` float32        | Point coordinates `[x, y]`                  |
+| TreePolygons | `"y"`      | `Tensor[N, H, W]` uint8       | Binary instance masks                       |
+| All          | `"labels"` | `Tensor[N]` int64             | Class labels (typically all 0 for "tree")   |
+| All          | `"scores"` | `Tensor[N]` float32           | Confidence scores (required for predictions)|
+
 ```python
 from milliontrees.common.data_loaders import get_eval_loader
 import torch
@@ -35,15 +47,13 @@ The following can be recreated in the git repo: https://github.com/weecology/Mil
 
 ### Accuracy
 
-First are the accuracy results, accuracy is the number of correctly predicted ground truth averaged across images.
-
-The accuracy metric is defined as:
+First are the detection accuracy results. Detection accuracy measures the proportion of ground truth objects that are correctly detected (matched to a prediction above the IoU threshold), averaged across images.
 
 $$
-\text{Accuracy} = \frac{1}{N} \sum_{i=1}^{N} \mathbb{1}\left(\hat{y}_i = y_i\right)
+\text{Detection Accuracy} = \frac{1}{|I|} \sum_{i \in I} \frac{\text{matched}_i}{\text{total\_gt}_i}
 $$
 
-where $N$ is the number of samples, $\hat{y}_i$ is the predicted label, $y_i$ is the true label, and $\mathbb{1}$ is the indicator function that returns 1 if the prediction is correct and 0 otherwise.
+where $|I|$ is the number of images, $\text{matched}_i$ is the number of ground truth objects in image $i$ that have a matching prediction (above the IoU threshold), and $\text{total\_gt}_i$ is the total number of ground truth objects in image $i$.
 ```
 ============================================================
 ACCURACY RESULTS

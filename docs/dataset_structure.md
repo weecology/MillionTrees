@@ -35,29 +35,22 @@ Each split scheme uses the same underlying data, so you don't need to redownload
 Part of the inspiration of this package is to keep most users from needing to interact with the filesystem. The dataloaders are built in, and for many applications, the user will never need to mess around with csv files or image paths. All annotations are pytorch dataloaders and can be iterated over.
 
 ```python
-for image, label, metadata in dataset:
-    assert image.shape == (3, 100, 100)
-    assert label.shape == (2,)
-    assert len(metadata) == 2
+for metadata, image, targets in dataset:
+    print(f"Metadata shape: {metadata.shape}")  # (2,) -> [filename_id, source_id]
+    print(f"Image shape: {image.shape}")         # (3, H, W)
+    print(f"Targets keys: {targets.keys()}")     # dict_keys(['y', 'labels'])
     break
 ```
 
-
-Users can select a subset of the dataset and optionally supply a torchvision transform:
+Users can select a subset of the dataset and optionally supply a custom transform:
 
 ```python
-transform = transforms.Compose([
-    transforms.Resize((448, 448)),
-    transforms.RandomHorizontalFlip(p=0.5),
-    transforms.ToTensor()
-])
+train_dataset = dataset.get_subset("train")
 
-train_dataset = dataset.get_subset("train", transform=transform)
-    
-for image, label, metadata in train_dataset:
-    assert image.shape == (3, 448, 448)
-    assert label.shape == (4,)
-    assert len(metadata) == 2
+for metadata, image, targets in train_dataset:
+    print(f"Image shape: {image.shape}")           # (3, 448, 448) after default resize
+    print(f"Targets 'y' shape: {targets['y'].shape}")
+    print(f"Metadata shape: {metadata.shape}")     # (2,)
     break
 ```
 
@@ -82,7 +75,7 @@ for metadata, image, targets in train_loader:
 ```
 
 ### DataFrame Interface
-The goal of MillionTrees project is to limit a user's need to access the underyling data structure.
+The goal of MillionTrees project is to limit a user's need to access the underlying data structure.
 Each dataset maintains a pandas DataFrame containing all annotations and metadata, accessible via the `df` attribute:
 
 ```python
@@ -140,6 +133,18 @@ coordinates = dataset._y_array[indices]
 ```
 
 ## Annotation Geometry
+
+### Quick Reference: Target Dict Format
+
+Each item returned by a dataset is `(metadata, image, targets)` where `targets` is a dict:
+
+| Dataset      | `targets["y"]`     | Shape / Dtype                  | Description                                 |
+|--------------|--------------------|--------------------------------|---------------------------------------------|
+| TreeBoxes    | Bounding boxes     | `Tensor[N, 4]` float32         | `[xmin, ymin, xmax, ymax]` in pixel coords  |
+| TreePoints   | Point coordinates  | `Tensor[N, 2]` int             | `[x, y]` in pixel coords                    |
+| TreePolygons | Binary masks       | `Tensor[N, H, W]` uint8        | One binary mask per instance                |
+
+All datasets also include `targets["labels"]`: `ndarray[N]` int64 (class labels, typically all `0` for "tree").
 
 ### Boxes
 Boxes annotations are given as xmin, ymin, xmax, ymax coordinates relative to the image origin (top-left).

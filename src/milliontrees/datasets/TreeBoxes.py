@@ -167,7 +167,7 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         # Create lookup table for which index to select for each filename
         self._input_lookup = df.groupby('filename').apply(
-            lambda x: x.index.values).to_dict()
+            lambda x: x.index.values, include_groups=False).to_dict()
         self._y_array = df[["xmin", "ymin", "xmax",
                             "ymax"]].values.astype("float32")
 
@@ -262,11 +262,11 @@ class TreeBoxesDataset(MillionTreesDataset):
         for version, info in self._versions_dict.items():
             mini_info = info.copy()
             if info['download_url']:
-                # Replace dataset name with Mini version in URL
                 original_filename = f"TreeBoxes_v{version}.zip"
                 mini_filename = f"MiniTreeBoxes_v{version}.zip"
                 mini_info['download_url'] = info['download_url'].replace(
                     original_filename, mini_filename)
+                mini_info['compressed_size'] = None
             mini_versions[version] = mini_info
         return mini_versions
 

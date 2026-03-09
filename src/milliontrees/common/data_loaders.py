@@ -2,7 +2,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import WeightedRandomSampler, SubsetRandomSampler
 from milliontrees.common.utils import get_counts, split_into_groups
-from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
+from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset, MillionTreesSubset
 
 
 def get_train_loader(loader,
@@ -33,7 +33,7 @@ def get_train_loader(loader,
     Output:
         - data loader (DataLoader): Data loader.
     """
-    if isinstance(dataset, MillionTreesDataset):
+    if isinstance(dataset, MillionTreesDataset) and not isinstance(dataset, MillionTreesSubset):
         print(
             "Warning: You are loading the entire dataset. Consider using dataset.get_subset('train') for a portion of the dataset if intended."
         )
