@@ -29,7 +29,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         - zeroshot: Selected sources are entirely held out for testing.
 
     Input (x):
-        RGB images from camera traps.
+        RGB aerial images.
 
     Label (y):
         y is an n x 2-dimensional vector where each line represents a point coordinate (x, y).
@@ -146,7 +146,7 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         # Create lookup table for which index to select for each filename
         self._input_lookup = df.groupby('filename').apply(
-            lambda x: x.index.values).to_dict()
+            lambda x: x.index.values, include_groups=False).to_dict()
 
         # Convert each polygon to shapely objects
         df['polygon'] = df['polygon'].apply(from_wkt)
@@ -346,11 +346,11 @@ class TreePolygonsDataset(MillionTreesDataset):
         for version, info in self._versions_dict.items():
             mini_info = info.copy()
             if info['download_url']:
-                # Replace dataset name with Mini version in URL
                 original_filename = f"TreePolygons_v{version}.zip"
                 mini_filename = f"MiniTreePolygons_v{version}.zip"
                 mini_info['download_url'] = info['download_url'].replace(
                     original_filename, mini_filename)
+                mini_info['compressed_size'] = None
             mini_versions[version] = mini_info
         return mini_versions
 

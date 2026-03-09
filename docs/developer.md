@@ -10,7 +10,7 @@
 
     - `git remote add upstream https://github.com/weecology/MillionTrees.git`
 
-5. Verify your remote settings with:
+4. Verify your remote settings with:
 
     ```bash
     git remote -v
@@ -25,10 +25,12 @@
     upstream  https://github.com/weecology/MillionTrees.git (push)
     ```
 
-6. Install the package from the main directory. Use the `-U` or `--upgrade` flag to update or overwrite any previously installed versions:
+5. Install the package from the main directory:
 
     ```bash
     pip install . -U
+    # Or, if using uv for development:
+    # uv sync --dev extra
     ```
 
 ## Documentation
@@ -41,7 +43,7 @@ If you need to reorganize the documentation, refer to the [Sphinx documentation]
 
 ### Update Documentation
 
-The documentation is automatically updated for changes within modules. **However, it is essential to update the documentation after adding new modules** in the `engines` or `lib` directories.
+The documentation is automatically updated for changes within modules. **However, it is essential to update the documentation after adding new modules** in the `milliontrees/` package.
 
 1. Navigate to the `docs` directory and create a temporary directory, e.g., `source`.
 2. Run the following command to generate documentation:
@@ -49,9 +51,9 @@ The documentation is automatically updated for changes within modules. **However
     ```bash
     cd docs
     mkdir source
-    sphinx-apidoc -f -o ./source /Users/..../MillionTrees/milliontrees/
+    sphinx-apidoc -f -o ./source ../src/milliontrees/
     ```
 
-   In this example, `source` is the destination folder for the generated `.rst` files, and `/Users/..../MillionTrees/milliontrees/` is the path to the `milliontrees` source code.
+   In this example, `source` is the destination folder for the generated `.rst` files, and `../src/milliontrees/` is the relative path to the `milliontrees` source code.
 
 3. Review the generated files, make necessary edits to ensure accuracy, and then commit and push the changes.

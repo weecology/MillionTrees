@@ -4,11 +4,11 @@
 
 ## Zero-shot
 
-The first task is to create a zero-shot detection system to generalize across geography and aquisition conditions. Selected datasets are held out from training completely and used for evaluation in new conditions. This is a challenging task with no local training data.
+The first task is to create a zero-shot detection system to generalize across geography and acquisition conditions. Selected datasets are held out from training completely and used for evaluation in new conditions. This is a challenging task with no local training data.
 
 ## Random
 
-The second task is to create the best global detector for individual trees given a set of training and test data. Datasets are split randomly, reflecting information within localities. This is consistant with how most applied users engage with models, by fine-tuning backbone models with sample data from a desired locality.
+The second task is to create the best global detector for individual trees given a set of training and test data. Datasets are split randomly, reflecting information within localities. This is consistent with how most applied users engage with models, by fine-tuning backbone models with sample data from a desired locality.
 
 ## Cross-geometry
 
@@ -46,6 +46,8 @@ All point sources are used to train and predict all box sources.
 
 ### Cross-geometry
 
+> **Note:** Cross-geometry splits are designed for predicting polygons from other annotation geometries. The 0.000 scores below reflect that this split is not applicable to point prediction.
+
 | Model | Task | Dataset | Counting MAE | Script |
 |---|---|---|---|---|
 | DeepForest baseline (`baseline_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/baseline_points.py --split-scheme crossgeometry`</small> |
@@ -70,6 +72,8 @@ All point sources are used to train and predict all box sources.
 | SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes | 0.206 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 
 ### Cross-geometry
+
+> **Note:** Cross-geometry splits are designed for predicting polygons from other annotation geometries. The 0.000 scores below reflect that this split is not applicable to box prediction.
 
 | Model | Task | Dataset | Avg Recall | Script |
 |---|---|---|---|---|
@@ -128,16 +132,7 @@ Once you have trained a model and evaluated its performance, you can submit your
        predictions.append(pred)
    ```
 
-3. Save visual examples of your model's predictions:
-   ```python
-   # Save a few example predictions
-   dataset.visualize_predictions(
-       predictions[:5], 
-       save_dir="prediction_examples/"
-   )
-   ```
-
-4. Submit a pull request to the [MillionTrees repository](https://github.com/weecology/MillionTrees) with:
+3. Submit a pull request to the [MillionTrees repository](https://github.com/weecology/MillionTrees) with:
    - Link to your code repository
    - Model description and approach
    - Performance metrics on test set

@@ -33,18 +33,16 @@ These submissions will be differentiated from standard submissions in our leader
 Submitting to the leaderboard consists of two steps: first, uploading your predictions in .csv format, and second, filling up our submission form.
 
 ## Submission formatting
-Please submit your predictions in .csv format for all datasets except GlobalWheat, and .pth format for the GlobalWheat dataset. The example scripts in the examples/ folder will automatically train models and save their predictions in the right format; see the Get Started page for information on how to use these scripts.
+Please submit your predictions in .csv format. The example scripts in `docs/examples/` will automatically train models and save their predictions in the right format; see the Get Started page for information on how to use these scripts.
 
-If you are not using the example scripts, see the last section on this page for details on the expected format.
+If you are not using the example scripts, see the [evaluation docs](evaluation.md) for details on the expected prediction format.
 
 ### Step 1: Uploading your predictions
 Upload a .tar.gz or .zip file containing your predictions in the format specified above. Feel free to use any standard host for your file (Google Drive, Dropbox, etc.).
 
-Check that your predictions are valid by running the evaluate.py script on them. To do so, run python3 examples/evaluate.py [path_to_predictions] [path_to_output_results] --root_dir [path_to_data].
-
-Please upload a separate .tar.gz or .zip file per method that you are submitting. For example, if you are submitting algorithm A and algorithm B, both of which are evaluated on 6 different datasets, then you should submit two different .tar.gz or .zip files: one corresponding to algorithm A (and containing predictions for all 6 datasets) and the other corresponding to algorithm B (also containing predictions for all 6 datasets.)
+Please upload a separate .tar.gz or .zip file per method that you are submitting. For example, if you are submitting algorithm A and algorithm B, then you should submit two different .tar.gz or .zip files.
 
 ### Step 2: Filling out the submission form
 Next, fill up the submission form. You will need to fill out one form per .tar.gz/.zip file submitted. The form will ask for the URL to your submission file.
 
-Once these steps have been completed, we will evaluate the predictions using the evaluate.py script and update the leaderboard within a week.
+Once these steps have been completed, we will evaluate the predictions and update the leaderboard within a week.
