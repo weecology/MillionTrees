@@ -1,7 +1,7 @@
 # Datasets
-There are three datasets within the MillionTrees package: TreeBoxes, TreePoints, and TreePolygons. These datasets contain many source datasets from dozens of papers and research efforts. Below, each source is briefly described. The images for each dataset are generated directly from the dataloaders to allow rapid verification of the annotation status and are regenerated automatically when a new dataset is released or updated. Sample images within a dataset are *randomly selected* within  to ensure transparency. This does mean that some images are sparsely annotated compared to the rest of the images in a source.
+There are three datasets within the MillionTrees package: TreeBoxes, TreePoints, and TreePolygons. These datasets contain many source datasets from dozens of papers and research efforts. Below, each source is briefly described. The images for each dataset are generated directly from the dataloaders to allow rapid verification of the annotation status and are regenerated automatically when a new dataset is released or updated. Sample images within a dataset are *randomly selected* to ensure transparency. This does mean that some images are sparsely annotated compared to the rest of the images in a source.
 
-*Note: The datasets below are processed and will be part of the final release. The current release is pre-release and not final. Only publically available datasets are included at this time.*
+*Note: The datasets below are processed and will be part of the final release. The current release is pre-release and not final. Only publicly available datasets are included at this time.*
 
 ## Dataset Filtering and Management
 
@@ -158,7 +158,7 @@ https://zenodo.org/records/11617167
 
 For more information about the dataset collation, see: Veitch-Michaelis, J. et al. "OAM-TCD: A globally diverse dataset of high-resolution tree cover maps." Advances in neural information processing systems 37 (2024): 49749-49767.
 
-## Zamboni et al. 2022
+## Zamboni et al. 2021
 
 ![sample_image](public/Zamboni_et_al._2021.png)
 
@@ -182,7 +182,7 @@ IEEE Transactions on Geoscience and Remote Sensing (2023)
 
 **GSD** 0.2m 
 
-**Citation:** Lefebvre, I., Laliberté, E. (2024). UAV LiDAR, UAV Imagery, Tree Segmentations and Ground Mesurements for Estimating Tree Biomass in Canadian (Quebec) Plantations. Federated Research Data Repository. https://doi.org/10.20383/103.0979
+**Citation:** Lefebvre, I., Laliberté, E. (2024). UAV LiDAR, UAV Imagery, Tree Segmentations and Ground Measurements for Estimating Tree Biomass in Canadian (Quebec) Plantations. Federated Research Data Repository. https://doi.org/10.20383/103.0979
 
 ## Dubrovin et al. 2024
 
@@ -251,7 +251,7 @@ Sara Beery, Guanhang Wu, Trevor Edwards, Filip Pavetic, Bo Majewski, Shreyasee M
 
 **Location:** Danum, Malaysia
 
-## Bolhman 2008
+## Bohlman 2008
 
 ![sample_image](public/Bohlman_et_al._2008.png)
 
@@ -298,7 +298,7 @@ Both crowns and points are available.
 
 **Location:** Sabah, Malaysia
 
-## Jansen et al. 2022
+## Jansen et al. 2023
 
 ![sample_image](public/Jansen_et_al._2023.png)
 
@@ -348,7 +348,7 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 ![sample_image](public/Kattenborn_et_al._2023.png)
 
-**Link:** [https://www.mdpi.com/1424-8220/21/5/1617](https://zslpublications.onlinelibrary.wiley.com/doi/full/10.1002/rse2.146)
+**Link:** [https://zslpublications.onlinelibrary.wiley.com/doi/full/10.1002/rse2.146](https://zslpublications.onlinelibrary.wiley.com/doi/full/10.1002/rse2.146)
 
 **Location:** New Zealand
 

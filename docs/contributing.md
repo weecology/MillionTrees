@@ -41,9 +41,9 @@ There are useful utilities in the [DeepForest](https://deepforest.readthedocs.io
 
 ### Tiling large .tif files
 
-Many datasets come with large orthomosaics that are too memory intensive to fit into model training or prediction as a single chunk. Deepforest has a utility, deepforest.preprocess.split_tile that takes in annotations and a path to an image and returns the annotations for each tiled piece of the image.
+Many datasets come with large orthomosaics that are too memory intensive to fit into model training or prediction as a single chunk. Deepforest has a utility, `deepforest.preprocess.split_raster`, that takes in annotations and a path to an image and returns the annotations for each tiled piece of the image.
 
-```python```
+```python
 # Example: Splitting large images and annotation files into smaller tiles for training
 from pathlib import Path
 import pandas as pd
