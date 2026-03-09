@@ -12,8 +12,8 @@ import warnings
 class Grouper:
     """Groupers group data points together based on their metadata.
 
-    They are used for training and evaluation, e.g., to measure the accuracies of different groups
-    of data.
+    They are used for training and evaluation, e.g., to measure the
+    accuracies of different groups of data.
     """
 
     def __init__(self):
