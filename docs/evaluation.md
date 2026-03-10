@@ -2,7 +2,7 @@
 
 Once you have a model, evaluate it on the test split. The evaluation API expects per-image predictions in the same format as the ground truth targets: a dict with keys `y` (geometry tensor), `labels`, and `scores`.
 
-### Expected Prediction Format
+## Expected Prediction Format
 
 Each prediction is a dict with the following keys:
 
