@@ -4,8 +4,7 @@ import milliontrees
 
 
 def main():
-    """Downloads the latest versions of all specified datasets, if they do not
-    already exist."""
+    """Downloads the latest versions of all specified datasets, if they do not already exist."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--root_dir',
