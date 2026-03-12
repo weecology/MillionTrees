@@ -508,24 +508,41 @@ class MillionTreesSubset(MillionTreesDataset):
 
         else:
             masks = [mask for mask in targets[self.geometry_name]]
-            augmented = self.transform(image=x,
-                                       masks=masks,
-                                       bboxes=targets["bboxes"],
-                                       labels=targets["labels"])
-
-            y = augmented['masks']
-            # Handle empty masks case
-            if len(y) == 0:
-                # Get image dimensions from augmented image
-                img_h, img_w = augmented['image'].shape[1], augmented[
-                    'image'].shape[2]
+            # Albumentations rejects empty mask lists; use a dummy mask then discard
+            if len(masks) == 0:
+                h, w = x.shape[0], x.shape[1]
+                dummy_mask = [np.zeros((h, w), dtype=np.uint8)]
+                dummy_bboxes = [[0, 0, 1, 1]]
+                dummy_labels = [0]
+                augmented = self.transform(
+                    image=x,
+                    masks=dummy_mask,
+                    bboxes=dummy_bboxes,
+                    labels=dummy_labels,
+                )
+                img_h, img_w = augmented["image"].shape[1], augmented["image"].shape[2]
                 y = torch.zeros((0, img_h, img_w), dtype=torch.uint8)
+                bboxes = torch.zeros(0, 4)
+                labels = torch.zeros(0, dtype=torch.long)
             else:
-                y = torch.stack(y, dim=0)
-            bboxes = augmented['bboxes']
+                augmented = self.transform(
+                    image=x,
+                    masks=masks,
+                    bboxes=targets["bboxes"],
+                    labels=targets["labels"],
+                )
+                y = augmented["masks"]
+                if len(y) == 0:
+                    img_h, img_w = augmented["image"].shape[1], augmented["image"].shape[2]
+                    y = torch.zeros((0, img_h, img_w), dtype=torch.uint8)
+                else:
+                    y = torch.stack(y, dim=0)
+                bboxes = augmented["bboxes"]
+                labels = torch.from_numpy(np.array(augmented["labels"]))
 
-        x = augmented['image']
-        labels = torch.from_numpy(np.array(augmented["labels"]))
+        x = augmented["image"]
+        if self._dataset_name != "TreePolygons":
+            labels = torch.from_numpy(np.array(augmented["labels"]))
 
         # If image has no annotations, set zeros
         if len(y) == 0:

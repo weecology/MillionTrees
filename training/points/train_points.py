@@ -17,12 +17,18 @@ from deepforest import main as df_main
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
+from milliontrees.datasets.milliontrees_dataset import MillionTreesSubset
 
 PSEUDO_BOX_HALF_SIZE = 15
 
 
 def points_to_pseudo_boxes(points, image_size=448):
-    """Convert (N, 2) point coordinates to (N, 4) pseudo bounding boxes."""
+    """Convert (N, 2) point coordinates to (N, 4) pseudo bounding boxes.
+
+    Points near or past the image edge can yield xmax < xmin or ymax < ymin
+    when clamping each side independently. We enforce valid boxes (positive
+    width/height) so RetinaNet does not raise.
+    """
     if len(points) == 0:
         return torch.zeros((0, 4), dtype=torch.float32)
     half = PSEUDO_BOX_HALF_SIZE
@@ -30,6 +36,14 @@ def points_to_pseudo_boxes(points, image_size=448):
     ymin = (points[:, 1] - half).clamp(min=0)
     xmax = (points[:, 0] + half).clamp(max=image_size)
     ymax = (points[:, 1] + half).clamp(max=image_size)
+    # Enforce positive width/height (independent clamps can give xmin > xmax)
+    xmin, xmax = torch.minimum(xmin, xmax), torch.maximum(xmin, xmax)
+    ymin, ymax = torch.minimum(ymin, ymax), torch.maximum(ymin, ymax)
+    # RetinaNet requires strictly positive size
+    width = xmax - xmin
+    height = ymax - ymin
+    xmax = torch.where(width < 1, xmin + 1, xmax)
+    ymax = torch.where(height < 1, ymin + 1, ymax)
     return torch.stack([xmin, ymin, xmax, ymax], dim=1)
 
 
@@ -85,9 +99,11 @@ class DeepForestPointTrainer(pl.LightningModule):
 def predict_batch(model, images, batch_index):
     """Run inference and convert box predictions to point centroids."""
     warnings.filterwarnings("ignore")
+    device = next(model.parameters()).device
     model.df_model.model = model.retinanet
     model.df_model.model.eval()
     images_tensor = images if isinstance(images, torch.Tensor) else torch.tensor(images)
+    images_tensor = images_tensor.to(device)
     predictions = model.df_model.predict_step(images_tensor, batch_index)
 
     batch_y_pred = []
@@ -189,6 +205,8 @@ def main():
     if best_path:
         print(f"Loading best checkpoint: {best_path}")
         model = DeepForestPointTrainer.load_from_checkpoint(best_path)
+        eval_device = "cuda" if torch.cuda.is_available() else "cpu"
+        model = model.to(eval_device)
 
     results, results_str = evaluate(model, point_dataset, test_subset, batch_size=args.batch_size)
     print(results_str)
