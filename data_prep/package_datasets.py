@@ -99,6 +99,17 @@ def process_geometry_columns(datasets, geom_type):
     return datasets
 
 
+def filter_degenerate_boxes(datasets):
+    """Filter out boxes with zero width or height (invalid for albumentations pascal_voc)."""
+    if "xmin" not in datasets.columns or "xmax" not in datasets.columns:
+        return datasets
+    valid_mask = (datasets["xmax"] > datasets["xmin"]) & (datasets["ymax"] > datasets["ymin"])
+    n_filtered = len(datasets) - valid_mask.sum()
+    if n_filtered > 0:
+        print(f"Filtered out {n_filtered} degenerate boxes (zero width or height)")
+    return datasets.loc[valid_mask].copy()
+
+
 def filter_degenerate_polygons(datasets):
     """Filter out polygons that would create invalid bounding boxes (zero width or height)."""
     def convert_to_shapely(value):
@@ -146,22 +157,28 @@ def copy_images(datasets, base_dir, dataset_type):
         if not os.path.exists(os.path.join(destination, os.path.basename(image))):
             shutil.copy(image, destination)
 
+MINI_IMAGES_PER_SOURCE = 3
+
+
 def create_mini_datasets(datasets, base_dir, dataset_type, version):
-    """Create mini datasets for debugging and generate visualizations."""
-    # For each source, get the filename with the most annotations
+    """Create mini datasets for debugging and generate visualizations.
+    Takes the top MINI_IMAGES_PER_SOURCE images per source (by annotation count).
+    """
     filename_counts = datasets.groupby(["source", "filename"]).size().reset_index(name="count")
-    max_count_indices = filename_counts.groupby("source")["count"].idxmax()
-    max_count_filenames = filename_counts.loc[max_count_indices]
-    
-    # Get one row per source (the first row for each filename with max annotations)
-    mini_datasets = []
-    for _, row in max_count_filenames.iterrows():
-        source_data = datasets[(datasets["source"] == row["source"]) & (datasets["filename"] == row["filename"])]
-        mini_datasets.append(source_data.iloc[0])  # Take the first row
-    
-    mini_datasets = pd.DataFrame(mini_datasets)
-    mini_filenames = mini_datasets["filename"].tolist()
-    mini_annotations = datasets[datasets["filename"].isin(mini_filenames)]
+    # Top N images per source by annotation count
+    top_per_source = (
+        filename_counts.sort_values("count", ascending=False)
+        .groupby("source", group_keys=False)
+        .apply(lambda g: g.head(MINI_IMAGES_PER_SOURCE))
+        .reset_index(drop=True)
+    )
+    mini_filenames = top_per_source["filename"].unique().tolist()
+    mini_annotations = datasets[datasets["filename"].isin(mini_filenames)].copy()
+    # Ensure at least one filename is test so val_loader is non-empty during training.
+    # The global 80/20 split can assign all one-per-source filenames to train by chance.
+    if (mini_annotations["split"] == "test").sum() == 0 and len(mini_annotations) > 0:
+        first_filename = mini_annotations["filename"].iloc[0]
+        mini_annotations.loc[mini_annotations["filename"] == first_filename, "split"] = "test"
     mini_annotations.to_csv(f"{base_dir}Mini{dataset_type}_{version}/random.csv", index=False)
     
     # Copy images for mini datasets
@@ -559,6 +576,7 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreePoints_OFO_unsupervised.csv",
         "/orange/ewhite/DeepForest/Kaggle_LiDAR_RGB/pngs/annotations.csv",
         "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreePoints_NEON_MultiTemporal.csv",
+        "/orange/ewhite/DeepForest/OSBS_megaplot/2025/pngs/annotations.csv",
         #'/orange/ewhite/DeepForest/Miraki/annotations.csv'
     ]
 
@@ -618,6 +636,9 @@ def run(version, base_dir, debug=False):
     TreePoints_datasets = process_geometry_columns(TreePoints_datasets, "point")
     TreePolygons_datasets = process_geometry_columns(TreePolygons_datasets, "polygon")
 
+    # Remove degenerate boxes (zero width/height) so albumentations does not raise
+    TreeBoxes_datasets = filter_degenerate_boxes(TreeBoxes_datasets)
+    
     # Remove degenerate polygons (those that would create invalid bounding boxes)
     TreePolygons_datasets = filter_degenerate_polygons(TreePolygons_datasets)
 

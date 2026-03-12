@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=mt_train_points
-#SBATCH --output=training/points/outputs/%x_%A_%a.out
-#SBATCH --error=training/points/outputs/%x_%A_%a.err
+#SBATCH --output=/home/b.weinstein/logs/%x_%A_%a.out
+#SBATCH --error=/home/b.weinstein/logs/%x_%A_%a.err
 #SBATCH --array=0-2
 #SBATCH --time=48:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
-#SBATCH --gres=gpu:a100:1
-#SBATCH --partition=gpu
+#SBATCH --partition=hpg-turin
+#SBATCH --gpus=1
 
 set -euo pipefail
 cd /blue/ewhite/b.weinstein/src/MillionTrees
