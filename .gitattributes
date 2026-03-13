@@ -1,0 +1,5 @@
+# Binary images in docs: use LFS so only pointers live in repo (smaller history)
+docs/public/*.png filter=lfs diff=lfs merge=lfs -text
+docs/public/*.jpg filter=lfs diff=lfs merge=lfs -text
+docs/public/*.jpeg filter=lfs diff=lfs merge=lfs -text
+docs/public/*.webp filter=lfs diff=lfs merge=lfs -text
