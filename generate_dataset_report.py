@@ -102,68 +102,76 @@ def get_on_disk_size_bytes(url: str, fallback_bytes: int) -> int:
 
 def read_random_csv_counts_from_zip(url: str) -> Optional[dict]:
     """Open the zip on disk (mapped from URL) and count images/annotations/sources from random.csv."""
-    import zipfile
     import io
     import csv
+    import zipfile
 
     local_path = derive_local_path_from_url(url)
     if not local_path or not local_path.exists():
         return None
-    with zipfile.ZipFile(local_path, "r") as zf:
-        names = zf.namelist()
-        candidates = [n for n in names if n.lower().endswith("random.csv")]
-        if not candidates:
-            return None
-        # Prefer the shallowest path
-        name = sorted(candidates, key=lambda s: s.count("/"))[0]
-        with zf.open(name) as f:
-            reader = csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"))
-            num_rows = 0
-            filenames = set()
-            sources = set()
-            for row in reader:
-                num_rows += 1
-                fn = row.get("filename")
-                if fn:
-                    filenames.add(fn)
-                src = row.get("source")
-                if src:
-                    sources.add(src)
-            return {
-                "images": len(filenames),
-                "annotations": num_rows,
-                "sources": len(sources),
-            }
+    try:
+        with zipfile.ZipFile(local_path, "r") as zf:
+            names = zf.namelist()
+            candidates = [n for n in names if n.lower().endswith("random.csv")]
+            if not candidates:
+                return None
+            # Prefer the shallowest path
+            name = sorted(candidates, key=lambda s: s.count("/"))[0]
+            with zf.open(name) as f:
+                reader = csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"))
+                num_rows = 0
+                filenames = set()
+                sources = set()
+                for row in reader:
+                    num_rows += 1
+                    fn = row.get("filename")
+                    if fn:
+                        filenames.add(fn)
+                    src = row.get("source")
+                    if src:
+                        sources.add(src)
+                return {
+                    "images": len(filenames),
+                    "annotations": num_rows,
+                    "sources": len(sources),
+                }
+    except zipfile.BadZipFile:
+        # Some URLs may point to non-zip resources; treat as missing stats.
+        return None
 
 
 def read_split_image_counts_from_zip(url: str, split_basename: str) -> Optional[dict]:
     """Count unique images in train/test from <split_basename>.csv inside the zip."""
-    import zipfile
     import io
     import csv
+    import zipfile
     local_path = derive_local_path_from_url(url)
     if not local_path or not local_path.exists():
         return None
-    with zipfile.ZipFile(local_path, "r") as zf:
-        names = zf.namelist()
-        candidates = [n for n in names if n.lower().endswith(f"{split_basename}.csv")]
-        if not candidates:
-            return None
-        name = sorted(candidates, key=lambda s: s.count("/"))[0]
-        with zf.open(name) as f:
-            reader = csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"))
-            train_files = set()
-            test_files = set()
-            for row in reader:
-                fn = row.get("filename")
-                split = (row.get("split") or "").strip().lower()
-                if not fn:
-                    continue
-                if split == "train":
-                    train_files.add(fn)
-                elif split == "test":
-                    test_files.add(fn)
-            return {"train_images": len(train_files), "test_images": len(test_files)}
+    try:
+        with zipfile.ZipFile(local_path, "r") as zf:
+            names = zf.namelist()
+            candidates = [n for n in names if n.lower().endswith(f"{split_basename}.csv")]
+            if not candidates:
+                return None
+            name = sorted(candidates, key=lambda s: s.count("/"))[0]
+            with zf.open(name) as f:
+                reader = csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"))
+                train_files = set()
+                test_files = set()
+                for row in reader:
+                    fn = row.get("filename")
+                    split = (row.get("split") or "").strip().lower()
+                    if not fn:
+                        continue
+                    if split == "train":
+                        train_files.add(fn)
+                    elif split == "test":
+                        test_files.add(fn)
+                return {"train_images": len(train_files), "test_images": len(test_files)}
+    except zipfile.BadZipFile:
+        # Non-zip resources should not cause report generation to fail.
+        return None
 
 
 def generate_dataset_report(output_path=None, include_test_results=False, test_exit_code=None, output_to_docs=True):

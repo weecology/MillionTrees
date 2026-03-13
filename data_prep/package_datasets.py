@@ -100,10 +100,17 @@ def process_geometry_columns(datasets, geom_type):
 
 
 def filter_degenerate_boxes(datasets):
-    """Filter out boxes with zero width or height (invalid for albumentations pascal_voc)."""
+    """Filter out boxes with invalid or zero/negative extent.
+
+    This operates in *source coordinates* before any train/val split so
+    degenerate boxes never enter the packaged dataset at all.
+    """
     if "xmin" not in datasets.columns or "xmax" not in datasets.columns:
         return datasets
+    # Basic geometry sanity: strictly positive width/height
     valid_mask = (datasets["xmax"] > datasets["xmin"]) & (datasets["ymax"] > datasets["ymin"])
+    # Drop any rows with NaNs in the box columns as well
+    valid_mask &= datasets[["xmin", "ymin", "xmax", "ymax"]].notna().all(axis=1)
     n_filtered = len(datasets) - valid_mask.sum()
     if n_filtered > 0:
         print(f"Filtered out {n_filtered} degenerate boxes (zero width or height)")
@@ -563,6 +570,9 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/neon_unsupervised/TreeBoxes_neon_unsupervised.csv",
         "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreeBoxes_OFO_unsupervised.csv",
         "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreeBoxes_NEON_MultiTemporal.csv",
+        "/orange/ewhite/DeepForest/Puliti_2022/annotations.csv",
+        # Krkonoše Bílé Labe (Zenodo 15591546): run data_prep/Krkonose_BileLabe.py then point to annotations.csv
+        #"/orange/ewhite/DeepForest/Zenodo_15591546/annotations.csv",
         #"/orange/ewhite/DeepForest/Beloiu_2023/annotations.csv",
    ]
 

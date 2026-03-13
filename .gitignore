@@ -186,6 +186,9 @@ cython_debug/
 # IDE
 /.vscode/
 
+# Comet ML credentials (copy .comet.config.example to .comet.config)
+.comet.config
+
 # Local logs directory
 /logs/
 

@@ -493,9 +493,19 @@ class MillionTreesSubset(MillionTreesDataset):
         metadata, x, targets = self.dataset[self.indices[idx]]
 
         if self._dataset_name == 'TreeBoxes':
-            augmented = self.transform(image=x,
-                                       bboxes=targets[self.geometry_name],
-                                       labels=targets["labels"])
+            # Extra safety: drop any degenerate boxes created by downstream processing
+            # before passing to Albumentations, which rejects zero-width/height boxes.
+            bboxes = np.array(targets[self.geometry_name])
+            labels_arr = np.array(targets["labels"])
+            if len(bboxes) > 0:
+                valid = (bboxes[:, 2] > bboxes[:, 0]) & (bboxes[:, 3] > bboxes[:, 1])
+                bboxes = bboxes[valid]
+                labels_arr = labels_arr[valid]
+            augmented = self.transform(
+                image=x,
+                bboxes=bboxes.tolist(),
+                labels=labels_arr.tolist(),
+            )
             y = torch.from_numpy(augmented["bboxes"]).float()
 
         elif self._dataset_name == 'TreePoints':

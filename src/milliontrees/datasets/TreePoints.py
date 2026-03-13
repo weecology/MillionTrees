@@ -55,7 +55,7 @@ class TreePointsDataset(MillionTreesDataset):
                  split_scheme='random',
                  geometry_name='y',
                  remove_incomplete=False,
-                 distance_threshold=0.1,
+                 distance_threshold=0.02,
                  include_sources=None,
                  exclude_sources=None,
                  mini=False,
@@ -173,9 +173,11 @@ class TreePointsDataset(MillionTreesDataset):
 
         self.metrics = {
             "KeypointAccuracy":
-                KeypointAccuracy(distance_threshold=distance_threshold),
-            "CountingAccuracy":
-                CountingError()
+                KeypointAccuracy(
+                    distance_threshold=distance_threshold,
+                    image_size=self.image_size,
+                ),
+            "CountingAccuracy": CountingError(),
         }
 
         self._collate = TreePointsDataset._collate_fn

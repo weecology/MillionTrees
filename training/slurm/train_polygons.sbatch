@@ -2,7 +2,7 @@
 #SBATCH --job-name=mt_train_polygons
 #SBATCH --output=/home/b.weinstein/logs/%x_%A_%a.out
 #SBATCH --error=/home/b.weinstein/logs/%x_%A_%a.err
-#SBATCH --array=0-2
+#SBATCH --array=0-1
 #SBATCH --time=48:00:00
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=120G
@@ -14,7 +14,7 @@ cd /blue/ewhite/b.weinstein/src/MillionTrees
 mkdir -p training/polygons/outputs
 
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
-SPLITS=(random zeroshot crossgeometry)
+SPLITS=(random zeroshot)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 uv run python training/polygons/train_polygons.py \
@@ -25,4 +25,5 @@ uv run python training/polygons/train_polygons.py \
   --lr 1e-4 \
   --num-workers 2 \
   --image-size 448 \
-  --output-dir "training/polygons/outputs/$SPLIT"
+  --output-dir "training/polygons/outputs/$SPLIT" \
+  --comet
