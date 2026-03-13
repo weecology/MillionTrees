@@ -162,18 +162,38 @@ def main():
     parser.add_argument("--output-dir", type=str, default="training/polygons/outputs")
     parser.add_argument("--gpus", type=int, default=1)
     parser.add_argument("--image-size", type=int, default=448)
+    parser.add_argument("--comet", action="store_true", help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
+    parser.add_argument(
+        "--limit-train-batches",
+        type=int,
+        default=50,
+        help="Number of training batches per epoch (for fast debugging)",
+    )
+    parser.add_argument(
+        "--limit-val-batches",
+        type=int,
+        default=50,
+        help="Number of validation batches per epoch (for fast debugging)",
+    )
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
 
     polygon_dataset = get_dataset(
-        "TreePolygons", download=args.download, mini=args.mini,
-        root_dir=args.root_dir, split_scheme=args.split_scheme,
+        "TreePolygons",
+        download=args.download,
+        mini=args.mini,
+        root_dir=args.root_dir,
+        split_scheme=args.split_scheme,
         image_size=args.image_size,
     )
 
     train_subset = polygon_dataset.get_subset("train")
     test_subset = polygon_dataset.get_subset("test")
+
+    if len(train_subset) == 0:
+        print("No training samples for this split; skipping training.")
+        return
 
     train_loader = get_train_loader(
         "standard", train_subset, batch_size=args.batch_size, num_workers=args.num_workers
@@ -184,18 +204,42 @@ def main():
 
     model = MaskRCNNPolygonTrainer(lr=args.lr)
 
+    has_val = len(val_loader) > 0
+
     checkpoint_cb = pl.callbacks.ModelCheckpoint(
         dirpath=os.path.join(args.output_dir, "checkpoints"),
         filename="polygons-{epoch:02d}-{val_loss:.4f}",
-        monitor="val_loss", mode="min", save_top_k=3,
+        monitor="val_loss",
+        mode="min",
+        save_top_k=3,
     )
     early_stop_cb = pl.callbacks.EarlyStopping(monitor="val_loss", patience=5, mode="min")
 
+    loggers = []
+    if args.comet:
+        try:
+            from pytorch_lightning.loggers import CometLogger
+            loggers.append(CometLogger(
+                project_name="milliontrees-polygons",
+                tags=[f"split-{args.split_scheme}", "geometry-polygons"],
+            ))
+        except Exception as e:
+            print(f"Comet ML logging disabled: {e}")
+
+    callbacks = [checkpoint_cb, early_stop_cb] if has_val else []
+
     trainer = pl.Trainer(
-        max_epochs=args.max_epochs, accelerator="auto", devices=args.gpus,
-        callbacks=[checkpoint_cb, early_stop_cb],
-        default_root_dir=args.output_dir, log_every_n_steps=10,
+        max_epochs=args.max_epochs,
+        accelerator="auto",
+        devices=args.gpus,
+        callbacks=callbacks,
+        default_root_dir=args.output_dir,
+        log_every_n_steps=10,
         val_check_interval=0.5,
+        logger=loggers if loggers else True,
+        enable_checkpointing=has_val,
+        limit_train_batches=args.limit_train_batches,
+        limit_val_batches=args.limit_val_batches if has_val else 0,
     )
 
     trainer.fit(model, train_loader, val_loader)

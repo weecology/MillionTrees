@@ -489,17 +489,30 @@ class DetectionAccuracy(ElementwiseMetric):
 
 
 class KeypointAccuracy(ElementwiseMetric):
-    """Given a specific Intersection over union threshold, determine the accuracy achieved for a
-    one-class detector."""
+    """Keypoint accuracy for a one-class detector.
 
-    def __init__(self,
-                 distance_threshold=0.1,
-                 score_threshold=0.1,
-                 name=None,
-                 geometry_name="y"):
+    The ``distance_threshold`` is interpreted as a **normalized** distance with
+    respect to the image size rather than raw pixels. For a square image of
+    side length ``image_size``, the effective pixel threshold is
+
+        pixel_threshold = distance_threshold * image_size
+
+    This makes the metric less sensitive to the absolute crop size while still
+    behaving like a fixed-radius matching rule in pixel space.
+    """
+
+    def __init__(
+        self,
+        distance_threshold: float = 0.02,
+        score_threshold: float = 0.1,
+        name: str | None = None,
+        geometry_name: str = "y",
+        image_size: int = 448,
+    ):
         self.distance_threshold = distance_threshold
         self.score_threshold = score_threshold
         self.geometry_name = geometry_name
+        self.image_size = image_size
         if name is None:
             name = "keypoint_acc"
         super().__init__(name=name)
@@ -512,8 +525,7 @@ class KeypointAccuracy(ElementwiseMetric):
 
             gt_boxes = gt[self.geometry_name]
             pred_boxes = target_boxes[target_scores > self.score_threshold]
-            det_accuracy = self._accuracy(gt_boxes, pred_boxes,
-                                          self.distance_threshold)
+            det_accuracy = self._accuracy(gt_boxes, pred_boxes)
             batch_results.append(det_accuracy)
         return torch.tensor(batch_results)
 
@@ -523,7 +535,7 @@ class KeypointAccuracy(ElementwiseMetric):
                                p=2)
         return distance
 
-    def _accuracy(self, src_keypoints, pred_keypoints, distance_threshold):
+    def _accuracy(self, src_keypoints, pred_keypoints):
         total_gt = len(src_keypoints)
         total_pred = len(pred_keypoints)
         if total_gt > 0 and total_pred > 0:
@@ -534,7 +546,8 @@ class KeypointAccuracy(ElementwiseMetric):
                                                    pred_keypoints)
             # Similarity in [0, 1], higher is better (0 distance -> 1 similarity)
             similarity_matrix = 1.0 / (1.0 + distance_matrix)
-            sim_threshold = 1.0 / (1.0 + distance_threshold)
+            pixel_threshold = self.distance_threshold * float(self.image_size)
+            sim_threshold = 1.0 / (1.0 + pixel_threshold)
 
             matcher = Matcher(sim_threshold,
                               sim_threshold,
