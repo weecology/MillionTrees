@@ -95,24 +95,27 @@ def download_mission_data(mission_id: str, out_root: str,
     """Download single mission's annotations and orthomosaic. Returns True if orthomosaic exists."""
     print(f"Downloading mission {mission_id}")
     
-    # Download annotations
-    itd_prefix = f"drone/missions_01/{mission_id}/processed_02/itd_0001/"
-    items = _swift_list(endpoint, bucket, prefix=itd_prefix, delimiter='')
+    # Download annotations (server may use itd-0001 or itd_0001)
+    for itd_name in ("itd-0001", "itd_0001"):
+        itd_prefix = f"drone/missions_01/{mission_id}/processed_02/{itd_name}/"
+        items = _swift_list(endpoint, bucket, prefix=itd_prefix, delimiter='')
     
-    for obj in items:
-        name = obj.get('name')
-        if not name or not name.startswith(f"drone/missions_01/{mission_id}/"):
-            continue
-        
-        ext = os.path.splitext(name)[1].lower()
-        if ext in {'.gpkg', '.geojson', '.json', '.shp', '.shx', '.dbf', '.prj', '.cpg', '.xml', '.csv', '.tif'}:
-            rel = os.path.relpath(name, start=f"drone/missions_01/{mission_id}")
-            local_path = os.path.join(out_root, mission_id, rel)
-            
-            if not os.path.exists(local_path):
-                url = endpoint.rstrip('/') + f"/swift/v1/{bucket}/" + name
-                _stream_download(url, local_path)
-    
+        for obj in items:
+            name = obj.get('name')
+            if not name or not name.startswith(f"drone/missions_01/{mission_id}/"):
+                continue
+
+            ext = os.path.splitext(name)[1].lower()
+            if ext in {'.gpkg', '.geojson', '.json', '.shp', '.shx', '.dbf', '.prj', '.cpg', '.xml', '.csv', '.tif'}:
+                rel = os.path.relpath(name, start=f"drone/missions_01/{mission_id}")
+                local_path = os.path.join(out_root, mission_id, rel)
+
+                if not os.path.exists(local_path):
+                    url = endpoint.rstrip('/') + f"/swift/v1/{bucket}/" + name
+                    _stream_download(url, local_path)
+        if items:
+            break
+
     # Download orthomosaic
     ortho_candidates = [
         f"{mission_id}_ortho-dsm-ptcloud.tif",
@@ -136,12 +139,21 @@ def download_mission_data(mission_id: str, out_root: str,
     print(f"  Warning: No orthomosaic found for {mission_id}")
     return False
 
+def _itd_dir(mission_path: str):
+    """Return ITD directory for a mission (server may use itd-0001 or itd_0001)."""
+    for name in ('itd_0001', 'itd-0001'):
+        d = os.path.join(mission_path, 'processed_02', name)
+        if os.path.isdir(d):
+            return d
+    return None
+
+
 def process_mission_annotations(mission_path: str) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
     """Process single mission's annotations into points and boxes DataFrames."""
     mission_id = os.path.basename(mission_path.rstrip(os.sep))
-    itd_dir = os.path.join(mission_path, 'processed_02', 'itd_0001')
-    
-    if not os.path.isdir(itd_dir):
+    itd_dir = _itd_dir(mission_path)
+
+    if itd_dir is None:
         return None, None
     
     points_df = None
@@ -195,9 +207,12 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
     
     if not orthomosaic:
         return None, None
-    
-    itd_dir = os.path.join(os.path.dirname(os.path.dirname(orthomosaic)), 'itd_0001')
-    
+
+    mission_path = os.path.dirname(os.path.dirname(os.path.dirname(orthomosaic)))
+    itd_dir = _itd_dir(mission_path)
+    if itd_dir is None:
+        return None, None
+
     # Prepare 3-band orthomosaic for tiling
     with rio.open(orthomosaic) as src:
         arr = src.read()
@@ -263,8 +278,8 @@ def write_sample_overlays(images_dir: str, savedir: str, max_samples: int = 10) 
     from matplotlib import pyplot as plt
 
     ensure_dir(savedir)
-    boxes_csv = os.path.join(images_dir, 'TreeBoxes_OFO_weak_supervised.csv')
-    points_csv = os.path.join(images_dir, 'TreePoints_OFO_weak_supervised.csv')
+    boxes_csv = os.path.join(images_dir, 'TreeBoxes_OFO_unsupervised.csv')
+    points_csv = os.path.join(images_dir, 'TreePoints_OFO_unsupervised.csv')
 
     if os.path.exists(boxes_csv):
         df = utilities.read_file(pd.read_csv(boxes_csv), root_dir=images_dir)
@@ -367,7 +382,7 @@ def main():
     
     tiled_boxes["image_path"] = tiled_boxes["filename"].apply(lambda x: os.path.join(images_dir,x))
     tiled_boxes = tiled_boxes.drop(columns=['filename'])
-    tiled_boxes.to_csv(os.path.join(images_dir, 'TreeBoxes_OFO_weak_supervised.csv'), index=False)
+    tiled_boxes.to_csv(os.path.join(images_dir, 'TreeBoxes_OFO_unsupervised.csv'), index=False)
 
     tiled_points = pd.concat(tiled_points)
 
@@ -375,7 +390,7 @@ def main():
     
     # remove filename column to avoid confusion
     tiled_points = tiled_points.drop(columns=['filename'])
-    tiled_points.to_csv(os.path.join(images_dir, 'TreePoints_OFO_weak_supervised.csv'), index=False)
+    tiled_points.to_csv(os.path.join(images_dir, 'TreePoints_OFO_unsupervised.csv'), index=False)
 
     if getattr(args, 'sample_plots', False):
         savedir = args.sample_plots_dir or os.path.join(args.output_dir, 'sample_plots')
