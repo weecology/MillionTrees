@@ -19,10 +19,12 @@ cd /blue/ewhite/b.weinstein/src/MillionTrees/data_prep
 DATA_DIR="/orange/ewhite/DeepForest/OpenForestObservatory"
 OUTPUT_DIR="/orange/ewhite/DeepForest/OpenForestObservatory/unsupervised"
 OFO_ROOT="/orange/ewhite/DeepForest/OpenForestObservatory"
+METADATA_GPKG="/orange/ewhite/DeepForest/OpenForestObservatory/ofo_drone-missions_metadata.gpkg"
 
-# Create necessary directories
+# Create necessary directories (tiled CSVs and PNGs go to DATA_DIR/images for package_datasets)
 mkdir -p "$OUTPUT_DIR"
 mkdir -p "$OFO_ROOT"
+mkdir -p "$DATA_DIR/images"
 mkdir -p "$(dirname "$DATA_DIR")"
 
 # Run the combined OFO unsupervised processing script
@@ -35,8 +37,9 @@ uv run process_ofo_unsupervised.py \
     --data_dir "$DATA_DIR" \
     --ofo_root "$OFO_ROOT" \
     --output_dir "$OUTPUT_DIR" \
-    --patch_size 800 \
-    --num_missions 2 \
+    --metadata_gpkg "$METADATA_GPKG" \
+    --exclude_oblique \
+    --patch_size 800
 
 echo "OFO unsupervised processing completed!"
 
@@ -54,12 +57,14 @@ if [ -f "$OUTPUT_DIR/boxes/TreeBoxes_OFO.csv" ]; then
     echo "TreeBoxes annotations: $(wc -l < "$OUTPUT_DIR/boxes/TreeBoxes_OFO.csv") lines"
 fi
 
-if [ -f "$DATA_DIR/unsupervised/TreePoints_OFO_unsupervised.parquet" ]; then
-    echo "Tiled annotations created: $DATA_DIR/unsupervised/TreePoints_OFO_unsupervised.parquet"
+if [ -f "$DATA_DIR/images/TreePoints_OFO_unsupervised.csv" ]; then
+    echo "Tiled points: $(wc -l < "$DATA_DIR/images/TreePoints_OFO_unsupervised.csv") lines in TreePoints_OFO_unsupervised.csv"
 fi
-
+if [ -f "$DATA_DIR/images/TreeBoxes_OFO_unsupervised.csv" ]; then
+    echo "Tiled boxes: $(wc -l < "$DATA_DIR/images/TreeBoxes_OFO_unsupervised.csv") lines in TreeBoxes_OFO_unsupervised.csv"
+fi
 if [ -d "$DATA_DIR/images" ]; then
-    echo "Downloaded images: $(find "$DATA_DIR/images" -name "*.png" | wc -l) PNG files"
+    echo "Tiled PNGs: $(find "$DATA_DIR/images" -name "*.png" 2>/dev/null | wc -l) files"
 fi
 
 echo "Job completed at $(date)"

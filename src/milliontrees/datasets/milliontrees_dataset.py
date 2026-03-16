@@ -493,12 +493,26 @@ class MillionTreesSubset(MillionTreesDataset):
         metadata, x, targets = self.dataset[self.indices[idx]]
 
         if self._dataset_name == 'TreeBoxes':
-            # Extra safety: drop any degenerate boxes created by downstream processing
-            # before passing to Albumentations, which rejects zero-width/height boxes.
-            bboxes = np.array(targets[self.geometry_name])
+            # Extra safety: drop any degenerate boxes before passing to Albumentations.
+            # Use a small epsilon so boxes that would round to zero width/height after
+            # Resize (e.g. xmin=xmax=1.0) are filtered and do not trigger Albumentations' check.
+            bboxes = np.array(targets[self.geometry_name], dtype=np.float64)
             labels_arr = np.array(targets["labels"])
+            # Clip bboxes to image bounds BEFORE passing to albumentations.
+            # clip=True in BboxParams clips after normalization but check_bboxes
+            # runs before the clip, so a box that straddles the edge can collapse
+            # to xmin==xmax==1.0 in normalized space and raise a ValueError.
+            h, w = x.shape[:2]
+            min_side = 1e-5
             if len(bboxes) > 0:
-                valid = (bboxes[:, 2] > bboxes[:, 0]) & (bboxes[:, 3] > bboxes[:, 1])
+                bboxes[:, 0] = np.clip(bboxes[:, 0], 0.0, w)
+                bboxes[:, 2] = np.clip(bboxes[:, 2], 0.0, w)
+                bboxes[:, 1] = np.clip(bboxes[:, 1], 0.0, h)
+                bboxes[:, 3] = np.clip(bboxes[:, 3], 0.0, h)
+                valid = (
+                    (bboxes[:, 2] - bboxes[:, 0] >= min_side)
+                    & (bboxes[:, 3] - bboxes[:, 1] >= min_side)
+                )
                 bboxes = bboxes[valid]
                 labels_arr = labels_arr[valid]
             augmented = self.transform(
@@ -506,7 +520,24 @@ class MillionTreesSubset(MillionTreesDataset):
                 bboxes=bboxes.tolist(),
                 labels=labels_arr.tolist(),
             )
-            y = torch.from_numpy(augmented["bboxes"]).float()
+            bboxes_aug = augmented["bboxes"]
+            # Albumentations may return list of 4 or 5 elements (with class_id); take first 4
+            arr = np.array(bboxes_aug, dtype=np.float32) if bboxes_aug else np.zeros((0, 4), dtype=np.float32)
+            if arr.ndim == 2 and arr.shape[1] > 4:
+                arr = arr[:, :4]
+            # Filter degenerate boxes *after* augmentation (resize/crop can make valid boxes
+            # zero-area). Torchvision detection loss requires strictly positive width/height.
+            aug_labels = np.array(augmented["labels"])
+            if len(arr) > 0:
+                min_side = 1e-5
+                valid = (
+                    (arr[:, 2] - arr[:, 0] >= min_side)
+                    & (arr[:, 3] - arr[:, 1] >= min_side)
+                )
+                arr = arr[valid]
+                aug_labels = aug_labels[valid]
+            y = torch.from_numpy(arr).float()
+            labels = torch.from_numpy(aug_labels)
 
         elif self._dataset_name == 'TreePoints':
             augmented = self.transform(
@@ -551,8 +582,9 @@ class MillionTreesSubset(MillionTreesDataset):
                 labels = torch.from_numpy(np.array(augmented["labels"]))
 
         x = augmented["image"]
-        if self._dataset_name != "TreePolygons":
+        if self._dataset_name == "TreePoints":
             labels = torch.from_numpy(np.array(augmented["labels"]))
+        # TreeBoxes: labels set above (with degenerate boxes filtered). TreePolygons: set in branch.
 
         # If image has no annotations, set zeros
         if len(y) == 0:

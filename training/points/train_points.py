@@ -168,14 +168,14 @@ def main():
     parser.add_argument(
         "--limit-train-batches",
         type=int,
-        default=50,
-        help="Number of training batches per epoch (for fast debugging)",
+        default=None,
+        help="Number of training batches per epoch (default: None = full epoch)",
     )
     parser.add_argument(
         "--limit-val-batches",
         type=int,
-        default=50,
-        help="Number of validation batches per epoch (for fast debugging)",
+        default=None,
+        help="Number of validation batches per epoch (default: None = full epoch)",
     )
     args = parser.parse_args()
 

@@ -1,14 +1,23 @@
 # MillionTrees Dataset Release Report
-**Generated on:** 2026-01-20 13:14:19
+**Generated on:** 2026-03-16 13:35:04
 
-## Dataset Summary
+## Dataset Summary (Supervised Sources Only)
 
 | Dataset | Latest Version | Size (GB) | Images | Annotations | Sources | Download URL |
 |---------|----------------|-----------|--------|-------------|---------|--------------|
-| TreePolygons | 0.10 | 98.80 GB | 19948 | 805818 | 15 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees... |
-| TreePoints | 0.10 | 153.41 GB | 33369 | 1219904 | 7 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees... |
-| TreeBoxes | 0.10 | 39.97 GB | 19894 | 1615798 | 10 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees... |
-| **Total** | - | **292.18 GB** | - | - | - | - |
+| TreePolygons | 0.11 | 98.83 GB | 20429 | 791991 | 16 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees... |
+| TreePoints | 0.11 | 148.47 GB | 27447 | 818619 | 8 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees... |
+| TreeBoxes | 0.11 | 41.67 GB | 10612 | 713347 | 10 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees... |
+| **Total** | - | **288.97 GB** | - | - | - | - |
+
+## Unsupervised Sources (Train Split Only)
+
+Sources with "unsupervised" or "weak supervised" in their name are excluded from test splits and counted separately here. Size is estimated as full zip minus supervised zip.
+
+| Dataset | Size (GB) | Images | Annotations | Sources |
+|---------|-----------|--------|-------------|---------|
+| TreePoints | 148.42 GB | 1 | 138 | 1 |
+| TreeBoxes | 41.52 GB | 10049 | 966952 | 2 |
 
 ## Detailed Dataset Information
 
@@ -17,64 +26,60 @@
 | Version | Download URL | Size (GB) |
 |---------|-------------|-----------|
 | 0.0 | N/A | 0.10 GB |
-| 0.10 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.10.zip | 98.80 GB |
+| 0.11 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.11.zip | 98.83 GB |
 
-**Latest Version Dataset Stats (random split):**
+**Latest Version Dataset Stats (random split, supervised sources only):**
 
-- Images: 19948
-- Annotations: 805818
-- Sources: 15
+- Images: 20429
+- Annotations: 791991
+- Sources: 16
 
 **Split counts (images):**
 
 | Split | Train | Test |
 |-------|-------|------|
-| random | 18801 | 1172 |
-| zeroshot | 17232 | 3775 |
+| random | 19230 | 1225 |
+| zeroshot | 17562 | 3926 |
 
 ### TreePoints
 
 | Version | Download URL | Size (GB) |
 |---------|-------------|-----------|
 | 0.0 | N/A | 0.15 GB |
-| 0.10 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.10.zip | 153.41 GB |
+| 0.11 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.11.zip | 148.47 GB |
 
-**Latest Version Dataset Stats (random split):**
+**Latest Version Dataset Stats (random split, supervised sources only):**
 
-- Images: 33369
-- Annotations: 1219904
-- Sources: 7
+- Images: 27447
+- Annotations: 818619
+- Sources: 8
 
 **Split counts (images):**
 
 | Split | Train | Test |
 |-------|-------|------|
-| random | 30139 | 3238 |
-| zeroshot | 31639 | 1730 |
+| random | 24674 | 2784 |
+| zeroshot | 25392 | 2056 |
 
 ### TreeBoxes
 
 | Version | Download URL | Size (GB) |
 |---------|-------------|-----------|
 | 0.0 | N/A | 0.10 GB |
-| 0.10 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.10.zip | 39.97 GB |
+| 0.11 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.11.zip | 41.67 GB |
 
-**Latest Version Dataset Stats (random split):**
+**Latest Version Dataset Stats (random split, supervised sources only):**
 
-- Images: 19894
-- Annotations: 1615798
+- Images: 10612
+- Annotations: 713347
 - Sources: 10
 
 **Split counts (images):**
 
 | Split | Train | Test |
 |-------|-------|------|
-| random | 17484 | 3137 |
-| zeroshot | 16904 | 2990 |
-
-## Test Results Summary
-
-✅ **All tests passed successfully**
+| random | 18170 | 3225 |
+| zeroshot | 17524 | 3137 |
 
 ## Release Test Information
 

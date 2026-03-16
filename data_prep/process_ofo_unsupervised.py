@@ -74,7 +74,7 @@ def _stream_download(url: str, dest_path: str, chunk_size: int = 1024 * 1024) ->
 def list_missions(endpoint: str = 'https://js2.jetstream-cloud.org:8001',
                   bucket: str = 'ofo-public',
                   limit: Optional[int] = None) -> List[str]:
-    """List available OFO mission IDs."""
+    """List available OFO mission IDs from Jetstream2 Swift API (may be truncated)."""
     prefix = 'drone/missions_01/'
     entries = _swift_list(endpoint, bucket, prefix=prefix, delimiter='/')
     mission_ids = []
@@ -87,6 +87,41 @@ def list_missions(endpoint: str = 'https://js2.jetstream-cloud.org:8001',
                 mission_ids.append(mission_id)
     
     mission_ids.sort()
+    return mission_ids[:limit] if limit else mission_ids
+
+
+def load_mission_ids_from_metadata(
+    gpkg_path: str,
+    *,
+    exclude_withheld: bool = True,
+    exclude_oblique: bool = False,
+    limit: Optional[int] = None,
+) -> List[str]:
+    """Load mission IDs from OFO drone mission metadata GeoPackage (e.g. ofo_drone-missions_metadata.gpkg).
+
+    - exclude_withheld: if True, drop missions with withhold_from_training == True (OFO reserve ~20% for evaluation).
+    - exclude_oblique: if True, keep only nadir missions (camera_pitch_nominal == 0); drop oblique for applications not using raw imagery.
+    - limit: if set, return at most this many mission IDs (for testing).
+    """
+    gdf = gpd.read_file(gpkg_path)
+    if 'mission_id' not in gdf.columns:
+        raise ValueError(f"GeoPackage must have 'mission_id' column: {gpkg_path}")
+
+    mask = pd.Series(True, index=gdf.index)
+    if exclude_withheld and 'withhold_from_training' in gdf.columns:
+        withheld = gdf['withhold_from_training']
+        if withheld.dtype == bool:
+            mask &= ~withheld
+        else:
+            mask &= ~withheld.astype(str).str.strip().str.lower().isin(('true', '1', 'yes'))
+    if exclude_oblique and 'camera_pitch_nominal' in gdf.columns:
+        pitch = pd.to_numeric(gdf['camera_pitch_nominal'], errors='coerce').fillna(0)
+        mask &= (pitch == 0)
+
+    gdf = gdf.loc[mask]
+    mission_ids = gdf['mission_id'].astype(str).str.strip()
+    mission_ids = [mid.zfill(6) for mid in mission_ids if mid and mid != 'nan']
+    mission_ids = sorted(set(mission_ids))
     return mission_ids[:limit] if limit else mission_ids
 
 def download_mission_data(mission_id: str, out_root: str,
@@ -306,8 +341,12 @@ def parse_args():
     parser.add_argument('--data_dir', required=True, help='Dataset directory')
     parser.add_argument('--ofo_root', default='ofo_downloads', help='OFO download directory')
     parser.add_argument('--output_dir', required=True, help='Output directory')
-    parser.add_argument('--mission_ids', help='Comma-separated mission IDs')
-    parser.add_argument('--num_missions', type=int, default=3, help='Max missions to process')
+    parser.add_argument('--mission_ids', help='Comma-separated mission IDs (overrides --metadata_gpkg and --num_missions)')
+    parser.add_argument('--metadata_gpkg', help='OFO drone mission metadata GeoPackage path (e.g. ofo_drone-missions_metadata.gpkg). Used to get full mission list instead of querying Swift.')
+    parser.add_argument('--num_missions', type=int, default=3, help='Max missions when not using --metadata_gpkg (Swift listing may be truncated)')
+    parser.add_argument('--no_exclude_withheld', action='store_true', help='Include missions with withhold_from_training (only when using --metadata_gpkg)')
+    parser.add_argument('--exclude_oblique', action='store_true', help='Exclude oblique missions; keep only nadir (only when using --metadata_gpkg)')
+    parser.add_argument('--limit_missions', type=int, help='Max missions to process (for testing; only when using --metadata_gpkg)')
     parser.add_argument('--patch_size', type=int, default=800, help='Tile size in pixels')
     parser.add_argument('--sample_plots', action='store_true', help='Write overlay QC plots')
     parser.add_argument('--sample_plots_dir', help='Directory for overlay plots (default: output_dir/sample_plots)')
@@ -318,15 +357,22 @@ def main():
     
     mission_ids = None
     if args.mission_ids:
-        mission_ids = [s.strip() for s in args.mission_ids.split(',') if s.strip()]
+        mission_ids = [s.strip().zfill(6) for s in args.mission_ids.split(',') if s.strip()]
+    elif getattr(args, 'metadata_gpkg', None) and os.path.isfile(args.metadata_gpkg):
+        mission_ids = load_mission_ids_from_metadata(
+            args.metadata_gpkg,
+            exclude_withheld=not getattr(args, 'no_exclude_withheld', False),
+            exclude_oblique=getattr(args, 'exclude_oblique', False),
+            limit=getattr(args, 'limit_missions', None),
+        )
+        print(f"Loaded {len(mission_ids)} mission IDs from {args.metadata_gpkg}")
+    if not mission_ids:
+        mission_ids = list_missions(limit=args.num_missions)
+        print(f"Using Swift API mission list (may be truncated): {len(mission_ids)} missions")
     
     ensure_dir(args.ofo_root)
     ensure_dir(args.output_dir)
     ensure_dir(os.path.join(args.data_dir, 'images'))
-    
-    # Get missions to process
-    if not mission_ids:
-        mission_ids = list_missions(limit=args.num_missions)
     
     print(f"Processing {len(mission_ids)} missions")
     

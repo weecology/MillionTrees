@@ -100,11 +100,35 @@ def get_on_disk_size_bytes(url: str, fallback_bytes: int) -> int:
     return fallback_bytes or 0
 
 
+def derive_supervised_url(url: str) -> Optional[str]:
+    """Given a full-dataset URL like .../TreeBoxes_v0.11.zip, return the supervised variant URL."""
+    if not url:
+        return None
+    import re
+    # Insert '_supervised' before the version string: TreeBoxes_v0.11.zip -> TreeBoxes_supervised_v0.11.zip
+    return re.sub(r'(Tree(?:Boxes|Points|Polygons))(_v[\d.]+\.zip)', r'\1_supervised\2', url)
+
+
+def get_unsupervised_size_bytes(full_url: str) -> int:
+    """Return size in bytes attributable to unsupervised images (full zip minus supervised zip)."""
+    full_bytes = get_on_disk_size_bytes(full_url, 0)
+    sup_url = derive_supervised_url(full_url)
+    sup_bytes = get_on_disk_size_bytes(sup_url, 0) if sup_url else 0
+    return max(0, full_bytes - sup_bytes)
+
+
 def read_random_csv_counts_from_zip(url: str) -> Optional[dict]:
-    """Open the zip on disk (mapped from URL) and count images/annotations/sources from random.csv."""
+    """Open the zip on disk (mapped from URL) and count images/annotations/sources from random.csv.
+
+    Returns counts split into supervised (sources without 'unsupervised' or 'weak supervised')
+    and unsupervised (sources whose names contain 'unsupervised' or 'weak supervised').
+    """
     import io
     import csv
     import zipfile
+    import re
+
+    _unsupervised_re = re.compile(r"unsupervised|weak supervised", re.IGNORECASE)
 
     local_path = derive_local_path_from_url(url)
     if not local_path or not local_path.exists():
@@ -119,21 +143,34 @@ def read_random_csv_counts_from_zip(url: str) -> Optional[dict]:
             name = sorted(candidates, key=lambda s: s.count("/"))[0]
             with zf.open(name) as f:
                 reader = csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"))
-                num_rows = 0
-                filenames = set()
-                sources = set()
+                sup_rows = 0
+                sup_filenames: set = set()
+                sup_sources: set = set()
+                unsup_rows = 0
+                unsup_filenames: set = set()
+                unsup_sources: set = set()
                 for row in reader:
-                    num_rows += 1
                     fn = row.get("filename")
-                    if fn:
-                        filenames.add(fn)
-                    src = row.get("source")
-                    if src:
-                        sources.add(src)
+                    src = row.get("source", "") or ""
+                    if _unsupervised_re.search(src):
+                        unsup_rows += 1
+                        if fn:
+                            unsup_filenames.add(fn)
+                        if src:
+                            unsup_sources.add(src)
+                    else:
+                        sup_rows += 1
+                        if fn:
+                            sup_filenames.add(fn)
+                        if src:
+                            sup_sources.add(src)
                 return {
-                    "images": len(filenames),
-                    "annotations": num_rows,
-                    "sources": len(sources),
+                    "images": len(sup_filenames),
+                    "annotations": sup_rows,
+                    "sources": len(sup_sources),
+                    "unsup_images": len(unsup_filenames),
+                    "unsup_annotations": unsup_rows,
+                    "unsup_sources": len(unsup_sources),
                 }
     except zipfile.BadZipFile:
         # Some URLs may point to non-zip resources; treat as missing stats.
@@ -196,25 +233,26 @@ def generate_dataset_report(output_path=None, include_test_results=False, test_e
     report_content.append('')
     
     # Summary table
-    report_content.append('## Dataset Summary')
+    report_content.append('## Dataset Summary (Supervised Sources Only)')
     report_content.append('')
     report_content.append('| Dataset | Latest Version | Size (GB) | Images | Annotations | Sources | Download URL |')
     report_content.append('|---------|----------------|-----------|--------|-------------|---------|--------------|')
-    
+
     total_size = 0
-    
+    all_counts = {}  # cache for reuse in detailed section
+    all_urls = {}    # full dataset URL per dataset name
+
+    def _version_sort_key(v):
+        try:
+            return tuple(map(int, v.split('.')))
+        except ValueError:
+            return (0, 0)
+
     for dataset_name, dataset_class in datasets_info:
         versions_dict = get_versions_dict(dataset_class)
-        
+
         if versions_dict:
-            # Get latest version (highest version number)
-            def version_sort_key(v):
-                try:
-                    return tuple(map(int, v.split('.')))
-                except ValueError:
-                    return (0, 0)
-            
-            latest_version = max(versions_dict.keys(), key=version_sort_key)
+            latest_version = max(versions_dict.keys(), key=_version_sort_key)
             latest_info = versions_dict[latest_version]
             url = latest_info.get('download_url', 'N/A')
             size_bytes_meta = latest_info.get('compressed_size', 0)
@@ -224,12 +262,17 @@ def generate_dataset_report(output_path=None, include_test_results=False, test_e
                 size_bytes_meta = 0
             size_bytes_int = get_on_disk_size_bytes(url, size_bytes_meta)
             total_size += size_bytes_int
-            counts = read_random_csv_counts_from_zip(url) or {"images": 0, "annotations": 0, "sources": 0}
-            
+            counts = read_random_csv_counts_from_zip(url) or {
+                "images": 0, "annotations": 0, "sources": 0,
+                "unsup_images": 0, "unsup_annotations": 0, "unsup_sources": 0,
+            }
+            all_counts[dataset_name] = counts
+            all_urls[dataset_name] = url
+
             # Handle missing URLs
             if not url or url.strip() == '':
                 url = 'N/A'
-            
+
             # Truncate URL for display
             display_url = url
             if url != 'N/A' and len(url) > 50:
@@ -240,9 +283,33 @@ def generate_dataset_report(output_path=None, include_test_results=False, test_e
             )
         else:
             report_content.append(f'| {dataset_name} | N/A | N/A | N/A | N/A | N/A | N/A |')
-    
+            all_counts[dataset_name] = {}
+
     report_content.append(f'| **Total** | - | **{format_gb(total_size)}** | - | - | - | - |')
     report_content.append('')
+
+    # Unsupervised sources summary (train-only, separate table)
+    unsup_rows = []
+    for dataset_name, counts in all_counts.items():
+        if counts.get("unsup_images", 0) > 0 or counts.get("unsup_annotations", 0) > 0:
+            unsup_rows.append((
+                dataset_name,
+                counts.get("unsup_images", 0),
+                counts.get("unsup_annotations", 0),
+                counts.get("unsup_sources", 0),
+            ))
+    if unsup_rows:
+        report_content.append('## Unsupervised Sources (Train Split Only)')
+        report_content.append('')
+        report_content.append('Sources with "unsupervised" or "weak supervised" in their name are excluded from test '
+                               'splits and counted separately here. Size is estimated as full zip minus supervised zip.')
+        report_content.append('')
+        report_content.append('| Dataset | Size (GB) | Images | Annotations | Sources |')
+        report_content.append('|---------|-----------|--------|-------------|---------|')
+        for row in unsup_rows:
+            unsup_size = get_unsupervised_size_bytes(all_urls.get(row[0], ''))
+            report_content.append(f'| {row[0]} | {format_gb(unsup_size)} | {row[1]} | {row[2]} | {row[3]} |')
+        report_content.append('')
 
     # Detailed version information
     report_content.append('## Detailed Dataset Information')
@@ -251,25 +318,17 @@ def generate_dataset_report(output_path=None, include_test_results=False, test_e
     for dataset_name, dataset_class in datasets_info:
         report_content.append(f'### {dataset_name}')
         report_content.append('')
-        
+
         # Description intentionally omitted in the detailed section
-        
+
         versions_dict = get_versions_dict(dataset_class)
-        
+
         if versions_dict:
             report_content.append('| Version | Download URL | Size (GB) |')
             report_content.append('|---------|-------------|-----------|')
-            
-            # Sort versions by version number (handle malformed versions)
-            def version_sort_key(v):
-                try:
-                    return tuple(map(int, v.split('.')))
-                except ValueError:
-                    # Fallback for non-numeric versions
-                    return (0, 0)
-            
-            sorted_versions = sorted(versions_dict.keys(), key=version_sort_key)
-            
+
+            sorted_versions = sorted(versions_dict.keys(), key=_version_sort_key)
+
             for version in sorted_versions:
                 info = versions_dict[version]
                 url = info.get('download_url', 'N/A')
@@ -284,14 +343,13 @@ def generate_dataset_report(output_path=None, include_test_results=False, test_e
                     url = 'N/A'
                 report_content.append(f'| {version} | {url} | {format_gb(size_bytes_int)} |')
 
-            # Add latest version dataset stats (images/annotations/sources)
+            # Add latest version dataset stats (supervised sources only)
             latest_version = sorted_versions[-1]
-            latest_info = versions_dict[latest_version]
-            latest_url = latest_info.get('download_url', '')
-            counts = read_random_csv_counts_from_zip(latest_url)
+            latest_url = versions_dict[latest_version].get('download_url', '')
+            counts = all_counts.get(dataset_name)
             if counts:
                 report_content.append('')
-                report_content.append('**Latest Version Dataset Stats (random split):**')
+                report_content.append('**Latest Version Dataset Stats (random split, supervised sources only):**')
                 report_content.append('')
                 report_content.append(f"- Images: {counts['images']}")
                 report_content.append(f"- Annotations: {counts['annotations']}")

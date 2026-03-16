@@ -297,10 +297,10 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
     TreePoints_datasets = apply_split(TreePoints_datasets)
     TreeBoxes_datasets = apply_split(TreeBoxes_datasets)
 
-    # Remove from test split any entries with 'weak supervised' in the source column or Feng source
+    # Remove from test split any entries with 'unsupervised' or 'weak supervised' in the source column or Feng source
     def remove_weak_supervised_test_entries(df):
         if "split" in df.columns and "source" in df.columns:
-            weak_supervised_mask = (df["split"] == "test") & (df["source"].str.contains("weak supervised", case=False, na=False))
+            weak_supervised_mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised|weak supervised", case=False, na=False))
             feng_mask = (df["split"] == "test") & (df["source"] == "Feng et al. 2025")
             mask = weak_supervised_mask | feng_mask
             return df.loc[~mask]
@@ -349,16 +349,16 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
     TreePoints_datasets["split"] = "train"
     TreeBoxes_datasets["split"] = "train"
 
-    # remove any source with weak supervised or Feng from test
-    weak_supervised_mask_polygons = (TreePolygons_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreePolygons_datasets.split == "test")
+    # remove any source with unsupervised, weak supervised, or Feng from test
+    weak_supervised_mask_polygons = (TreePolygons_datasets.source.str.contains('unsupervised|weak supervised', case=False, na=False)) & (TreePolygons_datasets.split == "test")
     feng_mask_polygons = (TreePolygons_datasets.source == "Feng et al. 2025") & (TreePolygons_datasets.split == "test")
     TreePolygons_datasets = TreePolygons_datasets[~(weak_supervised_mask_polygons | feng_mask_polygons)]
-    
-    weak_supervised_mask_points = (TreePoints_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreePoints_datasets.split == "test")
+
+    weak_supervised_mask_points = (TreePoints_datasets.source.str.contains('unsupervised|weak supervised', case=False, na=False)) & (TreePoints_datasets.split == "test")
     feng_mask_points = (TreePoints_datasets.source == "Feng et al. 2025") & (TreePoints_datasets.split == "test")
     TreePoints_datasets = TreePoints_datasets[~(weak_supervised_mask_points | feng_mask_points)]
-    
-    weak_supervised_mask_boxes = (TreeBoxes_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test")
+
+    weak_supervised_mask_boxes = (TreeBoxes_datasets.source.str.contains('unsupervised|weak supervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test")
     feng_mask_boxes = (TreeBoxes_datasets.source == "Feng et al. 2025") & (TreeBoxes_datasets.split == "test")
     TreeBoxes_datasets = TreeBoxes_datasets[~(weak_supervised_mask_boxes | feng_mask_boxes)]
 
@@ -436,10 +436,10 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     TreePoints_datasets = limit_test_images(TreePoints_datasets, test_sources_points)
     TreeBoxes_datasets = limit_test_images(TreeBoxes_datasets, test_sources_boxes)
 
-    # Remove Feng and weak supervised from test (shouldn't be there, but filter for safety)
+    # Remove Feng, unsupervised, and weak supervised from test (shouldn't be there, but filter for safety)
     def remove_feng_and_weak_supervised_from_test(df):
         if "split" in df.columns and "source" in df.columns:
-            weak_supervised_mask = (df["split"] == "test") & (df["source"].str.contains("weak supervised", case=False, na=False))
+            weak_supervised_mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised|weak supervised", case=False, na=False))
             feng_mask = (df["split"] == "test") & (df["source"] == "Feng et al. 2025")
             mask = weak_supervised_mask | feng_mask
             if mask.any():
@@ -460,9 +460,21 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     print(f"TreePoints: {base_dir}TreePoints{suffix}_{version}/zeroshot.csv")
     print(f"TreeBoxes: {base_dir}TreeBoxes{suffix}_{version}/zeroshot.csv")
 
+def filter_single_annotation_images(datasets):
+    """Filter out images that have only one annotation, as they are likely incompletely annotated."""
+    counts = datasets.groupby("filename").size()
+    valid_filenames = counts[counts > 1].index
+    n_before = datasets["filename"].nunique()
+    datasets = datasets[datasets["filename"].isin(valid_filenames)].copy()
+    n_after = datasets["filename"].nunique()
+    if n_before - n_after > 0:
+        print(f"Filtered out {n_before - n_after} images with only 1 annotation")
+    return datasets
+
+
 def filter_out_weak_supervised(datasets):
-    """Filter out datasets that contain 'weak supervised' in the source name."""
-    return datasets[~datasets['source'].str.contains('weak supervised', case=False, na=False)]
+    """Filter out datasets that contain 'unsupervised' or 'weak supervised' in the source name."""
+    return datasets[~datasets['source'].str.contains('unsupervised|weak supervised', case=False, na=False)]
 
 def check_for_updated_annotations(dataset, geometry):
     updated_annotations = [pd.read_csv(x) for x in glob.glob(f"data_prep/annotations/*{geometry}*.csv")]
@@ -648,9 +660,14 @@ def run(version, base_dir, debug=False):
 
     # Remove degenerate boxes (zero width/height) so albumentations does not raise
     TreeBoxes_datasets = filter_degenerate_boxes(TreeBoxes_datasets)
-    
+
     # Remove degenerate polygons (those that would create invalid bounding boxes)
     TreePolygons_datasets = filter_degenerate_polygons(TreePolygons_datasets)
+
+    # Remove images with only a single annotation (likely incompletely annotated)
+    TreeBoxes_datasets = filter_single_annotation_images(TreeBoxes_datasets)
+    TreePoints_datasets = filter_single_annotation_images(TreePoints_datasets)
+    TreePolygons_datasets = filter_single_annotation_images(TreePolygons_datasets)
 
     # Copy images
     copy_images(TreeBoxes_datasets, base_dir, "TreeBoxes")

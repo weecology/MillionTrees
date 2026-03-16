@@ -11,6 +11,7 @@ import warnings
 import numpy as np
 import pytorch_lightning as pl
 import torch
+from PIL import Image, ImageDraw
 
 from deepforest import main as df_main
 
@@ -112,6 +113,74 @@ def evaluate(model, dataset, test_subset, batch_size=12):
     return results, results_str
 
 
+def _flatten_results_for_comet(results, prefix="eval"):
+    """Convert nested eval results dict into flat scalar dict for Comet metrics."""
+    flat = {}
+    for k, v in results.items():
+        key = f"{prefix}/{k}"
+        if isinstance(v, dict):
+            for k2, v2 in v.items():
+                if isinstance(v2, torch.Tensor):
+                    v2 = v2.item() if v2.numel() == 1 else float(v2.cpu().numpy())
+                if isinstance(v2, (int, float, np.floating, np.integer)):
+                    flat[f"{key}/{k2}"] = float(v2)
+        else:
+            if isinstance(v, torch.Tensor):
+                v = v.item() if v.numel() == 1 else float(v.cpu().numpy())
+            if isinstance(v, (int, float, np.floating, np.integer)):
+                flat[key] = float(v)
+    return flat
+
+
+def _draw_boxes_on_image(image_tensor, gt_boxes, pred_boxes, pred_scores, score_threshold=0.1):
+    """Overlay GT (green) and predicted (red) boxes on image. Returns PIL Image."""
+    # image_tensor: (C, H, W) float 0-1; move to CPU for numpy
+    t = image_tensor.cpu() if image_tensor.is_cuda else image_tensor
+    img_np = (t.permute(1, 2, 0).numpy() * 255).clip(0, 255).astype(np.uint8)
+    pil = Image.fromarray(img_np)
+    draw = ImageDraw.Draw(pil, "RGBA")
+    gt_boxes = gt_boxes.cpu() if gt_boxes.is_cuda else gt_boxes
+    if gt_boxes.dim() == 1:
+        gt_boxes = gt_boxes.unsqueeze(0)
+    for b in gt_boxes:
+        x1, y1, x2, y2 = b.tolist()
+        draw.rectangle([x1, y1, x2, y2], outline=(0, 255, 0, 255), width=2)
+    pred_boxes = pred_boxes.cpu() if pred_boxes.is_cuda else pred_boxes
+    pred_scores = pred_scores.cpu() if pred_scores.is_cuda else pred_scores
+    if len(pred_boxes) > 0:
+        pred_boxes = pred_boxes[pred_scores > score_threshold]
+    if pred_boxes.dim() == 1 and len(pred_boxes) > 0:
+        pred_boxes = pred_boxes.unsqueeze(0)
+    for b in pred_boxes:
+        x1, y1, x2, y2 = b.tolist()
+        draw.rectangle([x1, y1, x2, y2], outline=(255, 0, 0, 255), width=2)
+    return pil
+
+
+def log_validation_images_to_comet(experiment, model, test_subset, batch_size, num_images=6, score_threshold=0.1):
+    """Run a few validation batches, overlay predictions and annotations, log images to Comet."""
+    test_loader = get_eval_loader("standard", test_subset, batch_size=batch_size)
+    model.eval()
+    logged = 0
+    for batch_index, batch in enumerate(test_loader):
+        if logged >= num_images:
+            break
+        metadata, images, targets = batch
+        preds = predict_batch(model, images, batch_index)
+        for i in range(len(images)):
+            if logged >= num_images:
+                break
+            pil = _draw_boxes_on_image(
+                images[i],
+                targets[i]["y"],
+                preds[i]["y"],
+                preds[i]["scores"],
+                score_threshold=score_threshold,
+            )
+            experiment.log_image(pil, name=f"val_pred_{logged}")
+            logged += 1
+
+
 def main():
     parser = argparse.ArgumentParser(description="Train DeepForest on MillionTrees TreeBoxes")
     parser.add_argument("--root-dir", type=str,
@@ -129,14 +198,14 @@ def main():
     parser.add_argument(
         "--limit-train-batches",
         type=int,
-        default=50,
-        help="Number of training batches per epoch (for fast debugging)",
+        default=None,
+        help="Number of training batches per epoch (default: None = full epoch)",
     )
     parser.add_argument(
         "--limit-val-batches",
         type=int,
-        default=50,
-        help="Number of validation batches per epoch (for fast debugging)",
+        default=None,
+        help="Number of validation batches per epoch (default: None = full epoch)",
     )
     parser.add_argument("--comet", action="store_true", help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
     args = parser.parse_args()
@@ -208,18 +277,38 @@ def main():
     trainer.fit(model, train_loader, val_loader)
 
     print("\n=== Evaluating best checkpoint ===")
-    best_path = checkpoint_cb.best_model_path
-    if best_path:
+    best_path = checkpoint_cb.best_model_path if has_val else ""
+    if best_path and os.path.isfile(best_path):
         print(f"Loading best checkpoint: {best_path}")
         model = DeepForestBoxTrainer.load_from_checkpoint(best_path)
 
-    results, results_str = evaluate(model, box_dataset, test_subset, batch_size=args.batch_size)
-    print(results_str)
+    try:
+        results, results_str = evaluate(model, box_dataset, test_subset, batch_size=args.batch_size)
+        print(results_str)
+        results_path = os.path.join(args.output_dir, f"results_{args.split_scheme}.txt")
+        with open(results_path, "w") as f:
+            f.write(results_str)
+        print(f"Results saved to {results_path}")
 
-    results_path = os.path.join(args.output_dir, f"results_{args.split_scheme}.txt")
-    with open(results_path, "w") as f:
-        f.write(results_str)
-    print(f"Results saved to {results_path}")
+        if args.comet and loggers:
+            from pytorch_lightning.loggers import CometLogger
+            for logger in loggers:
+                if isinstance(logger, CometLogger):
+                    experiment = logger.experiment
+                    flat = _flatten_results_for_comet(results, prefix="eval")
+                    experiment.log_metrics(flat)
+                    log_validation_images_to_comet(
+                        experiment,
+                        model,
+                        test_subset,
+                        batch_size=args.batch_size,
+                        num_images=6,
+                        score_threshold=box_dataset.eval_score_threshold,
+                    )
+                    break
+    except Exception as e:
+        print(f"Evaluation failed: {e}", flush=True)
+        raise
 
 
 if __name__ == "__main__":
