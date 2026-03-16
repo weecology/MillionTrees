@@ -1,0 +1,16 @@
+[project]
+name = "milliontrees-sam3"
+version = "0.1.0"
+description = "SAM3 (Segment Anything Model 3) evaluation on MillionTrees"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "milliontrees",
+    "transformers>=5.0.0rc1",
+    "accelerate",
+    "huggingface-hub>=1.0.0",
+    "safetensors",
+    "tokenizers>=0.20.0",
+]
+
+[tool.uv.sources]
+milliontrees = { path = "../..", editable = true }

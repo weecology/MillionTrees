@@ -1,0 +1,14 @@
+[project]
+name = "milliontrees-deepforest"
+version = "0.1.0"
+description = "DeepForest pretrained model evaluation on MillionTrees"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "milliontrees",
+    "deepforest",
+    "geopandas",
+    "matplotlib",
+]
+
+[tool.uv.sources]
+milliontrees = { path = "../..", editable = true }
