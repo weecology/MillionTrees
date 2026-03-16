@@ -731,7 +731,7 @@ def run(version, base_dir, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.11"
+    version = "v0.12"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     debug = False
     run(version, base_dir, debug)

@@ -64,6 +64,32 @@ Once the installation is complete, you can use the MillionTrees package in your 
 Datasets are documented on ReadTheDocs with sample images overlayed with annotations.
 https://milliontrees.idtrees.org/en/latest/datasets.html
 
+# Benchmark Pipeline
+
+To reproduce all benchmark results — training fine-tuned models and evaluating pretrained baselines — submit a single SLURM job:
+
+```bash
+MT_ROOT=/path/to/MillionTrees/data sbatch slurm/run_benchmark.sbatch
+```
+
+This chains together:
+1. **Fine-tuned models** (`training/`) — trains DeepForest on boxes, points, and polygons
+2. **Pretrained baselines** (`existing_models/`) — evaluates DeepForest and SAM3 zero-shot
+3. **Table generation** — writes comparison tables to `docs/leaderboard.md`
+
+The pretrained models (DeepForest, SAM3) are isolated as subpackages under `existing_models/` with their own `uv` environments to avoid dependency conflicts with the core package.
+
+To run only the existing-model evaluations:
+
+```bash
+# All splits, all models
+bash existing_models/slurm/submit_all_eval.sh
+
+# Single model, interactively
+cd existing_models/deepforest
+uv run python eval_boxes.py --split-scheme random --root-dir /path/to/data
+```
+
 # Leaderboard
 
 See the latest results on the leaderboard.
