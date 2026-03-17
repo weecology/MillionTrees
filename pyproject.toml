@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "milliontrees"
-version = "0.5.0"
+version = "0.7.0"
 description = "Benchmark dataset for Airborne Tree Machine Learning"
 readme = "README.md"
 license = { text = "MIT" }
@@ -54,6 +54,7 @@ dependencies = [
 dev = [
     "pytest",
     "bumpversion",
+    "pre-commit",
     "yapf",
     "docformatter",
     "black",
@@ -94,3 +95,9 @@ docs = [
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages.find = {where = ["src"], include = ["milliontrees*"]}
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "yapf>=0.43.0",
+]

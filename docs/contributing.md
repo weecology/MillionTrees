@@ -28,6 +28,44 @@ We welcome any geometric representation of trees in airborne imagery. Points, po
 
 After we work with an author to find a suitable data sharing agreement, we will remove the spatial information from the images and create a Zenodo record to document a train/test split for the benchmark. A manuscript, which all contributors are invited to join, will be published outlining the strengths, limitations, and potential uses of the dataset. The working document describing technical details of evaluation is still in its infancy is [here](https://docs.google.com/document/d/1K6G1tcdTuAv3FgGiDWq5QhO-kSoBrxzTiic5jH1CZF4/edit?usp=sharing).
 
+## Code Style
+
+This project enforces consistent code style using [YAPF](https://github.com/google/yapf) and [docformatter](https://github.com/PyCQA/docformatter). Style is checked automatically in CI on every push and pull request.
+
+### Pre-commit hooks
+
+Install pre-commit hooks to automatically format code before each commit:
+
+```bash
+# Install dev dependencies (includes pre-commit, yapf, docformatter)
+uv sync --all-extras --dev
+
+# Install the git hooks
+uv run pre-commit install
+```
+
+After installation, YAPF and docformatter will run automatically on staged files in `src/milliontrees/` whenever you run `git commit`.
+
+### Manual style checks
+
+To check or fix style manually:
+
+```bash
+# Check for YAPF style violations (shows diff, does not modify files)
+uv run yapf -d --recursive src/milliontrees/ --style=.style.yapf
+
+# Auto-fix YAPF style violations
+uv run yapf -i --recursive src/milliontrees/ --style=.style.yapf
+
+# Check docstring formatting
+uv run docformatter --check --wrap-summaries 100 --wrap-descriptions 100 --recursive src/milliontrees/
+
+# Auto-fix docstring formatting
+uv run docformatter --in-place --wrap-summaries 100 --wrap-descriptions 100 --recursive src/milliontrees/
+```
+
+Style settings are defined in [`.style.yapf`](../.style.yapf) (Google style, 80-column limit).
+
 ## Dataset structure
 The MillionTrees structure is a tabular dataframe with each annotation as a row, and the following columns.
 

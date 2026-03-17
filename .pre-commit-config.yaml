@@ -1,0 +1,26 @@
+repos:
+  - repo: local
+    hooks:
+      - id: yapf
+        name: yapf (style formatter)
+        entry: yapf
+        language: python
+        additional_dependencies:
+          - yapf==0.43.0
+        args: [--style=.style.yapf, --in-place]
+        files: ^src/milliontrees/.*\.py$
+
+      - id: docformatter
+        name: docformatter (docstring formatter)
+        entry: docformatter
+        language: python
+        additional_dependencies:
+          - docformatter==1.7.7
+        args:
+          - --wrap-summaries=100
+          - --wrap-descriptions=100
+          - --in-place
+          - --recursive
+          - src/milliontrees/
+        files: ^src/milliontrees/.*\.py$
+        pass_filenames: false
