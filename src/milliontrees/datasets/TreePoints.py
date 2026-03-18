@@ -177,7 +177,8 @@ class TreePointsDataset(MillionTreesDataset):
                     distance_threshold=distance_threshold,
                     image_size=self.image_size,
                 ),
-            "CountingAccuracy": CountingError(),
+            "CountingAccuracy":
+                CountingError(),
         }
 
         self._collate = TreePointsDataset._collate_fn
