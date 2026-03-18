@@ -95,24 +95,27 @@ def download_mission_data(mission_id: str, out_root: str,
     """Download single mission's annotations and orthomosaic. Returns True if orthomosaic exists."""
     print(f"Downloading mission {mission_id}")
     
-    # Download annotations
-    itd_prefix = f"drone/missions_01/{mission_id}/processed_02/itd_0001/"
-    items = _swift_list(endpoint, bucket, prefix=itd_prefix, delimiter='')
+    # Download annotations (server may use itd-0001 or itd_0001)
+    for itd_name in ("itd-0001", "itd_0001"):
+        itd_prefix = f"drone/missions_01/{mission_id}/processed_02/{itd_name}/"
+        items = _swift_list(endpoint, bucket, prefix=itd_prefix, delimiter='')
     
-    for obj in items:
-        name = obj.get('name')
-        if not name or not name.startswith(f"drone/missions_01/{mission_id}/"):
-            continue
-        
-        ext = os.path.splitext(name)[1].lower()
-        if ext in {'.gpkg', '.geojson', '.json', '.shp', '.shx', '.dbf', '.prj', '.cpg', '.xml', '.csv', '.tif'}:
-            rel = os.path.relpath(name, start=f"drone/missions_01/{mission_id}")
-            local_path = os.path.join(out_root, mission_id, rel)
-            
-            if not os.path.exists(local_path):
-                url = endpoint.rstrip('/') + f"/swift/v1/{bucket}/" + name
-                _stream_download(url, local_path)
-    
+        for obj in items:
+            name = obj.get('name')
+            if not name or not name.startswith(f"drone/missions_01/{mission_id}/"):
+                continue
+
+            ext = os.path.splitext(name)[1].lower()
+            if ext in {'.gpkg', '.geojson', '.json', '.shp', '.shx', '.dbf', '.prj', '.cpg', '.xml', '.csv', '.tif'}:
+                rel = os.path.relpath(name, start=f"drone/missions_01/{mission_id}")
+                local_path = os.path.join(out_root, mission_id, rel)
+
+                if not os.path.exists(local_path):
+                    url = endpoint.rstrip('/') + f"/swift/v1/{bucket}/" + name
+                    _stream_download(url, local_path)
+        if items:
+            break
+
     # Download orthomosaic
     ortho_candidates = [
         f"{mission_id}_ortho-dsm-ptcloud.tif",
@@ -136,12 +139,21 @@ def download_mission_data(mission_id: str, out_root: str,
     print(f"  Warning: No orthomosaic found for {mission_id}")
     return False
 
+def _itd_dir(mission_path: str):
+    """Return ITD directory for a mission (server may use itd-0001 or itd_0001)."""
+    for name in ('itd_0001', 'itd-0001'):
+        d = os.path.join(mission_path, 'processed_02', name)
+        if os.path.isdir(d):
+            return d
+    return None
+
+
 def process_mission_annotations(mission_path: str) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
     """Process single mission's annotations into points and boxes DataFrames."""
     mission_id = os.path.basename(mission_path.rstrip(os.sep))
-    itd_dir = os.path.join(mission_path, 'processed_02', 'itd_0001')
-    
-    if not os.path.isdir(itd_dir):
+    itd_dir = _itd_dir(mission_path)
+
+    if itd_dir is None:
         return None, None
     
     points_df = None
@@ -195,9 +207,12 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
     
     if not orthomosaic:
         return None, None
-    
-    itd_dir = os.path.join(os.path.dirname(os.path.dirname(orthomosaic)), 'itd_0001')
-    
+
+    mission_path = os.path.dirname(os.path.dirname(os.path.dirname(orthomosaic)))
+    itd_dir = _itd_dir(mission_path)
+    if itd_dir is None:
+        return None, None
+
     # Prepare 3-band orthomosaic for tiling
     with rio.open(orthomosaic) as src:
         arr = src.read()
@@ -212,8 +227,10 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
     with rio.open(out_ortho, 'w', **profile) as dst:
         dst.write(arr3)
         
-    # Tile points
-    treetops_file = os.path.join(itd_dir,f'{mission_id}_treetops.gpkg')
+    # Tile points (OFO may use treetops.gpkg or {mission_id}_treetops.gpkg)
+    treetops_file = os.path.join(itd_dir, f'{mission_id}_treetops.gpkg')
+    if not os.path.exists(treetops_file):
+        treetops_file = os.path.join(itd_dir, 'treetops.gpkg')
     gdf = gpd.read_file(treetops_file)
     gdf["image_path"] = os.path.basename(out_ortho)
     gdf["label"] = "Tree"
@@ -232,8 +249,10 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
     points_tiled['source'] = 'Young et al. 2025 weak supervised'
     points_tiled = points_tiled.rename(columns={'image_path': 'filename'})
 
-    # Tile boxes
+    # Tile boxes (OFO may use crowns-silva.gpkg or {mission_id}_crowns-silva.gpkg)
     crowns_file = os.path.join(itd_dir, f'{mission_id}_crowns-silva.gpkg')
+    if not os.path.exists(crowns_file):
+        crowns_file = os.path.join(itd_dir, 'crowns-silva.gpkg')
     gdf = gpd.read_file(crowns_file)
     gdf["image_path"] = os.path.basename(out_ortho)
     gdf["label"] = "Tree"
@@ -253,6 +272,35 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
 
     return points_tiled, boxes_tiled
 
+def write_sample_overlays(images_dir: str, savedir: str, max_samples: int = 10) -> None:
+    """Write sample overlay plots (boxes and points on imagery) for QC. savedir is created if needed."""
+    from deepforest import utilities, visualize
+    from matplotlib import pyplot as plt
+
+    ensure_dir(savedir)
+    boxes_csv = os.path.join(images_dir, 'TreeBoxes_OFO_unsupervised.csv')
+    points_csv = os.path.join(images_dir, 'TreePoints_OFO_unsupervised.csv')
+
+    if os.path.exists(boxes_csv):
+        df = utilities.read_file(pd.read_csv(boxes_csv), root_dir=images_dir)
+        for filename in df['image_path'].unique()[:max_samples]:
+            image_df = df.loc[df['image_path'] == filename].copy()
+            image_df.root_dir = images_dir
+            visualize.plot_annotations(image_df)
+            plt.savefig(os.path.join(savedir, f"sample_boxes_{os.path.basename(filename)}.png"))
+            plt.close()
+
+    if os.path.exists(points_csv):
+        df = utilities.read_file(pd.read_csv(points_csv), root_dir=images_dir)
+        for filename in df['image_path'].unique()[:max_samples]:
+            image_df = df.loc[df['image_path'] == filename].copy()
+            image_df.root_dir = images_dir
+            visualize.plot_annotations(image_df)
+            plt.savefig(os.path.join(savedir, f"sample_points_{os.path.basename(filename)}.png"))
+            plt.close()
+
+    print(f"Sample overlay plots written to {savedir}")
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Process OFO data")
     parser.add_argument('--data_dir', required=True, help='Dataset directory')
@@ -261,6 +309,8 @@ def parse_args():
     parser.add_argument('--mission_ids', help='Comma-separated mission IDs')
     parser.add_argument('--num_missions', type=int, default=3, help='Max missions to process')
     parser.add_argument('--patch_size', type=int, default=800, help='Tile size in pixels')
+    parser.add_argument('--sample_plots', action='store_true', help='Write overlay QC plots')
+    parser.add_argument('--sample_plots_dir', help='Directory for overlay plots (default: output_dir/sample_plots)')
     return parser.parse_args()
 
 def main():
@@ -332,7 +382,7 @@ def main():
     
     tiled_boxes["image_path"] = tiled_boxes["filename"].apply(lambda x: os.path.join(images_dir,x))
     tiled_boxes = tiled_boxes.drop(columns=['filename'])
-    tiled_boxes.to_csv(os.path.join(images_dir, 'TreeBoxes_OFO_weak_supervised.csv'), index=False)
+    tiled_boxes.to_csv(os.path.join(images_dir, 'TreeBoxes_OFO_unsupervised.csv'), index=False)
 
     tiled_points = pd.concat(tiled_points)
 
@@ -340,27 +390,11 @@ def main():
     
     # remove filename column to avoid confusion
     tiled_points = tiled_points.drop(columns=['filename'])
-    tiled_points.to_csv(os.path.join(images_dir, 'TreePoints_OFO_weak_supervised.csv'), index=False)
+    tiled_points.to_csv(os.path.join(images_dir, 'TreePoints_OFO_unsupervised.csv'), index=False)
+
+    if getattr(args, 'sample_plots', False):
+        savedir = args.sample_plots_dir or os.path.join(args.output_dir, 'sample_plots')
+        write_sample_overlays(images_dir, savedir)
 
 if __name__ == '__main__':
     main()
-
-    # Load and plot samples from boxes and polygons
-    from deepforest import utilities, visualize
-    from matplotlib import pyplot as plt
-    args = parse_args()
-    df = utilities.read_file(os.path.join(args.data_dir, 'images', 'TreeBoxes_OFO_weak_supervised.csv'))
-    for filename in df['image_path'].unique()[:10]:
-        image_df = df.loc[df['image_path'] == filename]
-        image_df.root_dir = os.path.dirname(filename)
-        visualize.plot_annotations(image_df)
-        plt.savefig(f"sample_boxes_{os.path.basename(filename)}.png")
-        plt.close()
-
-    df = utilities.read_file(os.path.join(args.data_dir, 'images', 'TreePoints_OFO_weak_supervised.csv'))
-    for filename in df['image_path'].unique()[:10]:
-        image_df = df.loc[df['image_path'] == filename]
-        image_df.root_dir = os.path.dirname(filename)
-        visualize.plot_annotations(image_df)
-        plt.savefig(f"sample_points_{os.path.basename(filename)}.png")
-        plt.close()

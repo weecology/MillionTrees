@@ -99,6 +99,24 @@ def process_geometry_columns(datasets, geom_type):
     return datasets
 
 
+def filter_degenerate_boxes(datasets):
+    """Filter out boxes with invalid or zero/negative extent.
+
+    This operates in *source coordinates* before any train/val split so
+    degenerate boxes never enter the packaged dataset at all.
+    """
+    if "xmin" not in datasets.columns or "xmax" not in datasets.columns:
+        return datasets
+    # Basic geometry sanity: strictly positive width/height
+    valid_mask = (datasets["xmax"] > datasets["xmin"]) & (datasets["ymax"] > datasets["ymin"])
+    # Drop any rows with NaNs in the box columns as well
+    valid_mask &= datasets[["xmin", "ymin", "xmax", "ymax"]].notna().all(axis=1)
+    n_filtered = len(datasets) - valid_mask.sum()
+    if n_filtered > 0:
+        print(f"Filtered out {n_filtered} degenerate boxes (zero width or height)")
+    return datasets.loc[valid_mask].copy()
+
+
 def filter_degenerate_polygons(datasets):
     """Filter out polygons that would create invalid bounding boxes (zero width or height)."""
     def convert_to_shapely(value):
@@ -146,22 +164,28 @@ def copy_images(datasets, base_dir, dataset_type):
         if not os.path.exists(os.path.join(destination, os.path.basename(image))):
             shutil.copy(image, destination)
 
+MINI_IMAGES_PER_SOURCE = 3
+
+
 def create_mini_datasets(datasets, base_dir, dataset_type, version):
-    """Create mini datasets for debugging and generate visualizations."""
-    # For each source, get the filename with the most annotations
+    """Create mini datasets for debugging and generate visualizations.
+    Takes the top MINI_IMAGES_PER_SOURCE images per source (by annotation count).
+    """
     filename_counts = datasets.groupby(["source", "filename"]).size().reset_index(name="count")
-    max_count_indices = filename_counts.groupby("source")["count"].idxmax()
-    max_count_filenames = filename_counts.loc[max_count_indices]
-    
-    # Get one row per source (the first row for each filename with max annotations)
-    mini_datasets = []
-    for _, row in max_count_filenames.iterrows():
-        source_data = datasets[(datasets["source"] == row["source"]) & (datasets["filename"] == row["filename"])]
-        mini_datasets.append(source_data.iloc[0])  # Take the first row
-    
-    mini_datasets = pd.DataFrame(mini_datasets)
-    mini_filenames = mini_datasets["filename"].tolist()
-    mini_annotations = datasets[datasets["filename"].isin(mini_filenames)]
+    # Top N images per source by annotation count
+    top_per_source = (
+        filename_counts.sort_values("count", ascending=False)
+        .groupby("source", group_keys=False)
+        .apply(lambda g: g.head(MINI_IMAGES_PER_SOURCE))
+        .reset_index(drop=True)
+    )
+    mini_filenames = top_per_source["filename"].unique().tolist()
+    mini_annotations = datasets[datasets["filename"].isin(mini_filenames)].copy()
+    # Ensure at least one filename is test so val_loader is non-empty during training.
+    # The global 80/20 split can assign all one-per-source filenames to train by chance.
+    if (mini_annotations["split"] == "test").sum() == 0 and len(mini_annotations) > 0:
+        first_filename = mini_annotations["filename"].iloc[0]
+        mini_annotations.loc[mini_annotations["filename"] == first_filename, "split"] = "test"
     mini_annotations.to_csv(f"{base_dir}Mini{dataset_type}_{version}/random.csv", index=False)
     
     # Copy images for mini datasets
@@ -387,13 +411,13 @@ def limit_test_images(df, test_sources, max_images=50):
 def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix=""):
     """Perform zero-shot split and save the results."""
     # Define test and train sources
-    test_sources_polygons = ["Troles et al. 2024","Bolhman 2008","Lefebvre et al. 2024"]
+    test_sources_polygons = ["Troles et al. 2024","Bolhman 2008","Lefebvre et al. 2024","NEON MultiTemporal"]
     train_sources_polygons = [x for x in TreePolygons_datasets.source.unique() if x not in test_sources_polygons]
 
-    test_sources_points = ["Amirkolaee et al. 2023","NEON_points"]
+    test_sources_points = ["Amirkolaee et al. 2023","NEON_points","NEON MultiTemporal"]
     train_sources_points = [x for x in TreePoints_datasets.source.unique() if x not in test_sources_points]
 
-    test_sources_boxes = ["Radogoshi et al. 2021","SelvaBox","NEON_benchmark"]
+    test_sources_boxes = ["Radogoshi et al. 2021","SelvaBox","NEON_benchmark","NEON MultiTemporal"]
     train_sources_boxes = [x for x in TreeBoxes_datasets.source.unique() if x not in test_sources_boxes]
 
     # Assign splits for polygons
@@ -544,7 +568,11 @@ def run(version, base_dir, debug=False):
         ,"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
         "/orange/ewhite/DeepForest/SelvaBox/annotations.csv",
         "/orange/ewhite/DeepForest/neon_unsupervised/TreeBoxes_neon_unsupervised.csv",
-        "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreeBoxes_OFO_unsupervised.csv"
+        "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreeBoxes_OFO_unsupervised.csv",
+        "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreeBoxes_NEON_MultiTemporal.csv",
+        "/orange/ewhite/DeepForest/Puliti_2022/annotations.csv",
+        # Krkonoše Bílé Labe (Zenodo 15591546): run data_prep/Krkonose_BileLabe.py then point to annotations.csv
+        #"/orange/ewhite/DeepForest/Zenodo_15591546/annotations.csv",
         #"/orange/ewhite/DeepForest/Beloiu_2023/annotations.csv",
    ]
 
@@ -553,10 +581,12 @@ def run(version, base_dir, debug=False):
         "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
         "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
         #'/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
-        "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv",
+        "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations_tcd_filtered.csv",
         "/orange/ewhite/DeepForest/Yosemite/tiles/yosemite_all_annotations.csv",
         "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreePoints_OFO_unsupervised.csv",
         "/orange/ewhite/DeepForest/Kaggle_LiDAR_RGB/pngs/annotations.csv",
+        "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreePoints_NEON_MultiTemporal.csv",
+        "/orange/ewhite/DeepForest/OSBS_megaplot/2025/pngs/annotations.csv",
         #'/orange/ewhite/DeepForest/Miraki/annotations.csv'
     ]
 
@@ -582,10 +612,11 @@ def run(version, base_dir, debug=False):
         #"/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
         "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/crops/annotations.csv",
         "/orange/ewhite/DeepForest/Schutte_Germany/annotations.csv",
+        "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreePolygons_NEON_MultiTemporal.csv",
         #"/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv",
         
     ]
-    
+
     # Combine datasets
     TreeBoxes_datasets = combine_datasets(TreeBoxes, debug=debug)
     TreePoints_datasets = combine_datasets(TreePoints, debug=debug)
@@ -615,6 +646,9 @@ def run(version, base_dir, debug=False):
     TreePoints_datasets = process_geometry_columns(TreePoints_datasets, "point")
     TreePolygons_datasets = process_geometry_columns(TreePolygons_datasets, "polygon")
 
+    # Remove degenerate boxes (zero width/height) so albumentations does not raise
+    TreeBoxes_datasets = filter_degenerate_boxes(TreeBoxes_datasets)
+    
     # Remove degenerate polygons (those that would create invalid bounding boxes)
     TreePolygons_datasets = filter_degenerate_polygons(TreePolygons_datasets)
 
@@ -680,7 +714,7 @@ def run(version, base_dir, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.10"
+    version = "v0.11"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     debug = False
     run(version, base_dir, debug)

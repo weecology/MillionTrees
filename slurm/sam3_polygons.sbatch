@@ -5,7 +5,7 @@
 #SBATCH --array=0-2
 #SBATCH --time=48:00:00
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=50G
+#SBATCH --mem=100G
 #SBATCH --gres=gpu:1
 
 set -euo pipefail
@@ -17,11 +17,11 @@ if [[ -f .hf_token ]]; then
 fi
 
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
-SPLITS=(random zeroshot crossgeometry)
+SPLITS=(random)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 # Batch size - can be increased due to chunked evaluation optimization
-BATCH_SIZE=8
+BATCH_SIZE=4
 
 uv run python docs/examples/sam3_polygons.py \
   --root-dir "$ROOT_DIR" \

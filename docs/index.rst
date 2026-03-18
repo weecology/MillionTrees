@@ -10,13 +10,13 @@ The MillionTrees seeks to collect a million tree locations to create a global be
 Current Status
 --------------
 
-There are 3 datasets available for the MillionTrees benchmark:
- 
-* TreeBoxes: A dataset of 197,343 tree crowns from 10 sources.
+There are 3 datasets available for the MillionTrees benchmark (v0.10, 292 GB total):
 
-* TreePolygons: A dataset of 760,347 tree crowns from 12 sources.
+* TreeBoxes: 1,615,798 annotations from 19,894 images across 10 sources.
 
-* TreePoints: A dataset of 256,308 tree stems from 4 sources.
+* TreePolygons: 805,818 annotations from 19,948 images across 15 sources.
+
+* TreePoints: 1,219,904 annotations from 33,369 images across 7 sources.
 
 There are 3 split_schemes available for the MillionTrees benchmark:
 

@@ -42,7 +42,7 @@ class MillionTreesDataset:
         x = self.get_input(idx)
         y_indices = self._input_lookup[self._input_array[idx]]
         y = torch.tensor(self.y_array[y_indices])
-        metadata = torch.tensor(self.metadata_array[idx])
+        metadata = self.metadata_array[idx].clone()
         targets = {self.geometry_name: y, "labels": np.zeros(len(y), dtype=int)}
 
         return metadata, x, targets
@@ -359,6 +359,11 @@ class MillionTreesDataset:
             print(
                 f"\nIt took {round(download_time_in_minutes, 2)} minutes to download and uncompress the dataset.\n"
             )
+
+            version_file = os.path.join(data_dir,
+                                        f'RELEASE_v{self.version}.txt')
+            with open(version_file, 'w') as f:
+                f.write(f'v{self.version}\n')
         except Exception as e:
             print(
                 f"\n{os.path.join(data_dir, 'archive.zip')} may be corrupted. Please try deleting it and rerunning this command.\n"
@@ -488,10 +493,21 @@ class MillionTreesSubset(MillionTreesDataset):
         metadata, x, targets = self.dataset[self.indices[idx]]
 
         if self._dataset_name == 'TreeBoxes':
-            augmented = self.transform(image=x,
-                                       bboxes=targets[self.geometry_name],
-                                       labels=targets["labels"])
-            y = torch.from_numpy(augmented["bboxes"]).float()
+            # Extra safety: drop any degenerate boxes created by downstream processing
+            # before passing to Albumentations, which rejects zero-width/height boxes.
+            bboxes = np.array(targets[self.geometry_name])
+            labels_arr = np.array(targets["labels"])
+            if len(bboxes) > 0:
+                valid = (bboxes[:, 2] > bboxes[:, 0]) & (bboxes[:, 3]
+                                                         > bboxes[:, 1])
+                bboxes = bboxes[valid]
+                labels_arr = labels_arr[valid]
+            augmented = self.transform(
+                image=x,
+                bboxes=bboxes.tolist(),
+                labels=labels_arr.tolist(),
+            )
+            y = torch.tensor(np.array(augmented["bboxes"]), dtype=torch.float32)
 
         elif self._dataset_name == 'TreePoints':
             augmented = self.transform(
@@ -499,28 +515,48 @@ class MillionTreesSubset(MillionTreesDataset):
                 keypoints=targets[self.geometry_name],
                 labels=targets["labels"],
             )
-            y = torch.from_numpy(augmented["keypoints"]).float()
+            y = torch.tensor(np.array(augmented["keypoints"]),
+                             dtype=torch.float32)
 
         else:
             masks = [mask for mask in targets[self.geometry_name]]
-            augmented = self.transform(image=x,
-                                       masks=masks,
-                                       bboxes=targets["bboxes"],
-                                       labels=targets["labels"])
-
-            y = augmented['masks']
-            # Handle empty masks case
-            if len(y) == 0:
-                # Get image dimensions from augmented image
-                img_h, img_w = augmented['image'].shape[1], augmented[
-                    'image'].shape[2]
+            # Albumentations rejects empty mask lists; use a dummy mask then discard
+            if len(masks) == 0:
+                h, w = x.shape[0], x.shape[1]
+                dummy_mask = [np.zeros((h, w), dtype=np.uint8)]
+                dummy_bboxes = [[0, 0, 1, 1]]
+                dummy_labels = [0]
+                augmented = self.transform(
+                    image=x,
+                    masks=dummy_mask,
+                    bboxes=dummy_bboxes,
+                    labels=dummy_labels,
+                )
+                img_h, img_w = augmented["image"].shape[1], augmented[
+                    "image"].shape[2]
                 y = torch.zeros((0, img_h, img_w), dtype=torch.uint8)
+                bboxes = torch.zeros(0, 4)
+                labels = torch.zeros(0, dtype=torch.long)
             else:
-                y = torch.stack(y, dim=0)
-            bboxes = augmented['bboxes']
+                augmented = self.transform(
+                    image=x,
+                    masks=masks,
+                    bboxes=targets["bboxes"],
+                    labels=targets["labels"],
+                )
+                y = augmented["masks"]
+                if len(y) == 0:
+                    img_h, img_w = augmented["image"].shape[1], augmented[
+                        "image"].shape[2]
+                    y = torch.zeros((0, img_h, img_w), dtype=torch.uint8)
+                else:
+                    y = torch.stack(y, dim=0)
+                bboxes = augmented["bboxes"]
+                labels = torch.from_numpy(np.array(augmented["labels"]))
 
-        x = augmented['image']
-        labels = torch.from_numpy(np.array(augmented["labels"]))
+        x = augmented["image"]
+        if self._dataset_name != "TreePolygons":
+            labels = torch.from_numpy(np.array(augmented["labels"]))
 
         # If image has no annotations, set zeros
         if len(y) == 0:

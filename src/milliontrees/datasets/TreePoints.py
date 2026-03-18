@@ -24,7 +24,7 @@ class TreePointsDataset(MillionTreesDataset):
         - crossgeometry: Boxes and Points are used to predict polygons.
         - zeroshot: Selected sources are entirely held out for testing.
     Input (x):
-        RGB images from camera traps
+        RGB aerial images
     Label (y):
         y is an n x 2 matrix where each row represents a keypoint (x, y)
     Metadata:
@@ -40,9 +40,9 @@ class TreePointsDataset(MillionTreesDataset):
             'download_url': '',
             'compressed_size': 160938856
         },
-        "0.10": {
+        "0.11": {
             'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.10.zip",
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.11.zip",
             'compressed_size':
                 164722449837
         }
@@ -55,16 +55,18 @@ class TreePointsDataset(MillionTreesDataset):
                  split_scheme='random',
                  geometry_name='y',
                  remove_incomplete=False,
-                 distance_threshold=0.1,
+                 distance_threshold=0.02,
                  include_sources=None,
                  exclude_sources=None,
-                 mini=False):
+                 mini=False,
+                 image_size=448):
 
         self._version = version
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name
         self.distance_threshold = distance_threshold
         self.mini = mini
+        self.image_size = image_size
 
         if self._split_scheme not in ['random', 'crossgeometry', 'zeroshot']:
             raise ValueError(
@@ -133,7 +135,7 @@ class TreePointsDataset(MillionTreesDataset):
 
         # Create lookup table for which index to select for each filename
         self._input_lookup = self.df.groupby('filename').apply(
-            lambda x: x.index.values).to_dict()
+            lambda x: x.index.values, include_groups=False).to_dict()
 
         # Point labels
         self._y_array = self.df[["x", "y"]].values.astype(int)
@@ -171,9 +173,12 @@ class TreePointsDataset(MillionTreesDataset):
 
         self.metrics = {
             "KeypointAccuracy":
-                KeypointAccuracy(distance_threshold=distance_threshold),
+                KeypointAccuracy(
+                    distance_threshold=distance_threshold,
+                    image_size=self.image_size,
+                ),
             "CountingAccuracy":
-                CountingError()
+                CountingError(),
         }
 
         self._collate = TreePointsDataset._collate_fn
@@ -191,11 +196,11 @@ class TreePointsDataset(MillionTreesDataset):
         for version, info in self._versions_dict.items():
             mini_info = info.copy()
             if info['download_url']:
-                # Replace dataset name with Mini version in URL
                 original_filename = f"TreePoints_v{version}.zip"
                 mini_filename = f"MiniTreePoints_v{version}.zip"
                 mini_info['download_url'] = info['download_url'].replace(
                     original_filename, mini_filename)
+                mini_info['compressed_size'] = None
             mini_versions[version] = mini_info
         return mini_versions
 
@@ -267,11 +272,13 @@ class TreePointsDataset(MillionTreesDataset):
         return tuple(batch)
 
     def _transform_(self):
-        self.transform = A.Compose(
-            [A.Resize(height=448, width=448, p=1.0),
-             ToTensorV2()],
-            keypoint_params=A.KeypointParams(format='xy',
-                                             label_fields=['labels'],
-                                             remove_invisible=False))
+        self.transform = A.Compose([
+            A.Resize(height=self.image_size, width=self.image_size, p=1.0),
+            ToTensorV2()
+        ],
+                                   keypoint_params=A.KeypointParams(
+                                       format='xy',
+                                       label_fields=['labels'],
+                                       remove_invisible=False))
 
         return self.transform
