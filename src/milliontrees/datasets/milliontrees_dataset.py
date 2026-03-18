@@ -498,7 +498,8 @@ class MillionTreesSubset(MillionTreesDataset):
             bboxes = np.array(targets[self.geometry_name])
             labels_arr = np.array(targets["labels"])
             if len(bboxes) > 0:
-                valid = (bboxes[:, 2] > bboxes[:, 0]) & (bboxes[:, 3] > bboxes[:, 1])
+                valid = (bboxes[:, 2] > bboxes[:, 0]) & (bboxes[:, 3]
+                                                         > bboxes[:, 1])
                 bboxes = bboxes[valid]
                 labels_arr = labels_arr[valid]
             augmented = self.transform(
@@ -506,7 +507,7 @@ class MillionTreesSubset(MillionTreesDataset):
                 bboxes=bboxes.tolist(),
                 labels=labels_arr.tolist(),
             )
-            y = torch.from_numpy(augmented["bboxes"]).float()
+            y = torch.tensor(np.array(augmented["bboxes"]), dtype=torch.float32)
 
         elif self._dataset_name == 'TreePoints':
             augmented = self.transform(
@@ -514,7 +515,8 @@ class MillionTreesSubset(MillionTreesDataset):
                 keypoints=targets[self.geometry_name],
                 labels=targets["labels"],
             )
-            y = torch.from_numpy(augmented["keypoints"]).float()
+            y = torch.tensor(np.array(augmented["keypoints"]),
+                             dtype=torch.float32)
 
         else:
             masks = [mask for mask in targets[self.geometry_name]]
@@ -530,7 +532,8 @@ class MillionTreesSubset(MillionTreesDataset):
                     bboxes=dummy_bboxes,
                     labels=dummy_labels,
                 )
-                img_h, img_w = augmented["image"].shape[1], augmented["image"].shape[2]
+                img_h, img_w = augmented["image"].shape[1], augmented[
+                    "image"].shape[2]
                 y = torch.zeros((0, img_h, img_w), dtype=torch.uint8)
                 bboxes = torch.zeros(0, 4)
                 labels = torch.zeros(0, dtype=torch.long)
@@ -543,7 +546,8 @@ class MillionTreesSubset(MillionTreesDataset):
                 )
                 y = augmented["masks"]
                 if len(y) == 0:
-                    img_h, img_w = augmented["image"].shape[1], augmented["image"].shape[2]
+                    img_h, img_w = augmented["image"].shape[1], augmented[
+                        "image"].shape[2]
                     y = torch.zeros((0, img_h, img_w), dtype=torch.uint8)
                 else:
                     y = torch.stack(y, dim=0)
