@@ -12,7 +12,7 @@ The second task is to create the best global detector for individual trees given
 
 ## Cross-geometry
 
-Off the shelf tools often limit users for a single annotation type. We have 'point' models, 'box' models and 'polygon' models. To create truly global models for biological inference, we need models that can use all available data, not just one annotation geometry. In particular, polygon annotations are very time consuming to create, but are often desirable for downstream usecases. We opted against polygon training sources, for example polygons to points, as this is an unrealistic, or atleast, very uncommon downstream use case. 
+Off the shelf tools often limit users for a single annotation type. We have 'point' models, 'box' models and 'polygon' models. To create truly global models for biological inference, we need models that can use all available data, not just one annotation geometry. In particular, polygon annotations are very time consuming to create, but are often desirable for downstream usecases. We opted against polygon training sources, for example polygons to points, as this is an unrealistic, or atleast, very uncommon downstream use case.
 
 ### Boxes to Polygons
 
@@ -22,7 +22,7 @@ All box sources are used to train and predict all polygon sources. There is no l
 
 All point sources are used to train and predict all polygon sources
 
-### Points to Boxes 
+### Points to Boxes
 
 All point sources are used to train and predict all box sources.
 
@@ -32,26 +32,28 @@ All point sources are used to train and predict all box sources.
 
 ### Random
 
-| Model | Task | Dataset | Counting MAE | Script |
-|---|---|---|---|---|
-| SAM3 (`sam3_points.py`) | TreePoints | TreePoints | 23.691 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
-| DeepForest baseline (`baseline_points.py`) | TreePoints | TreePoints | 25.289 | <small>`uv run python docs/examples/baseline_points.py --split-scheme random`</small> |
+| Model | Fine-tuned | Counting MAE | Script |
+|---|:---:|---|---|
+| SAM3 | ✗ | 23.691 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| DeepForest | ✗ | 25.289 | <small>`uv run python docs/examples/baseline_points.py --split-scheme random`</small> |
+| DeepForest | ✓ | 26.359 | <small>`uv run python training/points/train.py --split-scheme random`</small> |
 
 ### Zero-shot
 
-| Model | Task | Dataset | Counting MAE | Script |
-|---|---|---|---|---|
-| DeepForest baseline (`baseline_points.py`) | TreePoints | TreePoints | 51.462 | <small>`uv run python docs/examples/baseline_points.py --split-scheme zeroshot`</small> |
-| SAM3 (`sam3_points.py`) | TreePoints | TreePoints | 55.043 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| Model | Fine-tuned | Counting MAE | Script |
+|---|:---:|---|---|
+| DeepForest | ✗ | 51.462 | <small>`uv run python docs/examples/baseline_points.py --split-scheme zeroshot`</small> |
+| SAM3 | ✗ | 55.043 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| DeepForest | ✓ | 68.723 | <small>`uv run python training/points/train.py --split-scheme zeroshot`</small> |
 
 ### Cross-geometry
 
 > **Note:** Cross-geometry splits are designed for predicting polygons from other annotation geometries. The 0.000 scores below reflect that this split is not applicable to point prediction.
 
-| Model | Task | Dataset | Counting MAE | Script |
-|---|---|---|---|---|
-| DeepForest baseline (`baseline_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/baseline_points.py --split-scheme crossgeometry`</small> |
-| SAM3 (`sam3_points.py`) | TreePoints | TreePoints | 0.000 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
+| Model | Fine-tuned | Counting MAE | Script |
+|---|:---:|---|---|
+| DeepForest | ✗ | 0.000 | <small>`uv run python docs/examples/baseline_points.py --split-scheme crossgeometry`</small> |
+| SAM3 | ✗ | 0.000 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
 
 ![TreePoints: model predictions by split](leaderboard_predictions_points.png)
 
@@ -59,26 +61,28 @@ All point sources are used to train and predict all box sources.
 
 ### Random
 
-| Model | Task | Dataset | Avg Recall | Script |
-|---|---|---|---|---|
-| DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | TreeBoxes | 0.395 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme random`</small> |
-| SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes | 0.172 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| Model | Fine-tuned | Avg Recall | Script |
+|---|:---:|---|---|
+| DeepForest | ✓ | 0.534 | <small>`uv run python training/boxes/train.py --split-scheme random`</small> |
+| DeepForest | ✗ | 0.395 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme random`</small> |
+| SAM3 | ✗ | 0.172 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 
 ### Zero-shot
 
-| Model | Task | Dataset | Avg Recall | Script |
-|---|---|---|---|---|
-| DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | TreeBoxes | 0.530 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme zeroshot`</small> |
-| SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes | 0.206 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| Model | Fine-tuned | Avg Recall | Script |
+|---|:---:|---|---|
+| DeepForest | ✗ | 0.530 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme zeroshot`</small> |
+| DeepForest | ✓ | 0.508 | <small>`uv run python training/boxes/train.py --split-scheme zeroshot`</small> |
+| SAM3 | ✗ | 0.206 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 
 ### Cross-geometry
 
 > **Note:** Cross-geometry splits are designed for predicting polygons from other annotation geometries. The 0.000 scores below reflect that this split is not applicable to box prediction.
 
-| Model | Task | Dataset | Avg Recall | Script |
-|---|---|---|---|---|
-| DeepForest baseline (`baseline_boxes.py`) | TreeBoxes | TreeBoxes | 0.000 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme crossgeometry`</small> |
-| SAM3 (`sam3_boxes.py`) | TreeBoxes | TreeBoxes | 0.000 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
+| Model | Fine-tuned | Avg Recall | Script |
+|---|:---:|---|---|
+| DeepForest | ✗ | 0.000 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme crossgeometry`</small> |
+| SAM3 | ✗ | 0.000 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
 
 ![TreeBoxes: model predictions by split](leaderboard_predictions_boxes.png)
 
@@ -86,24 +90,26 @@ All point sources are used to train and predict all box sources.
 
 ### Random
 
-| Model | Task | Dataset | Avg Mask Accuracy | Script |
-|---|---|---|---|---|
-| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons | 0.090 | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme random`</small> |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons | 0.167 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| Model | Fine-tuned | Avg Mask Accuracy | Script |
+|---|:---:|---|---|
+| DeepForest | ✓ | 0.196 | <small>`uv run python training/polygons/train.py --split-scheme random`</small> |
+| SAM3 | ✗ | 0.167 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| DeepForest | ✗ | 0.090 | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme random`</small> |
 
 ### Zero-shot
 
-| Model | Task | Dataset | Avg Mask Accuracy | Script |
-|---|---|---|---|---|
-| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons | 0.071 | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme zeroshot`</small> |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons | 0.322 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| Model | Fine-tuned | Avg Mask Accuracy | Script |
+|---|:---:|---|---|
+| SAM3 | ✗ | 0.322 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| DeepForest | ✓ | 0.185 | <small>`uv run python training/polygons/train.py --split-scheme zeroshot`</small> |
+| DeepForest | ✗ | 0.071 | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme zeroshot`</small> |
 
 ### Cross-geometry
 
-| Model | Task | Dataset | Avg Mask Accuracy | Script |
-|---|---|---|---|---|
-| DeepForest baseline (`baseline_polygons.py`) | TreePolygons | TreePolygons | 0.071 | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme crossgeometry`</small> |
-| SAM3 (`sam3_polygons.py`) | TreePolygons | TreePolygons | 0.322 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
+| Model | Fine-tuned | Avg Mask Accuracy | Script |
+|---|:---:|---|---|
+| SAM3 | ✗ | 0.322 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
+| DeepForest | ✗ | 0.071 | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme crossgeometry`</small> |
 
 ![TreePolygons: model predictions by split](leaderboard_predictions_polygons.png)
 
@@ -125,7 +131,7 @@ Once you have trained a model and evaluated its performance, you can submit your
    ```python
    test_dataset = dataset.get_subset("test")  # Use test split
    test_loader = get_eval_loader("standard", test_dataset, batch_size=16)
-   
+
    predictions = []
    for metadata, images, _ in test_loader:
        pred = model(images)
@@ -138,40 +144,3 @@ Once you have trained a model and evaluated its performance, you can submit your
    - Performance metrics on test set
    - Example prediction visualizations
    - Instructions for reproducing results
-
-## Benchmark Results
-
-Comparison of fine-tuned models (trained on MillionTrees) vs. pretrained models evaluated zero-shot.
-
-### Split: random
-
-### TreeBoxes
-
-| Model | DetectionAccuracy | DetectionRecall |
-|---||---||---|
-| DeepForest-finetuned | 0.274 | 0.534 |
-| DeepForest-pretrained | 0.316 | 0.449 |
-| SAM3 | 0.172 | 0.197 |
-
-### TreePoints
-
-| Model | KeypointAccuracy | CountingMAE |
-|---||---||---|
-| DeepForest-finetuned | 0.274 | 26.359 |
-
-### Split: zeroshot
-
-### TreeBoxes
-
-| Model | DetectionAccuracy | DetectionRecall |
-|---||---||---|
-| DeepForest-finetuned | 0.298 | 0.508 |
-| DeepForest-pretrained | 0.399 | 0.538 |
-| SAM3 | 0.185 | 0.199 |
-
-### TreePoints
-
-| Model | KeypointAccuracy | CountingMAE |
-|---||---||---|
-| DeepForest-finetuned | 0.071 | 68.723 |
-
