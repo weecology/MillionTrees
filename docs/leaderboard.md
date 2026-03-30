@@ -138,3 +138,40 @@ Once you have trained a model and evaluated its performance, you can submit your
    - Performance metrics on test set
    - Example prediction visualizations
    - Instructions for reproducing results
+
+## Benchmark Results
+
+Comparison of fine-tuned models (trained on MillionTrees) vs. pretrained models evaluated zero-shot.
+
+### Split: random
+
+### TreeBoxes
+
+| Model | DetectionAccuracy | DetectionRecall |
+|---||---||---|
+| DeepForest-finetuned | 0.274 | 0.534 |
+| DeepForest-pretrained | 0.316 | 0.449 |
+| SAM3 | 0.172 | 0.197 |
+
+### TreePoints
+
+| Model | KeypointAccuracy | CountingMAE |
+|---||---||---|
+| DeepForest-finetuned | 0.274 | 26.359 |
+
+### Split: zeroshot
+
+### TreeBoxes
+
+| Model | DetectionAccuracy | DetectionRecall |
+|---||---||---|
+| DeepForest-finetuned | 0.298 | 0.508 |
+| DeepForest-pretrained | 0.399 | 0.538 |
+| SAM3 | 0.185 | 0.199 |
+
+### TreePoints
+
+| Model | KeypointAccuracy | CountingMAE |
+|---||---||---|
+| DeepForest-finetuned | 0.071 | 68.723 |
+
