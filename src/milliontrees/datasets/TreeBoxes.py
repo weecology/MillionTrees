@@ -13,6 +13,7 @@ import fnmatch
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import DetectionAccuracy
+from milliontrees.common.onboarding import print_dataset_summary
 from PIL import Image
 
 from albumentations.pytorch import ToTensorV2
@@ -91,7 +92,8 @@ class TreeBoxesDataset(MillionTreesDataset):
                  image_size=448,
                  include_sources=None,
                  exclude_sources=None,
-                 mini=False):
+                 mini=False,
+                 verbose=True):
 
         self._version = version
         self._split_scheme = split_scheme
@@ -99,6 +101,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.eval_score_threshold = eval_score_threshold
         self.image_size = image_size
         self.mini = mini
+        self.verbose = verbose
 
         if self._split_scheme not in ['random', 'zeroshot', 'crossgeometry']:
             raise ValueError(
@@ -116,6 +119,7 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         # Cache available sources for convenience
         self.sources = df['source'].unique()
+        available_source_count = len(self.sources)
 
         # Remove incomplete data based on flag
         if remove_incomplete:
@@ -145,6 +149,8 @@ class TreeBoxesDataset(MillionTreesDataset):
             mask_exclude = source_str.apply(lambda s: any(
                 fnmatch.fnmatch(s, p) for p in patterns_exclude_lower))
             df = df[~mask_exclude]
+        selected_source_count = df['source'].nunique()
+        df = df.reset_index(drop=True)
 
         # Splits
         self._split_dict = {
@@ -219,6 +225,27 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._eval_grouper = CombinatorialGrouper(dataset=self,
                                                   groupby_fields=(['source_id'
                                                                   ]))
+
+        if self.verbose:
+            n_train_images = int(
+                (self._split_array == self._split_dict['train']).sum())
+            n_test_images = int(
+                (self._split_array == self._split_dict['test']).sum())
+            print_dataset_summary(
+                dataset_name=self._dataset_name,
+                version=self.version,
+                data_dir=self._data_dir,
+                split_scheme=self._split_scheme,
+                n_annotations=len(df),
+                n_total_images=len(unique_files),
+                n_train_images=n_train_images,
+                n_test_images=n_test_images,
+                n_available_sources=available_source_count,
+                n_selected_sources=selected_source_count,
+                mini=self.mini,
+                include_patterns=include_patterns,
+                exclude_patterns=exclude_patterns,
+            )
 
         super().__init__(root_dir, download, split_scheme)
 

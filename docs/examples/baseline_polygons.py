@@ -92,17 +92,25 @@ def plot_eval_result(
     basename = pred_df.image_path.unique()[0] if len(pred_df) > 0 else "empty"
 
     # Ground truth
+    gt_df = pd.DataFrame(
+        image_targets["bboxes"],
+        columns=["xmin", "ymin", "xmax", "ymax"],
+    )
+    gt_df["image_path"] = basename
     gt_df = read_file(
-        pd.DataFrame(
-            image_targets["bboxes"],
-            columns=["xmin", "ymin", "xmax", "ymax"]
-        ),
-        label="Tree"
+        gt_df,
+        root_dir=os.path.join(dataset._data_dir._str, "images"),
+        image_path=basename,
+        label="Tree",
     )
     gt_df["label"] = "Tree"
 
     # Predictions
-    pred_vis_df = read_file(pred_df) if len(pred_df) > 0 else pred_df
+    pred_vis_df = read_file(
+        pred_df,
+        root_dir=os.path.join(dataset._data_dir._str, "images"),
+        image_path=basename,
+    ) if len(pred_df) > 0 else pred_df
     if len(pred_df) > 0 and "label" not in pred_vis_df.columns:
         pred_vis_df["label"] = "Tree"
 

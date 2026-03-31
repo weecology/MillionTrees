@@ -41,6 +41,26 @@ print(results_str)
 
 The evaluation returns a dictionary of metrics and a formatted string with per-source breakdowns and averages.
 
+## External Model Adapter Example (Segmentation / DeepTrees-style)
+
+If your model outputs instance masks (for example, a segmentation model such as DeepTrees), use the adapter example:
+
+`docs/examples/external_segmentation_adapter.py`
+
+Run a full smoke test without any external dependency:
+
+```bash
+python docs/examples/external_segmentation_adapter.py \
+  --mini --download --mock --root-dir onboarding_data
+```
+
+Then replace `run_external_model_batch(images)` in the script with your model call.  
+The adapter function `adapt_segmentation_prediction(...)` handles conversion to MillionTrees format:
+
+- `masks` -> `y` (`Tensor[N, H, W]`, uint8)
+- optional `scores` -> `scores` (`Tensor[N]`, float32, defaults to ones)
+- optional `labels` -> `labels` (`Tensor[N]`, int64, defaults to zeros)
+
 ## TreeBoxes
 
 The following can be recreated in the git repo: https://github.com/weecology/MillionTrees/blob/main/docs/examples/baseline_boxes.py
