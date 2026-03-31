@@ -1,8 +1,10 @@
 import os
 import time
+from pathlib import Path
 
 import torch
 import numpy as np
+from PIL import Image
 
 
 class MillionTreesDataset:
@@ -44,6 +46,9 @@ class MillionTreesDataset:
         y = torch.tensor(self.y_array[y_indices])
         metadata = self.metadata_array[idx].clone()
         targets = {self.geometry_name: y, "labels": np.zeros(len(y), dtype=int)}
+        tree_coverage_mask = self.get_tree_coverage_mask(idx, x.shape[:2])
+        if tree_coverage_mask is not None:
+            targets["tree_coverage_mask"] = tree_coverage_mask
 
         return metadata, x, targets
 
@@ -55,6 +60,27 @@ class MillionTreesDataset:
             - x (Tensor): Input features of the idx-th data point
         """
         raise NotImplementedError
+
+    def get_tree_coverage_mask(self, idx, image_shape):
+        """Load a precomputed tree/no-tree mask for an image if available."""
+        masks_dir = Path(self._data_dir) / "masks"
+        if not masks_dir.exists():
+            return None
+
+        image_name = self._input_array[idx]
+        mask_path = masks_dir / f"{Path(image_name).stem}.png"
+        if not mask_path.exists():
+            raise FileNotFoundError(
+                f"Missing tree coverage mask for {image_name}: expected {mask_path}"
+            )
+
+        mask = np.array(Image.open(mask_path).convert("L"), dtype=np.uint8)
+        mask = (mask > 0).astype(np.uint8)
+        if tuple(mask.shape[:2]) != tuple(image_shape):
+            raise ValueError(
+                f"Mask shape {mask.shape[:2]} does not match image shape {image_shape} for {image_name}"
+            )
+        return mask
 
     def eval(self, y_pred, y_true, metadata):
         """
@@ -491,6 +517,7 @@ class MillionTreesSubset(MillionTreesDataset):
 
     def __getitem__(self, idx):
         metadata, x, targets = self.dataset[self.indices[idx]]
+        tree_coverage_mask = targets.get("tree_coverage_mask")
 
         if self._dataset_name == 'TreeBoxes':
             # Extra safety: drop any degenerate boxes created by downstream processing
@@ -502,33 +529,57 @@ class MillionTreesSubset(MillionTreesDataset):
                                                          > bboxes[:, 1])
                 bboxes = bboxes[valid]
                 labels_arr = labels_arr[valid]
-            augmented = self.transform(
-                image=x,
-                bboxes=bboxes.tolist(),
-                labels=labels_arr.tolist(),
-            )
+            if tree_coverage_mask is None:
+                augmented = self.transform(
+                    image=x,
+                    bboxes=bboxes.tolist(),
+                    labels=labels_arr.tolist(),
+                )
+            else:
+                augmented = self.transform(
+                    image=x,
+                    bboxes=bboxes.tolist(),
+                    labels=labels_arr.tolist(),
+                    mask=tree_coverage_mask,
+                )
+                tree_coverage_mask = augmented["mask"]
             y = torch.tensor(np.array(augmented["bboxes"]), dtype=torch.float32)
 
         elif self._dataset_name == 'TreePoints':
-            augmented = self.transform(
-                image=x,
-                keypoints=targets[self.geometry_name],
-                labels=targets["labels"],
-            )
+            if tree_coverage_mask is None:
+                augmented = self.transform(
+                    image=x,
+                    keypoints=targets[self.geometry_name],
+                    labels=targets["labels"],
+                )
+            else:
+                augmented = self.transform(
+                    image=x,
+                    keypoints=targets[self.geometry_name],
+                    labels=targets["labels"],
+                    mask=tree_coverage_mask,
+                )
+                tree_coverage_mask = augmented["mask"]
             y = torch.tensor(np.array(augmented["keypoints"]),
                              dtype=torch.float32)
 
         else:
             masks = [mask for mask in targets[self.geometry_name]]
+            coverage_with_masks = tree_coverage_mask is not None
+            transformed_masks = masks
+            if coverage_with_masks:
+                transformed_masks = masks + [tree_coverage_mask]
             # Albumentations rejects empty mask lists; use a dummy mask then discard
             if len(masks) == 0:
                 h, w = x.shape[0], x.shape[1]
                 dummy_mask = [np.zeros((h, w), dtype=np.uint8)]
                 dummy_bboxes = [[0, 0, 1, 1]]
                 dummy_labels = [0]
+                masks_input = dummy_mask + ([tree_coverage_mask]
+                                            if coverage_with_masks else [])
                 augmented = self.transform(
                     image=x,
-                    masks=dummy_mask,
+                    masks=masks_input,
                     bboxes=dummy_bboxes,
                     labels=dummy_labels,
                 )
@@ -537,14 +588,20 @@ class MillionTreesSubset(MillionTreesDataset):
                 y = torch.zeros((0, img_h, img_w), dtype=torch.uint8)
                 bboxes = torch.zeros(0, 4)
                 labels = torch.zeros(0, dtype=torch.long)
+                if coverage_with_masks:
+                    tree_coverage_mask = augmented["masks"][-1]
             else:
                 augmented = self.transform(
                     image=x,
-                    masks=masks,
+                    masks=transformed_masks,
                     bboxes=targets["bboxes"],
                     labels=targets["labels"],
                 )
-                y = augmented["masks"]
+                if coverage_with_masks:
+                    tree_coverage_mask = augmented["masks"][-1]
+                    y = augmented["masks"][:-1]
+                else:
+                    y = augmented["masks"]
                 if len(y) == 0:
                     img_h, img_w = augmented["image"].shape[1], augmented[
                         "image"].shape[2]
@@ -557,6 +614,10 @@ class MillionTreesSubset(MillionTreesDataset):
         x = augmented["image"]
         if self._dataset_name != "TreePolygons":
             labels = torch.from_numpy(np.array(augmented["labels"]))
+        if tree_coverage_mask is not None:
+            if isinstance(tree_coverage_mask, np.ndarray):
+                tree_coverage_mask = torch.from_numpy(tree_coverage_mask)
+            tree_coverage_mask = (tree_coverage_mask > 0).to(torch.uint8)
 
         # If image has no annotations, set zeros
         if len(y) == 0:
@@ -575,6 +636,8 @@ class MillionTreesSubset(MillionTreesDataset):
             }
         else:
             targets = {self.geometry_name: y, "labels": labels}
+        if tree_coverage_mask is not None:
+            targets["tree_coverage_mask"] = tree_coverage_mask
 
         return metadata, x, targets
 

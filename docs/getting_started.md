@@ -54,6 +54,8 @@ metadata, image, targets = train_dataset[0]
 print(f"Metadata length: {len(metadata)}")
 print(f"Image shape: {image.shape}, Image type: {type(image)}")
 print(f"Targets keys: {targets.keys()}, Label type: {type(targets)}")
+if "tree_coverage_mask" in targets:
+    print(f"Coverage mask shape: {targets['tree_coverage_mask'].shape}")
 ```
 
 ### Include/Exclude sources
@@ -91,7 +93,7 @@ ds_polygons = TreePolygonsDataset(
 
 Datasets are batched into lists of target dictionaries, tensors of images, and tensors of metadata.
 Each target dictionary contains tensors of the ground truth with the keys dict_keys
-(['y', 'labels']). 'y' differs among the TreeGeometry datasets.
+(['y', 'labels', 'tree_coverage_mask']). 'y' differs among the TreeGeometry datasets.
 
 ```python
 train_loader = get_train_loader("standard", train_dataset, batch_size=2)
@@ -101,6 +103,8 @@ for metadata, image, targets in train_loader:
     print("Targets is a list of dictionaries with the following keys: ", targets[0].keys())
     print(f"Image shape: {image.shape}, Image type: {type(image)}")
     print(f"Annotation shape of the first image: {targets[0]['y'].shape}")
+    if "tree_coverage_mask" in targets[0]:
+        print(f"Coverage mask shape of the first image: {targets[0]['tree_coverage_mask'].shape}")
     break
 ```
 

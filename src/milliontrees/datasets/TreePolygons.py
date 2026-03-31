@@ -279,6 +279,9 @@ class TreePolygonsDataset(MillionTreesDataset):
             "bboxes": bboxes,
             "labels": np.zeros(len(masks), dtype=int)
         }
+        tree_coverage_mask = self.get_tree_coverage_mask(idx, x.shape[:2])
+        if tree_coverage_mask is not None:
+            targets["tree_coverage_mask"] = tree_coverage_mask
 
         return metadata, x, targets
 

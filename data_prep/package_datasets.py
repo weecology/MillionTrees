@@ -154,7 +154,9 @@ def filter_degenerate_polygons(datasets):
 def create_directories(base_dir, dataset_type):
     """Create directories for the dataset."""
     os.makedirs(f"{base_dir}{dataset_type}_{version}/images", exist_ok=True)
+    os.makedirs(f"{base_dir}{dataset_type}_{version}/masks", exist_ok=True)
     os.makedirs(f"{base_dir}Mini{dataset_type}_{version}/images", exist_ok=True)
+    os.makedirs(f"{base_dir}Mini{dataset_type}_{version}/masks", exist_ok=True)
 
 
 def copy_images(datasets, base_dir, dataset_type):
@@ -163,6 +165,41 @@ def copy_images(datasets, base_dir, dataset_type):
         destination = f"{base_dir}{dataset_type}_{version}/images/"
         if not os.path.exists(os.path.join(destination, os.path.basename(image))):
             shutil.copy(image, destination)
+
+
+def copy_masks(datasets, base_dir, dataset_type, mask_source_dir):
+    """Copy precomputed tree coverage masks to the destination folder."""
+    mask_source_dir = Path(mask_source_dir)
+    for image in datasets["filename"].unique():
+        image_basename = os.path.basename(image)
+        mask_name = f"{Path(image_basename).stem}.png"
+        source_mask = mask_source_dir / mask_name
+        if not source_mask.exists():
+            raise FileNotFoundError(
+                f"Missing tree coverage mask for {image_basename}: expected {source_mask}"
+            )
+        destination = f"{base_dir}{dataset_type}_{version}/masks/"
+        destination_mask = os.path.join(destination, mask_name)
+        if not os.path.exists(destination_mask):
+            shutil.copy(source_mask, destination_mask)
+
+
+def copy_packaged_assets_from_full(base_dir, dataset_type, version, filenames, suffix, subdir):
+    """Copy already-packaged assets (images/masks) into suffixed dataset folders."""
+    source_dir = Path(f"{base_dir}{dataset_type}_{version}/{subdir}")
+    dest_dir = Path(f"{base_dir}{dataset_type}{suffix}_{version}/{subdir}")
+    os.makedirs(dest_dir, exist_ok=True)
+    for filename in set(filenames):
+        if subdir == "images":
+            src_name = filename
+        else:
+            src_name = f"{Path(filename).stem}.png"
+        src = source_dir / src_name
+        dst = dest_dir / src_name
+        if not src.exists():
+            raise FileNotFoundError(f"Missing packaged {subdir[:-1]} file: {src}")
+        if not dst.exists():
+            shutil.copy(src, dst)
 
 MINI_IMAGES_PER_SOURCE = 3
 
@@ -192,6 +229,9 @@ def create_mini_datasets(datasets, base_dir, dataset_type, version):
     for image in mini_filenames:
         destination = f"{base_dir}Mini{dataset_type}_{version}/images/"
         shutil.copy(f"{base_dir}{dataset_type}_{version}/images/" + image, destination)
+        mask_name = f"{Path(image).stem}.png"
+        mini_mask_destination = f"{base_dir}Mini{dataset_type}_{version}/masks/"
+        shutil.copy(f"{base_dir}{dataset_type}_{version}/masks/" + mask_name, mini_mask_destination)
 
     # Generate visualizations for each source
     for source, group in mini_annotations.groupby("source"):
@@ -229,6 +269,8 @@ def process_splits_and_release(TreePolygons_datasets, TreePoints_datasets, TreeB
         # Update dataset directories with suffix
         for dataset_type in ["TreeBoxes", "TreePoints", "TreePolygons"]:
             os.makedirs(f"{adjusted_base_dir}{dataset_type}{suffix}_{version}", exist_ok=True)
+            os.makedirs(f"{adjusted_base_dir}{dataset_type}{suffix}_{version}/images", exist_ok=True)
+            os.makedirs(f"{adjusted_base_dir}{dataset_type}{suffix}_{version}/masks", exist_ok=True)
     
         
     # Select columns
@@ -551,7 +593,13 @@ def check_for_updated_annotations(dataset, geometry):
         dataset = pd.concat([dataset, all_new], ignore_index=True)
     
     return dataset
-def run(version, base_dir, debug=False):
+def run(version, base_dir, mask_source_dir=None, debug=False):
+    if mask_source_dir is None:
+        mask_source_dir = os.environ.get("MILLIONTREES_MASKS_DIR")
+    if mask_source_dir is None:
+        raise ValueError(
+            "mask_source_dir is required. Pass it directly or set MILLIONTREES_MASKS_DIR."
+        )
     TreeBoxes = [
         #"/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
         #"/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
@@ -656,6 +704,9 @@ def run(version, base_dir, debug=False):
     copy_images(TreeBoxes_datasets, base_dir, "TreeBoxes")
     copy_images(TreePoints_datasets, base_dir, "TreePoints")
     copy_images(TreePolygons_datasets, base_dir, "TreePolygons")
+    copy_masks(TreeBoxes_datasets, base_dir, "TreeBoxes", mask_source_dir)
+    copy_masks(TreePoints_datasets, base_dir, "TreePoints", mask_source_dir)
+    copy_masks(TreePolygons_datasets, base_dir, "TreePolygons", mask_source_dir)
 
     # change filenames to relative path
     TreeBoxes_datasets["filename"] = TreeBoxes_datasets["filename"].apply(os.path.basename)
@@ -696,6 +747,24 @@ def run(version, base_dir, debug=False):
         version,
         suffix="_supervised"
     )
+    copy_packaged_assets_from_full(
+        base_dir, "TreeBoxes", version, TreeBoxes_supervised["filename"], "_supervised", "images"
+    )
+    copy_packaged_assets_from_full(
+        base_dir, "TreePoints", version, TreePoints_supervised["filename"], "_supervised", "images"
+    )
+    copy_packaged_assets_from_full(
+        base_dir, "TreePolygons", version, TreePolygons_supervised["filename"], "_supervised", "images"
+    )
+    copy_packaged_assets_from_full(
+        base_dir, "TreeBoxes", version, TreeBoxes_supervised["filename"], "_supervised", "masks"
+    )
+    copy_packaged_assets_from_full(
+        base_dir, "TreePoints", version, TreePoints_supervised["filename"], "_supervised", "masks"
+    )
+    copy_packaged_assets_from_full(
+        base_dir, "TreePolygons", version, TreePolygons_supervised["filename"], "_supervised", "masks"
+    )
 
     # Zip datasets (commented out for large datasets to save space/time)
     zip_directory(f"{base_dir}TreeBoxes_{version}", f"{base_dir}TreeBoxes_{version}.zip")
@@ -716,5 +785,6 @@ def run(version, base_dir, debug=False):
 if __name__ == "__main__":
     version = "v0.11"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
+    mask_source_dir = "/orange/ewhite/DeepForest/tree_coverage_masks"
     debug = False
-    run(version, base_dir, debug)
+    run(version, base_dir, mask_source_dir, debug)
