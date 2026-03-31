@@ -30,6 +30,14 @@ The MillionTrees benchmark supports multiple dataset split schemes to accommodat
 
 Each split scheme uses the same underlying data, so you don't need to redownload when changing split schemes! 
 
+### Packaged folders
+
+Each packaged dataset directory contains:
+
+- `images/`: RGB image chips
+- `masks/`: precomputed tree coverage masks (binary PNG, one per image basename)
+- split CSV files (`random.csv`, `zeroshot.csv`, `crossgeometry.csv`)
+
 ## Dataset Class
 
 Part of the inspiration of this package is to keep most users from needing to interact with the filesystem. The dataloaders are built in, and for many applications, the user will never need to mess around with csv files or image paths. All annotations are pytorch dataloaders and can be iterated over.
@@ -38,7 +46,7 @@ Part of the inspiration of this package is to keep most users from needing to in
 for metadata, image, targets in dataset:
     print(f"Metadata shape: {metadata.shape}")  # (2,) -> [filename_id, source_id]
     print(f"Image shape: {image.shape}")         # (3, H, W)
-    print(f"Targets keys: {targets.keys()}")     # dict_keys(['y', 'labels'])
+    print(f"Targets keys: {targets.keys()}")     # dict_keys(['y', 'labels', 'tree_coverage_mask'])
     break
 ```
 
@@ -58,7 +66,7 @@ for metadata, image, targets in train_dataset:
 
 Datasets are batched into lists of target dictionaries, tensors of images, and tensors of metadata.
 Each target dictionary contains tensors of the ground truth with the keys dict_keys
-(['y', 'labels']). 'y' differs among the TreeGeometry datasets.
+(['y', 'labels', 'tree_coverage_mask']). 'y' differs among the TreeGeometry datasets.
 
 ```python
 train_loader = get_train_loader("standard", train_dataset, batch_size=2)
@@ -145,6 +153,7 @@ Each item returned by a dataset is `(metadata, image, targets)` where `targets` 
 | TreePolygons | Binary masks       | `Tensor[N, H, W]` uint8        | One binary mask per instance                |
 
 All datasets also include `targets["labels"]`: `ndarray[N]` int64 (class labels, typically all `0` for "tree").
+When coverage masks are present in the packaged data, datasets include `targets["tree_coverage_mask"]` as a binary tensor aligned with the transformed image (`H x W`).
 
 ### Boxes
 Boxes annotations are given as xmin, ymin, xmax, ymax coordinates relative to the image origin (top-left).
