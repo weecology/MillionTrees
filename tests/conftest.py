@@ -1,6 +1,7 @@
 import pytest
 import os
 import tempfile
+import shutil
 import pandas as pd
 import numpy as np
 from PIL import Image
@@ -32,6 +33,7 @@ def dataset():
     release_file = os.path.join(data_dir, "RELEASE_v0.0.txt")
     with open(release_file, "w") as f:
         f.write("v0.0")
+    shutil.copytree(data_dir, os.path.join(tmp_dir, "TreeBoxes_supervised_v0.0"))
 
     # Generate the polygon dataset
     data_dir = os.path.join(tmp_dir, "TreePolygons_v0.0")
@@ -49,6 +51,8 @@ def dataset():
     release_file = os.path.join(data_dir, "RELEASE_v0.0.txt")
     with open(release_file, "w") as f:
         f.write("v0.0")
+    shutil.copytree(data_dir,
+                    os.path.join(tmp_dir, "TreePolygons_supervised_v0.0"))
     
     # Generate the point dataset
     data_dir = os.path.join(tmp_dir, "TreePoints_v0.0")
@@ -67,6 +71,7 @@ def dataset():
     release_file = os.path.join(data_dir, "RELEASE_v0.0.txt")
     with open(release_file, "w") as f:
         f.write("v0.0") 
+    shutil.copytree(data_dir, os.path.join(tmp_dir, "TreePoints_supervised_v0.0"))
 
     return tmp_dir
 
