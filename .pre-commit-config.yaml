@@ -3,15 +3,15 @@ repos:
     hooks:
       - id: yapf
         name: yapf (style formatter)
-        entry: yapf
-        language: python
+        entry: uv run yapf
+        language: system
         args: [--style=.style.yapf, --in-place]
         files: ^src/milliontrees/.*\.py$
 
       - id: docformatter
         name: docformatter (docstring formatter)
-        entry: docformatter
-        language: python
+        entry: uv run docformatter
+        language: system
         args:
           - --wrap-summaries=100
           - --wrap-descriptions=100

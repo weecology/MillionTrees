@@ -46,11 +46,11 @@ class TreeBoxesDataset(MillionTreesDataset):
         image_size (int): The size of the image to use.
         include_sources (list): The sources to include.
         exclude_sources (list): The sources to exclude.
-        weak_supervised (bool): If True, include weak supervised data in addition to
+        unsupervised (bool): If True, include unsupervised data in addition to
             any other selected sources (unless explicitly excluded).
         mini (bool): If True, download mini versions of datasets for development.
             Mini datasets are smaller subsets that maintain the same structure.
-        weak_supervised_args (dict): The arguments to pass to the weak supervised download pipeline.
+        unsupervised_args (dict): The arguments to pass to the unsupervised download pipeline.
 
     References:
         Website: https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
@@ -71,11 +71,14 @@ class TreeBoxesDataset(MillionTreesDataset):
         # 0.0 is a placeholder for the testing dataset
         '0.0': {
             'download_url': '',
+            'supervised_download_url': '',
             'compressed_size': 105525592
         },
         "0.11": {
             'download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.11.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.11.zip",
             'compressed_size':
                 42922274383
         }
@@ -93,7 +96,8 @@ class TreeBoxesDataset(MillionTreesDataset):
                  include_sources=None,
                  exclude_sources=None,
                  mini=False,
-                 verbose=True):
+                 verbose=True,
+                 include_unsupervised=False):
 
         self._version = version
         self._split_scheme = split_scheme
@@ -102,6 +106,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.image_size = image_size
         self.mini = mini
         self.verbose = verbose
+        self.include_unsupervised = include_unsupervised
 
         if self._split_scheme not in ['random', 'zeroshot', 'crossgeometry']:
             raise ValueError(
@@ -111,8 +116,24 @@ class TreeBoxesDataset(MillionTreesDataset):
         if mini:
             self._versions_dict = self._get_mini_versions_dict()
 
+        # Select supervised-only dataset by default (smaller download).
+        # Users must opt in with include_unsupervised=True to get the full dataset.
+        if not include_unsupervised:
+            modified_versions = {}
+            for v, info in self._versions_dict.items():
+                modified_info = dict(info)
+                if info.get('supervised_download_url') is not None:
+                    modified_info['download_url'] = info[
+                        'supervised_download_url']
+                modified_versions[v] = modified_info
+            self._versions_dict = modified_versions
+            self._dataset_name = 'TreeBoxes_supervised'
+
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
+
+        # Restore dataset name for proper operation after directory setup
+        self._dataset_name = 'TreeBoxes'
 
         # Load splits
         df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
@@ -126,13 +147,14 @@ class TreeBoxesDataset(MillionTreesDataset):
             df = df[df['complete'] == True]
 
         # Filter by include/exclude source names with wildcard support
+        # Default: exclude sources containing 'unsupervised'
         include_patterns = None
         if include_sources is not None and include_sources != []:
             include_patterns = include_sources if isinstance(
                 include_sources, (list, tuple)) else [include_sources]
         exclude_patterns = exclude_sources
         if exclude_patterns is None:
-            exclude_patterns = []
+            exclude_patterns = ['*unsupervised*']
         elif not isinstance(exclude_patterns, (list, tuple)):
             exclude_patterns = [exclude_patterns]
 
@@ -289,11 +311,15 @@ class TreeBoxesDataset(MillionTreesDataset):
         for version, info in self._versions_dict.items():
             mini_info = info.copy()
             if info['download_url']:
-                original_filename = f"TreeBoxes_v{version}.zip"
-                mini_filename = f"MiniTreeBoxes_v{version}.zip"
                 mini_info['download_url'] = info['download_url'].replace(
-                    original_filename, mini_filename)
+                    f"TreeBoxes_v{version}.zip",
+                    f"MiniTreeBoxes_v{version}.zip")
                 mini_info['compressed_size'] = None
+            if info.get('supervised_download_url'):
+                mini_info['supervised_download_url'] = info[
+                    'supervised_download_url'].replace(
+                        f"TreeBoxes_supervised_v{version}.zip",
+                        f"MiniTreeBoxes_supervised_v{version}.zip")
             mini_versions[version] = mini_info
         return mini_versions
 

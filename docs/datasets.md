@@ -16,7 +16,7 @@ from milliontrees.datasets.TreePoints import TreePointsDataset
 dataset = TreePointsDataset()
 sources = dataset.sources
 print("Available sources:", sources)
-# Available sources: ['Kattenborn_NewZealand', 'NeonTreeEvaluation', 'OFO_weak_supervised', 'NEON_weak_supervised'...]
+# Available sources: ['Kattenborn_NewZealand', 'NeonTreeEvaluation', 'OFO_unsupervised', 'NEON_unsupervised'...]
 ```
 
 Include only specific sources:
@@ -31,10 +31,10 @@ Exclude specific sources (exact names or glob patterns supported):
 
 ```py
 # Exclude a single source by name
-dataset = TreePointsDataset(exclude_sources=['NEON_weak_supervised'])
+dataset = TreePointsDataset(exclude_sources=['NEON_unsupervised'])
 
 # Exclude by pattern (wildcards)
-dataset = TreePointsDataset(exclude_sources=['*_weak_supervised'])
+dataset = TreePointsDataset(exclude_sources=['*_unsupervised'])
 ```
 
 ## Mini-datasets
@@ -404,7 +404,7 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 There is also a training-only portion of this that was used in conjuction with a model to predict labels that were then verified.   
 
-# Weak Supervised
+# Unsupervised
 
 ## Weinstein et al. 2018
 
@@ -424,7 +424,7 @@ https://openforestobservatory.org/
 
 https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.13860
 
-### Source Name: "Young et al. 2025 weak supervised"
+### Source Name: "Young et al. 2025 unsupervised"
 
 ***Location*** Forest across the United States
 

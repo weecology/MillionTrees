@@ -47,11 +47,14 @@ class TreePolygonsDataset(MillionTreesDataset):
     _versions_dict = {
         '0.0': {
             'download_url': '',
+            'supervised_download_url': '',
             'compressed_size': 105525592
         },
         "0.11": {
             'download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.11.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.11.zip",
             'compressed_size':
                 106085316699
         }
@@ -69,7 +72,8 @@ class TreePolygonsDataset(MillionTreesDataset):
                  include_sources=None,
                  exclude_sources=None,
                  mini=False,
-                 verbose=True):
+                 verbose=True,
+                 include_unsupervised=False):
 
         self._version = version
         self._split_scheme = split_scheme
@@ -78,6 +82,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         self.eval_score_threshold = eval_score_threshold
         self.mini = mini
         self.verbose = verbose
+        self.include_unsupervised = include_unsupervised
 
         self._collate = TreePolygonsDataset._collate_fn
 
@@ -89,8 +94,24 @@ class TreePolygonsDataset(MillionTreesDataset):
         if mini:
             self._versions_dict = self._get_mini_versions_dict()
 
+        # Select supervised-only dataset by default (smaller download).
+        # Users must opt in with include_unsupervised=True to get the full dataset.
+        if not include_unsupervised:
+            modified_versions = {}
+            for v, info in self._versions_dict.items():
+                modified_info = dict(info)
+                if info.get('supervised_download_url') is not None:
+                    modified_info['download_url'] = info[
+                        'supervised_download_url']
+                modified_versions[v] = modified_info
+            self._versions_dict = modified_versions
+            self._dataset_name = 'TreePolygons_supervised'
+
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
+
+        # Restore dataset name for proper operation after directory setup
+        self._dataset_name = 'TreePolygons'
 
         # Load splits
         df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
@@ -104,14 +125,14 @@ class TreePolygonsDataset(MillionTreesDataset):
             df = df[df['complete'] == True]
 
         # Filter by include/exclude source names with wildcard support
-        # Default: exclude sources containing 'weak supervised'
+        # Default: exclude sources containing 'unsupervised'
         include_patterns = None
         if include_sources is not None and include_sources != []:
             include_patterns = include_sources if isinstance(
                 include_sources, (list, tuple)) else [include_sources]
         exclude_patterns = exclude_sources
         if exclude_patterns is None:
-            exclude_patterns = ['*weak supervised*']
+            exclude_patterns = ['*unsupervised*']
         elif not isinstance(exclude_patterns, (list, tuple)):
             exclude_patterns = [exclude_patterns]
 
@@ -376,11 +397,15 @@ class TreePolygonsDataset(MillionTreesDataset):
         for version, info in self._versions_dict.items():
             mini_info = info.copy()
             if info['download_url']:
-                original_filename = f"TreePolygons_v{version}.zip"
-                mini_filename = f"MiniTreePolygons_v{version}.zip"
                 mini_info['download_url'] = info['download_url'].replace(
-                    original_filename, mini_filename)
+                    f"TreePolygons_v{version}.zip",
+                    f"MiniTreePolygons_v{version}.zip")
                 mini_info['compressed_size'] = None
+            if info.get('supervised_download_url'):
+                mini_info['supervised_download_url'] = info[
+                    'supervised_download_url'].replace(
+                        f"TreePolygons_supervised_v{version}.zip",
+                        f"MiniTreePolygons_supervised_v{version}.zip")
             mini_versions[version] = mini_info
         return mini_versions
 

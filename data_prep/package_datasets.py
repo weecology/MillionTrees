@@ -339,18 +339,18 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
     TreePoints_datasets = apply_split(TreePoints_datasets)
     TreeBoxes_datasets = apply_split(TreeBoxes_datasets)
 
-    # Remove from test split any entries with 'weak supervised' in the source column or Feng source
-    def remove_weak_supervised_test_entries(df):
+    # Remove from test split any entries with 'unsupervised' in the source column or Feng source
+    def remove_unsupervised_test_entries(df):
         if "split" in df.columns and "source" in df.columns:
-            weak_supervised_mask = (df["split"] == "test") & (df["source"].str.contains("weak supervised", case=False, na=False))
+            unsupervised_mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised", case=False, na=False))
             feng_mask = (df["split"] == "test") & (df["source"] == "Feng et al. 2025")
-            mask = weak_supervised_mask | feng_mask
+            mask = unsupervised_mask | feng_mask
             return df.loc[~mask]
         return df
 
-    TreePolygons_datasets = remove_weak_supervised_test_entries(TreePolygons_datasets)
-    TreePoints_datasets = remove_weak_supervised_test_entries(TreePoints_datasets)
-    TreeBoxes_datasets = remove_weak_supervised_test_entries(TreeBoxes_datasets)
+    TreePolygons_datasets = remove_unsupervised_test_entries(TreePolygons_datasets)
+    TreePoints_datasets = remove_unsupervised_test_entries(TreePoints_datasets)
+    TreeBoxes_datasets = remove_unsupervised_test_entries(TreeBoxes_datasets)
     
     # Limit test images to 100 per source
     # Get all sources that have test data
@@ -391,18 +391,18 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
     TreePoints_datasets["split"] = "train"
     TreeBoxes_datasets["split"] = "train"
 
-    # remove any source with weak supervised or Feng from test
-    weak_supervised_mask_polygons = (TreePolygons_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreePolygons_datasets.split == "test")
+    # remove any source with unsupervised or Feng from test
+    unsupervised_mask_polygons = (TreePolygons_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreePolygons_datasets.split == "test")
     feng_mask_polygons = (TreePolygons_datasets.source == "Feng et al. 2025") & (TreePolygons_datasets.split == "test")
-    TreePolygons_datasets = TreePolygons_datasets[~(weak_supervised_mask_polygons | feng_mask_polygons)]
+    TreePolygons_datasets = TreePolygons_datasets[~(unsupervised_mask_polygons | feng_mask_polygons)]
     
-    weak_supervised_mask_points = (TreePoints_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreePoints_datasets.split == "test")
+    unsupervised_mask_points = (TreePoints_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreePoints_datasets.split == "test")
     feng_mask_points = (TreePoints_datasets.source == "Feng et al. 2025") & (TreePoints_datasets.split == "test")
-    TreePoints_datasets = TreePoints_datasets[~(weak_supervised_mask_points | feng_mask_points)]
+    TreePoints_datasets = TreePoints_datasets[~(unsupervised_mask_points | feng_mask_points)]
     
-    weak_supervised_mask_boxes = (TreeBoxes_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test")
+    unsupervised_mask_boxes = (TreeBoxes_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test")
     feng_mask_boxes = (TreeBoxes_datasets.source == "Feng et al. 2025") & (TreeBoxes_datasets.split == "test")
-    TreeBoxes_datasets = TreeBoxes_datasets[~(weak_supervised_mask_boxes | feng_mask_boxes)]
+    TreeBoxes_datasets = TreeBoxes_datasets[~(unsupervised_mask_boxes | feng_mask_boxes)]
 
     # Save the splits to CSV (use consistent folder naming: <DatasetName><suffix>_<version>)
     TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/crossgeometry.csv", index=False)
@@ -478,19 +478,19 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     TreePoints_datasets = limit_test_images(TreePoints_datasets, test_sources_points)
     TreeBoxes_datasets = limit_test_images(TreeBoxes_datasets, test_sources_boxes)
 
-    # Remove Feng and weak supervised from test (shouldn't be there, but filter for safety)
-    def remove_feng_and_weak_supervised_from_test(df):
+    # Remove Feng and unsupervised from test (shouldn't be there, but filter for safety)
+    def remove_feng_and_unsupervised_from_test(df):
         if "split" in df.columns and "source" in df.columns:
-            weak_supervised_mask = (df["split"] == "test") & (df["source"].str.contains("weak supervised", case=False, na=False))
+            unsupervised_mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised", case=False, na=False))
             feng_mask = (df["split"] == "test") & (df["source"] == "Feng et al. 2025")
-            mask = weak_supervised_mask | feng_mask
+            mask = unsupervised_mask | feng_mask
             if mask.any():
                 df.loc[mask, "split"] = "train"
         return df
     
-    TreePolygons_datasets = remove_feng_and_weak_supervised_from_test(TreePolygons_datasets)
-    TreePoints_datasets = remove_feng_and_weak_supervised_from_test(TreePoints_datasets)
-    TreeBoxes_datasets = remove_feng_and_weak_supervised_from_test(TreeBoxes_datasets)
+    TreePolygons_datasets = remove_feng_and_unsupervised_from_test(TreePolygons_datasets)
+    TreePoints_datasets = remove_feng_and_unsupervised_from_test(TreePoints_datasets)
+    TreeBoxes_datasets = remove_feng_and_unsupervised_from_test(TreeBoxes_datasets)
 
     # Save the splits to CSV
     TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/zeroshot.csv", index=False)
@@ -502,9 +502,9 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     print(f"TreePoints: {base_dir}TreePoints{suffix}_{version}/zeroshot.csv")
     print(f"TreeBoxes: {base_dir}TreeBoxes{suffix}_{version}/zeroshot.csv")
 
-def filter_out_weak_supervised(datasets):
-    """Filter out datasets that contain 'weak supervised' in the source name."""
-    return datasets[~datasets['source'].str.contains('weak supervised', case=False, na=False)]
+def filter_out_unsupervised(datasets):
+    """Filter out datasets that contain 'unsupervised' in the source name."""
+    return datasets[~datasets['source'].str.contains('unsupervised', case=False, na=False)]
 
 def check_for_updated_annotations(dataset, geometry):
     updated_annotations = [pd.read_csv(x) for x in glob.glob(f"data_prep/annotations/*{geometry}*.csv")]
@@ -718,8 +718,8 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     create_mini_datasets(TreePoints_datasets, base_dir, "TreePoints", version)
     create_mini_datasets(TreePolygons_datasets, base_dir, "TreePolygons", version)
 
-    # Process all sources (including weak supervised)
-    print("\n=== Processing ALL sources (including weak supervised) ===")
+    # Process all sources (including unsupervised)
+    print("\n=== Processing ALL sources (including unsupervised) ===")
     process_splits_and_release(
         TreePolygons_datasets.copy(), 
         TreePoints_datasets.copy(), 
@@ -728,11 +728,11 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
         version
     )
     
-    # Process supervised sources only (excluding weak supervised)
-    print("\n=== Processing SUPERVISED sources only (excluding weak supervised) ===")
-    TreeBoxes_supervised = filter_out_weak_supervised(TreeBoxes_datasets)
-    TreePoints_supervised = filter_out_weak_supervised(TreePoints_datasets)
-    TreePolygons_supervised = filter_out_weak_supervised(TreePolygons_datasets)
+    # Process supervised sources only (excluding unsupervised)
+    print("\n=== Processing SUPERVISED sources only (excluding unsupervised) ===")
+    TreeBoxes_supervised = filter_out_unsupervised(TreeBoxes_datasets)
+    TreePoints_supervised = filter_out_unsupervised(TreePoints_datasets)
+    TreePolygons_supervised = filter_out_unsupervised(TreePolygons_datasets)
     
     print(f"Filtered datasets:")
     print(f"  TreeBoxes: {len(TreeBoxes_datasets)} -> {len(TreeBoxes_supervised)} samples")
