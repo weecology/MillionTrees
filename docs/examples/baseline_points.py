@@ -52,14 +52,16 @@ def format_deepforest_predictions(
             formatted_pred = pd.DataFrame(columns=["x", "y", "score", "label"])  # empty
         else:
             formatted_pred = format_geometry(image_pred)
-            formatted_pred.root_dir = os.path.join(dataset._data_dir._str, "images")
-            formatted_pred = read_file(formatted_pred)
+            formatted_pred["image_path"] = basename
+            formatted_pred = read_file(
+                formatted_pred,
+                root_dir=os.path.join(dataset._data_dir._str, "images"),
+                image_path=basename,
+            )
             
             # Convert boxes to centroids
             formatted_pred["geometry"] = gpd.GeoSeries(formatted_pred["geometry"]).centroid
             formatted_pred[["x", "y"]] = formatted_pred["geometry"].apply(lambda g: pd.Series([g.x, g.y]))
-            formatted_pred["image_path"] = basename
-
             y_pred = {
                 "y": torch.tensor(formatted_pred[["x", "y"]].values.astype("float32")),
                 "labels": torch.tensor(_map_labels_to_int(formatted_pred.label, model)),
@@ -88,13 +90,25 @@ def plot_eval_result(
     )
 
     # Ground truth
-    gt_df = read_file(pd.DataFrame(image_targets["y"].numpy(), columns=["x", "y"]))
+    gt_df = pd.DataFrame(image_targets["y"].numpy(), columns=["x", "y"])
+    gt_df["image_path"] = basename
+    gt_df = read_file(
+        gt_df,
+        root_dir=os.path.join(dataset._data_dir._str, "images"),
+        image_path=basename,
+        label="Tree",
+    )
     gt_df["label"] = "Tree"
     gt_df["score"] = 1
 
     # Predictions
     if isinstance(pred_df, pd.DataFrame) and len(pred_df) > 0:
-        pred_vis_df = read_file(pred_df, root_dir=os.path.join(dataset._data_dir._str, "images"))
+        pred_vis_df = read_file(
+            pred_df,
+            root_dir=os.path.join(dataset._data_dir._str, "images"),
+            image_path=basename,
+            label="Tree",
+        )
         pred_vis_df["geometry"] = gpd.GeoSeries(pred_vis_df["geometry"]).centroid
         pred_vis_df[["x", "y"]] = pred_vis_df["geometry"].apply(lambda g: pd.Series([g.x, g.y]))
         if "label" not in pred_vis_df.columns:
