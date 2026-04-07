@@ -43,7 +43,7 @@ from milliontrees.common.data_loaders import get_train_loader
 from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
 
 # Download the data; this will take a while. By default sources containing
-# 'weak supervised' are excluded. You can override using include/exclude patterns.
+# 'unsupervised' are excluded. You can override using include/exclude patterns.
 # For development, consider using mini=True for faster downloads
 dataset = TreeBoxesDataset(download=True)  # Add mini=True for development
 
@@ -60,21 +60,21 @@ if "tree_coverage_mask" in targets:
 
 ### Include/Exclude sources
 
-You can select sources to include or exclude using wildcard patterns. Patterns use shell-style matching (e.g., `*weak supervised*`, `NEON_*`). If both are provided, inclusion is applied first, then exclusion.
+You can select sources to include or exclude using wildcard patterns. Patterns use shell-style matching (e.g., `*unsupervised*`, `NEON_*`). If both are provided, inclusion is applied first, then exclusion.
 
 ```python
 from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
 from milliontrees.datasets.TreePoints import TreePointsDataset
 from milliontrees.datasets.TreePolygons import TreePolygonsDataset
 
-# Exclude any source that contains 'weak supervised' (default behavior):
+# Exclude any source that contains 'unsupervised' (default behavior):
 ds_default = TreeBoxesDataset(download=False)
 
 # Explicitly include only NEON sources and exclude a subset
 ds_boxes = TreeBoxesDataset(
     download=False,
     include_sources=["NEON*", "Urban*"],
-    exclude_sources=["*weak supervised*", "NEON_TestSite*"]
+    exclude_sources=["*unsupervised*", "NEON_TestSite*"]
 )
 
 # Same API across geometries

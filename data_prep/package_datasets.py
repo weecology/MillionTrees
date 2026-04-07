@@ -168,20 +168,27 @@ def copy_images(datasets, base_dir, dataset_type):
 
 
 def copy_masks(datasets, base_dir, dataset_type, mask_source_dir):
-    """Copy precomputed tree coverage masks to the destination folder."""
+    """Copy precomputed tree coverage masks to the destination folder.
+
+    Returns a filtered dataset with rows removed for any images missing a mask.
+    """
     mask_source_dir = Path(mask_source_dir)
+    missing_images = set()
     for image in datasets["filename"].unique():
         image_basename = os.path.basename(image)
         mask_name = f"{Path(image_basename).stem}.png"
         source_mask = mask_source_dir / mask_name
         if not source_mask.exists():
-            raise FileNotFoundError(
-                f"Missing tree coverage mask for {image_basename}: expected {source_mask}"
-            )
+            print(f"Warning: Missing tree coverage mask for {image_basename}, removing from dataset.")
+            missing_images.add(image)
+            continue
         destination = f"{base_dir}{dataset_type}_{version}/masks/"
         destination_mask = os.path.join(destination, mask_name)
         if not os.path.exists(destination_mask):
             shutil.copy(source_mask, destination_mask)
+    if missing_images:
+        datasets = datasets[~datasets["filename"].isin(missing_images)].copy()
+    return datasets
 
 
 def copy_packaged_assets_from_full(base_dir, dataset_type, version, filenames, suffix, subdir):
@@ -339,18 +346,18 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
     TreePoints_datasets = apply_split(TreePoints_datasets)
     TreeBoxes_datasets = apply_split(TreeBoxes_datasets)
 
-    # Remove from test split any entries with 'weak supervised' in the source column or Feng source
-    def remove_weak_supervised_test_entries(df):
+    # Remove from test split any entries with 'unsupervised' in the source column or Feng source
+    def remove_unsupervised_test_entries(df):
         if "split" in df.columns and "source" in df.columns:
-            weak_supervised_mask = (df["split"] == "test") & (df["source"].str.contains("weak supervised", case=False, na=False))
+            unsupervised_mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised", case=False, na=False))
             feng_mask = (df["split"] == "test") & (df["source"] == "Feng et al. 2025")
-            mask = weak_supervised_mask | feng_mask
+            mask = unsupervised_mask | feng_mask
             return df.loc[~mask]
         return df
 
-    TreePolygons_datasets = remove_weak_supervised_test_entries(TreePolygons_datasets)
-    TreePoints_datasets = remove_weak_supervised_test_entries(TreePoints_datasets)
-    TreeBoxes_datasets = remove_weak_supervised_test_entries(TreeBoxes_datasets)
+    TreePolygons_datasets = remove_unsupervised_test_entries(TreePolygons_datasets)
+    TreePoints_datasets = remove_unsupervised_test_entries(TreePoints_datasets)
+    TreeBoxes_datasets = remove_unsupervised_test_entries(TreeBoxes_datasets)
     
     # Limit test images to 100 per source
     # Get all sources that have test data
@@ -391,18 +398,18 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
     TreePoints_datasets["split"] = "train"
     TreeBoxes_datasets["split"] = "train"
 
-    # remove any source with weak supervised or Feng from test
-    weak_supervised_mask_polygons = (TreePolygons_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreePolygons_datasets.split == "test")
+    # remove any source with unsupervised or Feng from test
+    unsupervised_mask_polygons = (TreePolygons_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreePolygons_datasets.split == "test")
     feng_mask_polygons = (TreePolygons_datasets.source == "Feng et al. 2025") & (TreePolygons_datasets.split == "test")
-    TreePolygons_datasets = TreePolygons_datasets[~(weak_supervised_mask_polygons | feng_mask_polygons)]
+    TreePolygons_datasets = TreePolygons_datasets[~(unsupervised_mask_polygons | feng_mask_polygons)]
     
-    weak_supervised_mask_points = (TreePoints_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreePoints_datasets.split == "test")
+    unsupervised_mask_points = (TreePoints_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreePoints_datasets.split == "test")
     feng_mask_points = (TreePoints_datasets.source == "Feng et al. 2025") & (TreePoints_datasets.split == "test")
-    TreePoints_datasets = TreePoints_datasets[~(weak_supervised_mask_points | feng_mask_points)]
+    TreePoints_datasets = TreePoints_datasets[~(unsupervised_mask_points | feng_mask_points)]
     
-    weak_supervised_mask_boxes = (TreeBoxes_datasets.source.str.contains('weak supervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test")
+    unsupervised_mask_boxes = (TreeBoxes_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test")
     feng_mask_boxes = (TreeBoxes_datasets.source == "Feng et al. 2025") & (TreeBoxes_datasets.split == "test")
-    TreeBoxes_datasets = TreeBoxes_datasets[~(weak_supervised_mask_boxes | feng_mask_boxes)]
+    TreeBoxes_datasets = TreeBoxes_datasets[~(unsupervised_mask_boxes | feng_mask_boxes)]
 
     # Save the splits to CSV (use consistent folder naming: <DatasetName><suffix>_<version>)
     TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/crossgeometry.csv", index=False)
@@ -478,19 +485,19 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     TreePoints_datasets = limit_test_images(TreePoints_datasets, test_sources_points)
     TreeBoxes_datasets = limit_test_images(TreeBoxes_datasets, test_sources_boxes)
 
-    # Remove Feng and weak supervised from test (shouldn't be there, but filter for safety)
-    def remove_feng_and_weak_supervised_from_test(df):
+    # Remove Feng and unsupervised from test (shouldn't be there, but filter for safety)
+    def remove_feng_and_unsupervised_from_test(df):
         if "split" in df.columns and "source" in df.columns:
-            weak_supervised_mask = (df["split"] == "test") & (df["source"].str.contains("weak supervised", case=False, na=False))
+            unsupervised_mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised", case=False, na=False))
             feng_mask = (df["split"] == "test") & (df["source"] == "Feng et al. 2025")
-            mask = weak_supervised_mask | feng_mask
+            mask = unsupervised_mask | feng_mask
             if mask.any():
                 df.loc[mask, "split"] = "train"
         return df
     
-    TreePolygons_datasets = remove_feng_and_weak_supervised_from_test(TreePolygons_datasets)
-    TreePoints_datasets = remove_feng_and_weak_supervised_from_test(TreePoints_datasets)
-    TreeBoxes_datasets = remove_feng_and_weak_supervised_from_test(TreeBoxes_datasets)
+    TreePolygons_datasets = remove_feng_and_unsupervised_from_test(TreePolygons_datasets)
+    TreePoints_datasets = remove_feng_and_unsupervised_from_test(TreePoints_datasets)
+    TreeBoxes_datasets = remove_feng_and_unsupervised_from_test(TreeBoxes_datasets)
 
     # Save the splits to CSV
     TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/zeroshot.csv", index=False)
@@ -502,9 +509,9 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     print(f"TreePoints: {base_dir}TreePoints{suffix}_{version}/zeroshot.csv")
     print(f"TreeBoxes: {base_dir}TreeBoxes{suffix}_{version}/zeroshot.csv")
 
-def filter_out_weak_supervised(datasets):
-    """Filter out datasets that contain 'weak supervised' in the source name."""
-    return datasets[~datasets['source'].str.contains('weak supervised', case=False, na=False)]
+def filter_out_unsupervised(datasets):
+    """Filter out datasets that contain 'unsupervised' in the source name."""
+    return datasets[~datasets['source'].str.contains('unsupervised', case=False, na=False)]
 
 def check_for_updated_annotations(dataset, geometry):
     updated_annotations = [pd.read_csv(x) for x in glob.glob(f"data_prep/annotations/*{geometry}*.csv")]
@@ -593,6 +600,24 @@ def check_for_updated_annotations(dataset, geometry):
         dataset = pd.concat([dataset, all_new], ignore_index=True)
     
     return dataset
+def load_annotation_csvs(cfg_path=None):
+    """Parse data_prep/annotation_csvs.cfg and return (TreeBoxes, TreePoints, TreePolygons) lists."""
+    if cfg_path is None:
+        cfg_path = os.path.join(os.path.dirname(__file__), "annotation_csvs.cfg")
+    sections = {"TreeBoxes": [], "TreePoints": [], "TreePolygons": []}
+    current = None
+    with open(cfg_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                current = line[1:-1]
+            elif current in sections:
+                sections[current].append(line)
+    return sections["TreeBoxes"], sections["TreePoints"], sections["TreePolygons"]
+
+
 def run(version, base_dir, mask_source_dir=None, debug=False):
     if mask_source_dir is None:
         mask_source_dir = os.environ.get("MILLIONTREES_MASKS_DIR")
@@ -600,70 +625,7 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
         raise ValueError(
             "mask_source_dir is required. Pass it directly or set MILLIONTREES_MASKS_DIR."
         )
-    TreeBoxes = [
-        #"/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
-        #"/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
-        #'/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
-        '/orange/ewhite/DeepForest/Radogoshi_Sweden/annotations.csv',
-        #"/orange/ewhite/DeepForest/WRI/WRI-labels-opensource/annotations.csv",
-        "/orange/ewhite/DeepForest/Guangzhou2022/annotations.csv",
-        "/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
-        "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
-        '/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
-        #"/orange/ewhite/DeepForest/Santos2019/annotations.csv",
-        "/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
-        "/orange/ewhite/DeepForest/OAM_TCD/annotations.csv"
-        ,"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
-        "/orange/ewhite/DeepForest/SelvaBox/annotations.csv",
-        "/orange/ewhite/DeepForest/neon_unsupervised/TreeBoxes_neon_unsupervised.csv",
-        "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreeBoxes_OFO_unsupervised.csv",
-        "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreeBoxes_NEON_MultiTemporal.csv",
-        "/orange/ewhite/DeepForest/Puliti_2022/annotations.csv",
-        # Krkonoše Bílé Labe (Zenodo 15591546): run data_prep/Krkonose_BileLabe.py then point to annotations.csv
-        #"/orange/ewhite/DeepForest/Zenodo_15591546/annotations.csv",
-        #"/orange/ewhite/DeepForest/Beloiu_2023/annotations.csv",
-   ]
-
-    TreePoints = [
-        "/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv",
-        "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
-        "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
-        #'/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
-        "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations_tcd_filtered.csv",
-        "/orange/ewhite/DeepForest/Yosemite/tiles/yosemite_all_annotations.csv",
-        "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreePoints_OFO_unsupervised.csv",
-        "/orange/ewhite/DeepForest/Kaggle_LiDAR_RGB/pngs/annotations.csv",
-        "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreePoints_NEON_MultiTemporal.csv",
-        "/orange/ewhite/DeepForest/OSBS_megaplot/2025/pngs/annotations.csv",
-        #'/orange/ewhite/DeepForest/Miraki/annotations.csv'
-    ]
-
-    TreePolygons = [
-        "/orange/ewhite/DeepForest/Jansen_2023/pngs/annotations.csv",
-        "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
-        "/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
-        "/orange/ewhite/DeepForest/Firoze2023/crops/annotations.csv",
-        "/orange/ewhite/DeepForest/paracou_ball/pngs/annotations.csv",
-        #"/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
-        #"/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
-        "/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",
-        #"/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
-        #"/orange/ewhite/DeepForest/Araujo_2020/annotations.csv",
-        #"/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv",
-        "/orange/ewhite/DeepForest/BCI/BCI_50ha_2020_08_01_crownmap_raw/annotations.csv",
-        "/orange/ewhite/DeepForest/BCI/BCI_50ha_2022_09_29_crownmap_raw/annotations.csv",
-        "/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv",
-        "/orange/ewhite/DeepForest/SPREAD/annotations.csv",
-        "/orange/ewhite/DeepForest/KagglePalm/Palm-Counting-349images/crops/annotations.csv",
-        "/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops/annotations.csv",
-        "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
-        #"/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
-        "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/crops/annotations.csv",
-        "/orange/ewhite/DeepForest/Schutte_Germany/annotations.csv",
-        "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreePolygons_NEON_MultiTemporal.csv",
-        #"/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv",
-        
-    ]
+    TreeBoxes, TreePoints, TreePolygons = load_annotation_csvs()
 
     # Combine datasets
     TreeBoxes_datasets = combine_datasets(TreeBoxes, debug=debug)
@@ -704,9 +666,9 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     copy_images(TreeBoxes_datasets, base_dir, "TreeBoxes")
     copy_images(TreePoints_datasets, base_dir, "TreePoints")
     copy_images(TreePolygons_datasets, base_dir, "TreePolygons")
-    copy_masks(TreeBoxes_datasets, base_dir, "TreeBoxes", mask_source_dir)
-    copy_masks(TreePoints_datasets, base_dir, "TreePoints", mask_source_dir)
-    copy_masks(TreePolygons_datasets, base_dir, "TreePolygons", mask_source_dir)
+    TreeBoxes_datasets = copy_masks(TreeBoxes_datasets, base_dir, "TreeBoxes", mask_source_dir)
+    TreePoints_datasets = copy_masks(TreePoints_datasets, base_dir, "TreePoints", mask_source_dir)
+    TreePolygons_datasets = copy_masks(TreePolygons_datasets, base_dir, "TreePolygons", mask_source_dir)
 
     # change filenames to relative path
     TreeBoxes_datasets["filename"] = TreeBoxes_datasets["filename"].apply(os.path.basename)
@@ -718,8 +680,8 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     create_mini_datasets(TreePoints_datasets, base_dir, "TreePoints", version)
     create_mini_datasets(TreePolygons_datasets, base_dir, "TreePolygons", version)
 
-    # Process all sources (including weak supervised)
-    print("\n=== Processing ALL sources (including weak supervised) ===")
+    # Process all sources (including unsupervised)
+    print("\n=== Processing ALL sources (including unsupervised) ===")
     process_splits_and_release(
         TreePolygons_datasets.copy(), 
         TreePoints_datasets.copy(), 
@@ -728,11 +690,11 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
         version
     )
     
-    # Process supervised sources only (excluding weak supervised)
-    print("\n=== Processing SUPERVISED sources only (excluding weak supervised) ===")
-    TreeBoxes_supervised = filter_out_weak_supervised(TreeBoxes_datasets)
-    TreePoints_supervised = filter_out_weak_supervised(TreePoints_datasets)
-    TreePolygons_supervised = filter_out_weak_supervised(TreePolygons_datasets)
+    # Process supervised sources only (excluding unsupervised)
+    print("\n=== Processing SUPERVISED sources only (excluding unsupervised) ===")
+    TreeBoxes_supervised = filter_out_unsupervised(TreeBoxes_datasets)
+    TreePoints_supervised = filter_out_unsupervised(TreePoints_datasets)
+    TreePolygons_supervised = filter_out_unsupervised(TreePolygons_datasets)
     
     print(f"Filtered datasets:")
     print(f"  TreeBoxes: {len(TreeBoxes_datasets)} -> {len(TreeBoxes_supervised)} samples")
@@ -783,7 +745,7 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.11"
+    version = "v0.12"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     mask_source_dir = "/orange/ewhite/DeepForest/tree_coverage_masks"
     debug = False

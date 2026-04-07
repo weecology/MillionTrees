@@ -18,6 +18,9 @@ ROOT = Path("/orange/ewhite/DeepForest/Puliti_2022")
 OUT_CSV = ROOT / "annotations.csv"
 SOURCE_NAME = "Puliti and Astrup 2022"
 
+TILE_SIZE = 1024       # Must match filter_auto_arborist_tcd.TILE_SIZE
+MIN_TILE_REM = 64      # Images whose edge remainder is smaller than this are excluded
+
 
 def yolo_line_to_pixel_box(line: str, img_w: int, img_h: int) -> tuple[float, float, float, float] | None:
     """Convert one YOLO line (class x_center y_center w h normalized) to pixel xmin, ymin, xmax, ymax."""
@@ -43,20 +46,59 @@ def yolo_line_to_pixel_box(line: str, img_w: int, img_h: int) -> tuple[float, fl
     return (xmin, ymin, xmax, ymax)
 
 
+def _is_sliver(w: int, h: int) -> bool:
+    """Return True if tiling at TILE_SIZE would create edge tiles smaller than MIN_TILE_REM."""
+    for dim in (w, h):
+        if dim > TILE_SIZE:
+            rem = dim % TILE_SIZE
+            if 0 < rem < MIN_TILE_REM:
+                return True
+    return False
+
+
+def _ensure_rgb(png_path: Path) -> Path:
+    """If image is RGBA, save a 3-band RGB copy beside it and return that path."""
+    with Image.open(png_path) as img:
+        if img.mode != "RGBA":
+            return png_path
+    rgb_path = png_path.with_name(png_path.stem + "_rgb.png")
+    if not rgb_path.exists():
+        with Image.open(png_path) as img:
+            img.convert("RGB").save(rgb_path)
+    return rgb_path
+
+
 def run(root: Path | None = None, out_csv: Path | None = None) -> pd.DataFrame:
     root = root or ROOT
     out_csv = out_csv or OUT_CSV
     rows = []
+    n_sliver = 0
+    n_converted = 0
     for png_path in sorted(root.glob("*.png")):
+        # Skip RGB copies already written by this script
+        if png_path.stem.endswith("_rgb"):
+            continue
         label_path = png_path.with_suffix(".txt")
         if not label_path.exists():
             continue
         try:
             with Image.open(png_path) as img:
                 img_w, img_h = img.size
+                is_rgba = img.mode == "RGBA"
         except Exception:
             continue
-        image_path = str(png_path.resolve())
+
+        if _is_sliver(img_w, img_h):
+            n_sliver += 1
+            continue
+
+        if is_rgba:
+            use_path = _ensure_rgb(png_path)
+            n_converted += 1
+        else:
+            use_path = png_path
+
+        image_path = str(use_path.resolve())
         with open(label_path) as f:
             for line in f:
                 if not line.strip():
@@ -76,7 +118,10 @@ def run(root: Path | None = None, out_csv: Path | None = None) -> pd.DataFrame:
         raise ValueError(f"No annotations found under {root}")
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out_csv, index=False)
-    print(f"Wrote {len(df)} annotations, {df['image_path'].nunique()} images -> {out_csv}")
+    print(
+        f"Wrote {len(df)} annotations, {df['image_path'].nunique()} images -> {out_csv} "
+        f"(skipped {n_sliver} sliver images, converted {n_converted} RGBA→RGB)"
+    )
     return df
 
 

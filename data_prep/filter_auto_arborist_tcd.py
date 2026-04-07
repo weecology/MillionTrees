@@ -95,8 +95,15 @@ def predict_tree_mask(processor, model, image_path: str, device: str) -> np.ndar
             )
         return tree_mask
 
+    # Pad image to a multiple of TILE_SIZE so all tiles are full-sized.
+    # Tiny edge slivers (e.g. 17 px wide) cause SegFormer's patch conv to fail.
+    pad_h = (-height % TILE_SIZE)
+    pad_w = (-width % TILE_SIZE)
+    if pad_h > 0 or pad_w > 0:
+        arr = np.pad(arr, ((0, 0), (0, pad_h), (0, pad_w)), mode="reflect")
+
     # Tile and stitch; resize each tile's mask to match tile size (model may output smaller)
-    full_mask = np.zeros((height, width), dtype=np.uint8)
+    full_mask = np.zeros((arr.shape[1], arr.shape[2]), dtype=np.uint8)
     for y0, x0, tile in image_to_tiles(arr, TILE_SIZE):
         tile_h, tile_w = tile.shape[1], tile.shape[2]
         tile_pil = _array_to_pil(tile)
@@ -112,7 +119,7 @@ def predict_tree_mask(processor, model, image_path: str, device: str) -> np.ndar
                 tree_tile, (tile_w, tile_h), interpolation=cv2.INTER_NEAREST
             )
         full_mask[y0 : y0 + tile_h, x0 : x0 + tile_w] = tree_tile
-    return full_mask
+    return full_mask[:height, :width]
 
 
 def tree_fraction_at_point(mask: np.ndarray, x: float, y: float, radius: int) -> float:

@@ -43,6 +43,7 @@ def tile_firoze():
 
     df = pd.read_csv(ANNOTATION_CSV)
     df["geometry"] = df["geometry"].apply(wkt.loads)
+    df["geometry"] = df["geometry"].apply(lambda g: g.buffer(0) if not g.is_valid else g)
     gdf = gpd.GeoDataFrame(df, geometry="geometry")
     gdf["image_path"] = gdf["image_path"].apply(os.path.basename)
 
