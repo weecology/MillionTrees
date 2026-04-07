@@ -168,20 +168,27 @@ def copy_images(datasets, base_dir, dataset_type):
 
 
 def copy_masks(datasets, base_dir, dataset_type, mask_source_dir):
-    """Copy precomputed tree coverage masks to the destination folder."""
+    """Copy precomputed tree coverage masks to the destination folder.
+
+    Returns a filtered dataset with rows removed for any images missing a mask.
+    """
     mask_source_dir = Path(mask_source_dir)
+    missing_images = set()
     for image in datasets["filename"].unique():
         image_basename = os.path.basename(image)
         mask_name = f"{Path(image_basename).stem}.png"
         source_mask = mask_source_dir / mask_name
         if not source_mask.exists():
-            raise FileNotFoundError(
-                f"Missing tree coverage mask for {image_basename}: expected {source_mask}"
-            )
+            print(f"Warning: Missing tree coverage mask for {image_basename}, removing from dataset.")
+            missing_images.add(image)
+            continue
         destination = f"{base_dir}{dataset_type}_{version}/masks/"
         destination_mask = os.path.join(destination, mask_name)
         if not os.path.exists(destination_mask):
             shutil.copy(source_mask, destination_mask)
+    if missing_images:
+        datasets = datasets[~datasets["filename"].isin(missing_images)].copy()
+    return datasets
 
 
 def copy_packaged_assets_from_full(base_dir, dataset_type, version, filenames, suffix, subdir):
@@ -593,6 +600,24 @@ def check_for_updated_annotations(dataset, geometry):
         dataset = pd.concat([dataset, all_new], ignore_index=True)
     
     return dataset
+def load_annotation_csvs(cfg_path=None):
+    """Parse data_prep/annotation_csvs.cfg and return (TreeBoxes, TreePoints, TreePolygons) lists."""
+    if cfg_path is None:
+        cfg_path = os.path.join(os.path.dirname(__file__), "annotation_csvs.cfg")
+    sections = {"TreeBoxes": [], "TreePoints": [], "TreePolygons": []}
+    current = None
+    with open(cfg_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                current = line[1:-1]
+            elif current in sections:
+                sections[current].append(line)
+    return sections["TreeBoxes"], sections["TreePoints"], sections["TreePolygons"]
+
+
 def run(version, base_dir, mask_source_dir=None, debug=False):
     if mask_source_dir is None:
         mask_source_dir = os.environ.get("MILLIONTREES_MASKS_DIR")
@@ -600,70 +625,7 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
         raise ValueError(
             "mask_source_dir is required. Pass it directly or set MILLIONTREES_MASKS_DIR."
         )
-    TreeBoxes = [
-        #"/orange/ewhite/DeepForest/Ryoungseob_2023/train_datasets/images/train.csv",
-        #"/orange/ewhite/DeepForest/Velasquez_urban_trees/tree_canopies/nueva_carpeta/annotations.csv",
-        #'/orange/ewhite/DeepForest/individual_urban_tree_crown_detection/annotations.csv',
-        '/orange/ewhite/DeepForest/Radogoshi_Sweden/annotations.csv',
-        #"/orange/ewhite/DeepForest/WRI/WRI-labels-opensource/annotations.csv",
-        "/orange/ewhite/DeepForest/Guangzhou2022/annotations.csv",
-        "/orange/ewhite/DeepForest/NEON_benchmark/NeonTreeEvaluation_annotations.csv",
-        "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv",
-        '/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
-        #"/orange/ewhite/DeepForest/Santos2019/annotations.csv",
-        "/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
-        "/orange/ewhite/DeepForest/OAM_TCD/annotations.csv"
-        ,"/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
-        "/orange/ewhite/DeepForest/SelvaBox/annotations.csv",
-        "/orange/ewhite/DeepForest/neon_unsupervised/TreeBoxes_neon_unsupervised.csv",
-        "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreeBoxes_OFO_unsupervised.csv",
-        "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreeBoxes_NEON_MultiTemporal.csv",
-        "/orange/ewhite/DeepForest/Puliti_2022/annotations.csv",
-        # Krkonoše Bílé Labe (Zenodo 15591546): run data_prep/Krkonose_BileLabe.py then point to annotations.csv
-        #"/orange/ewhite/DeepForest/Zenodo_15591546/annotations.csv",
-        #"/orange/ewhite/DeepForest/Beloiu_2023/annotations.csv",
-   ]
-
-    TreePoints = [
-        "/orange/ewhite/DeepForest/TreeFormer/all_images/annotations.csv",
-        "/orange/ewhite/DeepForest/Ventura_2022/urban-tree-detection-data/images/annotations.csv",
-        "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
-        #'/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
-        "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations_tcd_filtered.csv",
-        "/orange/ewhite/DeepForest/Yosemite/tiles/yosemite_all_annotations.csv",
-        "/orange/ewhite/DeepForest/OpenForestObservatory/images/TreePoints_OFO_unsupervised.csv",
-        "/orange/ewhite/DeepForest/Kaggle_LiDAR_RGB/pngs/annotations.csv",
-        "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreePoints_NEON_MultiTemporal.csv",
-        "/orange/ewhite/DeepForest/OSBS_megaplot/2025/pngs/annotations.csv",
-        #'/orange/ewhite/DeepForest/Miraki/annotations.csv'
-    ]
-
-    TreePolygons = [
-        "/orange/ewhite/DeepForest/Jansen_2023/pngs/annotations.csv",
-        "/orange/ewhite/DeepForest/Troles_Bamberg/coco2048/annotations/annotations.csv",
-        "/orange/ewhite/DeepForest/Cloutier2023/images/annotations.csv",
-        "/orange/ewhite/DeepForest/Firoze2023/crops/annotations.csv",
-        "/orange/ewhite/DeepForest/paracou_ball/pngs/annotations.csv",
-        #"/orange/ewhite/DeepForest/Wagner_Australia/annotations.csv",
-        #"/orange/ewhite/DeepForest/Alejandro_Chile/alejandro/annotations.csv",
-        "/orange/ewhite/DeepForest/UrbanLondon/annotations.csv",
-        #"/orange/ewhite/DeepForest/OliveTrees_spain/Dataset_RGB/annotations.csv",
-        #"/orange/ewhite/DeepForest/Araujo_2020/annotations.csv",
-        #"/orange/ewhite/DeepForest/justdiggit-drone/label_sample/annotations.csv",
-        "/orange/ewhite/DeepForest/BCI/BCI_50ha_2020_08_01_crownmap_raw/annotations.csv",
-        "/orange/ewhite/DeepForest/BCI/BCI_50ha_2022_09_29_crownmap_raw/annotations.csv",
-        "/orange/ewhite/DeepForest/Harz_Mountains/ML_TreeDetection_Harz/annotations.csv",
-        "/orange/ewhite/DeepForest/SPREAD/annotations.csv",
-        "/orange/ewhite/DeepForest/KagglePalm/Palm-Counting-349images/crops/annotations.csv",
-        "/orange/ewhite/DeepForest/Kattenborn/uav_newzealand_waititu/crops/annotations.csv",
-        "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
-        #"/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
-        "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/crops/annotations.csv",
-        "/orange/ewhite/DeepForest/Schutte_Germany/annotations.csv",
-        "/orange/ewhite/DeepForest/MultiTemporal/annotations/TreePolygons_NEON_MultiTemporal.csv",
-        #"/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv",
-        
-    ]
+    TreeBoxes, TreePoints, TreePolygons = load_annotation_csvs()
 
     # Combine datasets
     TreeBoxes_datasets = combine_datasets(TreeBoxes, debug=debug)
@@ -704,9 +666,9 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     copy_images(TreeBoxes_datasets, base_dir, "TreeBoxes")
     copy_images(TreePoints_datasets, base_dir, "TreePoints")
     copy_images(TreePolygons_datasets, base_dir, "TreePolygons")
-    copy_masks(TreeBoxes_datasets, base_dir, "TreeBoxes", mask_source_dir)
-    copy_masks(TreePoints_datasets, base_dir, "TreePoints", mask_source_dir)
-    copy_masks(TreePolygons_datasets, base_dir, "TreePolygons", mask_source_dir)
+    TreeBoxes_datasets = copy_masks(TreeBoxes_datasets, base_dir, "TreeBoxes", mask_source_dir)
+    TreePoints_datasets = copy_masks(TreePoints_datasets, base_dir, "TreePoints", mask_source_dir)
+    TreePolygons_datasets = copy_masks(TreePolygons_datasets, base_dir, "TreePolygons", mask_source_dir)
 
     # change filenames to relative path
     TreeBoxes_datasets["filename"] = TreeBoxes_datasets["filename"].apply(os.path.basename)

@@ -52,16 +52,24 @@ def run(
 
     images = _collect_unique_images(annotation_csvs, root_dir)
     rows = []
+    skipped = []
     for image_path in images:
         image_file = Path(image_path)
         if not image_file.exists():
-            raise FileNotFoundError(f"Missing image: {image_file}")
+            print(f"WARNING: Missing image, skipping: {image_file}")
+            skipped.append(str(image_file))
+            continue
         mask_path = output_root / f"{image_file.stem}.png"
         if mask_path.exists() and not overwrite:
             mask = np.array(Image.open(mask_path).convert("L"), dtype=np.uint8) > 0
         else:
-            mask = predict_tree_mask(processor, model, str(image_file), device)
-            _save_binary_mask(mask, mask_path)
+            try:
+                mask = predict_tree_mask(processor, model, str(image_file), device)
+                _save_binary_mask(mask, mask_path)
+            except Exception as e:
+                print(f"WARNING: Failed to process {image_file} — {e}")
+                skipped.append(str(image_file))
+                continue
 
         rows.append(
             {
@@ -70,6 +78,11 @@ def run(
                 "tree_fraction": float(np.mean(mask > 0)),
             }
         )
+
+    if skipped:
+        print(f"\nSkipped {len(skipped)} image(s) due to errors:")
+        for s in skipped:
+            print(f"  {s}")
 
     if stats_csv:
         pd.DataFrame(rows).to_csv(stats_csv, index=False)

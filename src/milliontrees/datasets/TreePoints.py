@@ -42,11 +42,11 @@ class TreePointsDataset(MillionTreesDataset):
             'supervised_download_url': '',
             'compressed_size': 160938856
         },
-        "0.11": {
+        "0.12": {
             'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.11.zip",
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.12.zip",
             'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.11.zip",
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.12.zip",
             'compressed_size':
                 164722449837
         }

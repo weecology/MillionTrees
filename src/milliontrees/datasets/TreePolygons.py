@@ -50,11 +50,11 @@ class TreePolygonsDataset(MillionTreesDataset):
             'supervised_download_url': '',
             'compressed_size': 105525592
         },
-        "0.11": {
+        "0.12": {
             'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.11.zip",
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.12.zip",
             'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.11.zip",
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.12.zip",
             'compressed_size':
                 106085316699
         }
