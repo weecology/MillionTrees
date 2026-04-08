@@ -240,16 +240,20 @@ def create_mini_datasets(datasets, base_dir, dataset_type, version):
         mini_mask_destination = f"{base_dir}Mini{dataset_type}_{version}/masks/"
         shutil.copy(f"{base_dir}{dataset_type}_{version}/masks/" + mask_name, mini_mask_destination)
 
-    # Generate visualizations for each source
+    # Generate visualizations for each source (one image per source to avoid overlaying
+    # annotations from multiple images onto a single background image)
     for source, group in mini_annotations.groupby("source"):
         print(source)
+        # Use only the first image to avoid mixing coordinates from different images
+        first_image = group["filename"].iloc[0]
+        group = group[group["filename"] == first_image].copy()
         group["image_path"] = group["filename"]
         group = read_file(group, root_dir=f"{base_dir}Mini{dataset_type}_{version}/images/")
         group.root_dir = f"{base_dir}Mini{dataset_type}_{version}/images/"
-        
+
         # Remove spaces in source name
         source = source.replace(" ", "_")
-        
+
         # Handle polygons specifically to include image dimensions
         height, width, channels = cv2.imread(f"{base_dir}Mini{dataset_type}_{version}/images/" + group.image_path.iloc[0]).shape
         plot_results(group, savedir="docs/public/", basename=source, height=height, width=width)
