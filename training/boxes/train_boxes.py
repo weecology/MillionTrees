@@ -76,22 +76,34 @@ def predict_batch(model, images, batch_index):
     model.df_model.model.eval()
     images_tensor = images if isinstance(images, torch.Tensor) else torch.tensor(images)
     images_tensor = images_tensor.to(device)
+    # DeepForest predict_step returns list[dict] with torchvision keys (boxes, scores, labels)
     predictions = model.df_model.predict_step(images_tensor, batch_index)
 
     batch_y_pred = []
-    for pred_df in predictions:
-        if pred_df is None or len(pred_df) == 0:
+    for pred in predictions:
+        if pred is None or len(pred.get("boxes", [])) == 0:
             y_pred = {
                 "y": torch.zeros((0, 4), dtype=torch.float32),
                 "labels": torch.zeros((0,), dtype=torch.int64),
                 "scores": torch.zeros((0,), dtype=torch.float32),
             }
         else:
-            y_pred = {
-                "y": torch.tensor(pred_df[["xmin", "ymin", "xmax", "ymax"]].values.astype("float32")),
-                "labels": torch.zeros(len(pred_df), dtype=torch.int64),
-                "scores": torch.tensor(pred_df["score"].values.astype("float32")),
-            }
+            boxes = pred["boxes"]
+            if isinstance(boxes, torch.Tensor):
+                boxes = boxes.detach().float().cpu()
+            else:
+                boxes = torch.as_tensor(boxes, dtype=torch.float32)
+            scores = pred.get("scores", torch.ones(len(boxes)))
+            if isinstance(scores, torch.Tensor):
+                scores = scores.detach().float().cpu()
+            else:
+                scores = torch.as_tensor(scores, dtype=torch.float32)
+            labels = pred.get("labels", torch.zeros(len(boxes), dtype=torch.int64))
+            if isinstance(labels, torch.Tensor):
+                labels = labels.detach().cpu().long()
+            else:
+                labels = torch.as_tensor(labels, dtype=torch.int64)
+            y_pred = {"y": boxes, "labels": labels, "scores": scores}
         batch_y_pred.append(y_pred)
     return batch_y_pred
 
@@ -123,20 +135,31 @@ def main():
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
+    parser.add_argument(
+        "--include-unsupervised",
+        action="store_true",
+        help="Use TreeBoxes_v* layout and full-zip URLs (required for mini: MiniTreeBoxes_supervised_v* is not published).",
+    )
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--output-dir", type=str, default="training/boxes/outputs")
     parser.add_argument("--gpus", type=int, default=1)
     parser.add_argument(
+        "--accelerator",
+        type=str,
+        default="auto",
+        help="Lightning accelerator (use 'cpu' if MPS errors on float64 metadata).",
+    )
+    parser.add_argument(
         "--limit-train-batches",
         type=int,
-        default=50,
-        help="Number of training batches per epoch (for fast debugging)",
+        default=None,
+        help="Cap training batches per epoch (default: all). Use a small int for smoke tests.",
     )
     parser.add_argument(
         "--limit-val-batches",
         type=int,
-        default=50,
-        help="Number of validation batches per epoch (for fast debugging)",
+        default=None,
+        help="Cap validation batches per epoch (default: all). Use a small int for smoke tests.",
     )
     parser.add_argument("--comet", action="store_true", help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
     args = parser.parse_args()
@@ -149,6 +172,7 @@ def main():
         mini=args.mini,
         root_dir=args.root_dir,
         split_scheme=args.split_scheme,
+        include_unsupervised=args.include_unsupervised,
     )
 
     train_subset = box_dataset.get_subset("train")
@@ -193,7 +217,7 @@ def main():
 
     trainer = pl.Trainer(
         max_epochs=args.max_epochs,
-        accelerator="auto",
+        accelerator=args.accelerator,
         devices=args.gpus,
         callbacks=callbacks,
         default_root_dir=args.output_dir,
@@ -201,8 +225,12 @@ def main():
         val_check_interval=1.0,
         logger=loggers if loggers else True,
         enable_checkpointing=has_val,
-        limit_train_batches=args.limit_train_batches,
-        limit_val_batches=args.limit_val_batches if has_val else 0,
+        limit_train_batches=args.limit_train_batches
+        if args.limit_train_batches is not None
+        else 1.0,
+        limit_val_batches=(args.limit_val_batches if args.limit_val_batches is not None else 1.0)
+        if has_val
+        else 0,
     )
 
     trainer.fit(model, train_loader, val_loader)
