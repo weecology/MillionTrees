@@ -135,8 +135,14 @@ class TreeBoxesDataset(MillionTreesDataset):
         # Restore dataset name for proper operation after directory setup
         self._dataset_name = 'TreeBoxes'
 
-        # Load splits
-        df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
+        # Load splits (low_memory=False avoids mixed-type DtypeWarning on large CSVs)
+        df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme),
+                         low_memory=False)
+        for _c in ("xmin", "ymin", "xmax", "ymax"):
+            df[_c] = pd.to_numeric(df[_c], errors="coerce")
+        df = df.dropna(subset=["xmin", "ymin", "xmax", "ymax"])
+        df = df[(df["xmax"] > df["xmin"]) &
+                (df["ymax"] > df["ymin"])].reset_index(drop=True)
 
         # Cache available sources for convenience
         self.sources = df['source'].unique()

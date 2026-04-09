@@ -31,7 +31,7 @@ def remove_alpha_channel(datasets):
 def combine_datasets(dataset_paths, debug=False):
     datasets = []
     for dataset_path in dataset_paths:
-        df = pd.read_csv(dataset_path)
+        df = pd.read_csv(dataset_path, low_memory=False)
         if "image_path" in df.columns:
             if "filename" in df.columns:
                 df = df.drop(columns="filename")  # Remove existing filename if present
@@ -107,6 +107,8 @@ def filter_degenerate_boxes(datasets):
     """
     if "xmin" not in datasets.columns or "xmax" not in datasets.columns:
         return datasets
+    for col in ("xmin", "ymin", "xmax", "ymax"):
+        datasets[col] = pd.to_numeric(datasets[col], errors="coerce")
     # Basic geometry sanity: strictly positive width/height
     valid_mask = (datasets["xmax"] > datasets["xmin"]) & (datasets["ymax"] > datasets["ymin"])
     # Drop any rows with NaNs in the box columns as well
@@ -632,9 +634,14 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     TreePoints_datasets = combine_datasets(TreePoints, debug=debug)
     TreePolygons_datasets = combine_datasets(TreePolygons, debug=debug)
 
-    # Remove rows where xmin equals xmax
-    TreeBoxes_datasets = TreeBoxes_datasets[TreeBoxes_datasets["xmin"] != TreeBoxes_datasets["xmax"]]
-    TreeBoxes_datasets = TreeBoxes_datasets[TreeBoxes_datasets["ymin"] != TreeBoxes_datasets["ymax"]]
+    # Coerce box columns early (avoids mixed str/float rows) and drop degenerate rows
+    for col in ("xmin", "ymin", "xmax", "ymax"):
+        TreeBoxes_datasets[col] = pd.to_numeric(TreeBoxes_datasets[col], errors="coerce")
+    TreeBoxes_datasets = TreeBoxes_datasets.dropna(subset=["xmin", "ymin", "xmax", "ymax"])
+    TreeBoxes_datasets = TreeBoxes_datasets[
+        (TreeBoxes_datasets["xmax"] > TreeBoxes_datasets["xmin"])
+        & (TreeBoxes_datasets["ymax"] > TreeBoxes_datasets["ymin"])
+    ]
 
     # Check for updated annotations (from Label Studio review) and apply them
     TreeBoxes_datasets = check_for_updated_annotations(TreeBoxes_datasets, "Boxes")
