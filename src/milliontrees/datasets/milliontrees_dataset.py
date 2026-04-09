@@ -520,13 +520,21 @@ class MillionTreesSubset(MillionTreesDataset):
         tree_coverage_mask = targets.get("tree_coverage_mask")
 
         if self._dataset_name == 'TreeBoxes':
-            # Extra safety: drop any degenerate boxes created by downstream processing
-            # before passing to Albumentations, which rejects zero-width/height boxes.
-            bboxes = np.array(targets[self.geometry_name])
-            labels_arr = np.array(targets["labels"])
+            # Extra safety: drop degenerate / out-of-bounds boxes before Albumentations
+            # (check_bboxes rejects xmax <= xmin; clip+float noise can create edge cases).
+            bboxes = np.asarray(targets[self.geometry_name], dtype=np.float64)
+            if bboxes.ndim == 1:
+                bboxes = bboxes.reshape(1, -1)
+            labels_arr = np.asarray(targets["labels"])
+            if labels_arr.ndim == 0:
+                labels_arr = labels_arr.reshape(1)
+            h, w = float(x.shape[0]), float(x.shape[1])
             if len(bboxes) > 0:
-                valid = (bboxes[:, 2] > bboxes[:, 0]) & (bboxes[:, 3]
-                                                         > bboxes[:, 1])
+                bboxes[:, [0, 2]] = np.clip(bboxes[:, [0, 2]], 0.0, w)
+                bboxes[:, [1, 3]] = np.clip(bboxes[:, [1, 3]], 0.0, h)
+                eps = 1e-3
+                valid = ((bboxes[:, 2] - bboxes[:, 0]) > eps) & (
+                    (bboxes[:, 3] - bboxes[:, 1]) > eps)
                 bboxes = bboxes[valid]
                 labels_arr = labels_arr[valid]
             if tree_coverage_mask is None:
