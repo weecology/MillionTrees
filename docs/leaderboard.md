@@ -63,16 +63,16 @@ All point sources are used to train and predict all box sources.
 
 | Model | Fine-tuned | Avg Recall | Script |
 |---|:---:|---|---|
+| DeepForest | ✓ | 0.752 | <small>`uv run python training/boxes/train_boxes.py --split-scheme random`</small> |
 | DeepForest | ✗ | 0.559 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme random`</small> |
-| DeepForest | ✓ | 0.534 | <small>`uv run python training/boxes/train.py --split-scheme random`</small> |
 | SAM3 | ✗ | 0.197 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 
 ### Zero-shot
 
 | Model | Fine-tuned | Avg Recall | Script |
 |---|:---:|---|---|
+| DeepForest | ✓ | 0.548 | <small>`uv run python training/boxes/train_boxes.py --split-scheme zeroshot`</small> |
 | DeepForest | ✗ | 0.539 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme zeroshot`</small> |
-| DeepForest | ✓ | 0.508 | <small>`uv run python training/boxes/train.py --split-scheme zeroshot`</small> |
 | SAM3 | ✗ | 0.199 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 
 ### Cross-geometry

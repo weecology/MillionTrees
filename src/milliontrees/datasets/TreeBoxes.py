@@ -12,7 +12,7 @@ import fnmatch
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
-from milliontrees.common.metrics.all_metrics import DetectionAccuracy
+from milliontrees.common.metrics.all_metrics import DetectionAccuracy, DetectionMAP
 from milliontrees.common.onboarding import print_dataset_summary
 from PIL import Image
 
@@ -247,6 +247,10 @@ class TreeBoxesDataset(MillionTreesDataset):
                 DetectionAccuracy(geometry_name=self.geometry_name,
                                   score_threshold=self.eval_score_threshold,
                                   metric="recall"),
+            "mAP":
+                DetectionMAP(geometry_name=self.geometry_name,
+                             score_threshold=self.eval_score_threshold,
+                             iou_type="bbox"),
         }
 
         # eval grouper
