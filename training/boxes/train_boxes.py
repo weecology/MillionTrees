@@ -20,7 +20,7 @@ from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
 
 class DeepForestBoxTrainer(pl.LightningModule):
 
-    def __init__(self, lr=1e-4, weight_decay=1e-5):
+    def __init__(self, lr=5e-5, weight_decay=1e-4, lr_warmup_epochs=2):
         super().__init__()
         self.save_hyperparameters()
         self.df_model = df_main.deepforest()
@@ -62,48 +62,49 @@ class DeepForestBoxTrainer(pl.LightningModule):
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=self.trainer.max_epochs, eta_min=1e-6
+        # Linear warmup for lr_warmup_epochs, then cosine decay to eta_min.
+        # Using step-level schedulers to avoid epoch/step miscalibration.
+        warmup_epochs = self.hparams.lr_warmup_epochs
+        cosine_epochs = max(1, self.trainer.max_epochs - warmup_epochs)
+        warmup = torch.optim.lr_scheduler.LinearLR(
+            optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_epochs
         )
-        return [optimizer], [scheduler]
+        cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=cosine_epochs, eta_min=1e-6
+        )
+        scheduler = torch.optim.lr_scheduler.SequentialLR(
+            optimizer, schedulers=[warmup, cosine], milestones=[warmup_epochs]
+        )
+        return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
 
 
 def predict_batch(model, images, batch_index):
     """Run DeepForest inference, returns list of MillionTrees eval dicts."""
     warnings.filterwarnings("ignore")
     device = next(model.parameters()).device
-    model.df_model.model = model.retinanet.to(device)
-    model.df_model.model.eval()
     images_tensor = images if isinstance(images, torch.Tensor) else torch.tensor(images)
     images_tensor = images_tensor.to(device)
-    # DeepForest predict_step returns list[dict] with torchvision keys (boxes, scores, labels)
-    predictions = model.df_model.predict_step(images_tensor, batch_index)
+    # Call retinanet directly in eval mode — predict_step returns DataFrames,
+    # not the torchvision-style dicts we need here.
+    model.retinanet.eval()
+    with torch.no_grad():
+        predictions = model.retinanet(images_tensor)
 
     batch_y_pred = []
     for pred in predictions:
-        if pred is None or len(pred.get("boxes", [])) == 0:
+        boxes = pred.get("boxes", torch.zeros((0, 4)))
+        if len(boxes) == 0:
             y_pred = {
                 "y": torch.zeros((0, 4), dtype=torch.float32),
                 "labels": torch.zeros((0,), dtype=torch.int64),
                 "scores": torch.zeros((0,), dtype=torch.float32),
             }
         else:
-            boxes = pred["boxes"]
-            if isinstance(boxes, torch.Tensor):
-                boxes = boxes.detach().float().cpu()
-            else:
-                boxes = torch.as_tensor(boxes, dtype=torch.float32)
-            scores = pred.get("scores", torch.ones(len(boxes)))
-            if isinstance(scores, torch.Tensor):
-                scores = scores.detach().float().cpu()
-            else:
-                scores = torch.as_tensor(scores, dtype=torch.float32)
-            labels = pred.get("labels", torch.zeros(len(boxes), dtype=torch.int64))
-            if isinstance(labels, torch.Tensor):
-                labels = labels.detach().cpu().long()
-            else:
-                labels = torch.as_tensor(labels, dtype=torch.int64)
-            y_pred = {"y": boxes, "labels": labels, "scores": scores}
+            y_pred = {
+                "y": boxes.detach().float().cpu(),
+                "labels": pred["labels"].detach().cpu().long(),
+                "scores": pred["scores"].detach().float().cpu(),
+            }
         batch_y_pred.append(y_pred)
     return batch_y_pred
 
@@ -132,7 +133,9 @@ def main():
                         choices=["random", "zeroshot", "crossgeometry"])
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--max-epochs", type=int, default=20)
-    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--lr", type=float, default=5e-5)
+    parser.add_argument("--weight-decay", type=float, default=1e-4)
+    parser.add_argument("--lr-warmup-epochs", type=int, default=2)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
     parser.add_argument(
@@ -189,18 +192,29 @@ def main():
         "standard", test_subset, batch_size=args.batch_size, num_workers=args.num_workers
     )
 
-    model = DeepForestBoxTrainer(lr=args.lr)
+    model = DeepForestBoxTrainer(
+        lr=args.lr,
+        weight_decay=args.weight_decay,
+        lr_warmup_epochs=args.lr_warmup_epochs,
+    )
 
     has_val = len(val_loader) > 0
 
     checkpoint_cb = pl.callbacks.ModelCheckpoint(
         dirpath=os.path.join(args.output_dir, "checkpoints"),
-        filename="boxes-{epoch:02d}-{val_loss:.4f}",
+        filename="boxes-best",
         monitor="val_loss",
         mode="min",
-        save_top_k=3,
+        save_last=True,
+        save_top_k=1,
     )
-    early_stop_cb = pl.callbacks.EarlyStopping(monitor="val_loss", patience=5, mode="min")
+
+    early_stop_cb = pl.callbacks.EarlyStopping(
+        monitor="val_loss",
+        patience=5,
+        mode="min",
+        verbose=True,
+    )
 
     loggers = []
     if args.comet:
@@ -218,7 +232,7 @@ def main():
     trainer = pl.Trainer(
         max_epochs=args.max_epochs,
         accelerator=args.accelerator,
-        devices=args.gpus,
+        strategy="ddp" if args.gpus > 1 else "auto",
         callbacks=callbacks,
         default_root_dir=args.output_dir,
         log_every_n_steps=10,
@@ -236,7 +250,7 @@ def main():
     trainer.fit(model, train_loader, val_loader)
 
     print("\n=== Evaluating best checkpoint ===")
-    best_path = checkpoint_cb.best_model_path
+    best_path = checkpoint_cb.best_model_path or checkpoint_cb.last_model_path
     if best_path:
         print(f"Loading best checkpoint: {best_path}")
         model = DeepForestBoxTrainer.load_from_checkpoint(best_path)

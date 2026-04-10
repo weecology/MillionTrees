@@ -851,6 +851,103 @@ class MaskAccuracy(ElementwiseMetric):
         return minimum(metrics)
 
 
+class DetectionMAP(Metric):
+    """Mean Average Precision for object detection using torchmetrics.
+
+    Supports bounding boxes (iou_type="bbox") and instance segmentation masks (iou_type="segm").
+    Single-class: all labels are normalised to 0 so that predictions always match the ground-truth
+    class regardless of the model's raw label output.
+    """
+
+    def __init__(self,
+                 geometry_name="y",
+                 score_threshold=0.1,
+                 iou_type="bbox",
+                 name=None):
+        self.geometry_name = geometry_name
+        self.score_threshold = score_threshold
+        self.iou_type = iou_type
+        if name is None:
+            name = "mAP"
+        super().__init__(name=name)
+
+    @property
+    def agg_metric_field(self):
+        return f'{self.name}_avg'
+
+    def _format(self, y_pred, y_true):
+        """Convert MillionTrees dicts to the list-of-dicts format expected by torchmetrics
+        MeanAveragePrecision."""
+        key = "masks" if self.iou_type == "segm" else "boxes"
+        preds, targets = [], []
+        for pred, gt in zip(y_pred, y_true):
+            scores = pred["scores"]
+            if not isinstance(scores, torch.Tensor):
+                scores = torch.as_tensor(scores, dtype=torch.float32)
+            keep = scores > self.score_threshold
+
+            geo = pred[self.geometry_name]
+            if not isinstance(geo, torch.Tensor):
+                geo = torch.as_tensor(geo)
+            if self.iou_type == "bbox" and geo.dim() == 1:
+                geo = geo.view(-1, 4)
+
+            gt_geo = gt[self.geometry_name]
+            if not isinstance(gt_geo, torch.Tensor):
+                gt_geo = torch.as_tensor(gt_geo)
+
+            n_pred = int(keep.sum())
+            n_gt = len(gt_geo)
+
+            if self.iou_type == "segm":
+                preds.append({
+                    "masks": geo[keep].bool(),
+                    "scores": scores[keep].float(),
+                    "labels": torch.zeros(n_pred, dtype=torch.long),
+                })
+                targets.append({
+                    "masks": gt_geo.bool(),
+                    "labels": torch.zeros(n_gt, dtype=torch.long),
+                })
+            else:
+                preds.append({
+                    "boxes": geo[keep].float(),
+                    "scores": scores[keep].float(),
+                    "labels": torch.zeros(n_pred, dtype=torch.long),
+                })
+                targets.append({
+                    "boxes": gt_geo.float(),
+                    "labels": torch.zeros(n_gt, dtype=torch.long),
+                })
+        return preds, targets
+
+    def _compute(self, y_pred, y_true):
+        from torchmetrics.detection import MeanAveragePrecision
+        metric = MeanAveragePrecision(iou_type=self.iou_type,
+                                      class_metrics=False)
+        preds, targets = self._format(y_pred, y_true)
+        metric.update(preds, targets)
+        return metric.compute()["map"]
+
+    def _compute_group_wise(self, y_pred, y_true, g, n_groups):
+        group_counts = get_counts(g, n_groups)
+        group_metrics = []
+        for group_idx in range(n_groups):
+            if group_counts[group_idx] == 0:
+                group_metrics.append(torch.tensor(0., device=g.device))
+            else:
+                idx = (g == group_idx).nonzero(as_tuple=True)[0].tolist()
+                gp = [y_pred[i] for i in idx]
+                gt = [y_true[i] for i in idx]
+                group_metrics.append(self._compute(gp, gt))
+        group_metrics = torch.stack(group_metrics)
+        worst_group_metric = self.worst(group_metrics[group_counts > 0])
+        return group_metrics, group_counts, worst_group_metric
+
+    def worst(self, metrics):
+        return minimum(metrics)
+
+
 class CountingError(ElementwiseMetric):
     """Mean Absolute Error between ground truth and predicted detection counts.
 

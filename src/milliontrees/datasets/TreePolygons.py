@@ -14,7 +14,7 @@ from torchvision.ops import masks_to_boxes
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.grouper import CombinatorialGrouper
-from milliontrees.common.metrics.all_metrics import MaskAccuracy
+from milliontrees.common.metrics.all_metrics import MaskAccuracy, DetectionMAP
 from milliontrees.common.onboarding import print_dataset_summary
 
 
@@ -218,6 +218,10 @@ class TreePolygonsDataset(MillionTreesDataset):
                 MaskAccuracy(geometry_name=self.geometry_name,
                              score_threshold=self.eval_score_threshold,
                              metric="recall"),
+            "mAP":
+                DetectionMAP(geometry_name=self.geometry_name,
+                             score_threshold=self.eval_score_threshold,
+                             iou_type="segm"),
         }
         self._eval_grouper = CombinatorialGrouper(dataset=self,
                                                   groupby_fields=(['source_id'
