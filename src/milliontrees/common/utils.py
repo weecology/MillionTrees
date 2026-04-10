@@ -196,10 +196,13 @@ def format_eval_results(results: Dict[str, Any], dataset) -> str:
                 worst_group_score = value
             elif 'source' in key and 'count' not in key:
                 group_id = int(key.split(':')[1])
+                count = metric_results.get(f'count_source:{group_id}', 0)
+                if count == 0:
+                    continue
                 source_data.append({
                     'Source': source_names[group_id],
                     'Score': value,
-                    'Count': metric_results.get(f'count_source:{group_id}', 0)
+                    'Count': count
                 })
 
         # Create source table
