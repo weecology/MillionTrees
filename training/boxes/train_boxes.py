@@ -1,129 +1,126 @@
-"""Train a Faster R-CNN (DeepForest) on MillionTrees TreeBoxes.
+"""Train DeepForest (RetinaNet) on MillionTrees TreeBoxes.
 
-Fine-tunes the pretrained DeepForest RetinaNet backbone on the
-MillionTrees box training split. Evaluates using the MillionTrees eval API.
+Adapts MillionTrees dataloaders to the DeepForest training API so that
+DeepForest's own LightningModule and Trainer do all the heavy lifting.
+Custom code here is limited to two things that DeepForest doesn't cover:
+
+  MillionTreesBatchAdapter  — translates batch format (metadata→path, y→boxes)
+  evaluate()                — uses MillionTrees eval API (DeepForest's is CSV-based)
+
+Requires two small DeepForest fixes (submitted upstream):
+  1. on_fit_start: don't raise when existing_train_dataloader is set
+  2. create_trainer: enable validation when existing_val_dataloader is set
 """
 
 import argparse
 import os
 import warnings
 
-import numpy as np
 import pytorch_lightning as pl
 import torch
 
 from deepforest import main as df_main
+from deepforest.callbacks import images_callback
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
 
 
-class DeepForestBoxTrainer(pl.LightningModule):
+# ---------------------------------------------------------------------------
+# Batch format adapter
+# ---------------------------------------------------------------------------
 
-    def __init__(self, lr=5e-5, weight_decay=1e-4, lr_warmup_epochs=2):
-        super().__init__()
-        self.save_hyperparameters()
-        self.df_model = df_main.deepforest()
-        self.df_model.load_model("weecology/deepforest-tree")
-        self.retinanet = self.df_model.model
+class MillionTreesBatchAdapter:
+    """Wraps a MillionTrees dataloader to yield (path, images, targets) batches
+    compatible with the DeepForest training API.
 
-    def _prepare_targets(self, targets_list, device):
-        rt = []
-        for t in targets_list:
-            boxes = t["y"]
-            if boxes.dim() == 1:
-                boxes = boxes.unsqueeze(0)
-            if len(boxes) == 0:
-                boxes = torch.zeros((0, 4), dtype=torch.float32, device=device)
-            labels = torch.zeros(len(boxes), dtype=torch.int64, device=device)
-            rt.append({"boxes": boxes.to(device), "labels": labels})
-        return rt
+    MillionTrees: (metadata[B,2], images[B,C,H,W], [{"y": boxes, "labels": int64}])
+    DeepForest:   (list[str],     images[B,C,H,W], [{"boxes": boxes, "labels": int64}])
 
-    def training_step(self, batch, batch_idx):
-        metadata, images, targets_list = batch
-        rt = self._prepare_targets(targets_list, images.device)
-        loss_dict = self.retinanet(images, rt)
-        loss = sum(l for l in loss_dict.values())
-        self.log("train_loss", loss, prog_bar=True, batch_size=len(images))
-        return loss
+    Images are already CHW float32 0-1 from MillionTrees, so no conversion needed.
+    """
 
-    def validation_step(self, batch, batch_idx):
-        metadata, images, targets_list = batch
-        rt = self._prepare_targets(targets_list, images.device)
-        self.retinanet.train()
-        loss_dict = self.retinanet(images, rt)
-        self.retinanet.eval()
-        loss = sum(l for l in loss_dict.values())
-        self.log("val_loss", loss, prog_bar=True, batch_size=len(images), sync_dist=True)
+    def __init__(self, loader, filename_id_to_path=None):
+        self.loader = loader
+        self.filename_id_to_path = filename_id_to_path or {}
 
-    def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(
-            self.retinanet.parameters(),
-            lr=self.hparams.lr,
-            weight_decay=self.hparams.weight_decay,
-        )
-        # Linear warmup for lr_warmup_epochs, then cosine decay to eta_min.
-        # Using step-level schedulers to avoid epoch/step miscalibration.
-        warmup_epochs = self.hparams.lr_warmup_epochs
-        cosine_epochs = max(1, self.trainer.max_epochs - warmup_epochs)
-        warmup = torch.optim.lr_scheduler.LinearLR(
-            optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_epochs
-        )
-        cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=cosine_epochs, eta_min=1e-6
-        )
-        scheduler = torch.optim.lr_scheduler.SequentialLR(
-            optimizer, schedulers=[warmup, cosine], milestones=[warmup_epochs]
-        )
-        return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
+    def __iter__(self):
+        for metadata, images, targets in self.loader:
+            paths = [
+                self.filename_id_to_path.get(int(metadata[i, 0]), str(int(metadata[i, 0])))
+                for i in range(len(metadata))
+            ]
+            adapted = []
+            for t in targets:
+                boxes = t["y"]
+                if boxes.dim() == 1:
+                    boxes = boxes.unsqueeze(0)
+                if len(boxes) == 0:
+                    boxes = torch.zeros((0, 4), dtype=torch.float32)
+                labels = t["labels"]
+                if not isinstance(labels, torch.Tensor):
+                    labels = torch.tensor(labels, dtype=torch.int64)
+                else:
+                    labels = labels.long()
+                adapted.append({"boxes": boxes.float(), "labels": labels})
+            yield paths, images, adapted
+
+    def __len__(self):
+        return len(self.loader)
 
 
-def predict_batch(model, images, batch_index):
-    """Run DeepForest inference, returns list of MillionTrees eval dicts."""
+# ---------------------------------------------------------------------------
+# Inference helper (MillionTrees eval API needs torchvision-style dicts)
+# ---------------------------------------------------------------------------
+
+def predict_batch(model, images):
+    """Run DeepForest inference; returns MillionTrees-format prediction dicts."""
     warnings.filterwarnings("ignore")
     device = next(model.parameters()).device
-    images_tensor = images if isinstance(images, torch.Tensor) else torch.tensor(images)
-    images_tensor = images_tensor.to(device)
-    # Call retinanet directly in eval mode — predict_step returns DataFrames,
-    # not the torchvision-style dicts we need here.
-    model.retinanet.eval()
+    images = images.to(device) if isinstance(images, torch.Tensor) else torch.tensor(images).to(device)
+    model.model.eval()
     with torch.no_grad():
-        predictions = model.retinanet(images_tensor)
+        predictions = model.model(images)
 
-    batch_y_pred = []
+    result = []
     for pred in predictions:
         boxes = pred.get("boxes", torch.zeros((0, 4)))
         if len(boxes) == 0:
-            y_pred = {
+            result.append({
                 "y": torch.zeros((0, 4), dtype=torch.float32),
                 "labels": torch.zeros((0,), dtype=torch.int64),
                 "scores": torch.zeros((0,), dtype=torch.float32),
-            }
+            })
         else:
-            y_pred = {
+            result.append({
                 "y": boxes.detach().float().cpu(),
                 "labels": pred["labels"].detach().cpu().long(),
                 "scores": pred["scores"].detach().float().cpu(),
-            }
-        batch_y_pred.append(y_pred)
-    return batch_y_pred
+            })
+    return result
 
+
+# ---------------------------------------------------------------------------
+# Evaluation (DeepForest's evaluate() is CSV-based; use MillionTrees API)
+# ---------------------------------------------------------------------------
 
 def evaluate(model, dataset, test_subset, batch_size=12):
     test_loader = get_eval_loader("standard", test_subset, batch_size=batch_size)
     all_y_pred, all_y_true = [], []
-    model.eval()
-    for batch_index, batch in enumerate(test_loader):
-        metadata, images, targets = batch
-        preds = predict_batch(model, images, batch_index)
-        for y_pred, image_targets in zip(preds, targets):
-            all_y_pred.append(y_pred)
-            all_y_true.append(image_targets)
+    for batch in test_loader:
+        _, images, targets = batch
+        preds = predict_batch(model, images)
+        all_y_pred.extend(preds)
+        all_y_true.extend(targets)
     results, results_str = dataset.eval(
         all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)]
     )
     return results, results_str
 
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description="Train DeepForest on MillionTrees TreeBoxes")
@@ -133,38 +130,28 @@ def main():
                         choices=["random", "zeroshot", "crossgeometry"])
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--max-epochs", type=int, default=20)
-    parser.add_argument("--lr", type=float, default=5e-5)
-    parser.add_argument("--weight-decay", type=float, default=1e-4)
-    parser.add_argument("--lr-warmup-epochs", type=int, default=2)
+    parser.add_argument("--lr", type=float, default=0.001,
+                        help="Learning rate for SGD (DeepForest default optimizer)")
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
     parser.add_argument(
         "--include-unsupervised",
         action="store_true",
-        help="Use TreeBoxes_v* layout and full-zip URLs (required for mini: MiniTreeBoxes_supervised_v* is not published).",
+        help="Use TreeBoxes_v* layout with full-zip URLs.",
     )
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--output-dir", type=str, default="training/boxes/outputs")
     parser.add_argument("--gpus", type=int, default=1)
     parser.add_argument(
-        "--accelerator",
-        type=str,
-        default="auto",
-        help="Lightning accelerator (use 'cpu' if MPS errors on float64 metadata).",
+        "--accelerator", type=str, default="auto",
+        help="Lightning accelerator (use 'cpu' for debugging).",
     )
-    parser.add_argument(
-        "--limit-train-batches",
-        type=int,
-        default=None,
-        help="Cap training batches per epoch (default: all). Use a small int for smoke tests.",
-    )
-    parser.add_argument(
-        "--limit-val-batches",
-        type=int,
-        default=None,
-        help="Cap validation batches per epoch (default: all). Use a small int for smoke tests.",
-    )
-    parser.add_argument("--comet", action="store_true", help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
+    parser.add_argument("--early-stop-patience", type=int, default=10)
+    parser.add_argument("--vis-every-n-epochs", type=int, default=5,
+                        help="Save val images every N epochs (0 to disable)")
+    parser.add_argument("--vis-n-images", type=int, default=4)
+    parser.add_argument("--comet", action="store_true",
+                        help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -191,31 +178,32 @@ def main():
     val_loader = get_eval_loader(
         "standard", test_subset, batch_size=args.batch_size, num_workers=args.num_workers
     )
-
-    model = DeepForestBoxTrainer(
-        lr=args.lr,
-        weight_decay=args.weight_decay,
-        lr_warmup_epochs=args.lr_warmup_epochs,
-    )
-
     has_val = len(val_loader) > 0
 
-    checkpoint_cb = pl.callbacks.ModelCheckpoint(
-        dirpath=os.path.join(args.output_dir, "checkpoints"),
-        filename="boxes-best",
-        monitor="val_loss",
-        mode="min",
-        save_last=True,
-        save_top_k=1,
-    )
+    # Adapt batch format: (metadata, images, {"y":…}) → (path, images, {"boxes":…})
+    filename_id_to_path = box_dataset._filename_id_to_code
+    train_adapted = MillionTreesBatchAdapter(train_loader, filename_id_to_path)
+    val_adapted = MillionTreesBatchAdapter(val_loader, filename_id_to_path) if has_val else None
 
-    early_stop_cb = pl.callbacks.EarlyStopping(
-        monitor="val_loss",
-        patience=5,
-        mode="min",
-        verbose=True,
-    )
+    # images_callback reads images from disk using config["validation"]["root_dir"]
+    images_dir = str(box_dataset._data_dir / "images")
 
+    # Build DeepForest model and load pretrained weights
+    model = df_main.deepforest(
+        config_args={
+            "train": {"epochs": args.max_epochs, "lr": args.lr},
+            "validation": {"root_dir": images_dir},
+            "batch_size": args.batch_size,
+            "devices": args.gpus,
+            "accelerator": args.accelerator,
+            "workers": args.num_workers,
+        },
+        existing_train_dataloader=train_adapted,
+        existing_val_dataloader=val_adapted,
+    )
+    model.load_model("weecology/deepforest-tree")
+
+    # Loggers
     loggers = []
     if args.comet:
         try:
@@ -227,33 +215,45 @@ def main():
         except Exception as e:
             print(f"Comet ML logging disabled: {e}")
 
-    callbacks = [checkpoint_cb, early_stop_cb] if has_val else []
+    # Callbacks
+    callbacks = []
+    checkpoint_cb = None
+    if has_val:
+        checkpoint_cb = pl.callbacks.ModelCheckpoint(
+            dirpath=os.path.join(args.output_dir, "checkpoints"),
+            filename="boxes-best",
+            monitor="val_loss",
+            mode="min",
+            save_last=True,
+            save_top_k=1,
+        )
+        callbacks.append(checkpoint_cb)
+        callbacks.append(pl.callbacks.EarlyStopping(
+            monitor="val_loss",
+            patience=args.early_stop_patience,
+            mode="min",
+        ))
+        if args.vis_every_n_epochs > 0:
+            callbacks.append(images_callback(
+                savedir=os.path.join(args.output_dir, "val_images"),
+                n=args.vis_n_images,
+                every_n_epochs=args.vis_every_n_epochs,
+            ))
 
-    trainer = pl.Trainer(
-        max_epochs=args.max_epochs,
-        accelerator=args.accelerator,
-        strategy="ddp" if args.gpus > 1 else "auto",
+    # create_trainer reads config for devices/accelerator/epochs; kwargs override the rest
+    model.create_trainer(
+        logger=loggers[0] if loggers else None,
         callbacks=callbacks,
-        default_root_dir=args.output_dir,
-        log_every_n_steps=10,
-        val_check_interval=1.0,
-        logger=loggers if loggers else True,
-        enable_checkpointing=has_val,
-        limit_train_batches=args.limit_train_batches
-        if args.limit_train_batches is not None
-        else 1.0,
-        limit_val_batches=(args.limit_val_batches if args.limit_val_batches is not None else 1.0)
-        if has_val
-        else 0,
     )
 
-    trainer.fit(model, train_loader, val_loader)
+    model.trainer.fit(model)
 
     print("\n=== Evaluating best checkpoint ===")
-    best_path = checkpoint_cb.best_model_path or checkpoint_cb.last_model_path
-    if best_path:
-        print(f"Loading best checkpoint: {best_path}")
-        model = DeepForestBoxTrainer.load_from_checkpoint(best_path)
+    if checkpoint_cb is not None:
+        best_path = checkpoint_cb.best_model_path or checkpoint_cb.last_model_path
+        if best_path:
+            print(f"Loading best checkpoint: {best_path}")
+            model = df_main.deepforest.load_from_checkpoint(best_path)
 
     results, results_str = evaluate(model, box_dataset, test_subset, batch_size=args.batch_size)
     print(results_str)
