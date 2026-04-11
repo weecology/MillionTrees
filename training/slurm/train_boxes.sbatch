@@ -21,15 +21,23 @@ ROOT_DIR=/orange/ewhite/web/public/MillionTrees
 SPLITS=(random zeroshot)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
+# Zero-shot needs more time to find a good optimum.
+if [ "$SPLIT" = "zeroshot" ]; then
+  EARLY_STOP_PATIENCE=15
+else
+  EARLY_STOP_PATIENCE=10
+fi
+
 srun uv run python training/boxes/train_boxes.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --batch-size 8 \
   --max-epochs 40 \
-  --lr 5e-5 \
+  --lr 1e-5 \
   --weight-decay 1e-4 \
   --lr-warmup-epochs 2 \
   --num-workers 8 \
   --gpus 2 \
+  --early-stop-patience "$EARLY_STOP_PATIENCE" \
   --output-dir "training/boxes/outputs/$SPLIT" \
   --comet
