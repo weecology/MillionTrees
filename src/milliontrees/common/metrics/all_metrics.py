@@ -922,11 +922,19 @@ class DetectionMAP(Metric):
         return preds, targets
 
     def _compute(self, y_pred, y_true):
+        import torch
         from torchmetrics.detection import MeanAveragePrecision
         metric = MeanAveragePrecision(iou_type=self.iou_type,
                                       class_metrics=False)
         preds, targets = self._format(y_pred, y_true)
         metric.update(preds, targets)
+        # NCCL (GPU distributed backend) cannot all_gather CPU tensors. When
+        # evaluate() is called after Lightning DDP training the process group is
+        # still live, so torchmetrics tries to sync and crashes. Disable sync so
+        # the metric is computed locally on each rank instead.
+        if torch.distributed.is_available(
+        ) and torch.distributed.is_initialized():
+            metric._to_sync = False
         return metric.compute()["map"]
 
     def _compute_group_wise(self, y_pred, y_true, g, n_groups):
