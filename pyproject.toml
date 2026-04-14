@@ -38,6 +38,7 @@ dependencies = [
     "numpy",
     "pandas",
     "pillow",
+    "matplotlib",
     "torch",
     "torchvision",
     "tqdm",
@@ -77,7 +78,6 @@ dev = [
     "safetensors",
     "huggingface-hub>=1.0.0",
     "tokenizers>=0.20.0",
-    "matplotlib",
     "opencv-python",
     "comet-ml",
 ]
