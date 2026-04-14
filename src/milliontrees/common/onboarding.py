@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -50,6 +49,8 @@ def plot_release_size_summary(
     title: str = "MillionTrees Dataset Release Sizes (Compressed)",
 ) -> Path:
     """Create a bar chart for release compressed sizes."""
+    import matplotlib.pyplot as plt
+
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -106,6 +107,8 @@ def save_sample_visualization(
     index: int = 0,
 ) -> Path:
     """Save a single sample image with overlaid annotations."""
+    import matplotlib.pyplot as plt
+
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 

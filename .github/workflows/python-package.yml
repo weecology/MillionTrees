@@ -7,8 +7,49 @@ on:
     branches: [main]
 
 jobs:
+  minimal-install-smoke:
+    name: "Minimal install smoke test"
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.12"
+          - "3.11"
+        os:
+          - "ubuntu-latest"
+    runs-on: "${{ matrix.os }}"
+    defaults:
+      run:
+        shell: "bash -l {0}"
+    steps:
+      - name: "Checkout code"
+        uses: "actions/checkout@v4"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Build package artifacts
+        run: uv build
+
+      - name: Install built wheel without extras
+        run: uv pip install --system dist/*.whl
+
+      - name: Smoke test package import
+        run: |
+          python - <<'PY'
+          import milliontrees
+          from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
+
+          assert milliontrees.__version__
+          assert TreeBoxesDataset
+          print("Minimal install smoke test passed.")
+          PY
+
   ci:
     name: "CI setup"
+    needs: minimal-install-smoke
 
     strategy:
       fail-fast: false
