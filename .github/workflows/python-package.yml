@@ -33,12 +33,15 @@ jobs:
       - name: Build package artifacts
         run: uv build
 
+      - name: Create isolated virtual environment
+        run: uv venv .venv-smoke
+
       - name: Install built wheel without extras
-        run: uv pip install --system dist/*.whl
+        run: uv pip install --python .venv-smoke/bin/python dist/*.whl
 
       - name: Smoke test package import
         run: |
-          python - <<'PY'
+          .venv-smoke/bin/python - <<'PY'
           import milliontrees
           from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
 
