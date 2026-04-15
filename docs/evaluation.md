@@ -41,6 +41,42 @@ print(results_str)
 
 The evaluation returns a dictionary of metrics and a formatted string with per-source breakdowns and averages.
 
+## Evaluation visualizations
+
+For qualitative debugging, pass **`viz_dir`** and optionally **`viz_n_per_source`** (default `4`) to `eval()`. The library writes PNGs under `viz_dir`, grouped in subfolders by source name, with up to `viz_n_per_source` images per source (in dataloader order).
+
+- **Purple**: ground-truth geometry (boxes, points, or mask fill).
+- **Orange**: predictions with `scores` above the dataset’s eval score threshold (same rule as metrics).
+
+Images are resized to the dataset’s eval `image_size` so coordinates match `y_pred` and `y_true` from `get_eval_loader`.
+
+When `viz_dir` is set, **`results["eval_visualization_paths"]`** lists the written PNG paths (strings).
+
+```python
+results, results_str = dataset.eval(
+    all_y_pred,
+    all_y_true,
+    metadata=test_dataset.metadata_array[: len(all_y_pred)],
+    viz_dir="work/eval_viz",
+    viz_n_per_source=3,
+)
+```
+
+### Example overlay (TreeBoxes + DeepForest)
+
+Below: one TreeBoxes test image from the onboarding split, ground-truth boxes in purple, and boxes from the pretrained **`weecology/deepforest-tree`** model in orange (same resize as eval).
+
+![TreeBoxes evaluation overlay: purple ground truth, orange DeepForest predictions](public/eval_visualization_sample.png)
+
+To regenerate this image after changing overlay styles or the sample batch, install dev extras and run:
+
+```bash
+uv sync --dev
+uv run python docs/scripts/generate_eval_viz_sample.py --root-dir onboarding_data
+```
+
+The script uses **`include_unsupervised=True`** so a local tree layout such as `onboarding_data/TreeBoxes_v0.12/` is found (the default supervised-only layout uses a different directory name). Use **`--mini --download`** only if you rely on the mini zip URL instead.
+
 ## External Model Adapter Example (Segmentation / DeepTrees-style)
 
 If your model outputs instance masks (for example, a segmentation model such as DeepTrees), use the adapter example:
