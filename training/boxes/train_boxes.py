@@ -207,8 +207,30 @@ def main():
     loggers = []
     if args.comet:
         try:
+            import json
             from pytorch_lightning.loggers import CometLogger
-            loggers.append(CometLogger(
+
+            class _SafeCometLogger(CometLogger):
+                """CometLogger that skips non-JSON-serializable hparams.
+
+                DeepForest calls save_hyperparameters() which includes
+                existing_train_dataloader (a MillionTreesBatchAdapter).
+                Comet tries to serialize it, crashes its FallbackStreamer
+                background thread, then the main thread blocks forever
+                waiting on the dead queue. Filtering hparams here prevents
+                that hang.
+                """
+                def log_hyperparams(self, params):
+                    safe = {}
+                    for k, v in params.items():
+                        try:
+                            json.dumps(v)
+                            safe[k] = v
+                        except (TypeError, ValueError):
+                            safe[k] = type(v).__name__
+                    super().log_hyperparams(safe)
+
+            loggers.append(_SafeCometLogger(
                 project_name="milliontrees-boxes",
                 tags=[f"split-{args.split_scheme}", "geometry-boxes"],
             ))
@@ -222,14 +244,14 @@ def main():
         checkpoint_cb = pl.callbacks.ModelCheckpoint(
             dirpath=os.path.join(args.output_dir, "checkpoints"),
             filename="boxes-best",
-            monitor="val_loss",
+            monitor="val_bbox_regression",
             mode="min",
             save_last=True,
             save_top_k=1,
         )
         callbacks.append(checkpoint_cb)
         callbacks.append(pl.callbacks.EarlyStopping(
-            monitor="val_loss",
+            monitor="val_bbox_regression",
             patience=args.early_stop_patience,
             mode="min",
         ))
@@ -253,7 +275,7 @@ def main():
         best_path = checkpoint_cb.best_model_path or checkpoint_cb.last_model_path
         if best_path:
             print(f"Loading best checkpoint: {best_path}")
-            model = df_main.deepforest.load_from_checkpoint(best_path)
+            model = df_main.deepforest.load_from_checkpoint(best_path, weights_only=False)
 
     results, results_str = evaluate(model, box_dataset, test_subset, batch_size=args.batch_size)
     print(results_str)
