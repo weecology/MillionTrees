@@ -82,14 +82,18 @@ class MillionTreesDataset:
             )
         return mask
 
-    def eval(self, y_pred, y_true, metadata):
+    def eval(self, y_pred, y_true, metadata, *, viz_dir=None, viz_n_per_source=4):
         """
         Args:
-            - y_pred (Tensor): Predicted targets
-            - y_true (Tensor): True targets
-            - metadata (Tensor): Metadata
+            - y_pred (list[dict]): Predicted targets per image
+            - y_true (list[dict]): True targets per image
+            - metadata (Tensor): Metadata rows aligned with predictions
+            - viz_dir (str | Path | None): If set, write up to ``viz_n_per_source`` overlay
+              PNGs per ``source_id`` under this directory (see ``eval_visualization``).
+            - viz_n_per_source (int): Max images to save per source when ``viz_dir`` is set.
+
         Output:
-            - results (dict): Dictionary of results
+            - results (dict): Dictionary of results (may include ``eval_visualization_paths``)
             - results_str (str): Pretty print version of the results
         """
         raise NotImplementedError
@@ -664,5 +668,11 @@ class MillionTreesSubset(MillionTreesDataset):
     def metadata_array(self):
         return torch.tensor(self.dataset.metadata_array[self.indices])
 
-    def eval(self, y_pred, y_true, metadata):
-        return self.dataset.eval(y_pred, y_true, metadata)
+    def eval(self, y_pred, y_true, metadata, *, viz_dir=None, viz_n_per_source=4):
+        return self.dataset.eval(
+            y_pred,
+            y_true,
+            metadata,
+            viz_dir=viz_dir,
+            viz_n_per_source=viz_n_per_source,
+        )
