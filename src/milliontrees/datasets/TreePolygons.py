@@ -13,6 +13,7 @@ from torchvision.tv_tensors import BoundingBoxes, Mask
 from torchvision.ops import masks_to_boxes
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
+from milliontrees.common.eval_visualization import save_eval_visualizations
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import MaskAccuracy, DetectionMAP
 from milliontrees.common.onboarding import print_dataset_summary
@@ -364,9 +365,13 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         return mask_img
 
-    def eval(self, y_pred, y_true, metadata):
+    def eval(self, y_pred, y_true, metadata, *, viz_dir=None, viz_n_per_source=4):
         """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
-        detection accuracies of each domain."""
+        detection accuracies of each domain.
+
+        Optional ``viz_dir`` / ``viz_n_per_source`` write qualitative overlays (purple = GT masks,
+        orange = predicted masks above the eval score threshold).
+        """
 
         results = {}
         results_str = ''
@@ -392,6 +397,18 @@ class TreePolygonsDataset(MillionTreesDataset):
         from milliontrees.common.utils import format_eval_results
         formatted_results = format_eval_results(results, self)
         results_str = formatted_results + '\n' + results_str
+
+        if viz_dir is not None:
+            paths = save_eval_visualizations(
+                self,
+                y_pred,
+                y_true,
+                metadata,
+                viz_dir,
+                n_per_source=viz_n_per_source,
+                score_threshold=self.eval_score_threshold,
+            )
+            results["eval_visualization_paths"] = [str(p) for p in paths]
 
         return results, results_str
 

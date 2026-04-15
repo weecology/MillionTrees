@@ -11,6 +11,7 @@ import torchvision.transforms as T
 import fnmatch
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
+from milliontrees.common.eval_visualization import save_eval_visualizations
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import DetectionAccuracy, DetectionMAP
 from milliontrees.common.onboarding import print_dataset_summary
@@ -281,11 +282,15 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         super().__init__(root_dir, download, split_scheme)
 
-    def eval(self, y_pred, y_true, metadata):
+    def eval(self, y_pred, y_true, metadata, *, viz_dir=None, viz_n_per_source=4):
         """Performs evaluation on the given predictions.
 
         The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
         detection accuracies of each domain.
+
+        If ``viz_dir`` is set, writes overlay PNGs (purple = ground truth, orange = predictions above
+        the eval score threshold), up to ``viz_n_per_source`` images per source, in subfolders
+        named by source.
         """
 
         results = {}
@@ -312,6 +317,18 @@ class TreeBoxesDataset(MillionTreesDataset):
         from milliontrees.common.utils import format_eval_results
         formatted_results = format_eval_results(results, self)
         results_str = formatted_results + '\n' + results_str
+
+        if viz_dir is not None:
+            paths = save_eval_visualizations(
+                self,
+                y_pred,
+                y_true,
+                metadata,
+                viz_dir,
+                n_per_source=viz_n_per_source,
+                score_threshold=self.eval_score_threshold,
+            )
+            results["eval_visualization_paths"] = [str(p) for p in paths]
 
         return results, results_str
 

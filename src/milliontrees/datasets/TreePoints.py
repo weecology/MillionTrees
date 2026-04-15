@@ -6,6 +6,7 @@ import numpy as np
 import torch
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
+from milliontrees.common.eval_visualization import save_eval_visualizations
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import KeypointAccuracy, CountingError
 from milliontrees.common.utils import format_eval_results
@@ -260,9 +261,12 @@ class TreePointsDataset(MillionTreesDataset):
         indices = self._input_lookup[filename]
         return self._y_array[indices]
 
-    def eval(self, y_pred, y_true, metadata):
+    def eval(self, y_pred, y_true, metadata, *, viz_dir=None, viz_n_per_source=4):
         """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
-        detection accuracies of each domain."""
+        detection accuracies of each domain.
+
+        Optional ``viz_dir`` / ``viz_n_per_source`` write qualitative overlays (see TreeBoxes.eval).
+        """
 
         results = {}
         results_str = ''
@@ -290,6 +294,18 @@ class TreePointsDataset(MillionTreesDataset):
         # Format results with tables
         formatted_results = format_eval_results(results, self)
         results_str = formatted_results + '\n' + results_str
+
+        if viz_dir is not None:
+            paths = save_eval_visualizations(
+                self,
+                y_pred,
+                y_true,
+                metadata,
+                viz_dir,
+                n_per_source=viz_n_per_source,
+                score_threshold=self.metrics["KeypointAccuracy"].score_threshold,
+            )
+            results["eval_visualization_paths"] = [str(p) for p in paths]
 
         return results, results_str
 

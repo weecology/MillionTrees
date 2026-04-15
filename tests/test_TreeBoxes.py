@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
 
@@ -130,6 +132,38 @@ def test_TreeBoxes_eval(dataset, pred_tensor):
     assert len(eval_results) 
     assert "accuracy" in eval_results.keys()
     assert "recall" in eval_results.keys()
+
+
+def test_TreeBoxes_eval_visualization(dataset, tmp_path):
+    ds = TreeBoxesDataset(download=False, root_dir=dataset, version="0.0")
+    test_dataset = ds.get_subset("test")
+    test_loader = get_eval_loader("standard", test_dataset, batch_size=2)
+    all_y_pred, all_y_true = [], []
+    pred_tensor = [[30, 70, 35, 75]]
+    for _, x, y_true in test_loader:
+        labels = torch.zeros(x.shape[0])
+        scores = torch.stack(
+            [torch.tensor(0.54) for _ in range(len(pred_tensor))])
+        y_pred = [{
+            "y": torch.tensor(pred_tensor),
+            "labels": labels,
+            "scores": scores,
+        } for _ in range(x.shape[0])]
+        all_y_true.extend(y_true)
+        all_y_pred.extend(y_pred)
+
+    viz_root = tmp_path / "viz"
+    out, _ = ds.eval(
+        y_pred=all_y_pred,
+        y_true=all_y_true,
+        metadata=test_dataset.metadata_array,
+        viz_dir=str(viz_root),
+        viz_n_per_source=2,
+    )
+    paths = out["eval_visualization_paths"]
+    assert len(paths) >= 1
+    for p in paths:
+        assert Path(p).is_file()
 
 
 def test_TreeBoxes_download_url(dataset):
