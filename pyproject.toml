@@ -43,7 +43,7 @@ dependencies = [
     "tqdm",
     "scikit-learn",
     "shapely",
-    "torchmetrics",
+    "torchmetrics[detection]",
     'albumentations',
     "pyarrow>=17.0.0",
     "datasets",
