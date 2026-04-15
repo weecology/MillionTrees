@@ -192,6 +192,9 @@ cython_debug/
 # Local logs directory
 /logs/
 
+# Local Word output (not tracked)
+/docs/NEON_combined_crowns_TAC_workflow.docx
+
 # Ignore large/local datasets
 /data/
 /docs/examples/data/
