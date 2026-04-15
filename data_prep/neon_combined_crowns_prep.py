@@ -100,6 +100,18 @@ def _tile_sample_coords(minx: float, miny: float, maxx: float, maxy: float,
     return easting, northing
 
 
+def _infer_utm_epsg_from_lonlat(gdf: gpd.GeoDataFrame) -> str:
+    """Infer WGS84 UTM EPSG from centroid longitude/latitude."""
+    g4326 = gdf.to_crs("EPSG:4326")
+    centroid = g4326.geometry.union_all().centroid
+    lon = float(centroid.x)
+    lat = float(centroid.y)
+    zone = int(np.floor((lon + 180.0) / 6.0) + 1)
+    if lat >= 0:
+        return f"EPSG:{32600 + zone}"
+    return f"EPSG:{32700 + zone}"
+
+
 def _collect_rgb_tifs(download_root: Path) -> list[str]:
     pattern = str(download_root / "**" / "*.tif")
     paths = [
@@ -200,39 +212,58 @@ def run(
         raise ValueError(
             "No polygon geometries left after exploding MultiPolygons.")
 
-    flight_year = year if year is not None else latest_api_year(RGB_DPID, site)
-    print(
-        f"Using NEON site={site.upper()} year={flight_year} product={RGB_DPID}")
-
     download_root = output_dir / "downloads"
-    if not skip_download:
-        download_root.mkdir(parents=True, exist_ok=True)
-        # Tile selection uses the same UTM coordinates as NEON's index (zone for this site).
-        gdf_rough = gdf.to_crs("EPSG:32619")
-        minx, miny, maxx, maxy = gdf_rough.total_bounds
-        easting, northing = _tile_sample_coords(minx, miny, maxx, maxy, pad_m)
-        nu.by_tile_aop(
-            dpid=RGB_DPID,
-            site=site.upper(),
-            year=str(flight_year),
-            easting=easting,
-            northing=northing,
-            buffer=0,
-            savepath=str(download_root),
-            check_size=False,
-            token=token,
-            verbose=True,
-            skip_if_exists=True,
-            overwrite="no",
-            include_provisional=include_provisional,
-        )
-    else:
-        print(
-            f"Skipping download; expecting tiles under {download_root / RGB_DPID}"
-        )
+    candidate_years = [year] if year is not None else sorted(
+        _api_years_for_site(RGB_DPID, site), reverse=True)
+    if not candidate_years:
+        raise ValueError(f"No candidate years found for site {site}")
 
-    tif_paths = _find_downloaded_rgb_tifs(
-        download_root if skip_download else download_root / RGB_DPID)
+    # Tile selection should match the NEON UTM tile index for this location.
+    inferred_utm = _infer_utm_epsg_from_lonlat(gdf)
+    print(f"Inferred UTM for tile lookup: {inferred_utm}")
+    gdf_rough = gdf.to_crs(inferred_utm)
+    minx, miny, maxx, maxy = gdf_rough.total_bounds
+    easting, northing = _tile_sample_coords(minx, miny, maxx, maxy, pad_m)
+
+    flight_year = None
+    tif_paths: list[str] | None = None
+    for candidate_year in candidate_years:
+        print(
+            f"Trying NEON site={site.upper()} year={candidate_year} product={RGB_DPID}"
+        )
+        candidate_root = download_root / str(candidate_year)
+        if not skip_download:
+            candidate_root.mkdir(parents=True, exist_ok=True)
+            # neonutilities has a skip_if_exists=True bug for some empty subsets; avoid it.
+            nu.by_tile_aop(
+                dpid=RGB_DPID,
+                site=site.upper(),
+                year=str(candidate_year),
+                easting=easting,
+                northing=northing,
+                buffer=0,
+                savepath=str(candidate_root),
+                check_size=False,
+                token=token,
+                verbose=True,
+                skip_if_exists=False,
+                include_provisional=include_provisional,
+            )
+        try:
+            maybe_tifs = _find_downloaded_rgb_tifs(candidate_root)
+        except FileNotFoundError:
+            print(f"No GeoTIFFs found for {candidate_year}, trying older year.")
+            continue
+        if maybe_tifs:
+            flight_year = candidate_year
+            tif_paths = maybe_tifs
+            break
+
+    if flight_year is None or tif_paths is None:
+        raise FileNotFoundError(
+            "No NEON GeoTIFF tiles found for candidate years. "
+            "Try a specific --year or different --site.")
+
     print(f"Found {len(tif_paths)} GeoTIFF tile(s)")
 
     with rasterio.open(tif_paths[0]) as src0:
@@ -252,6 +283,7 @@ def run(
         image_path=mosaic_path.name,
         label="Tree",
     )
+    annotations = annotations.reset_index(drop=True)
 
     tiles_dir = output_dir / "tiles"
     tiles_dir.mkdir(parents=True, exist_ok=True)
@@ -334,8 +366,15 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument(
         "--include-provisional",
         action="store_true",
+        default=True,
         help=
-        "Include provisional NEON releases in by_tile_aop (needed for some recent years)",
+        "Include provisional NEON releases in by_tile_aop (default: enabled)",
+    )
+    p.add_argument(
+        "--no-include-provisional",
+        dest="include_provisional",
+        action="store_false",
+        help="Disable provisional NEON releases",
     )
     p.add_argument(
         "--source-name",
