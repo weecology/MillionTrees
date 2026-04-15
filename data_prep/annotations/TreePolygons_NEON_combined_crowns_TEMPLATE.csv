@@ -1,0 +1,2 @@
+image_path,geometry,source,label,existing_split
+REPLACE_AFTER_RUNNING_neon_combined_crowns_prep.tif,"POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))","NEON combined crowns",Tree,test
