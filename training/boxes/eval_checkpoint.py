@@ -3,10 +3,16 @@
 import argparse
 import os
 
+import sys
 import torch
-
-from training.boxes.train_boxes import DeepForestBoxTrainer, evaluate
+from deepforest import main as df_main
+from training.boxes.train_boxes import MillionTreesBatchAdapter, evaluate
 from milliontrees import get_dataset
+
+# The checkpoint was saved when train_boxes.py ran as __main__, so pickle
+# stored the adapter as __main__.MillionTreesBatchAdapter.  Inject it here
+# so deserialization can resolve that reference.
+sys.modules['__main__'].MillionTreesBatchAdapter = MillionTreesBatchAdapter
 
 
 def main():
@@ -24,7 +30,7 @@ def main():
     args = parser.parse_args()
 
     print(f"Loading checkpoint: {args.checkpoint}")
-    model = DeepForestBoxTrainer.load_from_checkpoint(args.checkpoint)
+    model = df_main.deepforest.load_from_checkpoint(args.checkpoint, weights_only=False)
     model.eval()
     if torch.cuda.is_available():
         model = model.cuda()
