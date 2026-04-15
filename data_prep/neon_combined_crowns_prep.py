@@ -43,8 +43,6 @@ import requests
 from deepforest.preprocess import split_raster
 from deepforest.utilities import read_file
 from rasterio.merge import merge
-from rasterio.mask import mask
-from shapely.geometry import mapping
 
 RGB_DPID = "DP3.30010.001"
 
@@ -139,7 +137,7 @@ def _merge_and_crop(
     aoi_crs,
     dst_path: Path,
 ) -> Path:
-    """Merge rasters, clip to AOI union, write 3-band uint8 GeoTIFF."""
+    """Merge rasters over AOI bounds (no polygon mask), write GeoTIFF."""
     sources = [rasterio.open(p) for p in tif_paths]
     try:
         # Align vector to first raster CRS
@@ -164,19 +162,7 @@ def _merge_and_crop(
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         with rasterio.open(dst_path, "w", **meta) as dst:
             dst.write(mosaic)
-        # Mask to exact union outline
-        with rasterio.open(dst_path) as src:
-            out_image, out_transform = mask(src, [mapping(geom)],
-                                            crop=True,
-                                            nodata=0)
-            out_meta = src.meta.copy()
-            out_meta.update(
-                height=out_image.shape[1],
-                width=out_image.shape[2],
-                transform=out_transform,
-            )
-        with rasterio.open(dst_path, "w", **out_meta) as dst:
-            dst.write(out_image)
+        # Intentionally no polygon mask: keep full rectangular mosaic at AOI bounds.
     finally:
         for s in sources:
             s.close()
