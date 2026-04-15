@@ -16,10 +16,7 @@ Environment:
   Optionally set NEON_TOKEN for higher API rate limits (see NEON data API docs).
 
 Examples:
-  uv run python data_prep/neon_combined_crowns_prep.py \\
-    --gpkg /path/to/combined_crown_polygons.gpkg \\
-    --output-dir ./work/neon_combined_crowns \\
-    --site HARV
+  uv run python data_prep/neon_combined_crowns_prep.py --gpkg /orange/ewhite/DeepForest/HARV_Field_Johnson/combined_crown_polygons.gpkg --output-dir /orange/ewhite/DeepForest/HARV_Field_Johnson/neon_combined_crowns --site HARV
 
   uv run python data_prep/neon_combined_crowns_prep.py \\
     --gpkg ... --output-dir ... --year 2024 --skip-download \\
