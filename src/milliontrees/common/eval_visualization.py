@@ -44,7 +44,8 @@ def _resize_eval_image(img_hwc: np.ndarray, size: int) -> np.ndarray:
 def _tensor_boxes(geo, name: str) -> np.ndarray:
     if geo is None:
         return np.zeros((0, 4), dtype=np.float32)
-    t = geo if isinstance(geo, torch.Tensor) else torch.as_tensor(geo, dtype=torch.float32)
+    t = geo if isinstance(geo, torch.Tensor) else torch.as_tensor(
+        geo, dtype=torch.float32)
     t = t.detach().cpu().float()
     if t.numel() == 0:
         return np.zeros((0, 4), dtype=np.float32)
@@ -54,7 +55,8 @@ def _tensor_boxes(geo, name: str) -> np.ndarray:
 
 
 def _tensor_points(geo) -> np.ndarray:
-    t = geo if isinstance(geo, torch.Tensor) else torch.as_tensor(geo, dtype=torch.float32)
+    t = geo if isinstance(geo, torch.Tensor) else torch.as_tensor(
+        geo, dtype=torch.float32)
     t = t.detach().cpu().float()
     if t.numel() == 0:
         return np.zeros((0, 2), dtype=np.float32)
@@ -70,7 +72,8 @@ def _tensor_masks(geo, empty_hw: int) -> np.ndarray:
     t = t.detach().cpu()
     if t.numel() == 0:
         if t.ndim == 3 and t.shape[1] > 0 and t.shape[2] > 0:
-            return np.zeros((0, int(t.shape[1]), int(t.shape[2])), dtype=np.uint8)
+            return np.zeros((0, int(t.shape[1]), int(t.shape[2])),
+                            dtype=np.uint8)
         return np.zeros((0, empty_hw, empty_hw), dtype=np.uint8)
     arr = t.numpy()
     if arr.ndim == 2:
@@ -143,8 +146,7 @@ def save_eval_visualizations(
     if len(y_pred) != len(y_true) or len(y_pred) != len(metadata):
         raise ValueError(
             "y_pred, y_true, and metadata must have the same length "
-            f"({len(y_pred)}, {len(y_true)}, {len(metadata)})."
-        )
+            f"({len(y_pred)}, {len(y_true)}, {len(metadata)}).")
 
     if not isinstance(metadata, torch.Tensor):
         metadata = torch.as_tensor(metadata)
@@ -166,7 +168,8 @@ def save_eval_visualizations(
 
         filename_id = int(metadata[row, 0].item())
         if filename_id not in fid_to_idx:
-            raise KeyError(f"filename_id {filename_id} not found in dataset metadata.")
+            raise KeyError(
+                f"filename_id {filename_id} not found in dataset metadata.")
         ds_idx = fid_to_idx[filename_id]
 
         raw = _to_numpy_image(dataset.get_input(ds_idx))
@@ -183,9 +186,9 @@ def save_eval_visualizations(
             if scores is None:
                 pred_boxes = _tensor_boxes(pr.get(geom), geom)
             else:
-                sc = scores if isinstance(scores, torch.Tensor) else torch.as_tensor(
-                    scores, dtype=torch.float32
-                )
+                sc = scores if isinstance(scores,
+                                          torch.Tensor) else torch.as_tensor(
+                                              scores, dtype=torch.float32)
                 sc = sc.detach().cpu().float()
                 geo = pr.get(geom)
                 pb = _tensor_boxes(geo, geom)
@@ -201,13 +204,14 @@ def save_eval_visualizations(
             gt_pts = _tensor_points(gt.get(geom))
             scores = pr.get("scores")
             geo = pr.get(geom)
-            pp = _tensor_points(geo) if geo is not None else np.zeros((0, 2), dtype=np.float32)
+            pp = _tensor_points(geo) if geo is not None else np.zeros(
+                (0, 2), dtype=np.float32)
             if scores is None or len(pp) == 0:
                 pred_pts = pp
             else:
-                sc = scores if isinstance(scores, torch.Tensor) else torch.as_tensor(
-                    scores, dtype=torch.float32
-                )
+                sc = scores if isinstance(scores,
+                                          torch.Tensor) else torch.as_tensor(
+                                              scores, dtype=torch.float32)
                 sc = sc.detach().cpu().float().numpy()
                 keep = sc > score_threshold
                 pred_pts = pp[keep]
@@ -220,9 +224,9 @@ def save_eval_visualizations(
             geo = pr.get(geom)
             pm = _tensor_masks(geo, image_size)
             if scores is not None and pm.shape[0] > 0:
-                sc = scores if isinstance(scores, torch.Tensor) else torch.as_tensor(
-                    scores, dtype=torch.float32
-                )
+                sc = scores if isinstance(scores,
+                                          torch.Tensor) else torch.as_tensor(
+                                              scores, dtype=torch.float32)
                 sc = sc.detach().cpu().float().numpy()
                 pm = pm[sc > score_threshold]
             arr = np.asarray(base, dtype=np.uint8)
@@ -230,10 +234,14 @@ def save_eval_visualizations(
             arr = _blend_masks(arr, pm, _COLOR_PREDICTION, alpha=0.35)
             base = Image.fromarray(arr, mode="RGB")
         else:
-            raise ValueError(f"Unsupported dataset for eval visualization: {task}")
+            raise ValueError(
+                f"Unsupported dataset for eval visualization: {task}")
 
-        src_name = getattr(dataset, "_source_id_to_code", {}).get(source_id, str(source_id))
-        stem = Path(getattr(dataset, "_filename_id_to_code", {}).get(filename_id, f"id_{filename_id}")).stem
+        src_name = getattr(dataset, "_source_id_to_code",
+                           {}).get(source_id, str(source_id))
+        stem = Path(
+            getattr(dataset, "_filename_id_to_code",
+                    {}).get(filename_id, f"id_{filename_id}")).stem
         sub = out_path / _slug(src_name)
         sub.mkdir(parents=True, exist_ok=True)
         k = per_source_count.get(source_id, 0)

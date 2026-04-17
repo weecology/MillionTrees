@@ -82,7 +82,13 @@ class MillionTreesDataset:
             )
         return mask
 
-    def eval(self, y_pred, y_true, metadata, *, viz_dir=None, viz_n_per_source=4):
+    def eval(self,
+             y_pred,
+             y_true,
+             metadata,
+             *,
+             viz_dir=None,
+             viz_n_per_source=4):
         """
         Args:
             - y_pred (list[dict]): Predicted targets per image
@@ -668,7 +674,13 @@ class MillionTreesSubset(MillionTreesDataset):
     def metadata_array(self):
         return torch.tensor(self.dataset.metadata_array[self.indices])
 
-    def eval(self, y_pred, y_true, metadata, *, viz_dir=None, viz_n_per_source=4):
+    def eval(self,
+             y_pred,
+             y_true,
+             metadata,
+             *,
+             viz_dir=None,
+             viz_n_per_source=4):
         return self.dataset.eval(
             y_pred,
             y_true,

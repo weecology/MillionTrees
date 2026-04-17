@@ -365,7 +365,13 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         return mask_img
 
-    def eval(self, y_pred, y_true, metadata, *, viz_dir=None, viz_n_per_source=4):
+    def eval(self,
+             y_pred,
+             y_true,
+             metadata,
+             *,
+             viz_dir=None,
+             viz_n_per_source=4):
         """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
         detection accuracies of each domain.
 
