@@ -3,10 +3,21 @@
 # To set up a development environment with all dependencies (including extras for development and testing),
 # use uv (https://github.com/astral-sh/uv):
 
-```python
-uv sync --dev extra
+```bash
+uv sync --extra dev
 uv run python
 ```
+
+## Pull requests
+
+CI runs [pre-commit](https://pre-commit.com/) hooks (YAPF and docformatter on `src/milliontrees/`). **Pull requests must pass `pre-commit` before merge**; fix style locally instead of relying on CI to fail.
+
+```bash
+uv sync --extra dev
+uv run pre-commit run --all-files
+```
+
+Use `uv run pre-commit install` once per clone if you want the same checks to run automatically on `git commit`. Equivalent manual commands are documented in `docs/contributing.md`.
 
 ## Coding Philosophy
 

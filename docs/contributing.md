@@ -30,7 +30,7 @@ After we work with an author to find a suitable data sharing agreement, we will 
 
 ## Code Style
 
-This project enforces consistent code style using [YAPF](https://github.com/google/yapf) and [docformatter](https://github.com/PyCQA/docformatter). Style is checked automatically in CI on every push and pull request.
+This project enforces consistent code style using [YAPF](https://github.com/google/yapf) and [docformatter](https://github.com/PyCQA/docformatter). Style is checked automatically in CI on every push and pull request. **Pull requests must pass these checks**; run `uv run pre-commit run --all-files` (see below) before opening or updating a PR so CI does not fail on formatting.
 
 ### Pre-commit hooks
 

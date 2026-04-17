@@ -261,7 +261,13 @@ class TreePointsDataset(MillionTreesDataset):
         indices = self._input_lookup[filename]
         return self._y_array[indices]
 
-    def eval(self, y_pred, y_true, metadata, *, viz_dir=None, viz_n_per_source=4):
+    def eval(self,
+             y_pred,
+             y_true,
+             metadata,
+             *,
+             viz_dir=None,
+             viz_n_per_source=4):
         """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
         detection accuracies of each domain.
 
@@ -303,7 +309,8 @@ class TreePointsDataset(MillionTreesDataset):
                 metadata,
                 viz_dir,
                 n_per_source=viz_n_per_source,
-                score_threshold=self.metrics["KeypointAccuracy"].score_threshold,
+                score_threshold=self.metrics["KeypointAccuracy"].
+                score_threshold,
             )
             results["eval_visualization_paths"] = [str(p) for p in paths]
 
