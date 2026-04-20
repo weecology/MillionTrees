@@ -146,6 +146,32 @@ Std accuracy: 0.171
 
 Recall is proportion of correctly predicted true positives.
 
+### Mask-aware precision (partial-annotation aware)
+
+`TreeBoxes`, `TreePoints`, and `TreePolygons` now report a mask-aware precision metric (`maskaware_detection_precision`, `maskaware_keypoint_precision`, `maskaware_mask_precision`), using
+optional per-image `tree_coverage_mask` to avoid penalizing plausible trees that are present
+in imagery but missing from annotation boxes.
+
+For each prediction above score threshold:
+
+- Matched predictions are true positives (same task-specific matching as existing metrics:
+  IoU for boxes/masks, distance-based matching for points).
+- Duplicate predictions are still false positives.
+- Unmatched predictions are counted as false positives only when the predicted geometry does not
+  sufficiently overlap tree pixels in `tree_coverage_mask`.
+
+Per image:
+
+$$
+\text{MaskAwarePrecision} = \frac{TP}{TP + FP_{\text{adjusted}}}
+$$
+
+where `FP_adjusted` excludes unmatched predictions with tree-pixel fraction above the configured
+threshold (default `0.5`). If `tree_coverage_mask` is unavailable for an image, the metric
+falls back to strict precision behavior for that image.
+
+This adjustment applies to precision only. Recall metrics are unchanged.
+
 ```
 ============================================================
 RECALL RESULTS
