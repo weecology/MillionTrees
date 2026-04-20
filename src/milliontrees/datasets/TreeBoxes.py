@@ -286,7 +286,13 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         super().__init__(root_dir, download, split_scheme)
 
-    def eval(self, y_pred, y_true, metadata, *, viz_dir=None, viz_n_per_source=4):
+    def eval(self,
+             y_pred,
+             y_true,
+             metadata,
+             *,
+             viz_dir=None,
+             viz_n_per_source=4):
         """Performs evaluation on the given predictions.
 
         The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
