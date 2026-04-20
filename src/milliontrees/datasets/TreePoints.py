@@ -8,7 +8,7 @@ import torch
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.eval_visualization import save_eval_visualizations
 from milliontrees.common.grouper import CombinatorialGrouper
-from milliontrees.common.metrics.all_metrics import KeypointAccuracy, CountingError
+from milliontrees.common.metrics.all_metrics import KeypointAccuracy, CountingError, MaskAwareKeypointPrecision
 from milliontrees.common.utils import format_eval_results
 from milliontrees.common.onboarding import print_dataset_summary
 
@@ -204,6 +204,12 @@ class TreePointsDataset(MillionTreesDataset):
                 KeypointAccuracy(
                     distance_threshold=distance_threshold,
                     image_size=self.image_size,
+                ),
+            "maskaware_precision":
+                MaskAwareKeypointPrecision(
+                    distance_threshold=distance_threshold,
+                    image_size=self.image_size,
+                    geometry_name=self.geometry_name,
                 ),
             "CountingAccuracy":
                 CountingError(),

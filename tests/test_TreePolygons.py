@@ -1,5 +1,6 @@
 from milliontrees.datasets.TreePolygons import TreePolygonsDataset
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
+from milliontrees.common.metrics.all_metrics import MaskAwareMaskPrecision
 
 import torch
 import pytest
@@ -111,6 +112,7 @@ def test_TreePolygons_eval(dataset):
     assert len(eval_results) 
     assert "accuracy" in eval_results.keys()
     assert "recall" in eval_results.keys()
+    assert "maskaware_precision" in eval_results.keys()
 
 def test_TreePolygons_download_url(dataset):
     ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
@@ -249,3 +251,73 @@ def test_TreePolygons_box_to_mask_conversion(dataset):
     empty_masks = torch.zeros((0, 448, 448), dtype=torch.uint8)
     iou_both_empty = metric._mask_iou(empty_masks, empty_boxes)
     assert iou_both_empty.shape == (0, 0)
+
+
+def test_maskaware_mask_precision_ignores_unmatched_tree_pixels():
+    metric = MaskAwareMaskPrecision(geometry_name="y",
+                                    iou_threshold=0.5,
+                                    tree_fraction_threshold=0.5)
+    gt_mask = torch.zeros((64, 64), dtype=torch.uint8)
+    gt_mask[10:20, 10:20] = 1
+    unmatched_mask = torch.zeros((64, 64), dtype=torch.uint8)
+    unmatched_mask[30:40, 30:40] = 1
+    gt = [{'y': torch.stack([gt_mask]), 'tree_coverage_mask': unmatched_mask.clone()}]
+    pred = [{
+        'y': torch.stack([gt_mask, unmatched_mask]),
+        'scores': torch.tensor([0.9, 0.9]),
+    }]
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(1.0)
+
+
+def test_maskaware_mask_precision_counts_background_unmatched():
+    metric = MaskAwareMaskPrecision(geometry_name="y",
+                                    iou_threshold=0.5,
+                                    tree_fraction_threshold=0.5)
+    gt_mask = torch.zeros((64, 64), dtype=torch.uint8)
+    gt_mask[10:20, 10:20] = 1
+    unmatched_mask = torch.zeros((64, 64), dtype=torch.uint8)
+    unmatched_mask[30:40, 30:40] = 1
+    gt = [{'y': torch.stack([gt_mask]), 'tree_coverage_mask': torch.zeros((64, 64), dtype=torch.uint8)}]
+    pred = [{
+        'y': torch.stack([gt_mask, unmatched_mask]),
+        'scores': torch.tensor([0.9, 0.9]),
+    }]
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(0.5)
+
+
+def test_maskaware_mask_precision_keeps_duplicate_predictions_as_false_positives():
+    metric = MaskAwareMaskPrecision(geometry_name="y",
+                                    iou_threshold=0.5,
+                                    tree_fraction_threshold=0.5)
+    gt_mask = torch.zeros((64, 64), dtype=torch.uint8)
+    gt_mask[10:20, 10:20] = 1
+    gt = [{'y': torch.stack([gt_mask]), 'tree_coverage_mask': torch.ones((64, 64), dtype=torch.uint8)}]
+    pred = [{
+        'y': torch.stack([gt_mask, gt_mask]),
+        'scores': torch.tensor([0.9, 0.8]),
+    }]
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(0.5)
+
+
+def test_maskaware_mask_precision_falls_back_without_tree_mask():
+    metric = MaskAwareMaskPrecision(geometry_name="y",
+                                    iou_threshold=0.5,
+                                    tree_fraction_threshold=0.5)
+    gt_mask = torch.zeros((64, 64), dtype=torch.uint8)
+    gt_mask[10:20, 10:20] = 1
+    unmatched_mask = torch.zeros((64, 64), dtype=torch.uint8)
+    unmatched_mask[30:40, 30:40] = 1
+    gt = [{'y': torch.stack([gt_mask])}]
+    pred = [{
+        'y': torch.stack([gt_mask, unmatched_mask]),
+        'scores': torch.tensor([0.9, 0.9]),
+    }]
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(0.5)

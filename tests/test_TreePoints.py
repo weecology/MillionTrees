@@ -1,5 +1,6 @@
 from milliontrees.datasets.TreePoints import TreePointsDataset
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
+from milliontrees.common.metrics.all_metrics import MaskAwareKeypointPrecision
 
 import torch
 import pytest
@@ -96,6 +97,72 @@ def test_TreePoints_eval(dataset, pred_tensor):
 
     # Evaluate
     eval_results, eval_string = ds.eval(all_y_pred, all_y_true, test_dataset.metadata_array)
+    assert "maskaware_precision" in eval_results.keys()
+
+
+def test_maskaware_keypoint_precision_ignores_unmatched_tree_pixels():
+    metric = MaskAwareKeypointPrecision(geometry_name="y",
+                                        distance_threshold=0.02,
+                                        image_size=448,
+                                        tree_fraction_threshold=0.5)
+    gt = [{'y': torch.tensor([[10., 10.]])}]
+    pred = [{
+        'y': torch.tensor([[10., 10.], [30., 30.]]),
+        'scores': torch.tensor([0.9, 0.9]),
+    }]
+    tree_mask = torch.zeros((64, 64), dtype=torch.uint8)
+    tree_mask[30, 30] = 1
+    gt[0]["tree_coverage_mask"] = tree_mask
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(1.0)
+
+
+def test_maskaware_keypoint_precision_counts_background_unmatched():
+    metric = MaskAwareKeypointPrecision(geometry_name="y",
+                                        distance_threshold=0.02,
+                                        image_size=448,
+                                        tree_fraction_threshold=0.5)
+    gt = [{'y': torch.tensor([[10., 10.]])}]
+    pred = [{
+        'y': torch.tensor([[10., 10.], [30., 30.]]),
+        'scores': torch.tensor([0.9, 0.9]),
+    }]
+    gt[0]["tree_coverage_mask"] = torch.zeros((64, 64), dtype=torch.uint8)
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(0.5)
+
+
+def test_maskaware_keypoint_precision_keeps_duplicate_predictions_as_false_positives():
+    metric = MaskAwareKeypointPrecision(geometry_name="y",
+                                        distance_threshold=0.02,
+                                        image_size=448,
+                                        tree_fraction_threshold=0.5)
+    gt = [{'y': torch.tensor([[10., 10.]])}]
+    pred = [{
+        'y': torch.tensor([[10., 10.], [10., 10.]]),
+        'scores': torch.tensor([0.9, 0.8]),
+    }]
+    gt[0]["tree_coverage_mask"] = torch.ones((64, 64), dtype=torch.uint8)
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(0.5)
+
+
+def test_maskaware_keypoint_precision_falls_back_without_tree_mask():
+    metric = MaskAwareKeypointPrecision(geometry_name="y",
+                                        distance_threshold=0.02,
+                                        image_size=448,
+                                        tree_fraction_threshold=0.5)
+    gt = [{'y': torch.tensor([[10., 10.]])}]
+    pred = [{
+        'y': torch.tensor([[10., 10.], [30., 30.]]),
+        'scores': torch.tensor([0.9, 0.9]),
+    }]
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(0.5)
 
 def test_TreePoints_download_url(dataset):
     ds = TreePointsDataset(download=False, root_dir=dataset, version="0.0")
