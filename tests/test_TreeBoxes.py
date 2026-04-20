@@ -2,6 +2,7 @@ from pathlib import Path
 
 from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
+from milliontrees.common.metrics.all_metrics import MaskAwareDetectionPrecision
 
 import torch
 import pytest
@@ -132,6 +133,7 @@ def test_TreeBoxes_eval(dataset, pred_tensor):
     assert len(eval_results) 
     assert "accuracy" in eval_results.keys()
     assert "recall" in eval_results.keys()
+    assert "maskaware_precision" in eval_results.keys()
 
 
 def test_TreeBoxes_eval_visualization(dataset, tmp_path):
@@ -164,6 +166,67 @@ def test_TreeBoxes_eval_visualization(dataset, tmp_path):
     assert len(paths) >= 1
     for p in paths:
         assert Path(p).is_file()
+
+
+def test_maskaware_precision_ignores_unmatched_tree_pixels():
+    metric = MaskAwareDetectionPrecision(geometry_name="y",
+                                         iou_threshold=0.5,
+                                         tree_fraction_threshold=0.5)
+    gt = [{'y': torch.tensor([[10., 10., 20., 20.]])}]
+    pred = [{
+        'y': torch.tensor([[10., 10., 20., 20.], [30., 30., 40., 40.]]),
+        'scores': torch.tensor([0.9, 0.9]),
+    }]
+    tree_mask = torch.zeros((64, 64), dtype=torch.uint8)
+    tree_mask[30:40, 30:40] = 1
+    gt[0]["tree_coverage_mask"] = tree_mask
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(1.0)
+
+
+def test_maskaware_precision_counts_background_unmatched():
+    metric = MaskAwareDetectionPrecision(geometry_name="y",
+                                         iou_threshold=0.5,
+                                         tree_fraction_threshold=0.5)
+    gt = [{'y': torch.tensor([[10., 10., 20., 20.]])}]
+    pred = [{
+        'y': torch.tensor([[10., 10., 20., 20.], [30., 30., 40., 40.]]),
+        'scores': torch.tensor([0.9, 0.9]),
+    }]
+    gt[0]["tree_coverage_mask"] = torch.zeros((64, 64), dtype=torch.uint8)
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(0.5)
+
+
+def test_maskaware_precision_keeps_duplicate_predictions_as_false_positives():
+    metric = MaskAwareDetectionPrecision(geometry_name="y",
+                                         iou_threshold=0.5,
+                                         tree_fraction_threshold=0.5)
+    gt = [{'y': torch.tensor([[10., 10., 20., 20.]])}]
+    pred = [{
+        'y': torch.tensor([[10., 10., 20., 20.], [10., 10., 20., 20.]]),
+        'scores': torch.tensor([0.9, 0.8]),
+    }]
+    gt[0]["tree_coverage_mask"] = torch.ones((64, 64), dtype=torch.uint8)
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(0.5)
+
+
+def test_maskaware_precision_falls_back_without_tree_mask():
+    metric = MaskAwareDetectionPrecision(geometry_name="y",
+                                         iou_threshold=0.5,
+                                         tree_fraction_threshold=0.5)
+    gt = [{'y': torch.tensor([[10., 10., 20., 20.]])}]
+    pred = [{
+        'y': torch.tensor([[10., 10., 20., 20.], [30., 30., 40., 40.]]),
+        'scores': torch.tensor([0.9, 0.9]),
+    }]
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(0.5)
 
 
 def test_TreeBoxes_download_url(dataset):
