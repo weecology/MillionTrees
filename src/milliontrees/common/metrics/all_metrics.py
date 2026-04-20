@@ -600,8 +600,8 @@ class MaskAwareDetectionPrecision(ElementwiseMetric):
         unmatched_boxes = pred_boxes[unmatched_indices]
         ignored_unmatched = self._count_ignored_unmatched_predictions(
             unmatched_boxes, tree_mask)
-        adjusted_false_positive = (unmatched_false_positive - ignored_unmatched +
-                                   duplicate_false_positive)
+        adjusted_false_positive = (unmatched_false_positive -
+                                   ignored_unmatched + duplicate_false_positive)
 
         denominator = true_positive + adjusted_false_positive
         if denominator == 0:
@@ -785,7 +785,9 @@ class MaskAwareKeypointPrecision(ElementwiseMetric):
                 return torch.tensor(1.)
             return torch.tensor(0.)
 
-        distance_matrix = torch.cdist(src_points.float(), pred_points.float(), p=2)
+        distance_matrix = torch.cdist(src_points.float(),
+                                      pred_points.float(),
+                                      p=2)
         similarity_matrix = 1.0 / (1.0 + distance_matrix)
         pixel_threshold = self.distance_threshold * float(self.image_size)
         sim_threshold = 1.0 / (1.0 + pixel_threshold)
@@ -802,8 +804,8 @@ class MaskAwareKeypointPrecision(ElementwiseMetric):
         unmatched_points = pred_points[unmatched_indices]
         ignored_unmatched = self._count_ignored_unmatched_predictions(
             unmatched_points, tree_mask)
-        adjusted_false_positive = (unmatched_false_positive - ignored_unmatched +
-                                   duplicate_false_positive)
+        adjusted_false_positive = (unmatched_false_positive -
+                                   ignored_unmatched + duplicate_false_positive)
 
         denominator = true_positive + adjusted_false_positive
         if float(denominator) == 0:
@@ -1189,7 +1191,8 @@ class MaskAwareMaskPrecision(ElementwiseMetric):
         matcher = Matcher(self.iou_threshold,
                           self.iou_threshold,
                           allow_low_quality_matches=False)
-        match_quality_matrix = self._mask_accuracy._mask_iou(src_masks, pred_masks)
+        match_quality_matrix = self._mask_accuracy._mask_iou(
+            src_masks, pred_masks)
         results = matcher(match_quality_matrix)
         true_positive = torch.count_nonzero(results.unique() != -1)
         matched_elements = results[results > -1]
@@ -1200,8 +1203,8 @@ class MaskAwareMaskPrecision(ElementwiseMetric):
         unmatched_masks = pred_masks[unmatched_indices]
         ignored_unmatched = self._count_ignored_unmatched_predictions(
             unmatched_masks, tree_mask)
-        adjusted_false_positive = (unmatched_false_positive - ignored_unmatched +
-                                   duplicate_false_positive)
+        adjusted_false_positive = (unmatched_false_positive -
+                                   ignored_unmatched + duplicate_false_positive)
 
         denominator = true_positive + adjusted_false_positive
         if float(denominator) == 0:
