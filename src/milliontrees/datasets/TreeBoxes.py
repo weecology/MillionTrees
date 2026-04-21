@@ -13,7 +13,12 @@ import fnmatch
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.eval_visualization import save_eval_visualizations
 from milliontrees.common.grouper import CombinatorialGrouper
-from milliontrees.common.metrics.all_metrics import DetectionAccuracy, DetectionMAP, MaskAwareDetectionPrecision
+from milliontrees.common.metrics.all_metrics import (
+    DetectionAccuracy,
+    DetectionMAP,
+    MaskAwareDetectionPrecision,
+    MergeCommissionMetric,
+)
 from milliontrees.common.onboarding import print_dataset_summary
 from PIL import Image
 
@@ -256,6 +261,12 @@ class TreeBoxesDataset(MillionTreesDataset):
                 DetectionMAP(geometry_name=self.geometry_name,
                              score_threshold=self.eval_score_threshold,
                              iou_type="bbox"),
+            "merge_commission":
+                MergeCommissionMetric(
+                    geometry_name=self.geometry_name,
+                    score_threshold=self.eval_score_threshold,
+                    modality="bbox",
+                ),
         }
 
         # eval grouper

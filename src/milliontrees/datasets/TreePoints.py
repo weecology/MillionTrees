@@ -8,7 +8,12 @@ import torch
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.eval_visualization import save_eval_visualizations
 from milliontrees.common.grouper import CombinatorialGrouper
-from milliontrees.common.metrics.all_metrics import KeypointAccuracy, CountingError, MaskAwareKeypointPrecision
+from milliontrees.common.metrics.all_metrics import (
+    KeypointAccuracy,
+    CountingError,
+    MaskAwareKeypointPrecision,
+    KeypointMergeCommissionMetric,
+)
 from milliontrees.common.utils import format_eval_results
 from milliontrees.common.onboarding import print_dataset_summary
 
@@ -115,14 +120,14 @@ class TreePointsDataset(MillionTreesDataset):
             self.df = self.df[self.df['complete'] == True]
 
         # Filter by include/exclude source names with wildcard support
-        # Default: exclude sources containing 'unsupervised' or 'weak supervised'
+        # Default: exclude sources containing 'unsupervised'
         include_patterns = None
         if include_sources is not None and include_sources != []:
             include_patterns = include_sources if isinstance(
                 include_sources, (list, tuple)) else [include_sources]
         exclude_patterns = exclude_sources
         if exclude_patterns is None:
-            exclude_patterns = ['*unsupervised*', '*weak supervised*']
+            exclude_patterns = ['*unsupervised*']
         elif not isinstance(exclude_patterns, (list, tuple)):
             exclude_patterns = [exclude_patterns]
 
@@ -213,6 +218,12 @@ class TreePointsDataset(MillionTreesDataset):
                 ),
             "CountingAccuracy":
                 CountingError(),
+            "merge_commission":
+                KeypointMergeCommissionMetric(
+                    distance_threshold=distance_threshold,
+                    image_size=self.image_size,
+                    geometry_name=self.geometry_name,
+                ),
         }
 
         self._collate = TreePointsDataset._collate_fn

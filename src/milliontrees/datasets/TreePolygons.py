@@ -15,7 +15,12 @@ from torchvision.ops import masks_to_boxes
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.eval_visualization import save_eval_visualizations
 from milliontrees.common.grouper import CombinatorialGrouper
-from milliontrees.common.metrics.all_metrics import MaskAccuracy, DetectionMAP, MaskAwareMaskPrecision
+from milliontrees.common.metrics.all_metrics import (
+    MaskAccuracy,
+    DetectionMAP,
+    MaskAwareMaskPrecision,
+    MergeCommissionMetric,
+)
 from milliontrees.common.onboarding import print_dataset_summary
 
 
@@ -126,14 +131,14 @@ class TreePolygonsDataset(MillionTreesDataset):
             df = df[df['complete'] == True]
 
         # Filter by include/exclude source names with wildcard support
-        # Default: exclude sources containing 'unsupervised' or 'weak supervised'
+        # Default: exclude sources containing 'unsupervised'
         include_patterns = None
         if include_sources is not None and include_sources != []:
             include_patterns = include_sources if isinstance(
                 include_sources, (list, tuple)) else [include_sources]
         exclude_patterns = exclude_sources
         if exclude_patterns is None:
-            exclude_patterns = ['*unsupervised*', '*weak supervised*']
+            exclude_patterns = ['*unsupervised*']
         elif not isinstance(exclude_patterns, (list, tuple)):
             exclude_patterns = [exclude_patterns]
 
@@ -227,6 +232,12 @@ class TreePolygonsDataset(MillionTreesDataset):
                 DetectionMAP(geometry_name=self.geometry_name,
                              score_threshold=self.eval_score_threshold,
                              iou_type="segm"),
+            "merge_commission":
+                MergeCommissionMetric(
+                    geometry_name=self.geometry_name,
+                    score_threshold=self.eval_score_threshold,
+                    modality="mask",
+                ),
         }
         self._eval_grouper = CombinatorialGrouper(dataset=self,
                                                   groupby_fields=(['source_id'
