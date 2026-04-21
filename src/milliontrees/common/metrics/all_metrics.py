@@ -4,8 +4,14 @@ import torch
 import torch.nn.functional as F
 from torchvision.ops.boxes import box_iou
 from torchvision.ops import masks_to_boxes
-from torchvision.models.detection._utils import Matcher
 from milliontrees.common.metrics.metric import Metric, ElementwiseMetric, MultiTaskMetric
+from milliontrees.common.metrics.matching import (
+    greedy_distance_match,
+    greedy_iou_match,
+    merge_commission_rate_distance,
+    merge_commission_rate_iou,
+    n_matched_gt,
+)
 from milliontrees.common.metrics.loss import ElementwiseLoss
 from milliontrees.common.utils import minimum, maximum, get_counts
 import sklearn.metrics
@@ -401,11 +407,10 @@ class DummyMetric(Metric):
 
 
 class DetectionAccuracy(ElementwiseMetric):
-    """Given a specific Intersection over union threshold, determine the accuracy achieved for a
-    one-class detector."""
+    """Per-image detection recall or accuracy with greedy 1:1 IoU matching."""
 
     def __init__(self,
-                 iou_threshold=0.3,
+                 iou_threshold=0.4,
                  score_threshold=0.1,
                  name=None,
                  geometry_name="boxes",
@@ -440,49 +445,27 @@ class DetectionAccuracy(ElementwiseMetric):
         total_gt = len(src_boxes)
         total_pred = len(pred_boxes)
         if total_gt > 0 and total_pred > 0:
-            # Define the matcher and distance matrix based on iou
-            matcher = Matcher(iou_threshold,
-                              iou_threshold,
-                              allow_low_quality_matches=False)
-            match_quality_matrix = box_iou(src_boxes, pred_boxes)
-            results = matcher(match_quality_matrix)
-            true_positive = torch.count_nonzero(results.unique() != -1)
-            return true_positive / total_gt
-        elif total_gt == 0:
-            if total_pred > 0:
-                return torch.tensor(0.)
-            else:
-                return torch.tensor(1.)
-        elif total_gt > 0 and total_pred == 0:
-            return torch.tensor(0.)
+            iou = box_iou(src_boxes, pred_boxes)
+            gt_to_pred = greedy_iou_match(iou, iou_threshold)
+            tp = n_matched_gt(gt_to_pred)
+            return tp / float(total_gt)
+        if total_gt == 0:
+            return torch.tensor(0.) if total_pred > 0 else torch.tensor(1.)
+        return torch.tensor(0.)
 
     def _accuracy(self, src_boxes, pred_boxes, iou_threshold):
         total_gt = len(src_boxes)
         total_pred = len(pred_boxes)
         if total_gt > 0 and total_pred > 0:
-            # Define the matcher and distance matrix based on iou
-            matcher = Matcher(iou_threshold,
-                              iou_threshold,
-                              allow_low_quality_matches=False)
-            match_quality_matrix = box_iou(src_boxes, pred_boxes)
-            results = matcher(match_quality_matrix)
-            true_positive = torch.count_nonzero(results.unique() != -1)
-            matched_elements = results[results > -1]
-            # in Matcher, a pred element can be matched only twice
-            false_positive = (
-                torch.count_nonzero(results == -1) +
-                (len(matched_elements) - len(matched_elements.unique())))
-            false_negative = total_gt - true_positive
-            acc = true_positive / (true_positive + false_positive +
-                                   false_negative)
-            return acc
-        elif total_gt == 0:
-            if total_pred > 0:
-                return torch.tensor(0.)
-            else:
-                return torch.tensor(1.)
-        elif total_gt > 0 and total_pred == 0:
-            return torch.tensor(0.)
+            iou = box_iou(src_boxes, pred_boxes)
+            gt_to_pred = greedy_iou_match(iou, iou_threshold)
+            tp = n_matched_gt(gt_to_pred)
+            fp = float(total_pred) - float(tp)
+            fn = float(total_gt) - float(tp)
+            return torch.tensor(float(tp / (tp + fp + fn)))
+        if total_gt == 0:
+            return torch.tensor(0.) if total_pred > 0 else torch.tensor(1.)
+        return torch.tensor(0.)
 
     def worst(self, metrics):
         return minimum(metrics)
@@ -496,7 +479,7 @@ class MaskAwareDetectionPrecision(ElementwiseMetric):
     """
 
     def __init__(self,
-                 iou_threshold=0.3,
+                 iou_threshold=0.4,
                  score_threshold=0.1,
                  tree_fraction_threshold=0.5,
                  require_tree_coverage_mask=False,
@@ -556,11 +539,20 @@ class MaskAwareDetectionPrecision(ElementwiseMetric):
         crop = tree_mask[y1:y2, x1:x2]
         return float(crop.float().mean().item())
 
-    def _count_ignored_unmatched_predictions(self, unmatched_boxes, tree_mask):
+    def _count_ignored_unmatched_predictions(self,
+                                             unmatched_boxes,
+                                             tree_mask,
+                                             gt_boxes=None,
+                                             iou_threshold=None):
         if tree_mask is None or len(unmatched_boxes) == 0:
             return 0
         ignored_count = 0
         for box in unmatched_boxes:
+            if (gt_boxes is not None and len(gt_boxes) > 0 and
+                    iou_threshold is not None):
+                max_iou = box_iou(box.unsqueeze(0), gt_boxes).max().item()
+                if max_iou > iou_threshold:
+                    continue
             tree_fraction = self._tree_pixel_fraction(box, tree_mask)
             if tree_fraction >= self.tree_fraction_threshold:
                 ignored_count += 1
@@ -586,27 +578,28 @@ class MaskAwareDetectionPrecision(ElementwiseMetric):
                 return torch.tensor(1.)
             return torch.tensor(0.)
 
-        matcher = Matcher(iou_threshold,
-                          iou_threshold,
-                          allow_low_quality_matches=False)
-        match_quality_matrix = box_iou(src_boxes, pred_boxes)
-        results = matcher(match_quality_matrix)
-        true_positive = torch.count_nonzero(results.unique() != -1)
-        matched_elements = results[results > -1]
-        duplicate_false_positive = (len(matched_elements) -
-                                    len(matched_elements.unique()))
-        unmatched_indices = torch.where(results == -1)[0]
-        unmatched_false_positive = len(unmatched_indices)
+        iou = box_iou(src_boxes, pred_boxes)
+        gt_to_pred = greedy_iou_match(iou, iou_threshold)
+        true_positive = n_matched_gt(gt_to_pred)
+        matched = gt_to_pred[gt_to_pred >= 0]
+        matched_pred_idx = matched.unique()
+        unmatched_mask = torch.ones(total_pred,
+                                    dtype=torch.bool,
+                                    device=pred_boxes.device)
+        if matched_pred_idx.numel() > 0:
+            unmatched_mask[matched_pred_idx.long()] = False
+        unmatched_indices = torch.nonzero(unmatched_mask,
+                                          as_tuple=False).squeeze(1)
         unmatched_boxes = pred_boxes[unmatched_indices]
         ignored_unmatched = self._count_ignored_unmatched_predictions(
-            unmatched_boxes, tree_mask)
-        adjusted_false_positive = (unmatched_false_positive -
-                                   ignored_unmatched + duplicate_false_positive)
+            unmatched_boxes, tree_mask, src_boxes, iou_threshold)
+        adjusted_false_positive = float(
+            unmatched_indices.numel()) - float(ignored_unmatched)
 
         denominator = true_positive + adjusted_false_positive
-        if denominator == 0:
+        if float(denominator) == 0:
             return torch.tensor(1.)
-        return true_positive / denominator
+        return (true_positive / denominator).clone()
 
     def worst(self, metrics):
         return minimum(metrics)
@@ -663,31 +656,14 @@ class KeypointAccuracy(ElementwiseMetric):
         total_gt = len(src_keypoints)
         total_pred = len(pred_keypoints)
         if total_gt > 0 and total_pred > 0:
-            # Define the matcher and distance matrix based on iou
-            # Convert distances to a similarity score where higher is better
-            # and threshold accordingly so that matches within the distance_threshold are accepted
             distance_matrix = self._point_nearness(src_keypoints,
                                                    pred_keypoints)
-            # Similarity in [0, 1], higher is better (0 distance -> 1 similarity)
-            similarity_matrix = 1.0 / (1.0 + distance_matrix)
             pixel_threshold = self.distance_threshold * float(self.image_size)
-            sim_threshold = 1.0 / (1.0 + pixel_threshold)
-
-            matcher = Matcher(sim_threshold,
-                              sim_threshold,
-                              allow_low_quality_matches=False)
-            match_quality_matrix = similarity_matrix
-            results = matcher(match_quality_matrix)
-            true_positive = torch.count_nonzero(results.unique() != -1)
-            matched_elements = results[results > -1]
-            # in Matcher, a pred element can be matched only twice
-            false_positive = (
-                torch.count_nonzero(results == -1) +
-                (len(matched_elements) - len(matched_elements.unique())))
-            false_negative = total_gt - true_positive
-            acc = true_positive / (true_positive + false_positive +
-                                   false_negative)
-            return acc
+            gt_to_pred = greedy_distance_match(distance_matrix, pixel_threshold)
+            tp = n_matched_gt(gt_to_pred)
+            fp = float(total_pred) - float(tp)
+            fn = float(total_gt) - float(tp)
+            return torch.tensor(float(tp / (tp + fp + fn)))
         elif total_gt == 0:
             if total_pred > 0:
                 return torch.round(torch.tensor(0.), decimals=3)
@@ -756,11 +732,21 @@ class MaskAwareKeypointPrecision(ElementwiseMetric):
         y = min(max(y, 0), height - 1)
         return float(tree_mask[y, x].float().item())
 
-    def _count_ignored_unmatched_predictions(self, unmatched_points, tree_mask):
+    def _count_ignored_unmatched_predictions(self,
+                                             unmatched_points,
+                                             tree_mask,
+                                             gt_points=None,
+                                             max_distance=None):
         if tree_mask is None or len(unmatched_points) == 0:
             return 0
         ignored_count = 0
         for point in unmatched_points:
+            if (gt_points is not None and len(gt_points) > 0 and
+                    max_distance is not None):
+                d = torch.norm(gt_points.float() - point.float(),
+                               dim=1).min().item()
+                if d <= max_distance:
+                    continue
             tree_fraction = self._point_tree_fraction(point, tree_mask)
             if tree_fraction >= self.tree_fraction_threshold:
                 ignored_count += 1
@@ -788,40 +774,38 @@ class MaskAwareKeypointPrecision(ElementwiseMetric):
         distance_matrix = torch.cdist(src_points.float(),
                                       pred_points.float(),
                                       p=2)
-        similarity_matrix = 1.0 / (1.0 + distance_matrix)
         pixel_threshold = self.distance_threshold * float(self.image_size)
-        sim_threshold = 1.0 / (1.0 + pixel_threshold)
-        matcher = Matcher(sim_threshold,
-                          sim_threshold,
-                          allow_low_quality_matches=False)
-        results = matcher(similarity_matrix)
-        true_positive = torch.count_nonzero(results.unique() != -1)
-        matched_elements = results[results > -1]
-        duplicate_false_positive = (len(matched_elements) -
-                                    len(matched_elements.unique()))
-        unmatched_indices = torch.where(results == -1)[0]
-        unmatched_false_positive = len(unmatched_indices)
+        gt_to_pred = greedy_distance_match(distance_matrix, pixel_threshold)
+        true_positive = n_matched_gt(gt_to_pred)
+        matched = gt_to_pred[gt_to_pred >= 0]
+        matched_pred_idx = matched.unique()
+        unmatched_mask = torch.ones(total_pred,
+                                    dtype=torch.bool,
+                                    device=pred_points.device)
+        if matched_pred_idx.numel() > 0:
+            unmatched_mask[matched_pred_idx.long()] = False
+        unmatched_indices = torch.nonzero(unmatched_mask,
+                                          as_tuple=False).squeeze(1)
         unmatched_points = pred_points[unmatched_indices]
         ignored_unmatched = self._count_ignored_unmatched_predictions(
-            unmatched_points, tree_mask)
-        adjusted_false_positive = (unmatched_false_positive -
-                                   ignored_unmatched + duplicate_false_positive)
+            unmatched_points, tree_mask, src_points, pixel_threshold)
+        adjusted_false_positive = float(
+            unmatched_indices.numel()) - float(ignored_unmatched)
 
         denominator = true_positive + adjusted_false_positive
         if float(denominator) == 0:
             return torch.tensor(1.)
-        return true_positive / denominator
+        return (true_positive / denominator).clone()
 
     def worst(self, metrics):
         return minimum(metrics)
 
 
 class MaskAccuracy(ElementwiseMetric):
-    """Given a specific Intersection over union threshold, determine the accuracy achieved for a
-    Mask R-CNN detector."""
+    """Per-image mask recall or accuracy with greedy 1:1 mask IoU matching."""
 
     def __init__(self,
-                 iou_threshold=0.5,
+                 iou_threshold=0.4,
                  score_threshold=0.1,
                  name=None,
                  geometry_name="masks",
@@ -829,6 +813,7 @@ class MaskAccuracy(ElementwiseMetric):
         self.iou_threshold = iou_threshold
         self.score_threshold = score_threshold
         self.geometry_name = geometry_name
+        self.metric = metric
         if name is None:
             name = "mask_acc"
         super().__init__(name=name)
@@ -846,8 +831,12 @@ class MaskAccuracy(ElementwiseMetric):
                                                 dtype=torch.float32)
 
             pred_masks = target_masks[target_scores > self.score_threshold]
-            det_accuracy = self._accuracy(gt_masks, pred_masks,
-                                          self.iou_threshold)
+            if self.metric == "recall":
+                det_accuracy = self._recall(gt_masks, pred_masks,
+                                            self.iou_threshold)
+            else:
+                det_accuracy = self._accuracy(gt_masks, pred_masks,
+                                              self.iou_threshold)
             batch_results.append(det_accuracy)
         return torch.tensor(batch_results)
 
@@ -1043,49 +1032,27 @@ class MaskAccuracy(ElementwiseMetric):
         total_gt = len(src_masks)
         total_pred = len(pred_masks)
         if total_gt > 0 and total_pred > 0:
-            # Define the matcher and distance matrix based on iou
-            matcher = Matcher(iou_threshold,
-                              iou_threshold,
-                              allow_low_quality_matches=False)
-            match_quality_matrix = self._mask_iou(src_masks, pred_masks)
-            results = matcher(match_quality_matrix)
-            true_positive = torch.count_nonzero(results.unique() != -1)
-            return true_positive / total_gt
-        elif total_gt == 0:
-            if total_pred > 0:
-                return torch.tensor(0.)
-            else:
-                return torch.tensor(1.)
-        elif total_gt > 0 and total_pred == 0:
-            return torch.tensor(0.)
+            iou = self._mask_iou(src_masks, pred_masks)
+            gt_to_pred = greedy_iou_match(iou, iou_threshold)
+            tp = n_matched_gt(gt_to_pred)
+            return tp / float(total_gt)
+        if total_gt == 0:
+            return torch.tensor(0.) if total_pred > 0 else torch.tensor(1.)
+        return torch.tensor(0.)
 
     def _accuracy(self, src_masks, pred_masks, iou_threshold):
         total_gt = len(src_masks)
         total_pred = len(pred_masks)
         if total_gt > 0 and total_pred > 0:
-            # Define the matcher and distance matrix based on iou
-            matcher = Matcher(iou_threshold,
-                              iou_threshold,
-                              allow_low_quality_matches=False)
-            match_quality_matrix = self._mask_iou(src_masks, pred_masks)
-            results = matcher(match_quality_matrix)
-            true_positive = torch.count_nonzero(results.unique() != -1)
-            matched_elements = results[results > -1]
-            # in Matcher, a pred element can be matched only twice
-            false_positive = (
-                torch.count_nonzero(results == -1) +
-                (len(matched_elements) - len(matched_elements.unique())))
-            false_negative = total_gt - true_positive
-            acc = true_positive / (true_positive + false_positive +
-                                   false_negative)
-            return acc
-        elif total_gt == 0:
-            if total_pred > 0:
-                return torch.tensor(0.)
-            else:
-                return torch.tensor(1.)
-        elif total_gt > 0 and total_pred == 0:
-            return torch.tensor(0.)
+            iou = self._mask_iou(src_masks, pred_masks)
+            gt_to_pred = greedy_iou_match(iou, iou_threshold)
+            tp = n_matched_gt(gt_to_pred)
+            fp = float(total_pred) - float(tp)
+            fn = float(total_gt) - float(tp)
+            return torch.tensor(float(tp / (tp + fp + fn)))
+        if total_gt == 0:
+            return torch.tensor(0.) if total_pred > 0 else torch.tensor(1.)
+        return torch.tensor(0.)
 
     def worst(self, metrics):
         return minimum(metrics)
@@ -1095,7 +1062,7 @@ class MaskAwareMaskPrecision(ElementwiseMetric):
     """Precision for mask detection that ignores unmatched masks on tree-covered pixels."""
 
     def __init__(self,
-                 iou_threshold=0.5,
+                 iou_threshold=0.4,
                  score_threshold=0.1,
                  tree_fraction_threshold=0.5,
                  require_tree_coverage_mask=False,
@@ -1157,11 +1124,21 @@ class MaskAwareMaskPrecision(ElementwiseMetric):
         overlap = (pred_mask & tree_mask).float().sum()
         return float((overlap / pred_area).item())
 
-    def _count_ignored_unmatched_predictions(self, unmatched_masks, tree_mask):
+    def _count_ignored_unmatched_predictions(self,
+                                             unmatched_masks,
+                                             tree_mask,
+                                             src_masks=None,
+                                             iou_threshold=None):
         if tree_mask is None or len(unmatched_masks) == 0:
             return 0
         ignored_count = 0
         for pred_mask in unmatched_masks:
+            if (src_masks is not None and len(src_masks) > 0 and
+                    iou_threshold is not None):
+                block = self._mask_accuracy._mask_iou(src_masks,
+                                                      pred_mask.unsqueeze(0))
+                if block.max().item() > iou_threshold:
+                    continue
             tree_fraction = self._mask_tree_fraction(pred_mask, tree_mask)
             if tree_fraction >= self.tree_fraction_threshold:
                 ignored_count += 1
@@ -1188,31 +1165,130 @@ class MaskAwareMaskPrecision(ElementwiseMetric):
                 return torch.tensor(1.)
             return torch.tensor(0.)
 
-        matcher = Matcher(self.iou_threshold,
-                          self.iou_threshold,
-                          allow_low_quality_matches=False)
-        match_quality_matrix = self._mask_accuracy._mask_iou(
-            src_masks, pred_masks)
-        results = matcher(match_quality_matrix)
-        true_positive = torch.count_nonzero(results.unique() != -1)
-        matched_elements = results[results > -1]
-        duplicate_false_positive = (len(matched_elements) -
-                                    len(matched_elements.unique()))
-        unmatched_indices = torch.where(results == -1)[0]
-        unmatched_false_positive = len(unmatched_indices)
+        iou = self._mask_accuracy._mask_iou(src_masks, pred_masks)
+        gt_to_pred = greedy_iou_match(iou, self.iou_threshold)
+        true_positive = n_matched_gt(gt_to_pred)
+        matched = gt_to_pred[gt_to_pred >= 0]
+        matched_pred_idx = matched.unique()
+        unmatched_mask = torch.ones(total_pred,
+                                    dtype=torch.bool,
+                                    device=pred_masks.device)
+        if matched_pred_idx.numel() > 0:
+            unmatched_mask[matched_pred_idx.long()] = False
+        unmatched_indices = torch.nonzero(unmatched_mask,
+                                          as_tuple=False).squeeze(1)
         unmatched_masks = pred_masks[unmatched_indices]
         ignored_unmatched = self._count_ignored_unmatched_predictions(
-            unmatched_masks, tree_mask)
-        adjusted_false_positive = (unmatched_false_positive -
-                                   ignored_unmatched + duplicate_false_positive)
+            unmatched_masks, tree_mask, src_masks, self.iou_threshold)
+        adjusted_false_positive = float(
+            unmatched_indices.numel()) - float(ignored_unmatched)
 
         denominator = true_positive + adjusted_false_positive
         if float(denominator) == 0:
             return torch.tensor(1.)
-        return true_positive / denominator
+        return (true_positive / denominator).clone()
 
     def worst(self, metrics):
         return minimum(metrics)
+
+
+class MergeCommissionMetric(ElementwiseMetric):
+    """Fraction of predictions with IoU > ``iou_threshold`` against two or more GT objects."""
+
+    def __init__(self,
+                 iou_threshold: float = 0.4,
+                 score_threshold: float = 0.1,
+                 geometry_name: str = "y",
+                 modality: str = "bbox",
+                 name: str | None = None):
+        self.iou_threshold = iou_threshold
+        self.score_threshold = score_threshold
+        self.geometry_name = geometry_name
+        self.modality = modality
+        self._mask_iou_backend: MaskAccuracy | None = None
+        if modality == "mask":
+            self._mask_iou_backend = MaskAccuracy(
+                iou_threshold=iou_threshold,
+                score_threshold=score_threshold,
+                geometry_name=geometry_name,
+                metric="accuracy",
+            )
+        if name is None:
+            name = "merge_commission"
+        super().__init__(name=name)
+
+    def _compute_element_wise(self, y_pred, y_true):
+        out = []
+        for gt, target in zip(y_true, y_pred):
+            scores = target["scores"]
+            if not isinstance(scores, torch.Tensor):
+                scores = torch.as_tensor(scores, dtype=torch.float32)
+            geo = target[self.geometry_name]
+            if not isinstance(geo, torch.Tensor):
+                geo = torch.as_tensor(geo)
+            if self.modality == "bbox" and geo.dim() == 1:
+                geo = geo.view(-1, 4)
+            pred = geo[scores > self.score_threshold]
+            gt_geo = gt[self.geometry_name]
+            if not isinstance(gt_geo, torch.Tensor):
+                gt_geo = torch.as_tensor(gt_geo)
+
+            if self.modality == "bbox":
+                if len(gt_geo) == 0 or len(pred) == 0:
+                    out.append(torch.tensor(0.0))
+                    continue
+                iou = box_iou(gt_geo, pred)
+            else:
+                if len(gt_geo) == 0 or len(pred) == 0:
+                    out.append(torch.tensor(0.0))
+                    continue
+                assert self._mask_iou_backend is not None
+                iou = self._mask_iou_backend._mask_iou(gt_geo, pred)
+            out.append(
+                merge_commission_rate_iou(
+                    iou, self.iou_threshold).to(dtype=torch.float32))
+        return torch.stack(out)
+
+    def worst(self, metrics):
+        return maximum(metrics)
+
+
+class KeypointMergeCommissionMetric(ElementwiseMetric):
+    """Fraction of predictions within ``max_distance`` of two or more GT points."""
+
+    def __init__(self,
+                 distance_threshold: float = 0.02,
+                 score_threshold: float = 0.1,
+                 geometry_name: str = "y",
+                 image_size: int = 448,
+                 name: str | None = None):
+        self.distance_threshold = distance_threshold
+        self.score_threshold = score_threshold
+        self.geometry_name = geometry_name
+        self.image_size = image_size
+        if name is None:
+            name = "keypoint_merge_commission"
+        super().__init__(name=name)
+
+    def _compute_element_wise(self, y_pred, y_true):
+        pixel_threshold = self.distance_threshold * float(self.image_size)
+        out = []
+        for gt, target in zip(y_true, y_pred):
+            pts = target[self.geometry_name]
+            scores = target["scores"]
+            pred = pts[scores > self.score_threshold]
+            gt_pts = gt[self.geometry_name]
+            if len(gt_pts) == 0 or len(pred) == 0:
+                out.append(torch.tensor(0.0))
+                continue
+            dist = torch.cdist(gt_pts.float(), pred.float(), p=2)
+            out.append(
+                merge_commission_rate_distance(
+                    dist, pixel_threshold).to(dtype=torch.float32))
+        return torch.stack(out)
+
+    def worst(self, metrics):
+        return maximum(metrics)
 
 
 class DetectionMAP(Metric):

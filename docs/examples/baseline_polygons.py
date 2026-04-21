@@ -121,7 +121,7 @@ def plot_eval_result(
     recall = dataset.metrics["recall"]._recall(
         image_targets["bboxes"],
         y_pred.get("bboxes", torch.zeros((0, 4))),
-        iou_threshold=0.3
+        iou_threshold=0.4
     )
 
     # Plot
@@ -134,7 +134,7 @@ def plot_eval_result(
     except Exception:
         pass
 
-    print(f"Image: {basename}, idx {batch_index}, Recall@0.3: {float(recall):.2f}")
+    print(f"Image: {basename}, idx {batch_index}, Recall@0.4: {float(recall):.2f}")
 
 
 def main():
