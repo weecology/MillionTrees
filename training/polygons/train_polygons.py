@@ -131,7 +131,7 @@ def format_predictions_for_eval(images, model, device, mask_threshold=0.5):
     return batch_y_pred
 
 
-def evaluate(model, dataset, test_subset, batch_size=8, device="cuda"):
+def evaluate(model, dataset, test_subset, batch_size=8, device="cuda", viz_dir=None):
     test_loader = get_eval_loader("standard", test_subset, batch_size=batch_size)
     all_y_pred, all_y_true = [], []
     model.eval()
@@ -142,7 +142,8 @@ def evaluate(model, dataset, test_subset, batch_size=8, device="cuda"):
             all_y_pred.append(y_pred)
             all_y_true.append(image_targets)
     results, results_str = dataset.eval(
-        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)]
+        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)],
+        viz_dir=viz_dir,
     )
     return results, results_str
 

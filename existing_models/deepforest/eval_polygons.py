@@ -16,6 +16,20 @@ from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
 
 
+def boxes_to_masks(boxes_df, height: int, width: int) -> np.ndarray:
+    """Rasterize box predictions into (N, H, W) binary masks."""
+    masks = []
+    for _, row in boxes_df.iterrows():
+        mask = np.zeros((height, width), dtype=bool)
+        x1 = max(0, int(row["xmin"]))
+        y1 = max(0, int(row["ymin"]))
+        x2 = min(width, int(np.ceil(row["xmax"])))
+        y2 = min(height, int(np.ceil(row["ymax"])))
+        mask[y1:y2, x1:x2] = True
+        masks.append(mask)
+    return np.stack(masks) if masks else np.zeros((0, height, width), dtype=bool)
+
+
 def predict_batch(
     images: torch.Tensor,
     model,
@@ -24,19 +38,21 @@ def predict_batch(
     batch_index: int,
 ) -> List[dict]:
     warnings.filterwarnings("ignore")
+    _, _, img_h, img_w = images.shape
     predictions = model.predict_step(images, batch_index)
     y_preds: List[dict] = []
     for pred in predictions:
         if pred is None or len(pred["boxes"]) == 0:
             y_preds.append({
-                "y": torch.zeros((0, 4), dtype=torch.float32),
+                "y": torch.zeros((0, img_h, img_w), dtype=torch.bool),
                 "labels": torch.zeros((0,), dtype=torch.int64),
                 "scores": torch.zeros((0,), dtype=torch.float32),
             })
         else:
             df = format_geometry(pred)
+            masks = boxes_to_masks(df, img_h, img_w)
             y_preds.append({
-                "y": torch.tensor(df[["xmin", "ymin", "xmax", "ymax"]].values.astype("float32")),
+                "y": torch.from_numpy(masks),
                 "labels": torch.tensor(df.label.values.astype(np.int64)),
                 "scores": torch.tensor(df.score.values.astype("float32")),
             })
@@ -56,6 +72,8 @@ def main():
     parser.add_argument("--max-batches", type=int, default=None)
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--image-size", type=int, default=224)
+    parser.add_argument("--viz-dir", type=str, default=None,
+                        help="Directory for per-source prediction overlay PNGs")
     args = parser.parse_args()
 
     model = df_main.deepforest()
@@ -81,7 +99,8 @@ def main():
             break
 
     results, results_str = dataset.eval(
-        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)]
+        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)],
+        viz_dir=args.viz_dir,
     )
     print(results_str)
 

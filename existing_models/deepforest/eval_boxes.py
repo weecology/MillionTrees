@@ -57,6 +57,8 @@ def main():
                         choices=["random", "zeroshot", "crossgeometry"])
     parser.add_argument("--max-batches", type=int, default=None)
     parser.add_argument("--output-dir", type=str, default=None)
+    parser.add_argument("--viz-dir", type=str, default=None,
+                        help="Directory for per-source prediction overlay PNGs")
     args = parser.parse_args()
 
     model = df_main.deepforest()
@@ -81,7 +83,8 @@ def main():
             break
 
     results, results_str = dataset.eval(
-        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)]
+        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)],
+        viz_dir=args.viz_dir,
     )
     print(results_str)
 

@@ -2,6 +2,7 @@
 import geopandas as gpd
 from deepforest.utilities import read_file
 import glob
+import numpy as np
 import os
 import pandas as pd
 from shapely.geometry import Polygon
@@ -49,8 +50,12 @@ def process_split(shapefile_paths: list[str], split_name: str) -> list[pd.DataFr
                     # remove NIR band
                     # Flip channels from BGR to RGB
                     img = img[:3, :, :]  # Keep only the first three channels (RGB)
+                    img = img.astype(np.float32)
+                    img_min, img_max = img.min(), img.max()
+                    if img_max > img_min:
+                        img = (img - img_min) / (img_max - img_min) * 255
                     img = img.transpose(1, 2, 0)  # Change to HWC format
-                    img = img.astype("uint8")
+                    img = img.astype(np.uint8)
                     img = Image.fromarray(img)
                     img.save(png_path, "PNG")
             except Exception as e:
@@ -92,4 +97,4 @@ image_path = sample_image["image_path"].iloc[0]
 image = Image.open(image_path)
 width, height = image.size
 print(f"Image size: {width} x {height}")
-ax = plot_results(sample_image, savedir=f"{BASE_DIR}/", basename="sample_image", width=width, height=height)
+ax = plot_results(sample_image, savedir=f"{BASE_DIR}/", basename="sample_image")
