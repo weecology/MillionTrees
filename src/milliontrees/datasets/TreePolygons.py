@@ -433,10 +433,8 @@ class TreePolygonsDataset(MillionTreesDataset):
                     f"MiniTreePolygons_v{version}.zip")
                 mini_info['compressed_size'] = None
             if info.get('supervised_download_url'):
-                mini_info['supervised_download_url'] = info[
-                    'supervised_download_url'].replace(
-                        f"TreePolygons_supervised_v{version}.zip",
-                        f"MiniTreePolygons_supervised_v{version}.zip")
+                # Only full mini archives are published; supervised-only mini zips 404.
+                mini_info['supervised_download_url'] = None
             mini_versions[version] = mini_info
         return mini_versions
 
