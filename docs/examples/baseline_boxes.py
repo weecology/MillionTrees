@@ -197,8 +197,8 @@ def main():
                 gt_boxes = image_targets["y"].detach().cpu().numpy()
                 recall = box_dataset.metrics["recall"]._recall(
                     image_targets["y"], y_pred.get("y", torch.zeros((0, 4))),
-                    iou_threshold=0.3)
-                title = f"{basename} R@0.3={float(recall):.2f}"
+                    iou_threshold=0.4)
+                title = f"{basename} R@0.4={float(recall):.2f}"
                 thumbnails.append({
                     "image": image_np,
                     "pred_boxes": pred_boxes,

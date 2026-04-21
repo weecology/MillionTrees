@@ -90,29 +90,33 @@ def test_TreePolygons_eval(dataset):
 
     all_y_pred = []
     all_y_true = []
-    
-    # Get predictions for the full test set
+
+    # Use the first test image's own GT masks as predictions (guaranteed IoU = 1).
+    _, _, ref_tgt = test_dataset[0]
+    ref_masks = torch.as_tensor(ref_tgt["y"]).clone()
+    ref_boxes = torch.as_tensor(ref_tgt["bboxes"]).clone()
+    ref_labels = torch.as_tensor(ref_tgt["labels"]).clone()
+
     for metadata, x, y_true in test_loader:
-        # Construct the mask for true positive for image1.jpg
-        polygon = from_wkt("POLYGON((10 15, 50 15, 50 55, 10 55, 10 15))")
-        height, width = x.shape[2], x.shape[3]
-        pred_mask = ds.create_polygon_mask(width=width, height=height, vertices=polygon)
-        pred_box = torch.tensor([10, 15, 50, 55]).unsqueeze(0)
-        batch = [{'y': torch.tensor([pred_mask]), 'bboxes':pred_box,'labels': torch.tensor([0]), 'scores': torch.tensor([0.54])}]
-        
-        # Accumulate y_true, y_pred, metadata
+        batch = [{
+            'y': ref_masks,
+            'bboxes': ref_boxes,
+            'labels': ref_labels,
+            'scores': torch.tensor([0.54] * len(ref_labels)),
+        }]
         all_y_pred.extend(batch)
         all_y_true.extend(y_true)
 
     # Evaluate
     eval_results, eval_string = ds.eval(y_pred=all_y_pred,y_true=all_y_true, metadata=test_dataset.metadata_array)
     
-    # The above example has one true positive and two false negatives = 0.33 accuracy and recall
-    eval_results["accuracy"]["mask_acc_avg"] == 0.33
+    # One test image: prediction matches the lone GT mask → perfect accuracy.
+    assert eval_results["accuracy"]["mask_acc_avg"] == pytest.approx(1.0)
     assert len(eval_results) 
     assert "accuracy" in eval_results.keys()
     assert "recall" in eval_results.keys()
     assert "maskaware_precision" in eval_results.keys()
+    assert "merge_commission" in eval_results.keys()
 
 def test_TreePolygons_download_url(dataset):
     ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")

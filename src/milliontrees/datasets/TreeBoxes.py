@@ -13,7 +13,12 @@ import fnmatch
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.eval_visualization import save_eval_visualizations
 from milliontrees.common.grouper import CombinatorialGrouper
-from milliontrees.common.metrics.all_metrics import DetectionAccuracy, DetectionMAP, MaskAwareDetectionPrecision
+from milliontrees.common.metrics.all_metrics import (
+    DetectionAccuracy,
+    DetectionMAP,
+    MaskAwareDetectionPrecision,
+    MergeCommissionMetric,
+)
 from milliontrees.common.onboarding import print_dataset_summary
 from PIL import Image
 
@@ -256,6 +261,12 @@ class TreeBoxesDataset(MillionTreesDataset):
                 DetectionMAP(geometry_name=self.geometry_name,
                              score_threshold=self.eval_score_threshold,
                              iou_type="bbox"),
+            "merge_commission":
+                MergeCommissionMetric(
+                    geometry_name=self.geometry_name,
+                    score_threshold=self.eval_score_threshold,
+                    modality="bbox",
+                ),
         }
 
         # eval grouper
@@ -286,7 +297,13 @@ class TreeBoxesDataset(MillionTreesDataset):
 
         super().__init__(root_dir, download, split_scheme)
 
-    def eval(self, y_pred, y_true, metadata, *, viz_dir=None, viz_n_per_source=4):
+    def eval(self,
+             y_pred,
+             y_true,
+             metadata,
+             *,
+             viz_dir=None,
+             viz_n_per_source=4):
         """Performs evaluation on the given predictions.
 
         The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
