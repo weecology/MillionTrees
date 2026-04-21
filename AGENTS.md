@@ -176,4 +176,11 @@ Follow the docs/contributing.md for adding new datasets.
 # Update the leaderboard
 
 For reproducible update to the leaderboard, run all the scripts in docs/examples. For SLURM systems, a wrapper function is available in slurm/submit_all.sh
-The logs are available in /logs and will report the performance of each model. Update the leaderboard with the top-level metrics. 
+The logs are available in /logs and will report the performance of each model. Update the leaderboard with the top-level metrics.
+
+## SLURM Workflow
+
+After submitting any `sbatch` job, always:
+1. Note the job ID returned by `sbatch`.
+2. Wait 60 seconds (use `ScheduleWakeup` with `delaySeconds=60`).
+3. Run `squeue -j <JOBID>` and check the `.out`/`.err` logs to confirm the job is running (ST=R) with no errors.

@@ -258,7 +258,7 @@ def create_mini_datasets(datasets, base_dir, dataset_type, version):
 
         # Handle polygons specifically to include image dimensions
         height, width, channels = cv2.imread(f"{base_dir}Mini{dataset_type}_{version}/images/" + group.image_path.iloc[0]).shape
-        plot_results(group, savedir="docs/public/", basename=source, height=height, width=width)
+        plot_results(group, savedir="docs/public/", basename=source)
 
 def create_release_files(base_dir, dataset_type, version):
     """Create release files for the dataset."""
@@ -352,10 +352,10 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
     TreePoints_datasets = apply_split(TreePoints_datasets)
     TreeBoxes_datasets = apply_split(TreeBoxes_datasets)
 
-    # Remove from test split any entries with 'unsupervised' in the source column or Feng source
+    # Remove from test split any entries with 'unsupervised' or 'weak supervised' in the source column or Feng source
     def remove_unsupervised_test_entries(df):
         if "split" in df.columns and "source" in df.columns:
-            unsupervised_mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised", case=False, na=False))
+            unsupervised_mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised|weak supervised", case=False, na=False))
             feng_mask = (df["split"] == "test") & (df["source"] == "Feng et al. 2025")
             mask = unsupervised_mask | feng_mask
             return df.loc[~mask]
@@ -404,16 +404,16 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
     TreePoints_datasets["split"] = "train"
     TreeBoxes_datasets["split"] = "train"
 
-    # remove any source with unsupervised or Feng from test
-    unsupervised_mask_polygons = (TreePolygons_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreePolygons_datasets.split == "test")
+    # remove any source with unsupervised, weak supervised, or Feng from test
+    unsupervised_mask_polygons = (TreePolygons_datasets.source.str.contains('unsupervised|weak supervised', case=False, na=False)) & (TreePolygons_datasets.split == "test")
     feng_mask_polygons = (TreePolygons_datasets.source == "Feng et al. 2025") & (TreePolygons_datasets.split == "test")
     TreePolygons_datasets = TreePolygons_datasets[~(unsupervised_mask_polygons | feng_mask_polygons)]
-    
-    unsupervised_mask_points = (TreePoints_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreePoints_datasets.split == "test")
+
+    unsupervised_mask_points = (TreePoints_datasets.source.str.contains('unsupervised|weak supervised', case=False, na=False)) & (TreePoints_datasets.split == "test")
     feng_mask_points = (TreePoints_datasets.source == "Feng et al. 2025") & (TreePoints_datasets.split == "test")
     TreePoints_datasets = TreePoints_datasets[~(unsupervised_mask_points | feng_mask_points)]
-    
-    unsupervised_mask_boxes = (TreeBoxes_datasets.source.str.contains('unsupervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test")
+
+    unsupervised_mask_boxes = (TreeBoxes_datasets.source.str.contains('unsupervised|weak supervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test")
     feng_mask_boxes = (TreeBoxes_datasets.source == "Feng et al. 2025") & (TreeBoxes_datasets.split == "test")
     TreeBoxes_datasets = TreeBoxes_datasets[~(unsupervised_mask_boxes | feng_mask_boxes)]
 
@@ -491,10 +491,10 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     TreePoints_datasets = limit_test_images(TreePoints_datasets, test_sources_points)
     TreeBoxes_datasets = limit_test_images(TreeBoxes_datasets, test_sources_boxes)
 
-    # Remove Feng and unsupervised from test (shouldn't be there, but filter for safety)
+    # Remove Feng, unsupervised, and weak supervised from test (shouldn't be there, but filter for safety)
     def remove_feng_and_unsupervised_from_test(df):
         if "split" in df.columns and "source" in df.columns:
-            unsupervised_mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised", case=False, na=False))
+            unsupervised_mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised|weak supervised", case=False, na=False))
             feng_mask = (df["split"] == "test") & (df["source"] == "Feng et al. 2025")
             mask = unsupervised_mask | feng_mask
             if mask.any():
@@ -516,8 +516,8 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     print(f"TreeBoxes: {base_dir}TreeBoxes{suffix}_{version}/zeroshot.csv")
 
 def filter_out_unsupervised(datasets):
-    """Filter out datasets that contain 'unsupervised' in the source name."""
-    return datasets[~datasets['source'].str.contains('unsupervised', case=False, na=False)]
+    """Filter out datasets with 'unsupervised' or 'weak supervised' in the source name."""
+    return datasets[~datasets['source'].str.contains('unsupervised|weak supervised', case=False, na=False)]
 
 def check_for_updated_annotations(dataset, geometry):
     updated_annotations = [pd.read_csv(x) for x in glob.glob(f"data_prep/annotations/*{geometry}*.csv")]
@@ -756,7 +756,7 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.12"
+    version = "v0.13"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     mask_source_dir = "/orange/ewhite/DeepForest/tree_coverage_masks"
     debug = False

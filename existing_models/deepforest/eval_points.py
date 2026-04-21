@@ -7,12 +7,10 @@ import warnings
 from typing import List
 
 import numpy as np
-import pandas as pd
 import torch
 
 from deepforest import main as df_main
-from deepforest.utilities import read_file, format_geometry
-import geopandas as gpd
+from deepforest.utilities import format_geometry
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
@@ -38,9 +36,8 @@ def predict_batch(
             })
         else:
             df = format_geometry(pred)
-            df = read_file(df)
-            df["geometry"] = gpd.GeoSeries(df["geometry"]).centroid
-            df[["x", "y"]] = df["geometry"].apply(lambda g: pd.Series([g.x, g.y]))
+            df["x"] = (df["xmin"] + df["xmax"]) / 2
+            df["y"] = (df["ymin"] + df["ymax"]) / 2
             labels = df.label.apply(lambda x: model.label_dict.get(x, 0) if df.label.dtype == object else x)
             y_preds.append({
                 "y": torch.tensor(df[["x", "y"]].values.astype("float32")),
@@ -62,6 +59,8 @@ def main():
                         choices=["random", "zeroshot", "crossgeometry"])
     parser.add_argument("--max-batches", type=int, default=None)
     parser.add_argument("--output-dir", type=str, default=None)
+    parser.add_argument("--viz-dir", type=str, default=None,
+                        help="Directory for per-source prediction overlay PNGs")
     args = parser.parse_args()
 
     model = df_main.deepforest()
@@ -86,7 +85,8 @@ def main():
             break
 
     results, results_str = dataset.eval(
-        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)]
+        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)],
+        viz_dir=args.viz_dir,
     )
     print(results_str)
 

@@ -14,6 +14,7 @@ import pytorch_lightning as pl
 import torch
 
 from deepforest import main as df_main
+from deepforest.utilities import format_geometry
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
@@ -107,14 +108,15 @@ def predict_batch(model, images, batch_index):
     predictions = model.df_model.predict_step(images_tensor, batch_index)
 
     batch_y_pred = []
-    for pred_df in predictions:
-        if pred_df is None or len(pred_df) == 0:
+    for pred in predictions:
+        if pred is None or len(pred["boxes"]) == 0:
             y_pred = {
                 "y": torch.zeros((0, 2), dtype=torch.float32),
                 "labels": torch.zeros((0,), dtype=torch.int64),
                 "scores": torch.zeros((0,), dtype=torch.float32),
             }
         else:
+            pred_df = format_geometry(pred)
             boxes = pred_df[["xmin", "ymin", "xmax", "ymax"]].values.astype("float32")
             cx = (boxes[:, 0] + boxes[:, 2]) / 2.0
             cy = (boxes[:, 1] + boxes[:, 3]) / 2.0
@@ -128,7 +130,7 @@ def predict_batch(model, images, batch_index):
     return batch_y_pred
 
 
-def evaluate(model, dataset, test_subset, batch_size=16):
+def evaluate(model, dataset, test_subset, batch_size=16, viz_dir=None):
     test_loader = get_eval_loader("standard", test_subset, batch_size=batch_size)
     all_y_pred, all_y_true = [], []
     model.eval()
@@ -139,7 +141,8 @@ def evaluate(model, dataset, test_subset, batch_size=16):
             all_y_pred.append(y_pred)
             all_y_true.append(image_targets)
     results, results_str = dataset.eval(
-        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)]
+        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)],
+        viz_dir=viz_dir,
     )
     return results, results_str
 

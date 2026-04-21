@@ -42,6 +42,8 @@ def main() -> None:
     parser.add_argument("--max-batches", type=int, default=None)
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--image-size", type=int, default=224)
+    parser.add_argument("--viz-dir", type=str, default=None,
+                        help="Directory for per-source prediction overlay PNGs")
     args = parser.parse_args()
 
     device = select_device(args.device)
@@ -104,7 +106,8 @@ def main() -> None:
             break
 
     results, results_str = dataset.eval(
-        all_y_pred, all_y_true, metadata=test_subset.metadata_array[:len(all_y_true)]
+        all_y_pred, all_y_true, metadata=test_subset.metadata_array[:len(all_y_true)],
+        viz_dir=args.viz_dir,
     )
     print(results_str)
 

@@ -15,6 +15,31 @@ from milliontrees import get_dataset
 sys.modules['__main__'].MillionTreesBatchAdapter = MillionTreesBatchAdapter
 
 
+def _load_model(checkpoint_path):
+    """Load deepforest from checkpoint, remapping wrapper prefixes if needed.
+
+    Older checkpoints were saved from a wrapper class that stored the deepforest
+    model as self.df_model (keys: df_model.model.*) and kept a second reference
+    as self.retinanet.  Strip df_model. and skip retinanet.* duplicates so the
+    weights load cleanly into the stock deepforest class (self.model.*).
+    """
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    state = ckpt.get("state_dict", {})
+    needs_remap = any(k.startswith("df_model.") for k in state)
+    if needs_remap:
+        remapped = {}
+        for k, v in state.items():
+            if k.startswith("df_model."):
+                remapped[k[len("df_model."):]] = v
+            elif not k.startswith("retinanet."):
+                remapped[k] = v
+        model = df_main.deepforest()
+        model.load_state_dict(remapped)
+    else:
+        model = df_main.deepforest.load_from_checkpoint(checkpoint_path, weights_only=False)
+    return model
+
+
 def main():
     parser = argparse.ArgumentParser(description="Eval a trained TreeBoxes checkpoint.")
     parser.add_argument("--checkpoint", type=str, required=True,
@@ -27,10 +52,12 @@ def main():
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
     parser.add_argument("--output-dir", type=str, default=None)
+    parser.add_argument("--viz-dir", type=str, default=None,
+                        help="Directory for per-source prediction overlay PNGs")
     args = parser.parse_args()
 
     print(f"Loading checkpoint: {args.checkpoint}")
-    model = df_main.deepforest.load_from_checkpoint(args.checkpoint, weights_only=False)
+    model = _load_model(args.checkpoint)
     model.eval()
     if torch.cuda.is_available():
         model = model.cuda()
@@ -43,7 +70,8 @@ def main():
     )
     test_subset = dataset.get_subset("test")
 
-    results, results_str = evaluate(model, dataset, test_subset, batch_size=args.batch_size)
+    results, results_str = evaluate(model, dataset, test_subset, batch_size=args.batch_size,
+                                    viz_dir=args.viz_dir)
     print(results_str)
 
     if args.output_dir:

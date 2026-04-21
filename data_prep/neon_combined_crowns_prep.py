@@ -280,6 +280,8 @@ def run(
     )
     split_df["source"] = source_name
     split_df["existing_split"] = "test"
+    # Full path 
+    split_df["image_path"] = split_df["image_path"].apply(lambda x: os.path.join(tiles_dir,x))
     out_csv = output_dir / "annotations_tiled.csv"
     split_df.to_csv(out_csv, index=False)
     print(f"Wrote {out_csv} ({len(split_df)} rows)")
@@ -310,13 +312,13 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument(
         "--gpkg",
         type=Path,
-        required=True,
+        default="/orange/ewhite/DeepForest/HARV_Field_Johnson/combined_crown_polygons.gpkg",
         help="Path to combined crown polygons GeoPackage",
     )
     p.add_argument(
         "--output-dir",
         type=Path,
-        required=True,
+        default="/orange/ewhite/DeepForest/HARV_Field_Johnson/neon_combined_crowns",
         help="Working output directory (downloads, mosaic, tiles)",
     )
     p.add_argument(

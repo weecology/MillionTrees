@@ -104,7 +104,7 @@ def predict_batch(model, images):
 # Evaluation (DeepForest's evaluate() is CSV-based; use MillionTrees API)
 # ---------------------------------------------------------------------------
 
-def evaluate(model, dataset, test_subset, batch_size=12):
+def evaluate(model, dataset, test_subset, batch_size=12, viz_dir=None):
     test_loader = get_eval_loader("standard", test_subset, batch_size=batch_size)
     all_y_pred, all_y_true = [], []
     for batch in test_loader:
@@ -113,7 +113,8 @@ def evaluate(model, dataset, test_subset, batch_size=12):
         all_y_pred.extend(preds)
         all_y_true.extend(targets)
     results, results_str = dataset.eval(
-        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)]
+        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)],
+        viz_dir=viz_dir,
     )
     return results, results_str
 
