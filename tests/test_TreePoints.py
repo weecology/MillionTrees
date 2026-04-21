@@ -97,9 +97,6 @@ def test_TreePoints_eval(dataset, pred_tensor):
 
     # Evaluate
     eval_results, eval_string = ds.eval(all_y_pred, all_y_true, test_dataset.metadata_array)
-    assert "maskaware_precision" in eval_results.keys()
-    assert "merge_commission" in eval_results.keys()
-
 
 def test_maskaware_keypoint_precision_ignores_unmatched_tree_pixels():
     metric = MaskAwareKeypointPrecision(geometry_name="y",

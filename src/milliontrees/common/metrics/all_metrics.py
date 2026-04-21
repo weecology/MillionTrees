@@ -605,6 +605,130 @@ class MaskAwareDetectionPrecision(ElementwiseMetric):
         return minimum(metrics)
 
 
+class MaskAwareDetectionPrecision(ElementwiseMetric):
+    """Precision metric that avoids penalizing predictions on unannotated tree regions.
+
+    Unmatched predictions are excluded from false positives when enough of their box area
+    overlaps tree pixels from ``tree_coverage_mask``.
+    """
+
+    def __init__(self,
+                 iou_threshold=0.3,
+                 score_threshold=0.1,
+                 tree_fraction_threshold=0.5,
+                 require_tree_coverage_mask=False,
+                 name=None,
+                 geometry_name="boxes",
+                 tree_coverage_key="tree_coverage_mask"):
+        self.iou_threshold = iou_threshold
+        self.score_threshold = score_threshold
+        self.tree_fraction_threshold = tree_fraction_threshold
+        self.require_tree_coverage_mask = require_tree_coverage_mask
+        self.geometry_name = geometry_name
+        self.tree_coverage_key = tree_coverage_key
+        if name is None:
+            name = "maskaware_detection_precision"
+        super().__init__(name=name)
+
+    def _compute_element_wise(self, y_pred, y_true):
+        batch_results = []
+        for gt, target in zip(y_true, y_pred):
+            target_boxes = target[self.geometry_name]
+            target_scores = target["scores"]
+            gt_boxes = gt[self.geometry_name]
+            if target_boxes.dim() == 1:
+                target_boxes = target_boxes.view(-1, 4)
+            pred_boxes = target_boxes[target_scores > self.score_threshold]
+            tree_mask = gt.get(self.tree_coverage_key)
+            det_precision = self._precision(gt_boxes, pred_boxes, tree_mask,
+                                            self.iou_threshold)
+            batch_results.append(det_precision)
+        return torch.tensor(batch_results)
+
+    def _prepare_tree_mask(self, tree_mask):
+        if tree_mask is None:
+            return None
+        if not isinstance(tree_mask, torch.Tensor):
+            tree_mask = torch.as_tensor(tree_mask)
+        if tree_mask.dim() == 3:
+            tree_mask = tree_mask.squeeze(0)
+        if tree_mask.dim() != 2:
+            raise ValueError(
+                f"Expected tree coverage mask to have shape [H, W], got {tuple(tree_mask.shape)}"
+            )
+        return tree_mask.bool()
+
+    def _tree_pixel_fraction(self, box, tree_mask):
+        height, width = tree_mask.shape
+        x1 = int(torch.floor(box[0]).item())
+        y1 = int(torch.floor(box[1]).item())
+        x2 = int(torch.ceil(box[2]).item())
+        y2 = int(torch.ceil(box[3]).item())
+        x1 = min(max(x1, 0), width)
+        x2 = min(max(x2, 0), width)
+        y1 = min(max(y1, 0), height)
+        y2 = min(max(y2, 0), height)
+        if x2 <= x1 or y2 <= y1:
+            return 0.0
+        crop = tree_mask[y1:y2, x1:x2]
+        return float(crop.float().mean().item())
+
+    def _count_ignored_unmatched_predictions(self, unmatched_boxes, tree_mask):
+        if tree_mask is None or len(unmatched_boxes) == 0:
+            return 0
+        ignored_count = 0
+        for box in unmatched_boxes:
+            tree_fraction = self._tree_pixel_fraction(box, tree_mask)
+            if tree_fraction >= self.tree_fraction_threshold:
+                ignored_count += 1
+        return ignored_count
+
+    def _precision(self, src_boxes, pred_boxes, tree_mask, iou_threshold):
+        total_gt = len(src_boxes)
+        total_pred = len(pred_boxes)
+        tree_mask = self._prepare_tree_mask(tree_mask)
+        if self.require_tree_coverage_mask and total_pred > 0 and tree_mask is None:
+            raise ValueError(
+                "tree_coverage_mask is required but missing for this example")
+
+        if total_pred == 0:
+            return torch.tensor(0.) if total_gt > 0 else torch.tensor(1.)
+
+        if total_gt == 0:
+            unmatched_false_positive = total_pred
+            ignored_unmatched = self._count_ignored_unmatched_predictions(
+                pred_boxes, tree_mask)
+            adjusted_false_positive = unmatched_false_positive - ignored_unmatched
+            if adjusted_false_positive == 0:
+                return torch.tensor(1.)
+            return torch.tensor(0.)
+
+        matcher = Matcher(iou_threshold,
+                          iou_threshold,
+                          allow_low_quality_matches=False)
+        match_quality_matrix = box_iou(src_boxes, pred_boxes)
+        results = matcher(match_quality_matrix)
+        true_positive = torch.count_nonzero(results.unique() != -1)
+        matched_elements = results[results > -1]
+        duplicate_false_positive = (len(matched_elements) -
+                                    len(matched_elements.unique()))
+        unmatched_indices = torch.where(results == -1)[0]
+        unmatched_false_positive = len(unmatched_indices)
+        unmatched_boxes = pred_boxes[unmatched_indices]
+        ignored_unmatched = self._count_ignored_unmatched_predictions(
+            unmatched_boxes, tree_mask)
+        adjusted_false_positive = (unmatched_false_positive -
+                                   ignored_unmatched + duplicate_false_positive)
+
+        denominator = true_positive + adjusted_false_positive
+        if denominator == 0:
+            return torch.tensor(1.)
+        return true_positive / denominator
+
+    def worst(self, metrics):
+        return minimum(metrics)
+
+
 class KeypointAccuracy(ElementwiseMetric):
     """Keypoint accuracy for a one-class detector.
 

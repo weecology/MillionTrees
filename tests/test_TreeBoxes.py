@@ -136,7 +136,6 @@ def test_TreeBoxes_eval(dataset, pred_tensor):
     assert "maskaware_precision" in eval_results.keys()
     assert "merge_commission" in eval_results.keys()
 
-
 def test_TreeBoxes_eval_visualization(dataset, tmp_path):
     ds = TreeBoxesDataset(download=False, root_dir=dataset, version="0.0")
     test_dataset = ds.get_subset("test")
