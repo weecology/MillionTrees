@@ -20,7 +20,7 @@ SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 uv run python training/polygons/train_polygons.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
-  --batch-size 2 \
+  --batch-size 1 \
   --max-epochs 20 \
   --lr 1e-4 \
   --num-workers 2 \
