@@ -71,6 +71,7 @@ class DeepForestPointTrainer(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         metadata, images, targets_list = batch
         rt = self._prepare_targets(targets_list, images.device)
+        self.retinanet.train()
         loss_dict = self.retinanet(images, rt)
         loss = sum(l for l in loss_dict.values())
         self.log("train_loss", loss, prog_bar=True, batch_size=len(images))
