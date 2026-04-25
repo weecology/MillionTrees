@@ -25,7 +25,9 @@ import zipfile
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
+import rasterio
 import requests
 from deepforest.utilities import read_file
 
@@ -79,6 +81,40 @@ def extract_archive(archive_path: Path, extract_dir: Path, force: bool = False) 
     return extract_dir
 
 
+def _tif_to_png(tif_path: Path) -> Path:
+    """Convert a GeoTIFF tile to a 3-channel uint8 PNG next to the original.
+
+    Returns the path to the PNG file (already written if it didn't exist).
+    """
+    png_path = tif_path.with_suffix(".png")
+    if png_path.exists():
+        return png_path
+    with rasterio.open(tif_path) as src:
+        # Read first three bands; fall back to repeating band 1 for single-band
+        n = src.count
+        if n >= 3:
+            data = src.read([1, 2, 3])
+        else:
+            band = src.read(1)
+            data = np.stack([band, band, band], axis=0)
+        # Normalise to uint8
+        data = data.astype(np.float32)
+        lo, hi = data.min(), data.max()
+        if hi > lo:
+            data = (data - lo) / (hi - lo) * 255
+        data = data.clip(0, 255).astype(np.uint8)
+    profile = {
+        "driver": "PNG",
+        "dtype": "uint8",
+        "count": 3,
+        "height": data.shape[1],
+        "width": data.shape[2],
+    }
+    with rasterio.open(png_path, "w", **profile) as dst:
+        dst.write(data)
+    return png_path
+
+
 def _clean_polygons(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """Explode multipolygons and keep polygon geometry rows only."""
     if gdf.empty:
@@ -116,6 +152,9 @@ def prepare_annotations(
         if not tif_path.exists():
             continue
 
+        png_path = _tif_to_png(tif_path)
+        png_name = png_path.name
+
         gdf = gpd.read_file(shp_path)
         if gdf.empty:
             continue
@@ -131,10 +170,11 @@ def prepare_annotations(
             continue
 
         gdf = gdf.copy()
-        gdf["image_path"] = tile_name
+        gdf["image_path"] = tile_name  # TIF needed for geo→pixel conversion
         gdf["label"] = "Tree"
 
         ann = read_file(gdf, root_dir=str(tiles_dir))
+        ann["image_path"] = png_name  # switch to PNG after coordinate conversion
         ann["source"] = SOURCE_NAME
         all_annotations.append(ann[["image_path", "geometry", "source"]])
 
@@ -143,7 +183,7 @@ def prepare_annotations(
 
     annotations = pd.concat(all_annotations, ignore_index=True)
     annotations["image_path"] = annotations["image_path"].apply(
-        lambda x: str((tiles_dir / Path(x).name).resolve())
+        lambda x: str((tiles_dir / Path(x).with_suffix(".png").name).resolve())
     )
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     annotations.to_csv(output_csv, index=False)

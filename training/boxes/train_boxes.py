@@ -20,7 +20,6 @@ import pytorch_lightning as pl
 import torch
 
 from deepforest import main as df_main
-from deepforest.callbacks import images_callback
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
@@ -35,7 +34,7 @@ class MillionTreesBatchAdapter:
     compatible with the DeepForest training API.
 
     MillionTrees: (metadata[B,2], images[B,C,H,W], [{"y": boxes, "labels": int64}])
-    DeepForest:   (list[str],     images[B,C,H,W], [{"boxes": boxes, "labels": int64}])
+    DeepForest:   (images[B,C,H,W], [{"boxes": boxes, "labels": int64}], list[str])
 
     Images are already CHW float32 0-1 from MillionTrees, so no conversion needed.
     """
@@ -63,7 +62,7 @@ class MillionTreesBatchAdapter:
                 else:
                     labels = labels.long()
                 adapted.append({"boxes": boxes.float(), "labels": labels})
-            yield paths, images, adapted
+            yield images, adapted, paths
 
     def __len__(self):
         return len(self.loader)
@@ -104,10 +103,12 @@ def predict_batch(model, images):
 # Evaluation (DeepForest's evaluate() is CSV-based; use MillionTrees API)
 # ---------------------------------------------------------------------------
 
-def evaluate(model, dataset, test_subset, batch_size=12, viz_dir=None):
+def evaluate(model, dataset, test_subset, batch_size=12, viz_dir=None, max_batches=None):
     test_loader = get_eval_loader("standard", test_subset, batch_size=batch_size)
     all_y_pred, all_y_true = [], []
-    for batch in test_loader:
+    for i, batch in enumerate(test_loader):
+        if max_batches is not None and i >= max_batches:
+            break
         _, images, targets = batch
         preds = predict_batch(model, images)
         all_y_pred.extend(preds)
@@ -148,12 +149,15 @@ def main():
         help="Lightning accelerator (use 'cpu' for debugging).",
     )
     parser.add_argument("--early-stop-patience", type=int, default=10)
-    parser.add_argument("--vis-every-n-epochs", type=int, default=5,
-                        help="Save val images every N epochs (0 to disable)")
-    parser.add_argument("--vis-n-images", type=int, default=4)
     parser.add_argument("--comet", action="store_true",
                         help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
+    parser.add_argument("--smoke-test", action="store_true",
+                        help="Limit to 2 train/val batches and 1 epoch for local testing")
     args = parser.parse_args()
+
+    if args.smoke_test:
+        args.max_epochs = 1
+        args.early_stop_patience = 1
 
     os.makedirs(args.output_dir, exist_ok=True)
 
@@ -186,14 +190,11 @@ def main():
     train_adapted = MillionTreesBatchAdapter(train_loader, filename_id_to_path)
     val_adapted = MillionTreesBatchAdapter(val_loader, filename_id_to_path) if has_val else None
 
-    # images_callback reads images from disk using config["validation"]["root_dir"]
-    images_dir = str(box_dataset._data_dir / "images")
-
     # Build DeepForest model and load pretrained weights
     model = df_main.deepforest(
         config_args={
             "train": {"epochs": args.max_epochs, "lr": args.lr},
-            "validation": {"root_dir": images_dir},
+            "validation": {"root_dir": str(box_dataset._data_dir / "images")},
             "batch_size": args.batch_size,
             "devices": args.gpus,
             "accelerator": args.accelerator,
@@ -203,6 +204,27 @@ def main():
         existing_val_dataloader=val_adapted,
     )
     model.load_model("weecology/deepforest-tree")
+
+    # DeepForest fix 1: on_fit_start raises when csv_file is None even with existing_train_dataloader
+    model.on_fit_start = lambda: None
+
+    # DeepForest fix 3: validation_step and on_validation_epoch_end require a CSV-backed
+    # precision_recall_metric that we don't have. Replace with loss-only versions so that
+    # val_bbox_regression is logged (needed for checkpointing / early stopping).
+    def _val_step(batch, batch_idx):
+        images, targets, image_names = batch
+        model.model.train()
+        with torch.no_grad():
+            loss_dict = model.model.forward(images, targets)
+        losses = sum(loss_dict.values())
+        for key, value in loss_dict.items():
+            model.log(f"val_{key}", value.detach(), on_epoch=True, batch_size=len(images))
+        model.log("val_loss", losses.detach(), on_epoch=True, batch_size=len(images))
+        return losses
+
+    model.validation_step = _val_step
+    model.on_validation_epoch_end = lambda: None
+    model.on_validation_epoch_start = lambda: None
 
     # Loggers
     loggers = []
@@ -256,17 +278,21 @@ def main():
             patience=args.early_stop_patience,
             mode="min",
         ))
-        if args.vis_every_n_epochs > 0:
-            callbacks.append(images_callback(
-                savedir=os.path.join(args.output_dir, "val_images"),
-                n=args.vis_n_images,
-                every_n_epochs=args.vis_every_n_epochs,
-            ))
 
     # create_trainer reads config for devices/accelerator/epochs; kwargs override the rest
+    # DeepForest fix 2: create_trainer sets limit_val_batches=0 when csv_file is None,
+    # even when existing_val_dataloader is provided. Pass explicit overrides.
+    trainer_kwargs = {}
+    if has_val:
+        trainer_kwargs["limit_val_batches"] = 1.0
+        trainer_kwargs["num_sanity_val_steps"] = 2
+    if args.smoke_test:
+        trainer_kwargs["limit_train_batches"] = 2
+        trainer_kwargs["limit_val_batches"] = 2
     model.create_trainer(
         logger=loggers[0] if loggers else None,
         callbacks=callbacks,
+        **trainer_kwargs,
     )
 
     model.trainer.fit(model)
@@ -278,7 +304,9 @@ def main():
             print(f"Loading best checkpoint: {best_path}")
             model = df_main.deepforest.load_from_checkpoint(best_path, weights_only=False)
 
-    results, results_str = evaluate(model, box_dataset, test_subset, batch_size=args.batch_size)
+    eval_max_batches = 2 if args.smoke_test else None
+    results, results_str = evaluate(model, box_dataset, test_subset, batch_size=args.batch_size,
+                                    max_batches=eval_max_batches)
     print(results_str)
 
     results_path = os.path.join(args.output_dir, f"results_{args.split_scheme}.txt")
