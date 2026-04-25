@@ -31,7 +31,7 @@ else
   EARLY_STOP_PATIENCE=10
 fi
 
-srun uv run python training/boxes/train_boxes.py \
+uv run python training/boxes/train_boxes.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --batch-size 16 \
