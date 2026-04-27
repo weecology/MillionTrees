@@ -32,19 +32,19 @@ All point sources are used to train and predict all box sources.
 
 ### Random
 
-| Model | Fine-tuned | Counting MAE | Script |
-|---|:---:|---|---|
-| SAM3 | ✗ | 13.552 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
-| DeepForest | ✓ | 23.763 | <small>`uv run python training/points/train_points.py --split-scheme random`</small> |
-| DeepForest | ✗ | 25.289 | <small>`uv run python docs/examples/baseline_points.py --split-scheme random`</small> |
+| Model | Fine-tuned | Counting MAE | Mask-Aware Precision | Script |
+|---|:---:|---|---|---|
+| DeepForest | ✗ | 23.118 | — | <small>`uv run python docs/examples/baseline_points.py --split-scheme random`</small> |
+| SAM3 | ✗ | 27.339 | — | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| DeepForest | ✓ | 35.189 | 0.505 | <small>`uv run python training/points/train.py --split-scheme random`</small> |
 
 ### Zero-shot
 
-| Model | Fine-tuned | Counting MAE | Script |
-|---|:---:|---|---|
-| DeepForest | ✗ | 51.462 | <small>`uv run python docs/examples/baseline_points.py --split-scheme zeroshot`</small> |
-| SAM3 | ✗ | 61.057 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
-| DeepForest | ✓ | 72.546 | <small>`uv run python training/points/train_points.py --split-scheme zeroshot`</small> |
+| Model | Fine-tuned | Counting MAE | Mask-Aware Precision | Script |
+|---|:---:|---|---|---|
+| DeepForest | ✗ | 60.996 | — | <small>`uv run python docs/examples/baseline_points.py --split-scheme zeroshot`</small> |
+| SAM3 | ✗ | 61.057 | — | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| DeepForest | ✓ | 74.581 | 0.666 | <small>`uv run python training/points/train.py --split-scheme zeroshot`</small> |
 
 ### Cross-geometry
 
@@ -61,19 +61,19 @@ All point sources are used to train and predict all box sources.
 
 ### Random
 
-| Model | Fine-tuned | Avg Recall | Script |
-|---|:---:|---|---|
-| DeepForest | ✗ | 0.559 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme random`</small> |
-| DeepForest | ✓ | 0.549 | <small>`uv run python training/boxes/train_boxes.py --split-scheme random`</small> |
-| SAM3 | ✗ | 0.185 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| Model | Fine-tuned | Avg Recall | Mask-Aware Precision | Script |
+|---|:---:|---|---|---|
+| DeepForest | ✓ | 0.721 | 0.610 | <small>`uv run python training/boxes/train_boxes.py --split-scheme random`</small> |
+| DeepForest | ✗ | 0.459 | — | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme random`</small> |
+| SAM3 | ✗ | 0.198 | — | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 
 ### Zero-shot
 
-| Model | Fine-tuned | Avg Recall | Script |
-|---|:---:|---|---|
-| DeepForest | ✗ | 0.539 | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme zeroshot`</small> |
-| DeepForest | ✓ | 0.518 | <small>`uv run python training/boxes/train_boxes.py --split-scheme zeroshot`</small> |
-| SAM3 | ✗ | 0.199 | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| Model | Fine-tuned | Avg Recall | Mask-Aware Precision | Script |
+|---|:---:|---|---|---|
+| DeepForest | ✗ | 0.539 | — | <small>`uv run python docs/examples/baseline_boxes.py --split-scheme zeroshot`</small> |
+| DeepForest | ✓ | 0.460 | 0.900 | <small>`uv run python training/boxes/train_boxes.py --split-scheme zeroshot`</small> |
+| SAM3 | ✗ | 0.199 | — | <small>`uv run python docs/examples/sam3_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 
 ### Cross-geometry
 
@@ -90,19 +90,19 @@ All point sources are used to train and predict all box sources.
 
 ### Random
 
-| Model | Fine-tuned | Avg Mask Accuracy | Script |
-|---|:---:|---|---|
-| DeepForest | ✓ | 0.296 | <small>`uv run python training/polygons/train_polygons.py --split-scheme random`</small> |
-| SAM3 | ✗ | 0.188 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
-| DeepForest | ✗ | 0.090 | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme random`</small> |
+| Model | Fine-tuned | Avg Mask Accuracy | Mask-Aware Precision | Script |
+|---|:---:|---|---|---|
+| DeepForest | ✓ | 0.232 | 0.872 | <small>`uv run python training/polygons/train.py --split-scheme random`</small> |
+| SAM3 | ✗ | 0.188 | — | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| DeepForest | ✗ | 0.081 | — | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme random`</small> |
 
 ### Zero-shot
 
-| Model | Fine-tuned | Avg Mask Accuracy | Script |
-|---|:---:|---|---|
-| DeepForest | ✓ | 0.176 | <small>`uv run python training/polygons/train.py --split-scheme zeroshot`</small> |
-| SAM3 | ✗ | 0.165 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
-| DeepForest | ✗ | 0.071 | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme zeroshot`</small> |
+| Model | Fine-tuned | Avg Mask Accuracy | Mask-Aware Precision | Script |
+|---|:---:|---|---|---|
+| DeepForest | ✓ | 0.176 | — | <small>`uv run python training/polygons/train.py --split-scheme zeroshot`</small> |
+| SAM3 | ✗ | 0.165 | — | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| DeepForest | ✗ | 0.102 | — | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme zeroshot`</small> |
 
 ### Cross-geometry
 

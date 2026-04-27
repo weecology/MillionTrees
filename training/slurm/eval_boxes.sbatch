@@ -19,9 +19,11 @@ cd /blue/ewhite/b.weinstein/src/MillionTrees
 
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
 SPLITS=(random zeroshot)
+CKPT_VERSIONS=(v4 v5)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
+CKPT_VER=${CKPT_VERSIONS[$SLURM_ARRAY_TASK_ID]}
 
-CKPT="training/boxes/outputs/${SPLIT}/checkpoints/boxes-best-v3.ckpt"
+CKPT="training/boxes/outputs/${SPLIT}/checkpoints/boxes-best-${CKPT_VER}.ckpt"
 
 srun uv run python training/boxes/eval_checkpoint.py \
   --checkpoint "$CKPT" \
