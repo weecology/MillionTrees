@@ -41,6 +41,12 @@ print(results_str)
 
 The evaluation returns a dictionary of metrics and a formatted string with per-source breakdowns and averages.
 
+## TreePolygons train / checkpoint eval
+
+Polygon training and `eval_checkpoint.py` use **`--eval-mode stream`** by default: metrics are updated each batch instead of building full `y_pred` / `y_true` lists (much lower peak RAM on large test splits). Metrics match **`--eval-mode legacy`**, which keeps the old “accumulate everything, then `dataset.eval()`” flow.
+
+For custom scripts, the pattern above (lists + `dataset.eval()`) is unchanged.
+
 ## Evaluation visualizations
 
 For qualitative debugging, pass **`viz_dir`** and optionally **`viz_n_per_source`** (default `4`) to `eval()`. The library writes PNGs under `viz_dir`, grouped in subfolders by source name, with up to `viz_n_per_source` images per source (in dataloader order).

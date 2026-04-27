@@ -28,6 +28,13 @@ def main():
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--viz-dir", type=str, default=None,
                         help="Directory for per-source prediction overlay PNGs")
+    parser.add_argument(
+        "--eval-mode",
+        type=str,
+        default="stream",
+        choices=["stream", "legacy"],
+        help="stream = low-memory per-batch metrics; legacy = accumulate then dataset.eval()",
+    )
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -46,8 +53,15 @@ def main():
     )
     test_subset = dataset.get_subset("test")
 
-    results, results_str = evaluate(model, dataset, test_subset, batch_size=args.batch_size,
-                                    device=device, viz_dir=args.viz_dir)
+    results, results_str = evaluate(
+        model,
+        dataset,
+        test_subset,
+        batch_size=args.batch_size,
+        device=device,
+        viz_dir=args.viz_dir,
+        eval_mode=args.eval_mode,
+    )
     print(results_str)
 
     if args.output_dir:
