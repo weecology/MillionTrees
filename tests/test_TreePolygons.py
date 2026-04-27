@@ -1,6 +1,9 @@
 from milliontrees.datasets.TreePolygons import TreePolygonsDataset
+from milliontrees.datasets.polygon_stream_eval import TreePolygonsStreamingEvalState
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
 from milliontrees.common.metrics.all_metrics import MaskAwareMaskPrecision
+
+import math
 
 import torch
 import pytest
@@ -117,6 +120,63 @@ def test_TreePolygons_eval(dataset):
     assert "recall" in eval_results.keys()
     assert "maskaware_precision" in eval_results.keys()
     assert "merge_commission" in eval_results.keys()
+
+
+def test_TreePolygons_eval_stream_matches_legacy(dataset):
+    """Streaming eval must match legacy ``dataset.eval`` on the same predictions."""
+    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
+    test_dataset = ds.get_subset("test")
+    test_loader = get_eval_loader("standard", test_dataset, batch_size=2)
+
+    _, _, ref_tgt = test_dataset[0]
+    ref_masks = torch.as_tensor(ref_tgt["y"]).clone()
+    ref_boxes = torch.as_tensor(ref_tgt["bboxes"]).clone()
+    ref_labels = torch.as_tensor(ref_tgt["labels"]).clone()
+
+    all_y_pred = []
+    all_y_true = []
+    state = TreePolygonsStreamingEvalState(ds)
+
+    for metadata, x, y_true in test_loader:
+        batch = [{
+            "y": ref_masks,
+            "bboxes": ref_boxes,
+            "labels": ref_labels,
+            "scores": torch.tensor([0.54] * len(ref_labels)),
+        }]
+        all_y_pred.extend(batch)
+        all_y_true.extend(y_true)
+        state.update(batch, y_true, metadata)
+
+    legacy_results, _ = ds.eval(
+        y_pred=all_y_pred,
+        y_true=all_y_true,
+        metadata=test_dataset.metadata_array,
+    )
+    stream_results, _ = state.finalize()
+
+    for metric_name in ("accuracy", "recall", "maskaware_precision", "merge_commission", "mAP"):
+        lk = legacy_results[metric_name]
+        sk = stream_results[metric_name]
+        for key, lv in lk.items():
+            if key == "eval_visualization_paths":
+                continue
+            sv = sk[key]
+            fv = float(lv)
+            fs = float(sv)
+            if math.isnan(fv):
+                assert math.isnan(fs), f"{metric_name}.{key} legacy=nan stream={sv}"
+            else:
+                assert fs == pytest.approx(fv, rel=1e-5, abs=1e-5), (
+                    f"{metric_name}.{key} legacy={lv} stream={sv}"
+                )
+    lr_dom = float(legacy_results["detection_acc_avg_dom"])
+    sr_dom = float(stream_results["detection_acc_avg_dom"])
+    if math.isnan(lr_dom):
+        assert math.isnan(sr_dom)
+    else:
+        assert sr_dom == pytest.approx(lr_dom, rel=1e-5, abs=1e-5)
+
 
 def test_TreePolygons_download_url(dataset):
     ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")

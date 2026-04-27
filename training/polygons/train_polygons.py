@@ -10,8 +10,6 @@ DeepForest only produces boxes, not masks, so we use torchvision directly.
 
 import argparse
 import os
-import warnings
-from typing import List
 
 import numpy as np
 import pytorch_lightning as pl
@@ -23,6 +21,10 @@ from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
+from milliontrees.datasets.polygon_stream_eval import (
+    TreePolygonsStreamingEvalState,
+    merge_viz_samples,
+)
 
 
 def get_mask_rcnn(num_classes=2):
@@ -131,21 +133,74 @@ def format_predictions_for_eval(images, model, device, mask_threshold=0.5):
     return batch_y_pred
 
 
-def evaluate(model, dataset, test_subset, batch_size=8, device="cuda", viz_dir=None):
+def evaluate(
+    model,
+    dataset,
+    test_subset,
+    batch_size=8,
+    device="cuda",
+    viz_dir=None,
+    *,
+    eval_mode="stream",
+    viz_n_per_source=4,
+):
+    """Run test-set evaluation.
+
+    ``eval_mode``:
+        - ``stream`` (default): update metrics per batch; does not accumulate all
+          masks in Python lists (lower peak memory).
+        - ``legacy``: accumulate full ``y_pred`` / ``y_true`` lists then call
+          ``dataset.eval()`` once (previous behavior).
+    """
     test_loader = get_eval_loader("standard", test_subset, batch_size=batch_size)
-    all_y_pred, all_y_true = [], []
     model.eval()
+
+    if eval_mode == "legacy":
+        all_y_pred, all_y_true = [], []
+        for batch in test_loader:
+            metadata, images, targets = batch
+            preds = format_predictions_for_eval(images, model, device)
+            for y_pred, image_targets in zip(preds, targets):
+                all_y_pred.append(y_pred)
+                all_y_true.append(image_targets)
+        return dataset.eval(
+            all_y_pred,
+            all_y_true,
+            test_subset.metadata_array[: len(all_y_true)],
+            viz_dir=viz_dir,
+            viz_n_per_source=viz_n_per_source,
+        )
+
+    if eval_mode != "stream":
+        raise ValueError(f"Unknown eval_mode: {eval_mode!r}; use 'stream' or 'legacy'.")
+
+    state = TreePolygonsStreamingEvalState(dataset)
+    viz_cap: dict[int, int] = {}
+    viz_y_pred, viz_y_true, viz_rows = [], [], []
     for batch in test_loader:
         metadata, images, targets = batch
         preds = format_predictions_for_eval(images, model, device)
-        for y_pred, image_targets in zip(preds, targets):
-            all_y_pred.append(y_pred)
-            all_y_true.append(image_targets)
-    results, results_str = dataset.eval(
-        all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)],
+        state.update(preds, targets, metadata)
+        if viz_dir is not None:
+            merge_viz_samples(
+                viz_cap,
+                metadata,
+                preds,
+                targets,
+                viz_y_pred=viz_y_pred,
+                viz_y_true=viz_y_true,
+                viz_rows=viz_rows,
+                n_per_source=viz_n_per_source,
+            )
+
+    viz_meta = torch.stack(viz_rows, dim=0) if viz_rows else None
+    return state.finalize(
         viz_dir=viz_dir,
+        viz_y_pred=viz_y_pred or None,
+        viz_y_true=viz_y_true or None,
+        viz_metadata=viz_meta,
+        viz_n_per_source=viz_n_per_source,
     )
-    return results, results_str
 
 
 def main():
@@ -175,6 +230,13 @@ def main():
         type=int,
         default=50,
         help="Number of validation batches per epoch (for fast debugging)",
+    )
+    parser.add_argument(
+        "--eval-mode",
+        type=str,
+        default="stream",
+        choices=["stream", "legacy"],
+        help="Test eval: 'stream' avoids holding the full test set in memory; 'legacy' matches old behavior.",
     )
     args = parser.parse_args()
 
@@ -253,7 +315,12 @@ def main():
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     results, results_str = evaluate(
-        model, polygon_dataset, test_subset, batch_size=args.batch_size, device=device
+        model,
+        polygon_dataset,
+        test_subset,
+        batch_size=args.batch_size,
+        device=device,
+        eval_mode=args.eval_mode,
     )
     print(results_str)
 
