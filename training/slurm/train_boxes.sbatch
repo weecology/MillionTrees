@@ -7,9 +7,9 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=90GB
 #SBATCH --partition=hpg-turin
-#SBATCH --gpus=1
+#SBATCH --gpus=2
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks-per-node=2
 
 # Dataset is loaded from ROOT_DIR/TreeBoxes_v{version} (version from TreeBoxes._versions_dict, e.g. 0.11).
 # To use the latest packaged data, re-run data_prep/package_datasets.py first.
@@ -31,14 +31,14 @@ else
   EARLY_STOP_PATIENCE=10
 fi
 
-uv run python training/boxes/train_boxes.py \
+srun uv run python training/boxes/train_boxes.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --batch-size 16 \
   --max-epochs 40 \
   --lr 1e-4 \
   --num-workers 8 \
-  --gpus 1 \
+  --gpus 2 \
   --early-stop-patience "$EARLY_STOP_PATIENCE" \
   --output-dir "training/boxes/outputs/$SPLIT" \
   --comet

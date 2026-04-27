@@ -6,10 +6,6 @@ Custom code here is limited to two things that DeepForest doesn't cover:
 
   MillionTreesBatchAdapter  — translates batch format (metadata→path, y→boxes)
   evaluate()                — uses MillionTrees eval API (DeepForest's is CSV-based)
-
-Requires two small DeepForest fixes (submitted upstream):
-  1. on_fit_start: don't raise when existing_train_dataloader is set
-  2. create_trainer: enable validation when existing_val_dataloader is set
 """
 
 import argparse
@@ -205,27 +201,6 @@ def main():
     )
     model.load_model("weecology/deepforest-tree")
 
-    # DeepForest fix 1: on_fit_start raises when csv_file is None even with existing_train_dataloader
-    model.on_fit_start = lambda: None
-
-    # DeepForest fix 3: validation_step and on_validation_epoch_end require a CSV-backed
-    # precision_recall_metric that we don't have. Replace with loss-only versions so that
-    # val_bbox_regression is logged (needed for checkpointing / early stopping).
-    def _val_step(batch, batch_idx):
-        images, targets, image_names = batch
-        model.model.train()
-        with torch.no_grad():
-            loss_dict = model.model.forward(images, targets)
-        losses = sum(loss_dict.values())
-        for key, value in loss_dict.items():
-            model.log(f"val_{key}", value.detach(), on_epoch=True, batch_size=len(images))
-        model.log("val_loss", losses.detach(), on_epoch=True, batch_size=len(images))
-        return losses
-
-    model.validation_step = _val_step
-    model.on_validation_epoch_end = lambda: None
-    model.on_validation_epoch_start = lambda: None
-
     # Loggers
     loggers = []
     if args.comet:
@@ -279,9 +254,6 @@ def main():
             mode="min",
         ))
 
-    # create_trainer reads config for devices/accelerator/epochs; kwargs override the rest
-    # DeepForest fix 2: create_trainer sets limit_val_batches=0 when csv_file is None,
-    # even when existing_val_dataloader is provided. Pass explicit overrides.
     trainer_kwargs = {}
     if has_val:
         trainer_kwargs["limit_val_batches"] = 1.0
