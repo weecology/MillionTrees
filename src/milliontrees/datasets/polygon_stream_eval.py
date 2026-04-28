@@ -41,13 +41,11 @@ class TreePolygonsStreamingEvalState:
 
         self._map_metric: DetectionMAP = dataset.metrics[self._MAP_KEY]
         self._map_global = MeanAveragePrecision(
-            iou_type=self._map_metric.iou_type, class_metrics=False
-        )
+            iou_type=self._map_metric.iou_type, class_metrics=False)
         _disable_torchmetric_sync(self._map_global)
         self._map_per_group = [
-            MeanAveragePrecision(
-                iou_type=self._map_metric.iou_type, class_metrics=False
-            )
+            MeanAveragePrecision(iou_type=self._map_metric.iou_type,
+                                 class_metrics=False)
             for _ in range(self._n_groups)
         ]
         for m in self._map_per_group:
@@ -102,7 +100,9 @@ class TreePolygonsStreamingEvalState:
         results[metric.agg_metric_field] = float(agg.item())
         results_str += f"Average {metric.name}: {results[metric.agg_metric_field]:.3f}\n"
 
-        group_avgs = torch.full((self._n_groups,), float("nan"), dtype=torch.float64)
+        group_avgs = torch.full((self._n_groups,),
+                                float("nan"),
+                                dtype=torch.float64)
         group_counts = st["g_cnt"]
         for gi in range(self._n_groups):
             if st["g_cnt"][gi] > 0:
@@ -122,17 +122,15 @@ class TreePolygonsStreamingEvalState:
         for group_idx in range(self._n_groups):
             group_str = self._grouper.group_field_str(group_idx)
             gv = group_avgs[group_idx]
-            results[f"{metric.name}_{group_str}"] = (
-                float(gv.item()) if not torch.isnan(gv) else float("nan")
-            )
+            results[f"{metric.name}_{group_str}"] = (float(
+                gv.item()) if not torch.isnan(gv) else float("nan"))
             results[f"count_{group_str}"] = float(st["g_cnt"][group_idx].item())
             if st["g_cnt"][group_idx] == 0:
                 continue
             results_str += (
                 f"  {self._grouper.group_str(group_idx)}  "
                 f"[n = {int(st['g_cnt'][group_idx].item()):6d}]:\t"
-                f"{metric.name} = {float(group_avgs[group_idx].item()):5.3f}\n"
-            )
+                f"{metric.name} = {float(group_avgs[group_idx].item()):5.3f}\n")
 
         results[metric.worst_group_metric_field] = float(worst.item())
         results_str += (
@@ -175,11 +173,9 @@ class TreePolygonsStreamingEvalState:
             results[f"count_{group_str}"] = float(gcnt[group_idx].item())
             if gcnt[group_idx] == 0:
                 continue
-            results_str += (
-                f"  {self._grouper.group_str(group_idx)}  "
-                f"[n = {int(gcnt[group_idx].item()):6d}]:\t"
-                f"{metric.name} = {float(gv.item()):5.3f}\n"
-            )
+            results_str += (f"  {self._grouper.group_str(group_idx)}  "
+                            f"[n = {int(gcnt[group_idx].item()):6d}]:\t"
+                            f"{metric.name} = {float(gv.item()):5.3f}\n")
 
         stacked = torch.stack([t.float() for t in group_metrics_list])
         worst = metric.worst(stacked[gcnt > 0])
@@ -224,8 +220,7 @@ class TreePolygonsStreamingEvalState:
         results["detection_acc_avg_dom"] = detection_acc_avg_dom
         results_str = (
             f"Average detection_acc across source: {detection_acc_avg_dom:.3f}\n"
-            + results_str
-        )
+            + results_str)
 
         from milliontrees.common.utils import format_eval_results
 
