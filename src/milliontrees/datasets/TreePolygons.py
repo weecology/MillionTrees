@@ -49,6 +49,7 @@ class TreePolygonsDataset(MillionTreesDataset):
     License:
         This dataset is distributed under the Creative Commons Attribution License.
     """
+
     _dataset_name = 'TreePolygons'
     _versions_dict = {
         '0.0': {

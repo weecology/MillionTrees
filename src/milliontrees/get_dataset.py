@@ -1,4 +1,5 @@
 """Module for retrieving MillionTrees dataset instances."""
+
 from typing import Optional
 import milliontrees
 

@@ -135,8 +135,8 @@ def save_eval_visualizations(
 
     Ground truth is drawn in purple; predictions above ``score_threshold`` are orange.
 
-    Images are resized to ``dataset.image_size`` so coordinates match ``y_pred`` / ``y_true``
-    from the standard eval loader.
+    Images are resized to ``dataset.image_size`` so coordinates match ``y_pred`` / ``y_true`` from
+    the standard eval loader.
 
     Returns paths of written PNG files.
     """

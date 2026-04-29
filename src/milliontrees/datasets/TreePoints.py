@@ -41,6 +41,7 @@ class TreePointsDataset(MillionTreesDataset):
     License:
         This dataset is distributed under Creative Commons Attribution License
     """
+
     _dataset_name = 'TreePoints'
     _versions_dict = {
         '0.0': {
@@ -288,7 +289,6 @@ class TreePointsDataset(MillionTreesDataset):
 
         Optional ``viz_dir`` / ``viz_n_per_source`` write qualitative overlays (see TreeBoxes.eval).
         """
-
         results = {}
         results_str = ''
         for metric in self.metrics:

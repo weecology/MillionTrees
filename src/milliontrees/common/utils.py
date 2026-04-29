@@ -53,7 +53,6 @@ def split_into_groups(g):
             - unique_counts (Tensor): A tensor representing the count of each unique group
               in `groups`, with the same length as `groups`.
     """
-
     unique_groups, unique_counts = torch.unique(g,
                                                 sorted=False,
                                                 return_counts=True)
@@ -64,8 +63,9 @@ def split_into_groups(g):
 
 
 def get_counts(g, n_groups):
-    """This differs from split_into_groups in how it handles missing groups. get_counts always
-    returns a count array of length n_groups, whereas split_into_groups returns a unique_counts
+    """This differs from split_into_groups in how it handles missing groups.
+
+    get_counts always returns a count array of length n_groups, whereas split_into_groups returns a unique_counts
     array whose length is the number of unique groups present in g.
 
     Args:

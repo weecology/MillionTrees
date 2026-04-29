@@ -1,7 +1,7 @@
 """Greedy one-to-one matching for detection-style evaluation (IoU or distance).
 
-Used in place of torchvision ``Matcher`` so recall/precision match the usual
-GT-centric definitions (aligned with DeepForest-style eval).
+Used in place of torchvision ``Matcher`` so recall/precision match the usual GT-centric definitions
+(aligned with DeepForest-style eval).
 """
 
 from __future__ import annotations
@@ -43,8 +43,8 @@ def greedy_distance_match(dist: torch.Tensor,
                           max_distance: float) -> torch.Tensor:
     """Greedy 1:1 match on a distance matrix ``[n_gt, n_pred]``.
 
-    Pairs with ``dist <= max_distance`` are considered, ordered by distance
-    ascending (best spatial alignment first).
+    Pairs with ``dist <= max_distance`` are considered, ordered by distance ascending (best spatial
+    alignment first).
     """
     n_gt, n_pred = dist.shape
     device = dist.device
