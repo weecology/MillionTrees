@@ -4,15 +4,24 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.12"
-
-python:
-  install:
-    - requirements: requirements.txt
-    - method: pip
-      path: .
-
-submodules:
-  include: []
+  jobs:
+    post_checkout:
+      - wget https://github.com/git-lfs/git-lfs/releases/download/v3.6.1/git-lfs-linux-amd64-v3.6.1.tar.gz
+      - tar xvfz git-lfs-linux-amd64-v3.6.1.tar.gz
+      - git config filter.lfs.process "`pwd`/git-lfs-3.6.1/git-lfs filter-process"
+      - git config filter.lfs.smudge "`pwd`/git-lfs-3.6.1/git-lfs smudge -- %f"
+      - git config filter.lfs.clean "`pwd`/git-lfs-3.6.1/git-lfs clean -- %f"
+      - ./git-lfs-3.6.1/git-lfs install
+      - ./git-lfs-3.6.1/git-lfs fetch
+      - ./git-lfs-3.6.1/git-lfs checkout
 
 sphinx:
   configuration: docs/conf.py
+  fail_on_warning: true
+
+python:
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs

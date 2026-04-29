@@ -7,3 +7,18 @@ recursive-exclude * *.py[cod]
 recursive-exclude tests *
 recursive-exclude docs * 
 recursive-exclude data_prep *
+prune data-mini
+prune onboarding_data
+prune outputs
+prune training
+prune lightning_logs
+global-exclude *.png
+global-exclude *.jpg
+global-exclude *.jpeg
+global-exclude *.webp
+global-exclude *.tif
+global-exclude *.tiff
+global-exclude *.pt
+global-exclude *.ckpt
+global-exclude *.parquet
+global-exclude *.feather
