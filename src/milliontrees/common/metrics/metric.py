@@ -10,13 +10,14 @@ class Metric:
         self._name = name
 
     def _compute(self, y_pred, y_true):
-        """Helper function for computing the metric. Subclasses should implement this.
+        """Helper function for computing the metric.
 
-        Args:
-            - y_pred (Tensor): Predicted targets or model output
-            - y_true (Tensor): True targets
-        Output:
-            - metric (0-dim tensor): metric
+        Subclasses should implement this.
+                Args:
+                    - y_pred (Tensor): Predicted targets or model output
+                    - y_true (Tensor): True targets
+                Output:
+                    - metric (0-dim tensor): metric
         """
         return NotImplementedError
 
@@ -64,16 +65,17 @@ class Metric:
         return f'count_group:{group_idx}'
 
     def compute(self, y_pred, y_true, return_dict=True):
-        """Computes metric. This is a wrapper around _compute.
+        """Computes metric.
 
-        Args:
-            - y_pred (Tensor): Predicted targets or model output
-            - y_true (Tensor): True targets
-            - return_dict (bool): Whether to return the output as a dictionary or a tensor
-        Output (return_dict=False):
-            - metric (0-dim tensor): metric. If the inputs are empty, returns tensor(0.)
-        Output (return_dict=True):
-            - results (dict): Dictionary of results, mapping metric.agg_metric_field to avg_metric
+        This is a wrapper around _compute.
+                Args:
+                    - y_pred (Tensor): Predicted targets or model output
+                    - y_true (Tensor): True targets
+                    - return_dict (bool): Whether to return the output as a dictionary or a tensor
+                Output (return_dict=False):
+                    - metric (0-dim tensor): metric. If the inputs are empty, returns tensor(0.)
+                Output (return_dict=True):
+                    - results (dict): Dictionary of results, mapping metric.agg_metric_field to avg_metric
         """
         if numel(y_true) == 0:
             if hasattr(y_true, 'device'):
@@ -89,21 +91,22 @@ class Metric:
             return agg_metric
 
     def compute_group_wise(self, y_pred, y_true, g, n_groups, return_dict=True):
-        """Computes metrics for each group. This is a wrapper around _compute.
+        """Computes metrics for each group.
 
-        Args:
-            - y_pred (Tensor): Predicted targets or model output
-            - y_true (Tensor): True targets
-            - g (Tensor): groups
-            - n_groups (int): number of groups
-            - return_dict (bool): Whether to return the output as a dictionary or a tensor
-        Output (return_dict=False):
-            - group_metrics (Tensor): tensor of size (n_groups, ) including the average metric for each group
-            - group_counts (Tensor): tensor of size (n_groups, ) including the group count
-            - worst_group_metric (0-dim tensor): worst-group metric
-            - For empty inputs/groups, corresponding metrics are tensor(0.)
-        Output (return_dict=True):
-            - results (dict): Dictionary of results
+        This is a wrapper around _compute.
+                Args:
+                    - y_pred (Tensor): Predicted targets or model output
+                    - y_true (Tensor): True targets
+                    - g (Tensor): groups
+                    - n_groups (int): number of groups
+                    - return_dict (bool): Whether to return the output as a dictionary or a tensor
+                Output (return_dict=False):
+                    - group_metrics (Tensor): tensor of size (n_groups, ) including the average metric for each group
+                    - group_counts (Tensor): tensor of size (n_groups, ) including the group count
+                    - worst_group_metric (0-dim tensor): worst-group metric
+                    - For empty inputs/groups, corresponding metrics are tensor(0.)
+                Output (return_dict=True):
+                    - results (dict): Dictionary of results
         """
         group_metrics, group_counts, worst_group_metric = self._compute_group_wise(
             y_pred, y_true, g, n_groups)

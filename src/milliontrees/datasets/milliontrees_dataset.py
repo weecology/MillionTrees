@@ -504,9 +504,8 @@ class MillionTreesSubset(MillionTreesDataset):
     def __init__(self, dataset, indices, transform=None, geometry_name="y"):
         """This acts like `torch.utils.data.Subset`, but on `milliontreesDatasets`.
 
-        We
-        pass in `transform` (which is used for data augmentation) explicitly
-        because it can potentially vary on the training vs. test subsets.
+        We pass in `transform` (which is used for data augmentation) explicitly because it can
+        potentially vary on the training vs. test subsets.
         """
         self.dataset = dataset
         self.indices = indices

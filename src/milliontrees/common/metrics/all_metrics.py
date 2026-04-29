@@ -68,7 +68,6 @@ def pseudolabel_binary_logits(logits, confidence_threshold):
                                               to NaN or discarded.
             - mask (Tensor): A mask indicating which predictions meet the confidence threshold.
     """
-
     if len(logits.shape) != 2:
         raise ValueError('Logits must be 2-dimensional.')
     probs = 1 / (1 + torch.exp(-logits))
@@ -100,7 +99,6 @@ def pseudolabel_multiclass_logits(logits, confidence_threshold):
             - pseudolabels_kept_frac (float): The fraction of examples retained after filtering.
             - mask (Tensor): A mask indicating which predictions meet the confidence threshold.
     """
-
     mask = torch.max(F.softmax(logits, -1), -1)[0] >= confidence_threshold
     unlabeled_y_pseudo = multiclass_logits_to_pred(logits)
     unlabeled_y_pseudo = unlabeled_y_pseudo[mask]
@@ -130,7 +128,6 @@ def pseudolabel_detection(preds, confidence_threshold):
         List[dict]: A filtered version of `preds`, where detections with confidence scores
                     below `confidence_threshold` are removed.
     """
-
     preds, pseudolabels_kept_frac = _mask_pseudolabels_detection(
         preds, confidence_threshold)
     unlabeled_y_pred = [{
@@ -168,7 +165,6 @@ def pseudolabel_detection_discard_empty(preds, confidence_threshold):
                     below `confidence_threshold` are removed. Entries with no remaining detections
                     are discarded from the list.
     """
-
     preds, pseudolabels_kept_frac = _mask_pseudolabels_detection(
         preds, confidence_threshold)
     unlabeled_y_pred = [{
@@ -474,8 +470,8 @@ class DetectionAccuracy(ElementwiseMetric):
 class MaskAwareDetectionPrecision(ElementwiseMetric):
     """Precision metric that avoids penalizing predictions on unannotated tree regions.
 
-    Unmatched predictions are excluded from false positives when enough of their box area
-    overlaps tree pixels from ``tree_coverage_mask``.
+    Unmatched predictions are excluded from false positives when enough of their box area overlaps
+    tree pixels from ``tree_coverage_mask``.
     """
 
     def __init__(self,

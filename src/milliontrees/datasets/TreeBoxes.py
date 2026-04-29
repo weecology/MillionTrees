@@ -72,6 +72,7 @@ class TreeBoxesDataset(MillionTreesDataset):
 
     License: Creative Commons Attribution License
     """
+
     _dataset_name = 'TreeBoxes'
     _versions_dict = {
         # 0.0 is a placeholder for the testing dataset
