@@ -19,6 +19,11 @@ uv run pre-commit run --all-files
 
 Use `uv run pre-commit install` once per clone if you want the same checks to run automatically on `git commit`. Equivalent manual commands are documented in `docs/contributing.md`.
 
+### Agent gate before PR
+- Before opening or updating a PR, always run `uv run pre-commit run --all-files`.
+- If any hook fails (including docformatter), fix the files and rerun until all hooks pass.
+- Do not hand off a PR with known pre-commit failures.
+
 ## Coding Philosophy
 
 ### Code Style Preferences
