@@ -33,6 +33,14 @@ jobs:
           python -m pip install build
           python -m build
 
+      - name: Guard source distribution size
+        run: |
+          SDIST_PATH="$(ls dist/*.tar.gz)"
+          SDIST_SIZE_MB="$(du -m "$SDIST_PATH" | cut -f1)"
+          echo "sdist path: $SDIST_PATH"
+          echo "sdist size: ${SDIST_SIZE_MB} MB"
+          test "$SDIST_SIZE_MB" -le 50
+
       - name: Upload distributions
         uses: actions/upload-artifact@v4
         with:
