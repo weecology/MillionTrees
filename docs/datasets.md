@@ -429,3 +429,21 @@ https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.13860
 ***Location*** Forest across the United States
 
 ![sample_image](public/Young_et_al._2025_unsupervised.png)
+
+### Source Name: "OFO field 2025"
+
+Field-validated stem maps from the Open Forest Observatory ground reference catalog. David Young
+(UC Davis) shared a concatenated set of 330 plot-drone pairs in which each tree has been manually
+mapped on the ground and the plot has been algorithmically registered to a specific drone mission's
+photogrammetry products. The field trees are duplicated per overlapping mission with a
+``mission_id`` attribute denoting which orthomosaic each row should be paired with, and a
+``withhold_from_training`` flag that routes those trees to the test split.
+
+The dataset is built by ``data_prep/process_ofo_field.py``, which downloads the matching
+``missions_03`` orthomosaic for each ``mission_id`` from
+``https://js2.jetstream-cloud.org:8001/swift/v1/ofo-public/drone/missions_03/{mission_id}/photogrammetry_03/full/{mission_id}_ortho-dsm-ptcloud.tif``,
+tiles it into uniform patches, and projects field-tree points into image coordinates. Trees that
+are not flagged ``predicted_overstory`` (overhead visible) are dropped by default since field stems
+under the canopy cannot be observed from nadir drone imagery.
+
+***Location*** Forests across California (Sierra Nevada and Lake Tahoe basin), USA
