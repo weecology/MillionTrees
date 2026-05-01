@@ -9,7 +9,9 @@ DeepForest only produces boxes, not masks, so we use torchvision directly.
 """
 
 import argparse
+import json
 import os
+from pathlib import Path
 
 import numpy as np
 import pytorch_lightning as pl
@@ -27,9 +29,14 @@ from milliontrees.datasets.polygon_stream_eval import (
 )
 
 
-def get_mask_rcnn(num_classes=2):
-    """Build a Mask R-CNN with pretrained backbone, 2 classes (bg + tree)."""
-    model = maskrcnn_resnet50_fpn_v2(weights=MaskRCNN_ResNet50_FPN_V2_Weights.DEFAULT)
+def get_mask_rcnn(num_classes=2, init_mode="imagenet"):
+    """Build a Mask R-CNN with configurable initialization (2 classes: bg + tree)."""
+    if init_mode == "scratch":
+        model = maskrcnn_resnet50_fpn_v2(weights=None, weights_backbone=None)
+    else:
+        model = maskrcnn_resnet50_fpn_v2(
+            weights=MaskRCNN_ResNet50_FPN_V2_Weights.DEFAULT
+        )
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
     in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
@@ -40,10 +47,10 @@ def get_mask_rcnn(num_classes=2):
 
 class MaskRCNNPolygonTrainer(pl.LightningModule):
 
-    def __init__(self, lr=1e-4, weight_decay=1e-5):
+    def __init__(self, lr=1e-4, weight_decay=1e-5, init_mode="imagenet"):
         super().__init__()
         self.save_hyperparameters()
-        self.model = get_mask_rcnn(num_classes=2)
+        self.model = get_mask_rcnn(num_classes=2, init_mode=init_mode)
 
     def _prepare_targets(self, targets_list, device):
         rt = []
@@ -100,6 +107,54 @@ class MaskRCNNPolygonTrainer(pl.LightningModule):
             optimizer, T_max=self.trainer.max_epochs, eta_min=1e-6
         )
         return [optimizer], [scheduler]
+
+
+def _extract_box_pretrained_backbone(checkpoint_path):
+    """Load a DeepForest checkpoint; return backbone state_dict keys for Mask R-CNN."""
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    state = ckpt.get("state_dict", ckpt)
+    prefix = "model.backbone.body."
+    mapped = {}
+    for key, value in state.items():
+        if key.startswith(prefix):
+            mapped[f"backbone.body.{key[len(prefix):]}"] = value
+    if not mapped:
+        raise ValueError(
+            f"No DeepForest backbone keys found in {checkpoint_path}. "
+            "Expected prefix 'model.backbone.body.'."
+        )
+    return mapped
+
+
+def apply_box_pretrained_backbone(lightning_model, checkpoint_path):
+    """Apply ResNet backbone weights from a box checkpoint to Mask R-CNN."""
+    backbone_state = _extract_box_pretrained_backbone(checkpoint_path)
+    missing, unexpected = lightning_model.model.load_state_dict(
+        backbone_state,
+        strict=False,
+    )
+    if unexpected:
+        raise ValueError(f"Unexpected keys when loading box backbone: {unexpected}")
+    loaded_prefix = "backbone.body."
+    loaded_count = sum(1 for k in backbone_state if k.startswith(loaded_prefix))
+    if loaded_count == 0:
+        raise ValueError("No backbone.body keys loaded from box pretrained checkpoint.")
+    return {"missing": missing, "loaded_backbone_keys": loaded_count}
+
+
+def flatten_numeric_metrics(results):
+    flat = {}
+    for k, v in results.items():
+        if isinstance(v, (int, float)):
+            flat[k] = float(v)
+        elif isinstance(v, torch.Tensor) and v.ndim == 0:
+            flat[k] = float(v.item())
+    return flat
+
+
+def write_run_metadata(path, payload):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
 
 
 def format_predictions_for_eval(images, model, device, mask_threshold=0.5):
@@ -238,9 +293,37 @@ def main():
         choices=["stream", "legacy"],
         help="Test eval: 'stream' avoids holding the full test set in memory; 'legacy' matches old behavior.",
     )
+    parser.add_argument(
+        "--init-mode",
+        type=str,
+        default="imagenet",
+        choices=["imagenet", "scratch", "box_pretrained"],
+        help="How to initialize Mask R-CNN before polygon training.",
+    )
+    parser.add_argument(
+        "--box-backbone-checkpoint",
+        type=str,
+        default=None,
+        help="Path to DeepForest/box checkpoint when --init-mode=box_pretrained.",
+    )
+    parser.add_argument(
+        "--include-unsupervised",
+        action="store_true",
+        help="Include unsupervised rows in TreePolygons (full zip URLs).",
+    )
+    parser.add_argument(
+        "--data-scope",
+        type=str,
+        default="subset",
+        choices=["subset", "full"],
+        help="Tag for experiment aggregation (subset vs full data pull).",
+    )
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
+    pl.seed_everything(args.seed, workers=True)
+    torch.set_float32_matmul_precision("high")
 
     polygon_dataset = get_dataset(
         "TreePolygons",
@@ -249,6 +332,7 @@ def main():
         root_dir=args.root_dir,
         split_scheme=args.split_scheme,
         image_size=args.image_size,
+        include_unsupervised=args.include_unsupervised,
     )
 
     train_subset = polygon_dataset.get_subset("train")
@@ -265,7 +349,18 @@ def main():
         "standard", test_subset, batch_size=args.batch_size, num_workers=args.num_workers
     )
 
-    model = MaskRCNNPolygonTrainer(lr=args.lr)
+    model = MaskRCNNPolygonTrainer(lr=args.lr, init_mode=args.init_mode)
+    init_details = {"init_mode": args.init_mode}
+    if args.init_mode == "box_pretrained":
+        if args.box_backbone_checkpoint is None:
+            raise ValueError(
+                "--box-backbone-checkpoint is required for --init-mode=box_pretrained"
+            )
+        details = apply_box_pretrained_backbone(model, args.box_backbone_checkpoint)
+        init_details.update({
+            "box_backbone_checkpoint": str(Path(args.box_backbone_checkpoint).resolve()),
+            "loaded_backbone_keys": details["loaded_backbone_keys"],
+        })
 
     has_val = len(val_loader) > 0
 
@@ -308,10 +403,13 @@ def main():
     trainer.fit(model, train_loader, val_loader)
 
     print("\\n=== Evaluating best checkpoint ===")
-    best_path = checkpoint_cb.best_model_path
+    best_path = checkpoint_cb.best_model_path if has_val else None
     if best_path:
         print(f"Loading best checkpoint: {best_path}")
-        model = MaskRCNNPolygonTrainer.load_from_checkpoint(best_path)
+        model = MaskRCNNPolygonTrainer.load_from_checkpoint(
+            best_path,
+            weights_only=False,
+        )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     results, results_str = evaluate(
@@ -328,6 +426,25 @@ def main():
     with open(results_path, "w") as f:
         f.write(results_str)
     print(f"Results saved to {results_path}")
+
+    metrics_flat = flatten_numeric_metrics(results)
+    json_path = os.path.join(args.output_dir, f"results_{args.split_scheme}.json")
+    payload = {
+        "model": "trained-polygons",
+        "task": "TreePolygons",
+        "split": args.split_scheme,
+        "metrics": metrics_flat,
+        "run_metadata": {
+            "seed": args.seed,
+            "data_scope": args.data_scope,
+            "include_unsupervised": args.include_unsupervised,
+            "eval_mode": args.eval_mode,
+            "best_checkpoint_path": best_path if best_path else None,
+            **init_details,
+        },
+    }
+    write_run_metadata(json_path, payload)
+    print(f"JSON results saved to {json_path}")
 
 
 if __name__ == "__main__":
