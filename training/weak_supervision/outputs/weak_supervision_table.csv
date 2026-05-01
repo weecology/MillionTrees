@@ -1,0 +1,3 @@
+data_scope,split,scratch,box_pretrained,delta,delta_pct,scratch_returncode,box_pretrained_returncode
+subset,random,,,,,1,1
+full,random,,,,,1,1

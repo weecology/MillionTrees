@@ -26,6 +26,10 @@ def main():
     parser.add_argument("--mini", action="store_true")
     parser.add_argument("--image-size", type=int, default=448)
     parser.add_argument("--output-dir", type=str, default=None)
+    parser.add_argument("--init-mode", type=str, default="unknown")
+    parser.add_argument("--data-scope", type=str, default="unknown")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--include-unsupervised", action="store_true")
     parser.add_argument("--viz-dir", type=str, default=None,
                         help="Directory for per-source prediction overlay PNGs")
     parser.add_argument(
@@ -50,6 +54,7 @@ def main():
         mini=args.mini,
         split_scheme=args.split_scheme,
         image_size=args.image_size,
+        include_unsupervised=args.include_unsupervised,
     )
     test_subset = dataset.get_subset("test")
 
@@ -73,8 +78,24 @@ def main():
         flat = {k: float(v) if hasattr(v, "item") else v
                 for k, v in results.items() if isinstance(v, (int, float, torch.Tensor))}
         with open(json_path, "w") as f:
-            json.dump({"model": "trained-polygons", "task": "TreePolygons",
-                       "split": args.split_scheme, "metrics": flat}, f, indent=2)
+            json.dump(
+                {
+                    "model": "trained-polygons",
+                    "task": "TreePolygons",
+                    "split": args.split_scheme,
+                    "metrics": flat,
+                    "run_metadata": {
+                        "init_mode": args.init_mode,
+                        "data_scope": args.data_scope,
+                        "seed": args.seed,
+                        "include_unsupervised": args.include_unsupervised,
+                        "checkpoint": args.checkpoint,
+                        "eval_mode": args.eval_mode,
+                    },
+                },
+                f,
+                indent=2,
+            )
         print(f"Results saved to {out_path}")
 
 
