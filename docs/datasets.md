@@ -50,9 +50,9 @@ dataset = TreePointsDataset(mini=True)
 
 ![sample_image](public/Dumortier_et_al._2025.png)
 
-Cite: 10.5281/zenodo.15155080
+**Citation:** Dumortier, J. (2025). Annotated tree crown bounding boxes in urban/rural environment [Data set]. Zenodo. https://doi.org/10.5281/zenodo.15155081
 
-https://zenodo.org/records/15155081
+**Link:** [https://zenodo.org/records/15155081](https://zenodo.org/records/15155081)
 
 ## Kaggle Palm Counting
 
@@ -77,6 +77,8 @@ ISPRS Journal of Photogrammetry and Remote Sensing, Volume 206, 2023
 ![sample_image](public/Radogoshi_et_al._2021.png)
 
 **Link:** [https://lila.science/datasets/forest-damages-larch-casebearer/](https://lila.science/datasets/forest-damages-larch-casebearer/)
+
+**Dataset citation:** Swedish Forest Agency (2021): Forest Damages – Larch Casebearer 1.0. National Forest Data Lab. Dataset.
 
 **Location:** Sweden
 
@@ -120,9 +122,9 @@ DOI = {10.3390/s19163595}
 
 ![sample_image](public/NEON_benchmark.png)
 
-**Link:** https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180
+**Link:** [https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009180)
 
-**Location** [NEON sites](https://www.neonscience.org/field-sites/explore-field-sites) within the United States
+**Location:** [NEON sites](https://www.neonscience.org/field-sites/explore-field-sites) within the United States
 
 An extension of this published resource was made by the Weecology Lab at the University of Florida
 
@@ -172,17 +174,13 @@ For more information about the dataset collation, see: Veitch-Michaelis, J. et a
 
 ![sample_image](public/Amirkolaee_et_al._2023.png)
 
-**Citation:** Amirkolaee, Hamed Amini, Miaojing Shi, and Mark Mulligan.  
-*TreeFormer: a Semi-Supervised Transformer-based Framework for Tree Counting from a Single High Resolution Image*.  
-IEEE Transactions on Geoscience and Remote Sensing (2023)
+**Citation:** Amirkolaee, Hamed Amini, Miaojing Shi, and Mark Mulligan. "TreeFormer: A semi-supervised transformer-based framework for tree counting from a single high-resolution image." *IEEE Transactions on Geoscience and Remote Sensing* 61 (2023): 1–15.
 
 **Link:** [https://github.com/HAAClassic/TreeFormer](https://github.com/HAAClassic/TreeFormer)
 
 **Location:** London, England
 
-**GSD** 0.2m 
-
-**Citation:** Lefebvre, I., Laliberté, E. (2024). UAV LiDAR, UAV Imagery, Tree Segmentations and Ground Measurements for Estimating Tree Biomass in Canadian (Quebec) Plantations. Federated Research Data Repository. https://doi.org/10.20383/103.0979
+**GSD:** 0.2m
 
 ## Dubrovin et al. 2024
 
@@ -192,13 +190,11 @@ UAV orthomosaics with accompanying field-survey tree locations. We include the f
 
 **Location:** Perm Krai, Russia
 
-**Citation:**: Dubrovin, I., Fortin, C. & Kedrov, A. An open dataset for individual tree detection in UAV LiDAR point clouds and RGB orthophotos in dense mixed forests. Sci Rep 14, 21938 (2024). https://doi.org/10.1038/s41598-024-72669-5
+**Citation:** Dubrovin, Ivan, Clement Fortin, and Alexander Kedrov. "An open dataset for individual tree detection in UAV LiDAR point clouds and RGB orthophotos in dense mixed forests." *Scientific Reports* 14.1 (2024): 21938.
 
+**Link (article):** [https://www.nature.com/articles/s41598-024-72669-5](https://www.nature.com/articles/s41598-024-72669-5)
 
-https://www.nature.com/articles/s41598-024-72669-5
-
-
-
+**DOI:** https://doi.org/10.1038/s41598-024-72669-5
 
 ## Ventura et al. 2022
 
@@ -241,7 +237,7 @@ Sara Beery, Guanhang Wu, Trevor Edwards, Filip Pavetic, Bo Majewski, Shreyasee M
 
 ![sample_image](public/Araujo_et_al._2020.png)
 
-**Link:** [https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0243079][https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0243079]
+**Link:** [https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0243079](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0243079)
 
 **Location:** Manuas, Brazil
 
@@ -277,7 +273,10 @@ Both crowns and points are available.
 
 ![sample_image](public/Feng_et_al._2025.png)
 
+**Citation:** Feng, Zhengpeng, Yihang She, and Srinivasan Keshav. "SPREAD: A large-scale, high-fidelity synthetic dataset for multiple forest vision tasks." *Ecological Informatics* 87 (2025): 103085.
+
 **Link:** [Zenodo](https://zenodo.org/records/14525290)
+
 **Location:** Simulation
 
 *Note this dataset is simulated and therefore somewhat more controvertial in its inclusion. We believe the size, diversity and realism of the images merit inclusion.*
@@ -381,6 +380,10 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 ### Source Name: "Troles et al. 2024"
 
 ![sample_image](public/Troles_et_al._2024.png)
+
+**Citation:** Troles, J.; Schmid, U.; Fan, W.; Tian, J. BAMFORESTS: Bamberg Benchmark Forest Dataset of Individual Tree Crowns in Very-High-Resolution UAV Images. *Remote Sens.* **2024**, *16*, 1935. https://doi.org/10.3390/rs16111935
+
+**Link:** [https://www.mdpi.com/2072-4292/16/11/1935](https://www.mdpi.com/2072-4292/16/11/1935)
 
 **Location:** Bamberg, Germany
 
