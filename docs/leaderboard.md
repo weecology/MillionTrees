@@ -100,8 +100,8 @@ All point sources are used to train and predict all box sources.
 
 | Model | Fine-tuned | Avg Mask Accuracy | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| SAM3 | ✗ | 0.180 | 0.720 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
-| DeepForest | ✓ | 0.176 | — | <small>`uv run python training/polygons/train.py --split-scheme zeroshot`</small> |
+| DeepForest | ✓ | 0.146 | 0.758 | <small>`uv run python training/polygons/train.py --split-scheme zeroshot`</small> |
+| SAM3 | ✗ | 0.180 | 0.719 | <small>`uv run python docs/examples/sam3_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 | DeepForest | ✗ | 0.108 | 0.000 | <small>`uv run python docs/examples/baseline_polygons.py --split-scheme zeroshot`</small> |
 
 ### Cross-geometry
