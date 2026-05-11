@@ -1114,6 +1114,9 @@ class MaskAwareMaskPrecision(ElementwiseMetric):
         return masks
 
     def _mask_tree_fraction(self, pred_mask, tree_mask):
+        if pred_mask.dim() != 2:
+            # Not a spatial mask (e.g. box coords [4]) — can't determine tree coverage
+            return 0.0
         pred_area = pred_mask.float().sum()
         if float(pred_area) == 0:
             return 0.0
@@ -1336,9 +1339,18 @@ class DetectionMAP(Metric):
             n_gt = len(gt_geo)
 
             if self.iou_type == "segm":
+                # geo must be [N, H, W] masks; if it's box/point coords (wrong ndim)
+                # treat as no predictions — segm mAP is 0 for non-mask models
+                if geo.dim() != 3:
+                    n_pred = 0
+                    pred_masks = torch.zeros((0, 1, 1), dtype=torch.bool)
+                    pred_scores = torch.zeros(0, dtype=torch.float32)
+                else:
+                    pred_masks = geo[keep].bool()
+                    pred_scores = scores[keep].float()
                 preds.append({
-                    "masks": geo[keep].bool(),
-                    "scores": scores[keep].float(),
+                    "masks": pred_masks,
+                    "scores": pred_scores,
                     "labels": torch.zeros(n_pred, dtype=torch.long),
                 })
                 targets.append({
