@@ -27,16 +27,16 @@ def _mini_default_download_url(dataset_class):
 
 
 @pytest.mark.parametrize("dataset_class,mini_basename", [
-    (TreePolygons.TreePolygonsDataset, "MiniTreePolygons_v0.12.zip"),
-    (TreeBoxes.TreeBoxesDataset, "MiniTreeBoxes_v0.12.zip"),
-    (TreePoints.TreePointsDataset, "MiniTreePoints_v0.12.zip"),
+    (TreePolygons.TreePolygonsDataset, "MiniTreePolygons_v0.13.zip"),
+    (TreeBoxes.TreeBoxesDataset, "MiniTreeBoxes_v0.13.zip"),
+    (TreePoints.TreePointsDataset, "MiniTreePoints_v0.13.zip"),
 ])
 def test_mini_supervised_default_uses_full_mini_zip(dataset_class,
                                                     mini_basename):
     """Regression: published mini archives are full splits only; supervised mini zips 404."""
     urls = _mini_default_download_url(dataset_class)
-    assert urls["0.12"]["download_url"].endswith(mini_basename)
-    assert "supervised" not in urls["0.12"]["download_url"]
+    assert urls["0.13"]["download_url"].endswith(mini_basename)
+    assert "supervised" not in urls["0.13"]["download_url"]
 
 
 @pytest.mark.parametrize("dataset_class", DATASET_CLASSES)
