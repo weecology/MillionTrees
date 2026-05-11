@@ -21,19 +21,19 @@ cd $REPO/existing_models/sam3
 
 echo "=== SAM3 eval: split=$SPLIT ==="
 
-# uv run python eval_boxes.py \
-#   --root-dir "$ROOT_DIR" \
-#   --split-scheme "$SPLIT" \
-#   --device cuda \
-#   --batch-size 8 \
-#   --output-dir "$OUT_BASE"
+uv run python eval_boxes.py \
+  --root-dir "$ROOT_DIR" \
+  --split-scheme "$SPLIT" \
+  --device cuda \
+  --batch-size 8 \
+  --output-dir "$OUT_BASE"
 
-# uv run python eval_points.py \
-#   --root-dir "$ROOT_DIR" \
-#   --split-scheme "$SPLIT" \
-#   --device cuda \
-#   --batch-size 16 \
-#   --output-dir "$OUT_BASE"
+uv run python eval_points.py \
+  --root-dir "$ROOT_DIR" \
+  --split-scheme "$SPLIT" \
+  --device cuda \
+  --batch-size 16 \
+  --output-dir "$OUT_BASE"
 
 uv run python eval_polygons.py \
   --root-dir "$ROOT_DIR" \

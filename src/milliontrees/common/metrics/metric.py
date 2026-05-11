@@ -177,6 +177,10 @@ class ElementwiseMetric(Metric):
         return avg_metric
 
     def _compute_group_wise(self, y_pred, y_true, g, n_groups):
+        if len(y_pred) == 0:
+            group_metrics = torch.zeros(n_groups)
+            group_counts = torch.zeros(n_groups, dtype=torch.long)
+            return group_metrics, group_counts, torch.tensor(0.)
         element_wise_metrics = self._compute_element_wise(y_pred, y_true)
         group_metrics, group_counts = avg_over_groups(element_wise_metrics, g,
                                                       n_groups)

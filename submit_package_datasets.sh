@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=1
 #SBATCH --mem=100GB
-#SBATCH --time=48:00:00       #Time limit hrs:min:sec
+#SBATCH --time=96:00:00       #Time limit hrs:min:sec
 #SBATCH --output=/home/b.weinstein/logs/format_MillionTrees_%j.out   # Standard output and error log
 #SBATCH --error=/home/b.weinstein/logs/format_MillionTrees_%j.err
 
