@@ -46,25 +46,51 @@ def derive_local_zip_path(url: str) -> Optional[Path]:
     return Path("/orange/ewhite/web/public") / tail
 
 
+def find_local_release_csv(root_dir: Path, dataset_name: str, version: Optional[str]) -> Optional[Path]:
+    candidates: list[Path] = []
+    if version:
+        candidates.extend([
+            root_dir / f"{dataset_name}_v{version}" / "random.csv",
+            root_dir / f"{dataset_name}_supervised_v{version}" / "random.csv",
+        ])
+    candidates.extend(root_dir.glob(f"{dataset_name}_supervised_v*/random.csv"))
+    candidates.extend(root_dir.glob(f"{dataset_name}_v*/random.csv"))
+    for path in candidates:
+        if path.exists():
+            return path
+    return None
+
+
 def read_source_counts_from_csv(csv_path: Path) -> pd.DataFrame:
     df = pd.read_csv(csv_path, low_memory=False)
     if "source" not in df.columns:
         return pd.DataFrame()
-    return df.groupby("source", as_index=False).size().rename(columns={"size": "count"})
+    image_col = "filename" if "filename" in df.columns else None
+    if image_col is None and "image_path" in df.columns:
+        image_col = "image_path"
+    grouped = df.groupby("source", as_index=False).size().rename(columns={"size": "count"})
+    if image_col:
+        image_counts = (
+            df.groupby("source", as_index=False)[image_col]
+            .nunique()
+            .rename(columns={image_col: "images"})
+        )
+        grouped = grouped.merge(image_counts, on="source", how="left")
+    else:
+        grouped["images"] = 0
+    return grouped
 
 
 def load_release_data(root_dir: Path) -> pd.DataFrame:
     rows = []
     for dataset_name, dataset_class, annotation_type in DATASETS:
         version = get_latest_version(dataset_class)
-        if not version:
-            continue
-        extracted_csv = root_dir / f"{dataset_name}_v{version}" / "random.csv"
-        if extracted_csv.exists():
+        extracted_csv = find_local_release_csv(root_dir, dataset_name, version)
+        if extracted_csv is not None and extracted_csv.exists():
             counts = read_source_counts_from_csv(extracted_csv)
         else:
             versions_dict = getattr(dataset_class, "_versions_dict", {})
-            info = versions_dict.get(version, {})
+            info = versions_dict.get(version, {}) if version else {}
             url = info.get("download_url", "")
             zip_path = derive_local_zip_path(url)
             if zip_path and zip_path.exists():
@@ -79,7 +105,19 @@ def load_release_data(root_dir: Path) -> pd.DataFrame:
                         df = pd.DataFrame(reader)
                     if "source" not in df.columns:
                         continue
+                    image_col = "filename" if "filename" in df.columns else None
+                    if image_col is None and "image_path" in df.columns:
+                        image_col = "image_path"
                     counts = df.groupby("source", as_index=False).size().rename(columns={"size": "count"})
+                    if image_col:
+                        image_counts = (
+                            df.groupby("source", as_index=False)[image_col]
+                            .nunique()
+                            .rename(columns={image_col: "images"})
+                        )
+                        counts = counts.merge(image_counts, on="source", how="left")
+                    else:
+                        counts["images"] = 0
             else:
                 print(f"Warning: No data for {dataset_name}")
                 continue
@@ -88,12 +126,16 @@ def load_release_data(root_dir: Path) -> pd.DataFrame:
     if not rows:
         raise FileNotFoundError(f"No release data at {root_dir}")
     df = pd.concat(rows, ignore_index=True)
-    # Exclude unsupervised sources
-    mask = df["source"].str.contains("unsupervised", case=False, na=False)
+    # Exclude unsupervised and weakly supervised sources.
+    mask = df["source"].str.contains("unsupervised|weak supervised", case=False, na=False)
     return df[~mask]
 
 
-def create_annotation_plot(df: pd.DataFrame, output_path: Path) -> None:
+def create_annotation_plot(
+    df: pd.DataFrame,
+    output_path: Path,
+    max_annotations: Optional[int] = None,
+) -> None:
     pivot = df.pivot(index="source", columns="annotation_type", values="count").fillna(0)
     for col in ["Polygons", "Boxes", "Points"]:
         if col not in pivot.columns:
@@ -110,14 +152,36 @@ def create_annotation_plot(df: pd.DataFrame, output_path: Path) -> None:
     ax.set_ylabel("")
     ax.set_yticklabels(pivot.index, fontsize=9)
     ax.legend(title="Annotation Type", loc="upper right", frameon=True)
-    ax.set_xlim(0, None)
+    if max_annotations is not None:
+        ax.set_xlim(0, max_annotations)
+        totals = pivot.sum(axis=1)
+        for y, total in enumerate(totals.values):
+            if total > max_annotations:
+                ax.text(
+                    max_annotations * 1.005,
+                    y,
+                    f"{int(total):,}",
+                    va="center",
+                    ha="left",
+                    fontsize=8,
+                    clip_on=False,
+                )
+    else:
+        ax.set_xlim(0, None)
     n_sources = df["source"].nunique()
     total_ann = int(df["count"].sum())
-    ax.text(0.02, 0.98, f"Total Datasets: {n_sources}\nTotal Annotations: {total_ann:,}",
-            transform=ax.transAxes, verticalalignment="top", fontsize=9,
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.9))
+    total_images = int(df["images"].sum())
+    ax.text(
+        0.02,
+        0.98,
+        f"Total Datasets: {n_sources}\nTotal Images: {total_images:,}\nTotal Annotations: {total_ann:,}",
+        transform=ax.transAxes,
+        verticalalignment="top",
+        fontsize=9,
+        bbox=dict(boxstyle="round", facecolor="white", alpha=0.9),
+    )
     plt.tight_layout()
-    plt.savefig(output_path, format="svg", bbox_inches="tight")
+    plt.savefig(output_path, bbox_inches="tight")
     plt.close()
     print(f"Saved: {output_path}")
 
@@ -128,11 +192,17 @@ def main():
     parser.add_argument("--root-dir", type=Path,
                         default=Path(os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees")),
                         help="Root dir with extracted datasets")
-    parser.add_argument("-o", "--output", type=Path, default=Path("annotation_counts_by_source.svg"))
+    parser.add_argument("-o", "--output", type=Path, default=Path("annotation_counts_by_source.png"))
+    parser.add_argument(
+        "--max-annotations",
+        type=int,
+        default=200_000,
+        help="Cap x-axis at this annotation count for readability.",
+    )
     args = parser.parse_args()
     df = load_release_data(args.root_dir)
     print(f"Loaded {df['count'].sum():,} annotations from {df['source'].nunique()} sources")
-    create_annotation_plot(df, args.output)
+    create_annotation_plot(df, args.output, max_annotations=args.max_annotations)
 
 
 if __name__ == "__main__":
