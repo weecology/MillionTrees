@@ -36,7 +36,7 @@ class MillionTreesDataset:
         self.check_init()
 
     def __len__(self):
-        return len(self.y_array)
+        return len(self._input_array)
 
     def __getitem__(self, idx):
         # Any transformations are handled by the WILDSSubset
