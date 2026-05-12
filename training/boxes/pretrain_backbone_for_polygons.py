@@ -74,6 +74,8 @@ def main():
     parser.add_argument("--limit-train-batches", type=int, default=None)
     parser.add_argument("--limit-val-batches", type=int, default=None)
     parser.add_argument("--eval-max-batches", type=int, default=None)
+    parser.add_argument("--comet", action="store_true",
+                        help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
     args = parser.parse_args()
 
     pl.seed_everything(args.seed, workers=True)
@@ -121,6 +123,30 @@ def main():
     model.config.setdefault("train", {})
     model.config["train"].setdefault("csv_file", "existing_train_dataloader")
 
+    loggers = []
+    if args.comet:
+        try:
+            import json as _json
+            from pytorch_lightning.loggers import CometLogger
+
+            class _SafeCometLogger(CometLogger):
+                def log_hyperparams(self, params):
+                    safe = {}
+                    for k, v in params.items():
+                        try:
+                            _json.dumps(v)
+                            safe[k] = v
+                        except (TypeError, ValueError):
+                            safe[k] = type(v).__name__
+                    super().log_hyperparams(safe)
+
+            loggers.append(_SafeCometLogger(
+                project_name="milliontrees-pretrain",
+                tags=[f"split-{args.split_scheme}", "geometry-boxes", "backbone-pretrain"],
+            ))
+        except Exception as e:
+            print(f"Comet ML logging disabled: {e}")
+
     callbacks = []
     checkpoint_cb = None
     if has_val:
@@ -143,7 +169,7 @@ def main():
     if args.limit_val_batches is not None and has_val:
         trainer_kwargs["limit_val_batches"] = args.limit_val_batches
 
-    model.create_trainer(callbacks=callbacks, **trainer_kwargs)
+    model.create_trainer(callbacks=callbacks, logger=loggers[0] if loggers else False, **trainer_kwargs)
     model.trainer.fit(model)
 
     best_path = None
