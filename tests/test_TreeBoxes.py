@@ -36,6 +36,21 @@ def test_TreeBoxes_generic(dataset):
         assert metadata.shape == (2,)
         break
 
+
+def test_TreeBoxes_full_dataset_iteration(dataset):
+    ds = TreeBoxesDataset(download=False, root_dir=dataset, version="0.0")
+    assert len(ds) == len(ds._input_array) == 4
+
+    for idx in range(len(ds)):
+        metadata, image, targets = ds[idx]
+        boxes, labels = targets["y"], targets["labels"]
+        assert image.shape == (100, 100, 3)
+        assert image.dtype == np.float32
+        assert boxes.shape[1] == 4
+        assert len(labels) == len(boxes)
+        assert metadata.shape == (2,)
+
+
 # confirm that we can change target name is needed
 def test_get_dataset_with_geometry_name(dataset):
     ds = TreeBoxesDataset(download=False, root_dir=dataset, geometry_name="boxes",version="0.0") 
