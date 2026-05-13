@@ -41,11 +41,15 @@ class TreePolygonsStreamingEvalState:
 
         self._map_metric: DetectionMAP = dataset.metrics[self._MAP_KEY]
         self._map_global = MeanAveragePrecision(
-            iou_type=self._map_metric.iou_type, class_metrics=False)
+            iou_type=self._map_metric.iou_type,
+            max_detection_thresholds=self._map_metric.max_detection_thresholds,
+            class_metrics=False)
         _disable_torchmetric_sync(self._map_global)
         self._map_per_group = [
-            MeanAveragePrecision(iou_type=self._map_metric.iou_type,
-                                 class_metrics=False)
+            MeanAveragePrecision(
+                iou_type=self._map_metric.iou_type,
+                max_detection_thresholds=self._map_metric.max_detection_thresholds,
+                class_metrics=False)
             for _ in range(self._n_groups)
         ]
         for m in self._map_per_group:

@@ -232,7 +232,8 @@ class TreePolygonsDataset(MillionTreesDataset):
             "mAP":
                 DetectionMAP(geometry_name=self.geometry_name,
                              score_threshold=self.eval_score_threshold,
-                             iou_type="segm"),
+                             iou_type="segm",
+                             max_detection_thresholds=[1, 10, 1000]),
             "merge_commission":
                 MergeCommissionMetric(
                     geometry_name=self.geometry_name,
