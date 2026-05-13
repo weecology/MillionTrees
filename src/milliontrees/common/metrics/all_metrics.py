@@ -1302,10 +1302,12 @@ class DetectionMAP(Metric):
                  geometry_name="y",
                  score_threshold=0.1,
                  iou_type="bbox",
+                 max_detection_thresholds=None,
                  name=None):
         self.geometry_name = geometry_name
         self.score_threshold = score_threshold
         self.iou_type = iou_type
+        self.max_detection_thresholds = max_detection_thresholds
         if name is None:
             name = "mAP"
         super().__init__(name=name)
@@ -1372,8 +1374,11 @@ class DetectionMAP(Metric):
     def _compute(self, y_pred, y_true):
         import torch
         from torchmetrics.detection import MeanAveragePrecision
-        metric = MeanAveragePrecision(iou_type=self.iou_type,
-                                      class_metrics=False)
+        metric = MeanAveragePrecision(
+            iou_type=self.iou_type,
+            max_detection_thresholds=self.max_detection_thresholds,
+            class_metrics=False,
+        )
         preds, targets = self._format(y_pred, y_true)
         metric.update(preds, targets)
         # NCCL (GPU distributed backend) cannot all_gather CPU tensors. When
