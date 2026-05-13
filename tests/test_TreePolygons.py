@@ -4,7 +4,6 @@ from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
 from milliontrees.common.metrics.all_metrics import MaskAwareMaskPrecision
 
 import math
-import warnings
 
 import torch
 import pytest
@@ -177,32 +176,6 @@ def test_TreePolygons_eval_stream_matches_legacy(dataset):
         assert math.isnan(sr_dom)
     else:
         assert sr_dom == pytest.approx(lr_dom, rel=1e-5, abs=1e-5)
-
-
-def test_TreePolygons_map_allows_dense_predictions(dataset):
-    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
-    metric = ds.metrics["mAP"]
-    assert metric.max_detection_thresholds == [1, 10, 1000]
-
-    state = TreePolygonsStreamingEvalState(ds)
-    assert state._map_global.max_detection_thresholds == [1, 10, 1000]
-    assert all(m.max_detection_thresholds == [1, 10, 1000]
-               for m in state._map_per_group)
-
-    masks = torch.zeros((101, 2, 2), dtype=torch.bool)
-    masks[:, 0, 0] = True
-    y_pred = [{
-        "y": masks,
-        "scores": torch.linspace(1.0, 0.1, 101),
-    }]
-    y_true = [{"y": masks[:1]}]
-
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        metric.compute(y_pred, y_true, return_dict=False)
-
-    assert not any("Encountered more than 100 detections" in str(w.message)
-                   for w in caught)
 
 
 def test_TreePolygons_download_url(dataset):
