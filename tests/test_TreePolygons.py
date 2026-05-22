@@ -13,15 +13,16 @@ import requests
 
 # Test structure without real annotation data to ensure format is correct
 def test_TreePolygons_generic(dataset):
-    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0") 
+    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
+    # Base dataset resizes to image_size (448) in __getitem__ for efficient mask rasterization.
     for metadata, image, targets in ds:
         masks = targets["y"]
         labels = targets["labels"]
         boxes = targets["bboxes"]
-        assert image.shape == (100, 100, 3)
+        assert image.shape == (448, 448, 3)
         assert image.dtype == np.float32
         assert image.min() >= 0.0 and image.max() <= 1.0
-        assert masks.shape == (1, 100, 100)
+        assert masks.shape == (1, 448, 448)
         assert len(labels) == 1
         assert boxes.shape == (1,4)
         assert metadata.shape == (2,)
