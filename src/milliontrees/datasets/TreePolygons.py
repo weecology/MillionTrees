@@ -4,7 +4,8 @@ from pathlib import Path
 
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-from PIL import Image, ImageDraw
+import cv2
+from PIL import Image
 import numpy as np
 import pandas as pd
 from shapely import from_wkt
@@ -132,14 +133,16 @@ class TreePolygonsDataset(MillionTreesDataset):
             df = df[df['complete'] == True]
 
         # Filter by include/exclude source names with wildcard support
-        # Default: exclude sources containing 'unsupervised'
+        # Default: exclude sources containing 'unsupervised' unless include_unsupervised=True
         include_patterns = None
         if include_sources is not None and include_sources != []:
             include_patterns = include_sources if isinstance(
                 include_sources, (list, tuple)) else [include_sources]
         exclude_patterns = exclude_sources
         if exclude_patterns is None:
-            exclude_patterns = ['*unsupervised*']
+            exclude_patterns = [] if include_unsupervised else [
+                '*unsupervised*'
+            ]
         elif not isinstance(exclude_patterns, (list, tuple)):
             exclude_patterns = [exclude_patterns]
 
@@ -281,7 +284,29 @@ class TreePolygonsDataset(MillionTreesDataset):
                 - "bboxes" (BoundingBoxes): Bounding boxes of the polygons
                 - "labels" (np.ndarray): Labels for each mask (all zeros in this case)
         """
-        x = self.get_input(idx)
+        x_full = self.get_input(idx)
+        orig_h, orig_w = x_full.shape[:2]
+
+        # Load tree coverage mask at original resolution first (it validates shape).
+        tree_coverage_mask = self.get_tree_coverage_mask(idx, (orig_h, orig_w))
+
+        # Pre-resize image and any auxiliary masks to target resolution so per-polygon
+        # rasterization happens at 448x448 instead of full image resolution.
+        target_size = self.image_size
+        if orig_h != target_size or orig_w != target_size:
+            x = cv2.resize(x_full, (target_size, target_size),
+                           interpolation=cv2.INTER_LINEAR)
+            if tree_coverage_mask is not None:
+                tree_coverage_mask = cv2.resize(tree_coverage_mask,
+                                                (target_size, target_size),
+                                                interpolation=cv2.INTER_NEAREST)
+            scale_x = target_size / orig_w
+            scale_y = target_size / orig_h
+        else:
+            x = x_full
+            scale_x = 1.0
+            scale_y = 1.0
+
         y_indices = self._input_lookup[self._input_array[idx]]
         y_polygons = [self._y_array[i] for i in y_indices]
 
@@ -295,7 +320,9 @@ class TreePolygonsDataset(MillionTreesDataset):
             mask_imgs = [
                 self.create_polygon_mask(width=x.shape[1],
                                          height=x.shape[0],
-                                         vertices=y_polygon)
+                                         vertices=y_polygon,
+                                         scale_x=scale_x,
+                                         scale_y=scale_y)
                 for y_polygon in y_polygons
             ]
             masks = torch.stack([Mask(mask_img) for mask_img in mask_imgs])
@@ -349,37 +376,33 @@ class TreePolygonsDataset(MillionTreesDataset):
             "bboxes": bboxes,
             "labels": np.zeros(len(masks), dtype=int)
         }
-        tree_coverage_mask = self.get_tree_coverage_mask(idx, x.shape[:2])
         if tree_coverage_mask is not None:
             targets["tree_coverage_mask"] = tree_coverage_mask
 
         return metadata, x, targets
 
-    def create_polygon_mask(self, width, height, vertices):
-        """Create a grayscale image with a white polygonal area on a black background.
+    def create_polygon_mask(self,
+                            width,
+                            height,
+                            vertices,
+                            scale_x=1.0,
+                            scale_y=1.0):
+        """Rasterize a shapely polygon to a binary mask at the given (width, height).
 
-        Parameters:
-        - width (int): Width of the output image.
-        - height (int): Height of the output image.
-        - vertices (shapely.geometry.Polygon): A shapely Polygon object representing the polygon.
-
-        Returns:
-        - mask_img (np.ndarray): A numpy array representing the image with the drawn polygon.
+        Vertex coordinates are multiplied by (scale_x, scale_y) so a polygon defined on the original
+        image can be drawn directly at a downscaled target size, avoiding allocation of a full-
+        resolution mask.
         """
-        # Create a new black image with the given dimensions
-        mask_img = Image.new('L', (width, height), 0)
-
-        # Draw the polygon on the image. The area inside the polygon will be white (255).
-        # Get the coordinates of the polygon vertices
-        polygon_coords = [(int(vertex[0]), int(vertex[1]))
-                          for vertex in vertices.exterior.coords._coords]
-
-        # Draw the polygon on the image. The area inside the polygon will be white (255).
-        ImageDraw.Draw(mask_img, 'L').polygon(polygon_coords, fill=(255))
-
-        # Return the image with the drawn polygon as numpy array
-        mask_img = np.array(mask_img)
-
+        mask_img = np.zeros((height, width), dtype=np.uint8)
+        coords = vertices.exterior.coords._coords
+        if scale_x == 1.0 and scale_y == 1.0:
+            pts = np.asarray(coords, dtype=np.int32)
+        else:
+            pts = np.asarray(coords, dtype=np.float64)
+            pts[:, 0] *= scale_x
+            pts[:, 1] *= scale_y
+            pts = pts.astype(np.int32)
+        cv2.fillPoly(mask_img, [pts], 255)
         return mask_img
 
     def eval(self,
@@ -461,9 +484,16 @@ class TreePolygonsDataset(MillionTreesDataset):
         # All images are in the images folder
         img_path = os.path.join(self._data_dir / 'images' /
                                 self._input_array[idx])
-        img = Image.open(img_path)
-        img = np.array(img.convert('RGB')) / 255
-        img = np.array(img, dtype=np.float32)
+        try:
+            img = Image.open(img_path)
+            img = np.asarray(img.convert('RGB'), dtype=np.float32)
+            img /= 255.0
+        except Exception as e:
+            import warnings
+            warnings.warn(
+                f"Could not load image {img_path}: {e}. Returning blank image.")
+            img = np.zeros((self.image_size, self.image_size, 3),
+                           dtype=np.float32)
 
         return img
 

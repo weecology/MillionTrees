@@ -44,7 +44,7 @@ def format_neon_annotations(csv_glob_pattern: str, output_dir: str) -> Tuple[str
     print(f"Found {len(csvs)} CSV files to process")
     
     annotations = []
-    for csv in csvs[:2]:
+    for csv in csvs:
         df = pd.read_csv(csv)
         df["source"] = "Weinstein et al. 2018 unsupervised"
         annotations.append(df)
@@ -57,6 +57,15 @@ def format_neon_annotations(csv_glob_pattern: str, output_dir: str) -> Tuple[str
     print(f"Number of sites: {annotations['siteID'].nunique()}")
     print(f"Number of tiles: {annotations['tile_name'].nunique()}")
 
+    # Sample up to 10 tiles per site, keeping all trees from sampled tiles
+    unique_tiles = annotations[["siteID", "tile_name"]].drop_duplicates()
+    sampled_tiles = pd.concat([
+        grp.sample(min(len(grp), 10), random_state=42)
+        for _, grp in unique_tiles.groupby("siteID")
+    ])
+    annotations = annotations.merge(sampled_tiles[["siteID", "tile_name"]], on=["siteID", "tile_name"])
+    print(f"After sampling (10 tiles per site): {len(annotations)} annotations")
+
     # Create metadata column
     annotations["metadata"] = annotations.apply(lambda row: f"{row['siteID']}_{row['tile_name']}", axis=1)
 
@@ -68,10 +77,9 @@ def format_neon_annotations(csv_glob_pattern: str, output_dir: str) -> Tuple[str
     boxes_annotations = annotations.copy()
 
     os.makedirs(output_dir, exist_ok=True)
-
     boxes_path = os.path.join(output_dir, "TreeBoxes_neon_unsupervised.csv")
     
-    boxes_annotations = read_file(boxes_annotations)
+    boxes_annotations = read_file(boxes_annotations, root_dir=output_dir)
     boxes_annotations["source"] = "Weinstein et al. 2018 unsupervised"
 
     input_dir = os.path.dirname(csv_glob_pattern)

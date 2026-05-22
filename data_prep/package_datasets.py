@@ -88,9 +88,14 @@ def process_geometry_columns(datasets, geom_type):
         datasets["x"] = centroids.x
         datasets["y"] = centroids.y
         datasets["geometry"] = shapely_geometries.to_wkt()
-    elif geom_type == "polygon":    
-        # Remove multipolygons, then store polygon WKT
-        mask = shapely_geometries.geom_type != "MultiPolygon"
+    elif geom_type == "polygon":
+        # Keep only simple Polygons — MultiPolygon, GeometryCollection, and other
+        # compound types lack .exterior and will crash the dataloader mask renderer.
+        mask = shapely_geometries.geom_type == "Polygon"
+        n_dropped = (~mask).sum()
+        if n_dropped > 0:
+            dropped_types = shapely_geometries[~mask].geom_type.value_counts().to_dict()
+            print(f"Filtered out {n_dropped} non-Polygon geometries: {dropped_types}")
         datasets = datasets.loc[mask].copy()
         shapely_geometries = shapely_geometries.loc[mask].copy()
         datasets["polygon"] = shapely_geometries.to_wkt()
