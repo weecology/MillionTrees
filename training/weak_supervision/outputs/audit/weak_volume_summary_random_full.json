@@ -1,8 +1,0 @@
-{
-  "task": "TreeBoxes",
-  "split": "random",
-  "data_scope": "full",
-  "include_unsupervised": true,
-  "status": "failed",
-  "error": "The TreeBoxes dataset could not be found in data/TreeBoxes_v0.12. Initialize the dataset with download=True to download the dataset. If you are using the example script, run with --download. This might take some time for large datasets."
-}
