@@ -79,8 +79,13 @@ class TreePolygonsDataset(MillionTreesDataset):
                  include_sources=None,
                  exclude_sources=None,
                  mini=False,
+                 small=False,
                  verbose=True,
                  include_unsupervised=False):
+
+        if mini and small:
+            raise ValueError(
+                'At most one of mini=True and small=True may be set.')
 
         self._version = version
         self._split_scheme = split_scheme
@@ -88,6 +93,7 @@ class TreePolygonsDataset(MillionTreesDataset):
         self.image_size = image_size
         self.eval_score_threshold = eval_score_threshold
         self.mini = mini
+        self.small = small
         self.verbose = verbose
         self.include_unsupervised = include_unsupervised
 
@@ -97,9 +103,10 @@ class TreePolygonsDataset(MillionTreesDataset):
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
 
-        # Modify download URLs for mini datasets
         if mini:
             self._versions_dict = self._get_mini_versions_dict()
+        elif small:
+            self._versions_dict = self._get_small_versions_dict()
 
         # Select supervised-only dataset by default (smaller download).
         # Users must opt in with include_unsupervised=True to get the full dataset.
@@ -112,7 +119,10 @@ class TreePolygonsDataset(MillionTreesDataset):
                         'supervised_download_url']
                 modified_versions[v] = modified_info
             self._versions_dict = modified_versions
-            self._dataset_name = 'TreePolygons_supervised'
+            if small:
+                self._dataset_name = 'SmallTreePolygons'
+            else:
+                self._dataset_name = 'TreePolygons_supervised'
 
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
@@ -261,6 +271,7 @@ class TreePolygonsDataset(MillionTreesDataset):
                 n_available_sources=available_source_count,
                 n_selected_sources=selected_source_count,
                 mini=self.mini,
+                small=self.small,
                 include_patterns=include_patterns,
                 exclude_patterns=exclude_patterns,
             )
@@ -435,20 +446,13 @@ class TreePolygonsDataset(MillionTreesDataset):
         return results, results_str
 
     def _get_mini_versions_dict(self):
-        """Generate mini versions dict with modified URLs for smaller datasets."""
-        mini_versions = {}
-        for version, info in self._versions_dict.items():
-            mini_info = info.copy()
-            if info['download_url']:
-                mini_info['download_url'] = info['download_url'].replace(
-                    f"TreePolygons_v{version}.zip",
-                    f"MiniTreePolygons_v{version}.zip")
-                mini_info['compressed_size'] = None
-            if info.get('supervised_download_url'):
-                # Only full mini archives are published; supervised-only mini zips 404.
-                mini_info['supervised_download_url'] = None
-            mini_versions[version] = mini_info
-        return mini_versions
+        from milliontrees.common.release_sizes import subset_versions_dict
+        return subset_versions_dict(self._versions_dict, "TreePolygons", "Mini")
+
+    def _get_small_versions_dict(self):
+        from milliontrees.common.release_sizes import subset_versions_dict
+        return subset_versions_dict(self._versions_dict, "TreePolygons",
+                                    "Small")
 
     def get_input(self, idx):
         """

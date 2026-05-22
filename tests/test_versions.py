@@ -12,13 +12,16 @@ DATASET_CLASSES = [
 ]
 
 
-def _mini_default_download_url(dataset_class):
-    """Effective download_url after mini + default (supervised) URL swap in __init__."""
+def _subset_default_download_url(dataset_class, subset_prefix):
+    """Effective download_url after subset + default (supervised) URL swap in __init__."""
     obj = dataset_class.__new__(dataset_class)
     obj._versions_dict = copy.deepcopy(dataset_class._versions_dict)
-    mini_versions = dataset_class._get_mini_versions_dict(obj)
+    if subset_prefix == "Mini":
+        subset_versions = dataset_class._get_mini_versions_dict(obj)
+    else:
+        subset_versions = dataset_class._get_small_versions_dict(obj)
     modified_versions = {}
-    for v, info in mini_versions.items():
+    for v, info in subset_versions.items():
         modified_info = dict(info)
         if info.get('supervised_download_url') is not None:
             modified_info['download_url'] = info['supervised_download_url']
@@ -34,9 +37,25 @@ def _mini_default_download_url(dataset_class):
 def test_mini_supervised_default_uses_full_mini_zip(dataset_class,
                                                     mini_basename):
     """Regression: published mini archives are full splits only; supervised mini zips 404."""
-    urls = _mini_default_download_url(dataset_class)
+    urls = _subset_default_download_url(dataset_class, "Mini")
     assert urls["0.13"]["download_url"].endswith(mini_basename)
     assert "supervised" not in urls["0.13"]["download_url"]
+
+
+@pytest.mark.parametrize("dataset_class,small_basename", [
+    (TreePolygons.TreePolygonsDataset, "SmallTreePolygons_v0.13.zip"),
+    (TreeBoxes.TreeBoxesDataset, "SmallTreeBoxes_v0.13.zip"),
+    (TreePoints.TreePointsDataset, "SmallTreePoints_v0.13.zip"),
+])
+def test_small_default_uses_small_zip(dataset_class, small_basename):
+    urls = _subset_default_download_url(dataset_class, "Small")
+    assert urls["0.13"]["download_url"].endswith(small_basename)
+    assert "supervised" not in urls["0.13"]["download_url"]
+
+
+def test_mini_and_small_mutually_exclusive():
+    with pytest.raises(ValueError, match="mini=True and small=True"):
+        TreePoints.TreePointsDataset(mini=True, small=True)
 
 
 @pytest.mark.parametrize("dataset_class", DATASET_CLASSES)

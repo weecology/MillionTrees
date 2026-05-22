@@ -27,7 +27,7 @@ class TreePointsDataset(MillionTreesDataset):
     """The TreePoints dataset is a collection of tree annotations annotated as x,y locations.
 
     Dataset Splits:
-        - random: For each source, 80% of the data is used for training and 20% for testing.
+        - random: For each source, a portion of images is in train and a portion in test.
         - crossgeometry: Boxes and Points are used to predict polygons.
         - zeroshot: Selected sources are entirely held out for testing.
     Input (x):
@@ -70,15 +70,21 @@ class TreePointsDataset(MillionTreesDataset):
                  include_sources=None,
                  exclude_sources=None,
                  mini=False,
+                 small=False,
                  image_size=448,
                  verbose=True,
                  include_unsupervised=False):
+
+        if mini and small:
+            raise ValueError(
+                'At most one of mini=True and small=True may be set.')
 
         self._version = version
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name
         self.distance_threshold = distance_threshold
         self.mini = mini
+        self.small = small
         self.image_size = image_size
         self.verbose = verbose
         self.include_unsupervised = include_unsupervised
@@ -87,9 +93,10 @@ class TreePointsDataset(MillionTreesDataset):
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
 
-        # Modify download URLs for mini datasets
         if mini:
             self._versions_dict = self._get_mini_versions_dict()
+        elif small:
+            self._versions_dict = self._get_small_versions_dict()
 
         # Select supervised-only dataset by default (smaller download).
         # Users must opt in with include_unsupervised=True to get the full dataset.
@@ -102,7 +109,10 @@ class TreePointsDataset(MillionTreesDataset):
                         'supervised_download_url']
                 modified_versions[v] = modified_info
             self._versions_dict = modified_versions
-            self._dataset_name = 'TreePoints_supervised'
+            if small:
+                self._dataset_name = 'SmallTreePoints'
+            else:
+                self._dataset_name = 'TreePoints_supervised'
 
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
@@ -111,7 +121,7 @@ class TreePointsDataset(MillionTreesDataset):
         self._dataset_name = 'TreePoints'
 
         # Load splits
-        self.df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme))
+        self.df = pd.read_csv(self._data_dir / f"{self._split_scheme}.csv")
 
         # Cache available sources for convenience
         self.sources = self.df['source'].unique()
@@ -251,27 +261,20 @@ class TreePointsDataset(MillionTreesDataset):
                 n_available_sources=available_source_count,
                 n_selected_sources=selected_source_count,
                 mini=self.mini,
+                small=self.small,
                 include_patterns=include_patterns,
                 exclude_patterns=exclude_patterns,
             )
 
-        super().__init__(root_dir, download, split_scheme)
+        super().__init__(root_dir, download, self._split_scheme)
 
     def _get_mini_versions_dict(self):
-        """Generate mini versions dict with modified URLs for smaller datasets."""
-        mini_versions = {}
-        for version, info in self._versions_dict.items():
-            mini_info = info.copy()
-            if info['download_url']:
-                mini_info['download_url'] = info['download_url'].replace(
-                    f"TreePoints_v{version}.zip",
-                    f"MiniTreePoints_v{version}.zip")
-                mini_info['compressed_size'] = None
-            if info.get('supervised_download_url'):
-                # Only full mini archives are published; supervised-only mini zips 404.
-                mini_info['supervised_download_url'] = None
-            mini_versions[version] = mini_info
-        return mini_versions
+        from milliontrees.common.release_sizes import subset_versions_dict
+        return subset_versions_dict(self._versions_dict, "TreePoints", "Mini")
+
+    def _get_small_versions_dict(self):
+        from milliontrees.common.release_sizes import subset_versions_dict
+        return subset_versions_dict(self._versions_dict, "TreePoints", "Small")
 
     def get_annotation_from_filename(self, filename):
         indices = self._input_lookup[filename]

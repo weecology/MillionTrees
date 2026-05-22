@@ -9,6 +9,20 @@ import requests
 import os
 
 # Test structure without real annotation data to ensure format is correct
+@pytest.mark.parametrize("split_scheme", ["random", "zeroshot", "crossgeometry"])
+def test_TreePoints_small(dataset, split_scheme):
+    ds = TreePointsDataset(
+        download=False,
+        root_dir=dataset,
+        version="0.0",
+        small=True,
+        split_scheme=split_scheme,
+    )
+    assert str(ds._data_dir).endswith("SmallTreePoints_v0.0")
+    train_dataset = ds.get_subset("train")
+    assert len(train_dataset) > 0 or len(ds.get_subset("test")) > 0
+
+
 def test_TreePoints_generic(dataset):
     ds = TreePointsDataset(download=False, root_dir=dataset, version="0.0") 
     for metadata, image, targets in ds:
