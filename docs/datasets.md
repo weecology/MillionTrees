@@ -501,7 +501,7 @@ Per-plot bounding box, point, and polygon annotations over NEON AOP camera image
 
 ### Source Name: "Schütte et al. 2025"
 
-![sample_image](public/Schütte_et_al._2025.png)
+![sample_image](public/Schutte_et_al._2025.png)
 
 **Location:** Berlin and Osnabrück, Germany
 
