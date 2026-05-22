@@ -164,6 +164,8 @@ def create_directories(base_dir, dataset_type):
     os.makedirs(f"{base_dir}{dataset_type}_{version}/masks", exist_ok=True)
     os.makedirs(f"{base_dir}Mini{dataset_type}_{version}/images", exist_ok=True)
     os.makedirs(f"{base_dir}Mini{dataset_type}_{version}/masks", exist_ok=True)
+    os.makedirs(f"{base_dir}Small{dataset_type}_{version}/images", exist_ok=True)
+    os.makedirs(f"{base_dir}Small{dataset_type}_{version}/masks", exist_ok=True)
 
 
 def copy_images(datasets, base_dir, dataset_type):
@@ -215,28 +217,37 @@ def copy_packaged_assets_from_full(base_dir, dataset_type, version, filenames, s
         if not dst.exists():
             shutil.copy(src, dst)
 
-MINI_IMAGES_PER_SOURCE = 3
+from milliontrees.common.release_sizes import MINI_IMAGES_PER_SOURCE, SMALL_IMAGES_PER_SOURCE
+
+
+def _top_filenames_per_source(datasets, n_per_source):
+    """Return up to n_per_source filenames per source (by annotation count)."""
+    filename_counts = (
+        datasets.groupby(["source", "filename"]).size().reset_index(name="count"))
+    top_per_source = (
+        filename_counts.sort_values("count", ascending=False)
+        .groupby("source", group_keys=False)
+        .apply(lambda g: g.head(n_per_source))
+        .reset_index(drop=True)
+    )
+    return top_per_source["filename"].unique().tolist()
+
+
+def _ensure_test_split(annotations):
+    """Ensure at least one test image so val loaders are non-empty."""
+    if (annotations["split"] == "test").sum() == 0 and len(annotations) > 0:
+        first_filename = annotations["filename"].iloc[0]
+        annotations.loc[annotations["filename"] == first_filename, "split"] = "test"
+    return annotations
 
 
 def create_mini_datasets(datasets, base_dir, dataset_type, version):
     """Create mini datasets for debugging and generate visualizations.
     Takes the top MINI_IMAGES_PER_SOURCE images per source (by annotation count).
     """
-    filename_counts = datasets.groupby(["source", "filename"]).size().reset_index(name="count")
-    # Top N images per source by annotation count
-    top_per_source = (
-        filename_counts.sort_values("count", ascending=False)
-        .groupby("source", group_keys=False)
-        .apply(lambda g: g.head(MINI_IMAGES_PER_SOURCE))
-        .reset_index(drop=True)
-    )
-    mini_filenames = top_per_source["filename"].unique().tolist()
-    mini_annotations = datasets[datasets["filename"].isin(mini_filenames)].copy()
-    # Ensure at least one filename is test so val_loader is non-empty during training.
-    # The global 80/20 split can assign all one-per-source filenames to train by chance.
-    if (mini_annotations["split"] == "test").sum() == 0 and len(mini_annotations) > 0:
-        first_filename = mini_annotations["filename"].iloc[0]
-        mini_annotations.loc[mini_annotations["filename"] == first_filename, "split"] = "test"
+    mini_filenames = _top_filenames_per_source(datasets, MINI_IMAGES_PER_SOURCE)
+    mini_annotations = _ensure_test_split(
+        datasets[datasets["filename"].isin(mini_filenames)].copy())
     mini_annotations.to_csv(f"{base_dir}Mini{dataset_type}_{version}/random.csv", index=False)
     
     # Copy images for mini datasets
@@ -265,12 +276,34 @@ def create_mini_datasets(datasets, base_dir, dataset_type, version):
         height, width, channels = cv2.imread(f"{base_dir}Mini{dataset_type}_{version}/images/" + group.image_path.iloc[0]).shape
         plot_results(group, savedir="docs/public/", basename=source)
 
-def create_release_files(base_dir, dataset_type, version):
+
+def create_small_datasets(datasets, base_dir, dataset_type, version):
+    """Create small release datasets (up to SMALL_IMAGES_PER_SOURCE images per source)."""
+    small_filenames = _top_filenames_per_source(datasets, SMALL_IMAGES_PER_SOURCE)
+    small_annotations = _ensure_test_split(
+        datasets[datasets["filename"].isin(small_filenames)].copy())
+
+    for image in small_filenames:
+        destination = f"{base_dir}Small{dataset_type}_{version}/images/"
+        shutil.copy(f"{base_dir}{dataset_type}_{version}/images/" + image, destination)
+        mask_name = f"{Path(image).stem}.png"
+        shutil.copy(
+            f"{base_dir}{dataset_type}_{version}/masks/" + mask_name,
+            f"{base_dir}Small{dataset_type}_{version}/masks/",
+        )
+
+    return small_annotations
+
+
+def create_release_files(base_dir, dataset_type, version, prefix=""):
     """Create release files for the dataset."""
-    with open(f"{base_dir}{dataset_type}_{version}/RELEASE_{version}.txt", "w") as outfile:
+    with open(
+            f"{base_dir}{prefix}{dataset_type}_{version}/RELEASE_{version}.txt",
+            "w",
+    ) as outfile:
         outfile.write(f"Version: {version}")
 
-def process_splits_and_release(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix=""):
+def process_splits_and_release(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix="", prefix=""):
     """Wrapper function to perform splits and create release files for datasets.
     
     Args:
@@ -280,15 +313,23 @@ def process_splits_and_release(TreePolygons_datasets, TreePoints_datasets, TreeB
         base_dir: Base directory for output
         version: Version string
         suffix: Optional suffix to append to directory names (e.g., "_supervised")
+        prefix: Optional prefix for directory names (e.g., "Small" for small releases)
     """
-    # Adjust base directory if suffix provided
-    if suffix:
+    if suffix or prefix:
         adjusted_base_dir = base_dir
-        # Update dataset directories with suffix
         for dataset_type in ["TreeBoxes", "TreePoints", "TreePolygons"]:
-            os.makedirs(f"{adjusted_base_dir}{dataset_type}{suffix}_{version}", exist_ok=True)
-            os.makedirs(f"{adjusted_base_dir}{dataset_type}{suffix}_{version}/images", exist_ok=True)
-            os.makedirs(f"{adjusted_base_dir}{dataset_type}{suffix}_{version}/masks", exist_ok=True)
+            os.makedirs(
+                f"{adjusted_base_dir}{prefix}{dataset_type}{suffix}_{version}",
+                exist_ok=True,
+            )
+            os.makedirs(
+                f"{adjusted_base_dir}{prefix}{dataset_type}{suffix}_{version}/images",
+                exist_ok=True,
+            )
+            os.makedirs(
+                f"{adjusted_base_dir}{prefix}{dataset_type}{suffix}_{version}/masks",
+                exist_ok=True,
+            )
     
         
     # Select columns
@@ -300,15 +341,16 @@ def process_splits_and_release(TreePolygons_datasets, TreePoints_datasets, TreeB
     TreePoints_datasets = keep_columns_if_exist(TreePoints_datasets, columns_to_keep)
     TreeBoxes_datasets = keep_columns_if_exist(TreeBoxes_datasets, columns_to_keep)
 
-    # Perform splits
-    zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix)
-    random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix)
-    cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix)
+    zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
+                    base_dir, version, suffix, prefix)
+    random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
+                 base_dir, version, suffix, prefix)
+    cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
+                         base_dir, version, suffix, prefix)
 
-    # Create release files
-    create_release_files(base_dir, f"TreeBoxes{suffix}", version)
-    create_release_files(base_dir, f"TreePoints{suffix}", version)  
-    create_release_files(base_dir, f"TreePolygons{suffix}", version)
+    create_release_files(base_dir, f"TreeBoxes{suffix}", version, prefix)
+    create_release_files(base_dir, f"TreePoints{suffix}", version, prefix)
+    create_release_files(base_dir, f"TreePolygons{suffix}", version, prefix)
 
 def zip_directory(folder_path, zip_path):
     """Zip the contents of a directory."""
@@ -323,7 +365,8 @@ def zip_directory(folder_path, zip_path):
                 arcname = os.path.relpath(file_path, folder_path)
                 zipf.write(file_path, arcname)
 
-def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix=""):
+def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
+                 base_dir, version, suffix="", prefix=""):
     """Perform random split and save the results."""
     
     # Helper function to create the "split" column based on instructions
@@ -387,16 +430,21 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
     TreeBoxes_datasets = limit_test_images(TreeBoxes_datasets, test_sources_boxes)
    
    # Save the splits to CSV
-    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/random.csv", index=False)
-    TreePoints_datasets.to_csv(f"{base_dir}TreePoints{suffix}_{version}/random.csv", index=False)
-    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes{suffix}_{version}/random.csv", index=False)
+    TreePolygons_datasets.to_csv(
+        f"{base_dir}{prefix}TreePolygons{suffix}_{version}/random.csv", index=False)
+    TreePoints_datasets.to_csv(
+        f"{base_dir}{prefix}TreePoints{suffix}_{version}/random.csv", index=False)
+    TreeBoxes_datasets.to_csv(
+        f"{base_dir}{prefix}TreeBoxes{suffix}_{version}/random.csv", index=False)
 
-    print(f"random splits saved{' ('+suffix.strip('_')+')' if suffix else ''}:")
-    print(f"TreePolygons: {base_dir}TreePolygons{suffix}_{version}/random.csv")
-    print(f"TreePoints: {base_dir}TreePoints{suffix}_{version}/random.csv")
-    print(f"TreeBoxes: {base_dir}TreeBoxes{suffix}_{version}/random.csv")
+    label = f"{prefix}{suffix}".strip("_") or "full"
+    print(f"random splits saved ({label}):")
+    print(f"TreePolygons: {base_dir}{prefix}TreePolygons{suffix}_{version}/random.csv")
+    print(f"TreePoints: {base_dir}{prefix}TreePoints{suffix}_{version}/random.csv")
+    print(f"TreeBoxes: {base_dir}{prefix}TreeBoxes{suffix}_{version}/random.csv")
 
-def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix=""):
+def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
+                         base_dir, version, suffix="", prefix=""):
     """Perform cross-geometry split and save the results."""
     # Assign all polygons to train, points to test, and boxes to test
     TreePolygons_datasets["split"] = "test"
@@ -422,15 +470,18 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
     feng_mask_boxes = (TreeBoxes_datasets.source == "Feng et al. 2025") & (TreeBoxes_datasets.split == "test")
     TreeBoxes_datasets = TreeBoxes_datasets[~(unsupervised_mask_boxes | feng_mask_boxes)]
 
-    # Save the splits to CSV (use consistent folder naming: <DatasetName><suffix>_<version>)
-    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/crossgeometry.csv", index=False)
-    TreePoints_datasets.to_csv(f"{base_dir}TreePoints{suffix}_{version}/crossgeometry.csv", index=False)
-    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes{suffix}_{version}/crossgeometry.csv", index=False)
+    TreePolygons_datasets.to_csv(
+        f"{base_dir}{prefix}TreePolygons{suffix}_{version}/crossgeometry.csv", index=False)
+    TreePoints_datasets.to_csv(
+        f"{base_dir}{prefix}TreePoints{suffix}_{version}/crossgeometry.csv", index=False)
+    TreeBoxes_datasets.to_csv(
+        f"{base_dir}{prefix}TreeBoxes{suffix}_{version}/crossgeometry.csv", index=False)
 
-    print(f"Cross-geometry splits saved{' ('+suffix.strip('_')+')' if suffix else ''}:")
-    print(f"TreePolygons: {base_dir}TreePolygons{suffix}_{version}/crossgeometry.csv")
-    print(f"TreePoints: {base_dir}TreePoints{suffix}_{version}/crossgeometry.csv")
-    print(f"TreeBoxes: {base_dir}TreeBoxes{suffix}_{version}/crossgeometry.csv")
+    label = f"{prefix}{suffix}".strip("_") or "full"
+    print(f"Cross-geometry splits saved ({label}):")
+    print(f"TreePolygons: {base_dir}{prefix}TreePolygons{suffix}_{version}/crossgeometry.csv")
+    print(f"TreePoints: {base_dir}{prefix}TreePoints{suffix}_{version}/crossgeometry.csv")
+    print(f"TreeBoxes: {base_dir}{prefix}TreeBoxes{suffix}_{version}/crossgeometry.csv")
 
 
 # Limit test datasets to 50 images per source (unless existing split column exists)
@@ -468,7 +519,8 @@ def limit_test_images(df, test_sources, max_images=50):
     return df
         
 # Zero-shot split
-def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets, base_dir, version, suffix=""):
+def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
+                    base_dir, version, suffix="", prefix=""):
     """Perform zero-shot split and save the results."""
     # Define test and train sources
     test_sources_polygons = ["Troles et al. 2024","Bolhman 2008","Lefebvre et al. 2024","NEON MultiTemporal"]
@@ -510,15 +562,18 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     TreePoints_datasets = remove_feng_and_unsupervised_from_test(TreePoints_datasets)
     TreeBoxes_datasets = remove_feng_and_unsupervised_from_test(TreeBoxes_datasets)
 
-    # Save the splits to CSV
-    TreePolygons_datasets.to_csv(f"{base_dir}TreePolygons{suffix}_{version}/zeroshot.csv", index=False)
-    TreePoints_datasets.to_csv(f"{base_dir}TreePoints{suffix}_{version}/zeroshot.csv", index=False)
-    TreeBoxes_datasets.to_csv(f"{base_dir}TreeBoxes{suffix}_{version}/zeroshot.csv", index=False)
+    TreePolygons_datasets.to_csv(
+        f"{base_dir}{prefix}TreePolygons{suffix}_{version}/zeroshot.csv", index=False)
+    TreePoints_datasets.to_csv(
+        f"{base_dir}{prefix}TreePoints{suffix}_{version}/zeroshot.csv", index=False)
+    TreeBoxes_datasets.to_csv(
+        f"{base_dir}{prefix}TreeBoxes{suffix}_{version}/zeroshot.csv", index=False)
 
-    print(f"Zero-shot splits saved{' ('+suffix.strip('_')+')' if suffix else ''}:")
-    print(f"TreePolygons: {base_dir}TreePolygons{suffix}_{version}/zeroshot.csv")
-    print(f"TreePoints: {base_dir}TreePoints{suffix}_{version}/zeroshot.csv")
-    print(f"TreeBoxes: {base_dir}TreeBoxes{suffix}_{version}/zeroshot.csv")
+    label = f"{prefix}{suffix}".strip("_") or "full"
+    print(f"Zero-shot splits saved ({label}):")
+    print(f"TreePolygons: {base_dir}{prefix}TreePolygons{suffix}_{version}/zeroshot.csv")
+    print(f"TreePoints: {base_dir}{prefix}TreePoints{suffix}_{version}/zeroshot.csv")
+    print(f"TreeBoxes: {base_dir}{prefix}TreeBoxes{suffix}_{version}/zeroshot.csv")
 
 def filter_out_unsupervised(datasets):
     """Filter out datasets with 'unsupervised' or 'weak supervised' in the source name."""
@@ -691,10 +746,23 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     TreePoints_datasets["filename"] = TreePoints_datasets["filename"].apply(os.path.basename)
     TreePolygons_datasets["filename"] = TreePolygons_datasets["filename"].apply(os.path.basename)
 
-    # Create mini datasets
     create_mini_datasets(TreeBoxes_datasets, base_dir, "TreeBoxes", version)
     create_mini_datasets(TreePoints_datasets, base_dir, "TreePoints", version)
     create_mini_datasets(TreePolygons_datasets, base_dir, "TreePolygons", version)
+
+    print("\n=== Processing SMALL release (up to 50 images per source) ===")
+    TreeBoxes_small = create_small_datasets(TreeBoxes_datasets, base_dir, "TreeBoxes", version)
+    TreePoints_small = create_small_datasets(TreePoints_datasets, base_dir, "TreePoints", version)
+    TreePolygons_small = create_small_datasets(
+        TreePolygons_datasets, base_dir, "TreePolygons", version)
+    process_splits_and_release(
+        TreePolygons_small.copy(),
+        TreePoints_small.copy(),
+        TreeBoxes_small.copy(),
+        base_dir,
+        version,
+        prefix="Small",
+    )
 
     # Process all sources (including unsupervised)
     print("\n=== Processing ALL sources (including unsupervised) ===")
@@ -754,10 +822,12 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     zip_directory(f"{base_dir}TreePoints_supervised_{version}", f"{base_dir}TreePoints_supervised_{version}.zip")
     zip_directory(f"{base_dir}TreePolygons_supervised_{version}", f"{base_dir}TreePolygons_supervised_{version}.zip")
     
-    # Zip only mini datasets
     zip_directory(f"{base_dir}MiniTreeBoxes_{version}", f"{base_dir}MiniTreeBoxes_{version}.zip")
     zip_directory(f"{base_dir}MiniTreePoints_{version}", f"{base_dir}MiniTreePoints_{version}.zip")
     zip_directory(f"{base_dir}MiniTreePolygons_{version}", f"{base_dir}MiniTreePolygons_{version}.zip")
+    zip_directory(f"{base_dir}SmallTreeBoxes_{version}", f"{base_dir}SmallTreeBoxes_{version}.zip")
+    zip_directory(f"{base_dir}SmallTreePoints_{version}", f"{base_dir}SmallTreePoints_{version}.zip")
+    zip_directory(f"{base_dir}SmallTreePolygons_{version}", f"{base_dir}SmallTreePolygons_{version}.zip")
 
 
 if __name__ == "__main__":

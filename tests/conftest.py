@@ -73,6 +73,25 @@ def dataset():
         f.write("v0.0") 
     shutil.copytree(data_dir, os.path.join(tmp_dir, "TreePoints_supervised_v0.0"))
 
+    for geometry in ("TreeBoxes", "TreePoints", "TreePolygons"):
+        supervised_dir = os.path.join(tmp_dir, f"{geometry}_supervised_v0.0")
+        for split_csv in ("zeroshot.csv", "crossgeometry.csv"):
+            shutil.copy(
+                os.path.join(supervised_dir, "random.csv"),
+                os.path.join(supervised_dir, split_csv),
+            )
+
+    for geometry in ("TreeBoxes", "TreePoints", "TreePolygons"):
+        shutil.copytree(
+            os.path.join(tmp_dir, f"{geometry}_supervised_v0.0"),
+            os.path.join(tmp_dir, f"Small{geometry}_v0.0"),
+        )
+        for split_csv in ("zeroshot.csv", "crossgeometry.csv"):
+            shutil.copy(
+                os.path.join(tmp_dir, f"Small{geometry}_v0.0", "random.csv"),
+                os.path.join(tmp_dir, f"Small{geometry}_v0.0", split_csv),
+            )
+
     return tmp_dir
 
 

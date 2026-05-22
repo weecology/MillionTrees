@@ -33,37 +33,40 @@ def _test_dataset_structure(dataset, targets_key="y", expected_shape_check=None)
             expected_shape_check(y)
         
         # Test train loader
-        train_loader = get_train_loader('standard', train_dataset, batch_size=2)
+        batch_size = min(2, len(train_dataset))
+        train_loader = get_train_loader('standard', train_dataset, batch_size=batch_size)
         metadata, x, targets = next(iter(train_loader))
         
-        assert len(targets) == 2
-        assert x.shape == (2, 3, 448, 448)
+        assert len(targets) == batch_size
+        assert x.shape == (batch_size, 3, 448, 448)
         assert x.dtype == torch.float32
         assert 0.0 <= x.min() and x.max() <= 1.0
-        assert len(metadata) == 2
+        assert len(metadata) == batch_size
     
     # Test test loader if it has samples
     if len(test_dataset) > 0:
-        test_loader = get_eval_loader('standard', test_dataset, batch_size=2)
+        batch_size = min(2, len(test_dataset))
+        test_loader = get_eval_loader('standard', test_dataset, batch_size=batch_size)
         metadata, x, targets = next(iter(test_loader))
 
-        assert len(targets) == 2
-        assert x.shape == (2, 3, 448, 448)
+        assert len(targets) == batch_size
+        assert x.shape == (batch_size, 3, 448, 448)
         assert x.dtype == torch.float32
         assert 0.0 <= x.min() and x.max() <= 1.0
-        assert len(metadata) == 2
+        assert len(metadata) == batch_size
     
     # Ensure at least one split has samples
     assert len(train_dataset) > 0 or len(test_dataset) > 0, "Both train and test subsets are empty"
 
 @pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
-def test_TreePolygons_latest_release(tmpdir, dataset_config, split_scheme):
-    root_dir = tmpdir if dataset_config["root_dir"] is None else dataset_config["root_dir"]
+def test_TreePolygons_latest_release(dataset, split_scheme):
+    root_dir = dataset
 
     dataset = TreePolygonsDataset(
-        download=dataset_config["download"], 
-        root_dir=root_dir, 
-        split_scheme=split_scheme
+        download=False,
+        root_dir=root_dir,
+        version="0.0",
+        split_scheme=split_scheme,
     )
     
     def check_polygon_shape(y):
@@ -72,12 +75,11 @@ def test_TreePolygons_latest_release(tmpdir, dataset_config, split_scheme):
     _test_dataset_structure(dataset, expected_shape_check=check_polygon_shape)
 
 @pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
-def test_TreePoints_latest_release(tmpdir, dataset_config, split_scheme):
-    root_dir = tmpdir if dataset_config["root_dir"] is None else dataset_config["root_dir"]
-    
+def test_TreePoints_latest_release(dataset, split_scheme):
     dataset = TreePointsDataset(
-        download=dataset_config["download"], 
-        root_dir=root_dir, 
+        download=False,
+        root_dir=dataset,
+        version="0.0",
         split_scheme=split_scheme,
     )
     
@@ -87,16 +89,63 @@ def test_TreePoints_latest_release(tmpdir, dataset_config, split_scheme):
     _test_dataset_structure(dataset, expected_shape_check=check_points_shape)
 
 @pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
-def test_TreeBoxes_latest_release(tmpdir, dataset_config, split_scheme):
-    root_dir = tmpdir if dataset_config["root_dir"] is None else dataset_config["root_dir"]
-    
+def test_TreeBoxes_latest_release(dataset, split_scheme):
     dataset = TreeBoxesDataset(
-        download=dataset_config["download"],
-        root_dir=root_dir,
-        split_scheme=split_scheme
+        download=False,
+        root_dir=dataset,
+        version="0.0",
+        split_scheme=split_scheme,
     )
     
     def check_boxes_shape(boxes):
         assert boxes.shape[1] == 4
     
+    _test_dataset_structure(dataset, expected_shape_check=check_boxes_shape)
+
+
+@pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
+def test_TreePolygons_small_release(dataset, split_scheme):
+    dataset = TreePolygonsDataset(
+        download=False,
+        root_dir=dataset,
+        split_scheme=split_scheme,
+        small=True,
+        version="0.0",
+    )
+
+    def check_polygon_shape(y):
+        assert y[0].shape == (448, 448)
+
+    _test_dataset_structure(dataset, expected_shape_check=check_polygon_shape)
+
+
+@pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
+def test_TreePoints_small_release(dataset, split_scheme):
+    dataset = TreePointsDataset(
+        download=False,
+        root_dir=dataset,
+        split_scheme=split_scheme,
+        small=True,
+        version="0.0",
+    )
+
+    def check_points_shape(points):
+        assert points.shape[1] == 2
+
+    _test_dataset_structure(dataset, expected_shape_check=check_points_shape)
+
+
+@pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
+def test_TreeBoxes_small_release(dataset, split_scheme):
+    dataset = TreeBoxesDataset(
+        download=False,
+        root_dir=dataset,
+        split_scheme=split_scheme,
+        small=True,
+        version="0.0",
+    )
+
+    def check_boxes_shape(boxes):
+        assert boxes.shape[1] == 4
+
     _test_dataset_structure(dataset, expected_shape_check=check_boxes_shape)

@@ -32,7 +32,7 @@ class TreeBoxesDataset(MillionTreesDataset):
     Each tree is annotated with a 4-point bounding box (x_min, y_min, x_max, y_max).
 
     Dataset Splits:
-        - Random: For each source, 80% of the data is used for training and 20% for testing.
+        - random: For each source, a portion of images is in train and a portion in test.
         - crossgeometry: Boxes and Points are used to predict polygons.
         - zeroshot: Selected sources are entirely held out for testing.
 
@@ -56,6 +56,7 @@ class TreeBoxesDataset(MillionTreesDataset):
             any other selected sources (unless explicitly excluded).
         mini (bool): If True, download mini versions of datasets for development.
             Mini datasets are smaller subsets that maintain the same structure.
+        small (bool): If True, download small releases (up to 50 images per source).
         unsupervised_args (dict): The arguments to pass to the unsupervised download pipeline.
 
     References:
@@ -103,8 +104,13 @@ class TreeBoxesDataset(MillionTreesDataset):
                  include_sources=None,
                  exclude_sources=None,
                  mini=False,
+                 small=False,
                  verbose=True,
                  include_unsupervised=False):
+
+        if mini and small:
+            raise ValueError(
+                'At most one of mini=True and small=True may be set.')
 
         self._version = version
         self._split_scheme = split_scheme
@@ -112,16 +118,18 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.eval_score_threshold = eval_score_threshold
         self.image_size = image_size
         self.mini = mini
+        self.small = small
         self.verbose = verbose
         self.include_unsupervised = include_unsupervised
 
-        if self._split_scheme not in ['random', 'zeroshot', 'crossgeometry']:
+        if self._split_scheme not in ['random', 'crossgeometry', 'zeroshot']:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
 
-        # Modify download URLs for mini datasets
         if mini:
             self._versions_dict = self._get_mini_versions_dict()
+        elif small:
+            self._versions_dict = self._get_small_versions_dict()
 
         # Select supervised-only dataset by default (smaller download).
         # Users must opt in with include_unsupervised=True to get the full dataset.
@@ -134,7 +142,10 @@ class TreeBoxesDataset(MillionTreesDataset):
                         'supervised_download_url']
                 modified_versions[v] = modified_info
             self._versions_dict = modified_versions
-            self._dataset_name = 'TreeBoxes_supervised'
+            if small:
+                self._dataset_name = 'SmallTreeBoxes'
+            else:
+                self._dataset_name = 'TreeBoxes_supervised'
 
         # path
         self._data_dir = Path(self.initialize_data_dir(root_dir, download))
@@ -143,7 +154,7 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._dataset_name = 'TreeBoxes'
 
         # Load splits (low_memory=False avoids mixed-type DtypeWarning on large CSVs)
-        df = pd.read_csv(self._data_dir / '{}.csv'.format(split_scheme),
+        df = pd.read_csv(self._data_dir / f"{self._split_scheme}.csv",
                          low_memory=False)
         for _c in ("xmin", "ymin", "xmax", "ymax"):
             df[_c] = pd.to_numeric(df[_c], errors="coerce")
@@ -294,11 +305,12 @@ class TreeBoxesDataset(MillionTreesDataset):
                 n_available_sources=available_source_count,
                 n_selected_sources=selected_source_count,
                 mini=self.mini,
+                small=self.small,
                 include_patterns=include_patterns,
                 exclude_patterns=exclude_patterns,
             )
 
-        super().__init__(root_dir, download, split_scheme)
+        super().__init__(root_dir, download, self._split_scheme)
 
     def eval(self,
              y_pred,
@@ -357,20 +369,12 @@ class TreeBoxesDataset(MillionTreesDataset):
         return results, results_str
 
     def _get_mini_versions_dict(self):
-        """Generate mini versions dict with modified URLs for smaller datasets."""
-        mini_versions = {}
-        for version, info in self._versions_dict.items():
-            mini_info = info.copy()
-            if info['download_url']:
-                mini_info['download_url'] = info['download_url'].replace(
-                    f"TreeBoxes_v{version}.zip",
-                    f"MiniTreeBoxes_v{version}.zip")
-                mini_info['compressed_size'] = None
-            if info.get('supervised_download_url'):
-                # Only full mini archives are published; supervised-only mini zips 404.
-                mini_info['supervised_download_url'] = None
-            mini_versions[version] = mini_info
-        return mini_versions
+        from milliontrees.common.release_sizes import subset_versions_dict
+        return subset_versions_dict(self._versions_dict, "TreeBoxes", "Mini")
+
+    def _get_small_versions_dict(self):
+        from milliontrees.common.release_sizes import subset_versions_dict
+        return subset_versions_dict(self._versions_dict, "TreeBoxes", "Small")
 
     def get_input(self, idx):
         """Retrieves the input features (image) for a given data point.

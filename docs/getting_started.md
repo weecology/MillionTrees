@@ -12,27 +12,30 @@ pip install milliontrees
 pip install numpy==1.26.4
 ```
 
-## Mini Datasets for Development
+## Dataset release sizes
 
-**Recommended for Development**: Before working with the full datasets (which can be several GB), we recommend starting with the mini versions for development and testing. Mini datasets contain a small subset of the data but maintain the same structure and format.
+Before working with the full datasets (which can be several GB), use a smaller release size. All sizes keep the same dataloader API and on-disk layout.
+
+| Flag | Archive | Images per source | Split CSVs |
+|------|---------|-------------------|------------|
+| `mini=True` | `MiniTree*` | 3 | `random` only |
+| `small=True` | `SmallTree*` | Up to 50 | All split schemes |
+| (default) | `Tree*` | Full release | All split schemes |
 
 ```python
 from milliontrees import get_dataset
 
-# Download a mini version of TreeBoxes (~few MB instead of ~several GB)
+# Fastest smoke tests
 dataset = get_dataset('TreeBoxes', download=True, mini=True)
 
-# This works the same as the full dataset but much faster to download
+# Medium subset with zeroshot / crossgeometry support
+dataset = get_dataset('TreePoints', download=True, small=True, split_scheme='zeroshot')
+
 train_dataset = dataset.get_subset("train")
-print(f"Mini dataset size: {len(train_dataset)} images")
+print(f"Dataset size: {len(train_dataset)} images")
 ```
 
-Mini datasets are available for all three dataset types:
-- `TreeBoxes` → `MiniTreeBoxes` 
-- `TreePoints` → `MiniTreePoints`
-- `TreePolygons` → `MiniTreePolygons`
-
-Once you've developed and tested your code with the mini datasets, simply remove `mini=True` to use the full datasets for training and evaluation.
+Mini and small archives are published for all three geometry datasets (`TreeBoxes`, `TreePoints`, `TreePolygons`). Set neither flag for the full release when training at scale.
 
 ##  Dataset structure
 

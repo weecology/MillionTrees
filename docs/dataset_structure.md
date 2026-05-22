@@ -17,18 +17,34 @@ dataset = TreePointsDataset(download=True, root_dir=<directory to save data>)
 One of the great things about supplying data as dataloaders is easy access to different ways to combine datasets. The MillionTrees benchmark has multiple tasks, and each of these is a 'split_scheme', following the terminology from the WILDS benchmark.
 
 ```python
-dataset = TreePointsDataset(download=True, root_dir=<directory to save data>, split_scheme="random") 
+dataset = TreePointsDataset(download=True, root_dir=<directory to save data>, split_scheme="fine-tune") 
 ```
 
-This looks at the file random.csv and gets the 'split' column that designates which images are in train/test/val depending on the task.
+This looks at the file fine-tune.csv and gets the 'split' column that designates which images are in train/test/val depending on the task.
 
 The MillionTrees benchmark supports multiple dataset split schemes to accommodate various tasks:
 
-- **Random**: For each source, 80% of the data is used for training, and 20% is reserved for testing.
+- **Fine-tune**: For each source, part of the data is used for training and part for testing (the same sources appear in both splits), matching a typical fine-tuning workflow.
 - **Zeroshot**: Entire sources are held out for testing, simulating a common applied example in which a user applies to model to new data outside of training distributions. 
 - **Crossgeometry**: Combines boxes and points annotations to predict Polygons.
 
 Each split scheme uses the same underlying data, so you don't need to redownload when changing split schemes! 
+
+### Release sizes
+
+Three published archive sizes share the same layout and split CSVs:
+
+| Size | Folder prefix | Images per source | Split CSVs |
+|------|---------------|-------------------|------------|
+| **mini** | `MiniTree*` | 3 (highest annotation count) | `random.csv` only |
+| **small** | `SmallTree*` | Up to 50 | `random.csv`, `zeroshot.csv`, `crossgeometry.csv` |
+| **full** | `Tree*` | All packaged images | All split CSVs |
+
+Use `mini=True` or `small=True` when constructing a dataset (not both). Small is intended for faster iteration while still exercising every split scheme.
+
+```python
+dataset = TreePointsDataset(download=True, small=True, split_scheme='zeroshot')
+```
 
 ### Packaged folders
 
@@ -36,7 +52,7 @@ Each packaged dataset directory contains:
 
 - `images/`: RGB image chips
 - `masks/`: precomputed tree coverage masks (binary PNG, one per image basename)
-- split CSV files (`random.csv`, `zeroshot.csv`, `crossgeometry.csv`)
+- split CSV files (`fine-tune.csv`, `zeroshot.csv`, `crossgeometry.csv`)
 
 ## Dataset Class
 

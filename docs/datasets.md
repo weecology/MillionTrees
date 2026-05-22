@@ -37,13 +37,20 @@ dataset = TreePointsDataset(exclude_sources=['NEON_unsupervised'])
 dataset = TreePointsDataset(exclude_sources=['*_unsupervised'])
 ```
 
-## Mini-datasets
+## Release sizes (mini, small, full)
 
-Each dataset comes with a mini version for testing. This contains one image per source.
+Each geometry dataset is published in three sizes:
 
-```
+- **mini** (`mini=True`): up to 3 images per source; `random` split only — fastest smoke tests.
+- **small** (`small=True`): up to 50 images per source; all split schemes (`random`, `zeroshot`, `crossgeometry`).
+- **full** (default): complete packaged release.
+
+```python
 dataset = TreePointsDataset(mini=True)
+dataset = TreeBoxesDataset(small=True, split_scheme="zeroshot")
 ```
+
+Do not pass `mini=True` and `small=True` together.
 # Boxes
 
 ## Dumortier 2025

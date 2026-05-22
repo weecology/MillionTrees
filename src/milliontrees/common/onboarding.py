@@ -25,11 +25,19 @@ def print_dataset_summary(
     n_available_sources: int,
     n_selected_sources: int,
     mini: bool = False,
+    small: bool = False,
     include_patterns: Optional[list[str]] = None,
     exclude_patterns: Optional[list[str]] = None,
 ) -> None:
     """Print a concise onboarding summary for dataset initialization."""
-    mode = "mini" if mini else "full"
+    if mini and small:
+        mode = "mini+small"
+    elif mini:
+        mode = "mini"
+    elif small:
+        mode = "small"
+    else:
+        mode = "full"
     print(f"[MillionTrees] Loaded {dataset_name} v{version} ({mode})")
     print(f"[MillionTrees] Data dir: {data_dir}")
     print(f"[MillionTrees] Split: {split_scheme} | Images train/test/total: "
