@@ -40,8 +40,6 @@ uv run process_neon_unsupervised.py \
     --csv_glob_pattern "$CSV_GLOB" \
     --format_output_dir "$FORMAT_OUTPUT_DIR" \
     --data_dir "$DATA_DIR" \
-    --max_tiles_per_site 2 \
-    --max_tiles 2 \
     --patch_size 400 \
     --allow_empty \
     --token_path "$TOKEN_PATH" \

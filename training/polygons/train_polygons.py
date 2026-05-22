@@ -29,14 +29,11 @@ from milliontrees.datasets.polygon_stream_eval import (
 )
 
 
-def get_mask_rcnn(num_classes=2, init_mode="imagenet"):
+def get_mask_rcnn(num_classes=2, init_mode="coco"):
     """Build a Mask R-CNN with configurable initialization (2 classes: bg + tree)."""
-    if init_mode == "scratch":
-        model = maskrcnn_resnet50_fpn_v2(weights=None, weights_backbone=None)
-    else:
-        model = maskrcnn_resnet50_fpn_v2(
-            weights=MaskRCNN_ResNet50_FPN_V2_Weights.DEFAULT
-        )
+    model = maskrcnn_resnet50_fpn_v2(
+        weights=MaskRCNN_ResNet50_FPN_V2_Weights.DEFAULT
+    )
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
     in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
@@ -47,7 +44,7 @@ def get_mask_rcnn(num_classes=2, init_mode="imagenet"):
 
 class MaskRCNNPolygonTrainer(pl.LightningModule):
 
-    def __init__(self, lr=1e-4, weight_decay=1e-5, init_mode="imagenet"):
+    def __init__(self, lr=1e-4, weight_decay=1e-5, init_mode="coco"):
         super().__init__()
         self.save_hyperparameters()
         self.model = get_mask_rcnn(num_classes=2, init_mode=init_mode)
@@ -277,14 +274,14 @@ def main():
     parser.add_argument(
         "--limit-train-batches",
         type=int,
-        default=50,
-        help="Number of training batches per epoch (for fast debugging)",
+        default=None,
+        help="Number of training batches per epoch (omit for full dataset)",
     )
     parser.add_argument(
         "--limit-val-batches",
         type=int,
-        default=50,
-        help="Number of validation batches per epoch (for fast debugging)",
+        default=None,
+        help="Number of validation batches per epoch (omit for full dataset)",
     )
     parser.add_argument(
         "--eval-mode",
@@ -296,8 +293,8 @@ def main():
     parser.add_argument(
         "--init-mode",
         type=str,
-        default="imagenet",
-        choices=["imagenet", "scratch", "box_pretrained"],
+        default="coco",
+        choices=["coco", "box_pretrained"],
         help="How to initialize Mask R-CNN before polygon training.",
     )
     parser.add_argument(
@@ -343,10 +340,14 @@ def main():
         return
 
     train_loader = get_train_loader(
-        "standard", train_subset, batch_size=args.batch_size, num_workers=args.num_workers
+        "standard", train_subset, batch_size=args.batch_size, num_workers=args.num_workers,
+        pin_memory=True, persistent_workers=args.num_workers > 0,
+        prefetch_factor=4 if args.num_workers > 0 else None,
     )
     val_loader = get_eval_loader(
-        "standard", test_subset, batch_size=args.batch_size, num_workers=args.num_workers
+        "standard", test_subset, batch_size=args.batch_size, num_workers=args.num_workers,
+        pin_memory=True, persistent_workers=args.num_workers > 0,
+        prefetch_factor=4 if args.num_workers > 0 else None,
     )
 
     model = MaskRCNNPolygonTrainer(lr=args.lr, init_mode=args.init_mode)
@@ -396,8 +397,8 @@ def main():
         val_check_interval=0.5,
         logger=loggers if loggers else True,
         enable_checkpointing=has_val,
-        limit_train_batches=args.limit_train_batches,
-        limit_val_batches=args.limit_val_batches if has_val else 0,
+        limit_train_batches=args.limit_train_batches if args.limit_train_batches is not None else 1.0,
+        limit_val_batches=(args.limit_val_batches if args.limit_val_batches is not None else 1.0) if has_val else 0,
     )
 
     trainer.fit(model, train_loader, val_loader)

@@ -88,6 +88,7 @@ def main():
         root_dir=args.root_dir,
         split_scheme=args.split_scheme,
         include_unsupervised=args.include_unsupervised,
+        include_sources=["*unsupervised*"] if args.include_unsupervised else None,
     )
     train_subset = box_dataset.get_subset("train")
     test_subset = box_dataset.get_subset("test")
@@ -120,8 +121,7 @@ def main():
         existing_val_dataloader=val_adapted,
     )
     model.load_model("weecology/deepforest-tree")
-    model.config.setdefault("train", {})
-    model.config["train"].setdefault("csv_file", "existing_train_dataloader")
+    model.config["train"]["csv_file"] = "existing_train_dataloader"
 
     loggers = []
     if args.comet:
