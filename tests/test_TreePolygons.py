@@ -156,7 +156,7 @@ def test_TreePolygons_eval_stream_matches_legacy(dataset):
     )
     stream_results, _ = state.finalize()
 
-    for metric_name in ("accuracy", "recall", "maskaware_precision", "merge_commission", "mAP"):
+    for metric_name in ("accuracy", "recall", "maskaware_precision", "merge_commission", "AP50"):
         lk = legacy_results[metric_name]
         sk = stream_results[metric_name]
         for key, lv in lk.items():

@@ -1291,25 +1291,31 @@ class KeypointMergeCommissionMetric(ElementwiseMetric):
 
 
 class DetectionMAP(Metric):
-    """Mean Average Precision for object detection using torchmetrics.
+    """Average Precision for object detection using torchmetrics.
 
     Supports bounding boxes (iou_type="bbox") and instance segmentation masks (iou_type="segm").
     Single-class: all labels are normalised to 0 so that predictions always match the ground-truth
     class regardless of the model's raw label output.
+
+    ``iou_thresholds`` controls the IoU threshold(s) AP is computed at. Pass ``[0.5]`` (the default
+    for TreeBoxes/TreePolygons) for PASCAL-style AP@0.5; pass ``None`` for COCO-style mAP averaged
+    over IoU 0.50:0.05:0.95.
     """
 
     def __init__(self,
                  geometry_name="y",
                  score_threshold=0.1,
                  iou_type="bbox",
+                 iou_thresholds=None,
                  max_detection_thresholds=None,
                  name=None):
         self.geometry_name = geometry_name
         self.score_threshold = score_threshold
         self.iou_type = iou_type
+        self.iou_thresholds = iou_thresholds
         self.max_detection_thresholds = max_detection_thresholds
         if name is None:
-            name = "mAP"
+            name = "AP50" if iou_thresholds == [0.5] else "mAP"
         super().__init__(name=name)
 
     @property
@@ -1376,6 +1382,7 @@ class DetectionMAP(Metric):
         from torchmetrics.detection import MeanAveragePrecision
         metric = MeanAveragePrecision(
             iou_type=self.iou_type,
+            iou_thresholds=self.iou_thresholds,
             max_detection_thresholds=self.max_detection_thresholds,
             class_metrics=False,
         )

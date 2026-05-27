@@ -271,10 +271,11 @@ class TreeBoxesDataset(MillionTreesDataset):
                 MaskAwareDetectionPrecision(
                     geometry_name=self.geometry_name,
                     score_threshold=self.eval_score_threshold),
-            "mAP":
+            "AP50":
                 DetectionMAP(geometry_name=self.geometry_name,
                              score_threshold=self.eval_score_threshold,
-                             iou_type="bbox"),
+                             iou_type="bbox",
+                             iou_thresholds=[0.5]),
             "merge_commission":
                 MergeCommissionMetric(
                     geometry_name=self.geometry_name,

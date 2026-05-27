@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 import glob
 import os
 
-points = gpd.read_file("/orange/idtrees-collab/DeepTreeAttention/fe902d874c4a41e4b8e5e0ddcfc9cb92/canopy_points.shp")
+points = gpd.read_file("/blue/ewhite/b.weinstein/DeepTreeAttention/fe902d874c4a41e4b8e5e0ddcfc9cb92/canopy_points.shp")
 
 os.makedirs("/orange/ewhite/MillionTrees/NEON_points/cropped_tiles", exist_ok=True)
 
