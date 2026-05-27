@@ -242,10 +242,11 @@ class TreePolygonsDataset(MillionTreesDataset):
                 MaskAwareMaskPrecision(
                     geometry_name=self.geometry_name,
                     score_threshold=self.eval_score_threshold),
-            "mAP":
+            "AP50":
                 DetectionMAP(geometry_name=self.geometry_name,
                              score_threshold=self.eval_score_threshold,
                              iou_type="segm",
+                             iou_thresholds=[0.5],
                              max_detection_thresholds=[1, 10, 1000]),
             "merge_commission":
                 MergeCommissionMetric(

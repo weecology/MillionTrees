@@ -21,7 +21,7 @@ class TreePolygonsStreamingEvalState:
     """Accumulates metrics batch-wise; results match ``standard_group_eval`` semantics."""
 
     _EW_KEYS = ("accuracy", "recall", "maskaware_precision", "merge_commission")
-    _MAP_KEY = "mAP"
+    _MAP_KEY = "AP50"
 
     def __init__(self, dataset: Any) -> None:
         self._dataset = dataset
@@ -42,11 +42,13 @@ class TreePolygonsStreamingEvalState:
         self._map_metric: DetectionMAP = dataset.metrics[self._MAP_KEY]
         self._map_global = MeanAveragePrecision(
             iou_type=self._map_metric.iou_type,
+            iou_thresholds=self._map_metric.iou_thresholds,
             max_detection_thresholds=self._map_metric.max_detection_thresholds,
             class_metrics=False)
         _disable_torchmetric_sync(self._map_global)
         self._map_per_group = [
             MeanAveragePrecision(iou_type=self._map_metric.iou_type,
+                                 iou_thresholds=self._map_metric.iou_thresholds,
                                  max_detection_thresholds=self._map_metric.
                                  max_detection_thresholds,
                                  class_metrics=False)

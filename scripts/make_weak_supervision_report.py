@@ -11,11 +11,11 @@ import pandas as pd
 METRIC_PATTERNS = {
     "accuracy": re.compile(r"^Average accuracy:\s+([\d.]+)", re.MULTILINE),
     "recall": re.compile(r"^Average recall:\s+([\d.]+)", re.MULTILINE),
-    "mAP": re.compile(r"^Average mAP:\s+([\d.]+)", re.MULTILINE),
+    "AP50": re.compile(r"^Average AP50:\s+([\d.]+)", re.MULTILINE),
     "maskaware_precision": re.compile(r"^Average maskaware_precision:\s+([\d.]+)", re.MULTILINE),
 }
 
-PRIMARY_METRIC = "mAP"
+PRIMARY_METRIC = "AP50"
 
 
 def parse_txt(path):
