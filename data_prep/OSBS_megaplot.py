@@ -115,9 +115,8 @@ def _split_mosaic(out_csv: str) -> str:
         with rasterio.open(image) as src:
             numpy_image = src.read()
 
-        gdf = read_file(annotations, root_dir=ROOT_DIR)
+        gdf = read_file(annotations, root_dir=ROOT_DIR, label="Tree")
         gdf = gpd.GeoDataFrame(gdf)
-        gdf["label"] = "Tree"
         # Use basenames for split_raster, as it writes relative filenames
         gdf["image_path"] = gdf["image_path"].apply(os.path.basename)
 

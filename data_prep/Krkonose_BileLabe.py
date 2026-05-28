@@ -177,8 +177,13 @@ def main():
         print(f"Sample overlays saved to {args.savedir}")
 
 
-def _raster_to_uint8_rgb(data: "np.ndarray") -> "np.ndarray":
-    """Convert raster bands (e.g. uint16) to 8-bit RGB for display. Per-band stretch."""
+def _raster_to_uint8_rgb(data: "np.ndarray", nodata=None) -> "np.ndarray":
+    """Convert raster bands (e.g. uint16) to 8-bit RGB for display. Per-band stretch.
+
+    nodata pixels are excluded from the percentile stretch and rendered black; if
+    they are not excluded (as with these orthos' 65535 fill), they blow out the
+    range and the real imagery collapses to near-black.
+    """
     import numpy as np
 
     if data.shape[0] >= 3:
@@ -188,14 +193,16 @@ def _raster_to_uint8_rgb(data: "np.ndarray") -> "np.ndarray":
     out = np.zeros((rgb.shape[1], rgb.shape[2], 3), dtype=np.uint8)
     for c in range(3):
         band = rgb[c].copy()
-        valid = band > 0
+        valid = band > 0 if nodata is None else band != nodata
         if valid.any():
             p1, p99 = np.percentile(band[valid], (1, 99))
             if p99 > p1:
                 band = (band - p1) / (p99 - p1)
             else:
-                band = np.where(band > 0, 1.0, 0.0)
+                band = np.where(valid, 1.0, 0.0)
         out[..., c] = np.clip(band * 255, 0, 255).astype(np.uint8)
+    if nodata is not None:
+        out[(rgb == nodata).all(axis=0)] = 0
     return out
 
 
@@ -216,7 +223,8 @@ def visualize_overlays(annotations_path: Path, savedir: Path) -> None:
         if im is None or path.suffix.lower() in (".tif", ".tiff"):
             with rasterio.open(path) as src:
                 data = src.read()
-            rgb = _raster_to_uint8_rgb(data)
+                src_nodata = src.nodata
+            rgb = _raster_to_uint8_rgb(data, nodata=src_nodata)
             im = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         if im is None:
             continue
