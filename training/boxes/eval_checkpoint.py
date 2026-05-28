@@ -36,7 +36,16 @@ def _load_model(checkpoint_path):
         model = df_main.deepforest()
         model.load_state_dict(remapped)
     else:
-        model = df_main.deepforest.load_from_checkpoint(checkpoint_path, weights_only=False)
+        # Build a fresh deepforest with devices=1 and load weights manually. Avoids
+        # deepforest.load_from_checkpoint, which would re-read the saved config
+        # (devices=2 from multi-GPU training) and crash on a single-GPU eval node.
+        cfg = ckpt.get("hyper_parameters", {}).get("config", None)
+        if isinstance(cfg, dict):
+            cfg = {**cfg, "devices": 1}
+            model = df_main.deepforest(config=cfg)
+        else:
+            model = df_main.deepforest()
+        model.load_state_dict(state)
     return model
 
 
