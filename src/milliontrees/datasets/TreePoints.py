@@ -229,8 +229,8 @@ class TreePointsDataset(MillionTreesDataset):
                     image_size=self.image_size,
                     geometry_name=self.geometry_name,
                 ),
-            "CountingAccuracy":
-                CountingError(),
+            "counting_mae":
+                CountingError(geometry_name=self.geometry_name,),
             "merge_commission":
                 KeypointMergeCommissionMetric(
                     distance_threshold=distance_threshold,
