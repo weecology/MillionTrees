@@ -88,12 +88,11 @@ class MillionTreesDataset:
     def get_eval_footprint_mask(self, idx, image_shape):
         """Load the per-image counting-eval footprint mask, or None.
 
-        Footprints exist only for images in sources flagged ``complete=True``
-        in ``source_completeness.csv`` (see ``data_prep/package_datasets.py``
-        :func:`compute_eval_footprints`). The mask is a binary PNG at the
-        original image resolution. Returns ``None`` when no footprint was
-        written for this image, signalling that counting MAE should not be
-        evaluated.
+        Footprints exist only for images in sources flagged ``complete=True`` in
+        ``source_completeness.csv`` (see ``data_prep/package_datasets.py``
+        :func:`compute_eval_footprints`). The mask is a binary PNG at the original image resolution.
+        Returns ``None`` when no footprint was written for this image, signalling that counting MAE
+        should not be evaluated.
         """
         footprints_dir = Path(self._data_dir) / "footprints"
         if not footprints_dir.exists():

@@ -1419,18 +1419,16 @@ class DetectionMAP(Metric):
 class CountingError(ElementwiseMetric):
     """Mean Absolute Error between ground truth and predicted detection counts.
 
-    When the ground-truth target dict carries an ``eval_footprint`` mask
-    (a 2-D 0/1 array of shape ``[H, W]`` aligned with the transformed image),
-    the metric restricts both GT and predicted counts to detections whose
-    centroid lies inside the footprint. This lets counting be evaluated only
-    over the well-annotated subregion of an image, which is what makes MAE
-    meaningful for sources where annotations cover a known footprint
-    (e.g. field-mapped plots, hand-drawn evaluation zones) rather than the
-    full image.
+    When the ground-truth target dict carries an ``eval_footprint`` mask (a 2-D 0/1 array of shape
+    ``[H, W]`` aligned with the transformed image), the metric restricts both GT and predicted
+    counts to detections whose centroid lies inside the footprint. This lets counting be evaluated
+    only over the well-annotated subregion of an image, which is what makes MAE meaningful for
+    sources where annotations cover a known footprint (e.g. field-mapped plots, hand-drawn
+    evaluation zones) rather than the full image.
 
-    When an image's ``eval_footprint`` is missing or empty, the per-image MAE
-    is set to NaN. The aggregate and group-wise reductions ignore NaN entries
-    so sources without a footprint do not contribute to ``counting_mae``.
+    When an image's ``eval_footprint`` is missing or empty, the per-image MAE is set to NaN. The
+    aggregate and group-wise reductions ignore NaN entries so sources without a footprint do not
+    contribute to ``counting_mae``.
     """
 
     def __init__(self,
