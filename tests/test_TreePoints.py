@@ -179,19 +179,21 @@ def test_maskaware_keypoint_precision_falls_back_without_tree_mask():
     score = metric.compute(pred, gt)[metric.agg_metric_field]
     assert score == pytest.approx(0.5)
 
-def test_counting_error_points_gated_by_footprint():
+def test_counting_error_points_gated_by_complete_flag():
     metric = CountingError(score_threshold=0.1, geometry_name="y")
     gt_points = torch.tensor([[10., 10.], [12., 12.], [80., 80.]])
     pred_points = torch.tensor([[10., 10.], [12., 12.], [80., 80.], [70., 70.]])
     scores = torch.tensor([0.9, 0.9, 0.9, 0.9])
-    footprint = torch.zeros((100, 100), dtype=torch.uint8)
-    footprint[0:30, 0:30] = 1
 
-    gt = [{"y": gt_points, "eval_footprint": footprint}]
+    # complete=False -> excluded from aggregate (NaN), so result is NaN.
+    gt_excluded = [{"y": gt_points, "complete": False}]
     pred = [{"y": pred_points, "scores": scores}]
+    assert np.isnan(metric.compute(pred, gt_excluded)[metric.agg_metric_field])
 
-    score = metric.compute(pred, gt)[metric.agg_metric_field]
-    assert score == pytest.approx(0.0)
+    # complete=True -> |3 - 4| = 1.
+    gt_included = [{"y": gt_points, "complete": True}]
+    score = metric.compute(pred, gt_included)[metric.agg_metric_field]
+    assert score == pytest.approx(1.0)
 
 
 def test_TreePoints_download_url(dataset):
