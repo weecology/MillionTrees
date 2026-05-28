@@ -217,6 +217,14 @@ class TreePointsDataset(MillionTreesDataset):
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
         self._metadata_fields = ['filename_id', 'source_id']
 
+        if 'complete' in self.df.columns:
+            source_complete = self.df.groupby('source_id')['complete'].first()
+            self._source_id_complete = {
+                int(k): bool(v) for k, v in source_complete.items()
+            }
+        else:
+            self._source_id_complete = {}
+
         self.metrics = {
             "KeypointAccuracy":
                 KeypointAccuracy(

@@ -391,28 +391,27 @@ def test_maskaware_mask_precision_falls_back_without_tree_mask():
     assert score == pytest.approx(0.5)
 
 
-def test_counting_error_polygons_gated_by_footprint():
+def test_counting_error_polygons_gated_by_complete_flag():
     metric = CountingError(score_threshold=0.1, geometry_name="y")
 
-    inside_mask_1 = torch.zeros((64, 64), dtype=torch.uint8)
-    inside_mask_1[10:15, 10:15] = 1
-    inside_mask_2 = torch.zeros((64, 64), dtype=torch.uint8)
-    inside_mask_2[20:25, 20:25] = 1
-    outside_mask = torch.zeros((64, 64), dtype=torch.uint8)
-    outside_mask[50:55, 50:55] = 1
+    mask_a = torch.zeros((64, 64), dtype=torch.uint8)
+    mask_a[10:15, 10:15] = 1
+    mask_b = torch.zeros((64, 64), dtype=torch.uint8)
+    mask_b[20:25, 20:25] = 1
+    mask_c = torch.zeros((64, 64), dtype=torch.uint8)
+    mask_c[50:55, 50:55] = 1
 
-    footprint = torch.zeros((64, 64), dtype=torch.uint8)
-    footprint[0:40, 0:40] = 1
+    gt_masks = torch.stack([mask_a, mask_b, mask_c])
+    pred_masks = torch.stack([mask_a, mask_b])
+    scores = torch.tensor([0.9, 0.9])
 
-    # 2 GT inside, 1 outside; 2 preds inside (perfect), 1 outside (ignored).
-    gt = [{
-        "y": torch.stack([inside_mask_1, inside_mask_2, outside_mask]),
-        "eval_footprint": footprint,
-    }]
-    pred = [{
-        "y": torch.stack([inside_mask_1, inside_mask_2, outside_mask]),
-        "scores": torch.tensor([0.9, 0.9, 0.9]),
-    }]
+    pred = [{"y": pred_masks, "scores": scores}]
 
-    score = metric.compute(pred, gt)[metric.agg_metric_field]
-    assert score == pytest.approx(0.0)
+    # complete=False -> NaN (excluded).
+    gt_excluded = [{"y": gt_masks, "complete": False}]
+    assert np.isnan(metric.compute(pred, gt_excluded)[metric.agg_metric_field])
+
+    # complete=True -> |3 - 2| = 1.
+    gt_included = [{"y": gt_masks, "complete": True}]
+    score = metric.compute(pred, gt_included)[metric.agg_metric_field]
+    assert score == pytest.approx(1.0)

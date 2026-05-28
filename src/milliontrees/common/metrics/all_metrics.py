@@ -1419,127 +1419,44 @@ class DetectionMAP(Metric):
 class CountingError(ElementwiseMetric):
     """Mean Absolute Error between ground truth and predicted detection counts.
 
-    When the ground-truth target dict carries an ``eval_footprint`` mask (a 2-D 0/1 array of shape
-    ``[H, W]`` aligned with the transformed image), the metric restricts both GT and predicted
-    counts to detections whose centroid lies inside the footprint. This lets counting be evaluated
-    only over the well-annotated subregion of an image, which is what makes MAE meaningful for
-    sources where annotations cover a known footprint (e.g. field-mapped plots, hand-drawn
-    evaluation zones) rather than the full image.
-
-    When an image's ``eval_footprint`` is missing or empty, the per-image MAE is set to NaN. The
-    aggregate and group-wise reductions ignore NaN entries so sources without a footprint do not
-    contribute to ``counting_mae``.
+    Counting MAE is only meaningful when annotations are exhaustive — partially-annotated images
+    artificially inflate the per-image error. The metric therefore only contributes a value for
+    images whose target dict carries ``complete=True`` (set per-source from
+    ``data_prep/source_completeness.csv``). Other images yield NaN and are dropped from
+    aggregation, so ``counting_mae`` is computed only over fully-annotated sources.
     """
 
     def __init__(self,
                  score_threshold=0.1,
                  name=None,
                  geometry_name="y",
-                 footprint_key="eval_footprint"):
+                 complete_key="complete"):
         self.score_threshold = score_threshold
         self.geometry_name = geometry_name
-        self.footprint_key = footprint_key
+        self.complete_key = complete_key
         if name is None:
             name = "counting_mae"
         super().__init__(name=name)
 
-    @staticmethod
-    def _prepare_footprint(footprint):
-        """Coerce a per-image footprint into a 2-D boolean tensor or None."""
-        if footprint is None:
-            return None
-        if not isinstance(footprint, torch.Tensor):
-            footprint = torch.as_tensor(footprint)
-        if footprint.dim() == 3:
-            footprint = footprint.squeeze(0)
-        if footprint.dim() != 2:
-            raise ValueError(
-                f"Expected eval_footprint of shape [H, W], got {tuple(footprint.shape)}"
-            )
-        footprint = footprint.bool()
-        if not footprint.any():
-            return None
-        return footprint
-
-    @staticmethod
-    def _centroids(geom):
-        """Extract per-instance (x, y) centroids in image pixel coords.
-
-        Supports boxes [N, 4], points [N, 2], and instance masks [N, H, W].
-        """
-        if geom is None or len(geom) == 0:
-            return torch.zeros(0, 2)
-        if not isinstance(geom, torch.Tensor):
-            geom = torch.as_tensor(geom)
-        if geom.dim() == 2 and geom.size(-1) == 4:
-            cx = (geom[:, 0] + geom[:, 2]) * 0.5
-            cy = (geom[:, 1] + geom[:, 3]) * 0.5
-            return torch.stack([cx, cy], dim=1).float()
-        if geom.dim() == 2 and geom.size(-1) == 2:
-            return geom.float()
-        if geom.dim() == 3:
-            centroids = []
-            for m in geom:
-                ys, xs = torch.where(m > 0)
-                if len(ys) == 0:
-                    centroids.append(torch.tensor([float("nan"), float("nan")]))
-                else:
-                    centroids.append(
-                        torch.stack([xs.float().mean(),
-                                     ys.float().mean()]))
-            return torch.stack(centroids)
-        raise ValueError(
-            f"Unsupported geometry shape for counting: {tuple(geom.shape)}")
-
-    @staticmethod
-    def _count_inside(centroids, footprint):
-        """Count centroids that fall inside the boolean footprint mask."""
-        if len(centroids) == 0:
-            return 0
-        h, w = footprint.shape
-        xs = centroids[:, 0]
-        ys = centroids[:, 1]
-        valid = torch.isfinite(xs) & torch.isfinite(ys)
-        xi = xs.round().long().clamp(0, w - 1)
-        yi = ys.round().long().clamp(0, h - 1)
-        inside_image = ((xs >= 0) & (xs < w) & (ys >= 0) & (ys < h) & valid)
-        if not inside_image.any():
-            return 0
-        in_fp = footprint[yi[inside_image], xi[inside_image]]
-        return int(in_fp.sum().item())
-
     def _compute_element_wise(self, y_pred, y_true):
         batch_results = []
         for gt, target in zip(y_true, y_pred):
-            footprint = self._prepare_footprint(gt.get(self.footprint_key))
-
-            target_scores = target["scores"]
-            score_mask = target_scores > self.score_threshold
-            pred_geom = target[self.geometry_name]
-            if not isinstance(pred_geom, torch.Tensor):
-                pred_geom = torch.as_tensor(pred_geom)
-            pred_geom = pred_geom[score_mask] if len(
-                pred_geom) > 0 else pred_geom
-
-            gt_geom = gt[self.geometry_name]
-
-            if footprint is None:
-                # Footprint required: drop this image from the counting average.
+            if not bool(gt.get(self.complete_key, False)):
                 batch_results.append(float("nan"))
                 continue
 
-            gt_centroids = self._centroids(gt_geom)
-            pred_centroids = self._centroids(pred_geom)
-
-            gt_count = self._count_inside(gt_centroids, footprint)
-            pred_count = self._count_inside(pred_centroids, footprint)
+            target_scores = target["scores"]
+            score_mask = target_scores > self.score_threshold
+            pred_count = int(score_mask.sum().item()) if isinstance(
+                score_mask, torch.Tensor) else int(sum(score_mask))
+            gt_count = len(gt[self.geometry_name])
 
             batch_results.append(float(abs(gt_count - pred_count)))
 
         return torch.tensor(batch_results, dtype=torch.float)
 
     def _compute(self, y_pred, y_true):
-        """Aggregate that ignores images without an eval_footprint (NaN)."""
+        """Aggregate that ignores images without ``complete=True`` (NaN)."""
         elementwise = self._compute_element_wise(y_pred, y_true)
         finite = elementwise[~torch.isnan(elementwise)]
         if finite.numel() == 0:

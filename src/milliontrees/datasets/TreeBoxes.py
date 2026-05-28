@@ -257,6 +257,17 @@ class TreeBoxesDataset(MillionTreesDataset):
         self._metadata_array = torch.tensor(unique_sources.values.astype('int'))
         self._metadata_fields = ['filename_id', 'source_id']
 
+        # Map source_id -> complete (used by CountingError to gate which images
+        # contribute to MAE). Sources flagged complete=True in
+        # source_completeness.csv are exhaustively annotated; others get NaN.
+        if 'complete' in df.columns:
+            source_complete = df.groupby('source_id')['complete'].first()
+            self._source_id_complete = {
+                int(k): bool(v) for k, v in source_complete.items()
+            }
+        else:
+            self._source_id_complete = {}
+
         self._collate = TreeBoxesDataset._collate_fn
 
         self.metrics = {

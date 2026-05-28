@@ -247,47 +247,20 @@ def test_maskaware_precision_falls_back_without_tree_mask():
     assert score == pytest.approx(0.5)
 
 
-def test_counting_error_gated_by_eval_footprint():
-    """GT and predictions outside the footprint must not affect the MAE."""
+def test_counting_error_gated_by_complete_flag():
+    """Images without ``complete=True`` must not contribute to counting MAE."""
     metric = CountingError(score_threshold=0.1, geometry_name="y")
 
-    # 3 GT boxes inside footprint, 1 outside. 3 preds inside (perfect), 2 outside (ignored).
-    gt_boxes = torch.tensor([
-        [10., 10., 20., 20.],
-        [15., 25., 25., 35.],
-        [30., 20., 40., 30.],
-        [80., 80., 90., 90.],
-    ])
-    pred_boxes = torch.tensor([
-        [10., 10., 20., 20.],
-        [15., 25., 25., 35.],
-        [30., 20., 40., 30.],
-        [80., 80., 90., 90.],
-        [70., 70., 75., 75.],
-    ])
-    scores = torch.tensor([0.9, 0.9, 0.9, 0.9, 0.9])
-
-    footprint = torch.zeros((100, 100), dtype=torch.uint8)
-    footprint[0:50, 0:50] = 1
-
-    gt = [{"y": gt_boxes, "eval_footprint": footprint}]
-    pred = [{"y": pred_boxes, "scores": scores}]
-
-    score = metric.compute(pred, gt)[metric.agg_metric_field]
-    assert score == pytest.approx(0.0)
-
-
-def test_counting_error_nan_without_footprint_excludes_from_aggregate():
-    """Images without an eval_footprint must not contribute to counting MAE."""
-    metric = CountingError(score_threshold=0.1, geometry_name="y")
-    # Image 0: no footprint -> excluded. Image 1: footprint -> contributes |3 - 2| = 1.
-    footprint = torch.ones((50, 50), dtype=torch.uint8)
+    # Image 0: complete=False -> excluded. Image 1: complete=True -> |3 - 2| = 1.
     gt = [
-        {"y": torch.tensor([[1., 1., 5., 5.], [10., 10., 15., 15.]])},
+        {
+            "y": torch.tensor([[1., 1., 5., 5.], [10., 10., 15., 15.]]),
+            "complete": False,
+        },
         {
             "y": torch.tensor([[1., 1., 5., 5.], [10., 10., 15., 15.],
                                [20., 20., 25., 25.]]),
-            "eval_footprint": footprint,
+            "complete": True,
         },
     ]
     pred = [
@@ -304,9 +277,9 @@ def test_counting_error_nan_without_footprint_excludes_from_aggregate():
     assert score == pytest.approx(1.0)
 
 
-def test_counting_error_all_missing_footprints_returns_nan():
+def test_counting_error_all_incomplete_returns_nan():
     metric = CountingError(score_threshold=0.1, geometry_name="y")
-    gt = [{"y": torch.tensor([[1., 1., 5., 5.]])}]
+    gt = [{"y": torch.tensor([[1., 1., 5., 5.]])}]  # no 'complete' key -> False
     pred = [{"y": torch.tensor([[1., 1., 5., 5.]]), "scores": torch.tensor([0.9])}]
     score = metric.compute(pred, gt)[metric.agg_metric_field]
     assert np.isnan(score)

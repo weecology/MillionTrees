@@ -49,11 +49,26 @@ class MillionTreesDataset:
         tree_coverage_mask = self.get_tree_coverage_mask(idx, x.shape[:2])
         if tree_coverage_mask is not None:
             targets["tree_coverage_mask"] = tree_coverage_mask
-        eval_footprint = self.get_eval_footprint_mask(idx, x.shape[:2])
-        if eval_footprint is not None:
-            targets["eval_footprint"] = eval_footprint
+        targets["complete"] = self._sample_is_complete(idx)
 
         return metadata, x, targets
+
+    def _sample_is_complete(self, idx):
+        """Whether the source for this sample is fully annotated.
+
+        Drives the counting MAE metric: ``CountingError`` only contributes a
+        per-image MAE when ``targets["complete"]`` is ``True``; otherwise it
+        emits ``NaN`` and the value is dropped from aggregation.
+        """
+        source_id_complete = getattr(self, "_source_id_complete", None)
+        if not source_id_complete:
+            return False
+        try:
+            source_field_idx = self._metadata_fields.index("source_id")
+        except ValueError:
+            return False
+        source_id = int(self._metadata_array[idx, source_field_idx].item())
+        return bool(source_id_complete.get(source_id, False))
 
     def get_input(self, idx):
         """
@@ -83,32 +98,6 @@ class MillionTreesDataset:
             raise ValueError(
                 f"Mask shape {mask.shape[:2]} does not match image shape {image_shape} for {image_name}"
             )
-        return mask
-
-    def get_eval_footprint_mask(self, idx, image_shape):
-        """Load the per-image counting-eval footprint mask, or None.
-
-        Footprints exist only for images in sources flagged ``complete=True`` in
-        ``source_completeness.csv`` (see ``data_prep/package_datasets.py``
-        :func:`compute_eval_footprints`). The mask is a binary PNG at the original image resolution.
-        Returns ``None`` when no footprint was written for this image, signalling that counting MAE
-        should not be evaluated.
-        """
-        footprints_dir = Path(self._data_dir) / "footprints"
-        if not footprints_dir.exists():
-            return None
-
-        image_name = self._input_array[idx]
-        footprint_path = footprints_dir / f"{Path(image_name).stem}.png"
-        if not footprint_path.exists():
-            return None
-
-        mask = np.array(Image.open(footprint_path).convert("L"), dtype=np.uint8)
-        mask = (mask > 0).astype(np.uint8)
-        if tuple(mask.shape[:2]) != tuple(image_shape):
-            raise ValueError(
-                f"Footprint shape {mask.shape[:2]} does not match image shape "
-                f"{image_shape} for {image_name}")
         return mask
 
     def eval(self,
@@ -556,18 +545,7 @@ class MillionTreesSubset(MillionTreesDataset):
     def __getitem__(self, idx):
         metadata, x, targets = self.dataset[self.indices[idx]]
         tree_coverage_mask = targets.get("tree_coverage_mask")
-        eval_footprint = targets.get("eval_footprint")
-
-        # Auxiliary masks ride through Albumentations together in a fixed order
-        # so the same resize / flip / crop applies to image and masks alike.
-        aux_masks = []
-        aux_keys = []
-        if tree_coverage_mask is not None:
-            aux_masks.append(tree_coverage_mask)
-            aux_keys.append("tree_coverage_mask")
-        if eval_footprint is not None:
-            aux_masks.append(eval_footprint)
-            aux_keys.append("eval_footprint")
+        complete = targets.get("complete", False)
 
         if self._dataset_name == 'TreeBoxes':
             # Extra safety: drop degenerate / out-of-bounds boxes before Albumentations
@@ -587,39 +565,54 @@ class MillionTreesSubset(MillionTreesDataset):
                     (bboxes[:, 3] - bboxes[:, 1]) > eps)
                 bboxes = bboxes[valid]
                 labels_arr = labels_arr[valid]
-            transform_kwargs = {
-                "image": x,
-                "bboxes": bboxes.tolist(),
-                "labels": labels_arr.tolist(),
-            }
-            if aux_masks:
-                transform_kwargs["masks"] = aux_masks
-            augmented = self.transform(**transform_kwargs)
+            if tree_coverage_mask is None:
+                augmented = self.transform(
+                    image=x,
+                    bboxes=bboxes.tolist(),
+                    labels=labels_arr.tolist(),
+                )
+            else:
+                augmented = self.transform(
+                    image=x,
+                    bboxes=bboxes.tolist(),
+                    labels=labels_arr.tolist(),
+                    mask=tree_coverage_mask,
+                )
+                tree_coverage_mask = augmented["mask"]
             y = torch.tensor(np.array(augmented["bboxes"]), dtype=torch.float32)
 
         elif self._dataset_name == 'TreePoints':
-            transform_kwargs = {
-                "image": x,
-                "keypoints": targets[self.geometry_name],
-                "labels": targets["labels"],
-            }
-            if aux_masks:
-                transform_kwargs["masks"] = aux_masks
-            augmented = self.transform(**transform_kwargs)
+            if tree_coverage_mask is None:
+                augmented = self.transform(
+                    image=x,
+                    keypoints=targets[self.geometry_name],
+                    labels=targets["labels"],
+                )
+            else:
+                augmented = self.transform(
+                    image=x,
+                    keypoints=targets[self.geometry_name],
+                    labels=targets["labels"],
+                    mask=tree_coverage_mask,
+                )
+                tree_coverage_mask = augmented["mask"]
             y = torch.tensor(np.array(augmented["keypoints"]),
                              dtype=torch.float32)
 
         else:
             masks = [mask for mask in targets[self.geometry_name]]
-            n_instance_masks = len(masks)
-            transformed_masks = masks + list(aux_masks)
+            coverage_with_masks = tree_coverage_mask is not None
+            transformed_masks = masks
+            if coverage_with_masks:
+                transformed_masks = masks + [tree_coverage_mask]
             # Albumentations rejects empty mask lists; use a dummy mask then discard
-            if n_instance_masks == 0:
+            if len(masks) == 0:
                 h, w = x.shape[0], x.shape[1]
                 dummy_mask = [np.zeros((h, w), dtype=np.uint8)]
                 dummy_bboxes = [[0, 0, 1, 1]]
                 dummy_labels = [0]
-                masks_input = dummy_mask + list(aux_masks)
+                masks_input = dummy_mask + ([tree_coverage_mask]
+                                            if coverage_with_masks else [])
                 augmented = self.transform(
                     image=x,
                     masks=masks_input,
@@ -631,7 +624,8 @@ class MillionTreesSubset(MillionTreesDataset):
                 y = torch.zeros((0, img_h, img_w), dtype=torch.uint8)
                 bboxes = torch.zeros(0, 4)
                 labels = torch.zeros(0, dtype=torch.long)
-                aux_start = 1
+                if coverage_with_masks:
+                    tree_coverage_mask = augmented["masks"][-1]
             else:
                 augmented = self.transform(
                     image=x,
@@ -639,7 +633,11 @@ class MillionTreesSubset(MillionTreesDataset):
                     bboxes=targets["bboxes"],
                     labels=targets["labels"],
                 )
-                y = augmented["masks"][:n_instance_masks]
+                if coverage_with_masks:
+                    tree_coverage_mask = augmented["masks"][-1]
+                    y = augmented["masks"][:-1]
+                else:
+                    y = augmented["masks"]
                 if len(y) == 0:
                     img_h, img_w = augmented["image"].shape[1], augmented[
                         "image"].shape[2]
@@ -648,38 +646,14 @@ class MillionTreesSubset(MillionTreesDataset):
                     y = torch.stack(y, dim=0)
                 bboxes = augmented["bboxes"]
                 labels = torch.from_numpy(np.array(augmented["labels"]))
-                aux_start = n_instance_masks
-
-            # Pull transformed aux masks back out by name
-            for offset, key in enumerate(aux_keys):
-                value = augmented["masks"][aux_start + offset]
-                if key == "tree_coverage_mask":
-                    tree_coverage_mask = value
-                elif key == "eval_footprint":
-                    eval_footprint = value
-
-        # For boxes / points, transformed aux masks come back under augmented["masks"].
-        if self._dataset_name in ("TreeBoxes", "TreePoints") and aux_masks:
-            for offset, key in enumerate(aux_keys):
-                value = augmented["masks"][offset]
-                if key == "tree_coverage_mask":
-                    tree_coverage_mask = value
-                elif key == "eval_footprint":
-                    eval_footprint = value
 
         x = augmented["image"]
         if self._dataset_name != "TreePolygons":
             labels = torch.from_numpy(np.array(augmented["labels"]))
-
-        def _to_uint8_tensor(mask):
-            if isinstance(mask, np.ndarray):
-                mask = torch.from_numpy(mask)
-            return (mask > 0).to(torch.uint8)
-
         if tree_coverage_mask is not None:
-            tree_coverage_mask = _to_uint8_tensor(tree_coverage_mask)
-        if eval_footprint is not None:
-            eval_footprint = _to_uint8_tensor(eval_footprint)
+            if isinstance(tree_coverage_mask, np.ndarray):
+                tree_coverage_mask = torch.from_numpy(tree_coverage_mask)
+            tree_coverage_mask = (tree_coverage_mask > 0).to(torch.uint8)
 
         # If image has no annotations, set zeros
         if len(y) == 0:
@@ -700,8 +674,7 @@ class MillionTreesSubset(MillionTreesDataset):
             targets = {self.geometry_name: y, "labels": labels}
         if tree_coverage_mask is not None:
             targets["tree_coverage_mask"] = tree_coverage_mask
-        if eval_footprint is not None:
-            targets["eval_footprint"] = eval_footprint
+        targets["complete"] = bool(complete)
 
         return metadata, x, targets
 
