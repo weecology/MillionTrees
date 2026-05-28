@@ -20,7 +20,7 @@ source,complete
 "Firoze et al. 2023",False
 "Kwon et al. 2023",False
 "Velasquez-Camacho et al. 2023",False
-"Alejandro_Miranda",False
+"Alejandro_Miranda",True
 "Weecology_University_Florida",True
 "Lefebvre et al. 2024",False
 "Safonova et al. 2021",False
@@ -33,5 +33,9 @@ source,complete
 "Jansen et al. 2023",False
 "Vasquez et al. 2023",False
 "Vasquez et al. 2023 - training",False
-"NEON_benchmark",True 
+"NEON_benchmark",True
 "SelvaBox",False
+"Takeshige et al. 2025",True
+"OSBS megaplot 2025",True
+"Bolhman 2008",True
+"OFO field 2025",True

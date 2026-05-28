@@ -17,6 +17,7 @@ from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.eval_visualization import save_eval_visualizations
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import (
+    CountingError,
     MaskAccuracy,
     DetectionMAP,
     MaskAwareMaskPrecision,
@@ -253,6 +254,11 @@ class TreePolygonsDataset(MillionTreesDataset):
                     geometry_name=self.geometry_name,
                     score_threshold=self.eval_score_threshold,
                     modality="mask",
+                ),
+            "counting_mae":
+                CountingError(
+                    score_threshold=self.eval_score_threshold,
+                    geometry_name=self.geometry_name,
                 ),
         }
         self._eval_grouper = CombinatorialGrouper(dataset=self,

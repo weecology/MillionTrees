@@ -14,6 +14,7 @@ from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
 from milliontrees.common.eval_visualization import save_eval_visualizations
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import (
+    CountingError,
     DetectionAccuracy,
     DetectionMAP,
     MaskAwareDetectionPrecision,
@@ -281,6 +282,11 @@ class TreeBoxesDataset(MillionTreesDataset):
                     geometry_name=self.geometry_name,
                     score_threshold=self.eval_score_threshold,
                     modality="bbox",
+                ),
+            "counting_mae":
+                CountingError(
+                    score_threshold=self.eval_score_threshold,
+                    geometry_name=self.geometry_name,
                 ),
         }
 

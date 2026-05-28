@@ -1,7 +1,10 @@
 from milliontrees.datasets.TreePolygons import TreePolygonsDataset
 from milliontrees.datasets.polygon_stream_eval import TreePolygonsStreamingEvalState
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
-from milliontrees.common.metrics.all_metrics import MaskAwareMaskPrecision
+from milliontrees.common.metrics.all_metrics import (
+    CountingError,
+    MaskAwareMaskPrecision,
+)
 
 import math
 
@@ -386,3 +389,30 @@ def test_maskaware_mask_precision_falls_back_without_tree_mask():
 
     score = metric.compute(pred, gt)[metric.agg_metric_field]
     assert score == pytest.approx(0.5)
+
+
+def test_counting_error_polygons_gated_by_footprint():
+    metric = CountingError(score_threshold=0.1, geometry_name="y")
+
+    inside_mask_1 = torch.zeros((64, 64), dtype=torch.uint8)
+    inside_mask_1[10:15, 10:15] = 1
+    inside_mask_2 = torch.zeros((64, 64), dtype=torch.uint8)
+    inside_mask_2[20:25, 20:25] = 1
+    outside_mask = torch.zeros((64, 64), dtype=torch.uint8)
+    outside_mask[50:55, 50:55] = 1
+
+    footprint = torch.zeros((64, 64), dtype=torch.uint8)
+    footprint[0:40, 0:40] = 1
+
+    # 2 GT inside, 1 outside; 2 preds inside (perfect), 1 outside (ignored).
+    gt = [{
+        "y": torch.stack([inside_mask_1, inside_mask_2, outside_mask]),
+        "eval_footprint": footprint,
+    }]
+    pred = [{
+        "y": torch.stack([inside_mask_1, inside_mask_2, outside_mask]),
+        "scores": torch.tensor([0.9, 0.9, 0.9]),
+    }]
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(0.0)

@@ -12,6 +12,30 @@ from pathlib import Path
 from shapely.geometry.base import BaseGeometry
 import shapely.wkt
 
+# Zero-shot test sources shared between zero_shot_split and cross_geometry_split.
+# Cross-geometry uses the polygon test list as its evaluation set so the two
+# splits stay aligned.
+ZEROSHOT_TEST_SOURCES_POLYGONS = [
+    "Troles et al. 2024",
+    "Bolhman 2008",
+    "Lefebvre et al. 2024",
+    "NEON MultiTemporal",
+    "Takeshige et al. 2025",
+    "Alejandro_Miranda",
+]
+ZEROSHOT_TEST_SOURCES_POINTS = [
+    "Amirkolaee et al. 2023",
+    "NEON_points",
+    "NEON MultiTemporal",
+    "OSBS megaplot 2025",
+    "OFO field 2025",
+]
+ZEROSHOT_TEST_SOURCES_BOXES = [
+    "Radogoshi et al. 2021",
+    "SelvaBox",
+    "NEON_benchmark",
+]
+
 def remove_alpha_channel(datasets):
     """Remove alpha channels from images in the dataset."""
     for source in datasets["source"].unique():
@@ -28,19 +52,65 @@ def remove_alpha_channel(datasets):
                     datasets.loc[datasets["filename"] == image, "filename"] = new_image_path
 
 
+SOURCE_COMPLETENESS_CSV = Path(__file__).parent / "source_completeness.csv"
+
+
+def load_source_completeness(path=SOURCE_COMPLETENESS_CSV):
+    """Load source -> complete mapping from the completeness CSV.
+
+    Returns an empty dict if the file is missing so the pipeline still runs;
+    sources absent from the CSV default to ``complete=False`` downstream.
+    """
+    if not Path(path).exists():
+        print(f"Warning: source_completeness.csv not found at {path}")
+        return {}
+    df = pd.read_csv(path)
+    # Normalize bool-like strings ("True"/"False") into booleans
+    df["complete"] = df["complete"].astype(str).str.strip().str.lower().map(
+        {"true": True, "false": False}
+    )
+    if df["complete"].isna().any():
+        bad = df.loc[df["complete"].isna(), "source"].tolist()
+        raise ValueError(
+            f"source_completeness.csv has unparseable complete values for: {bad}"
+        )
+    return dict(zip(df["source"].str.strip(), df["complete"]))
+
+
 def combine_datasets(dataset_paths, debug=False):
+    """Concatenate per-source annotation CSVs and tag each row with completeness.
+
+    ``complete`` is set per source from ``source_completeness.csv``. Sources
+    missing from that file default to ``False`` and a warning is printed once
+    per missing source. The ``complete`` flag drives downstream
+    counting-eligibility (see :func:`compute_eval_footprints`) — only sources
+    whose annotations are exhaustive within a known image footprint should be
+    marked ``True``.
+    """
     datasets = []
     for dataset_path in dataset_paths:
         df = pd.read_csv(dataset_path, low_memory=False)
         if "image_path" in df.columns:
             if "filename" in df.columns:
-                df = df.drop(columns="filename")  # Remove existing filename if present
+                df = df.drop(columns="filename")
             df = df.rename(columns={"image_path": "filename"})
             df.reset_index(drop=True, inplace=True)
         datasets.append(df)
-    
+
     combined_df = pd.concat(datasets, ignore_index=True)
-    combined_df["complete"] = True
+
+    completeness_map = load_source_completeness()
+    combined_df["complete"] = combined_df["source"].map(completeness_map)
+    missing_sources = sorted(
+        set(combined_df.loc[combined_df["complete"].isna(), "source"].unique())
+    )
+    if missing_sources:
+        print(
+            "Warning: sources missing from source_completeness.csv "
+            f"(defaulting complete=False): {missing_sources}"
+        )
+        combined_df["complete"] = combined_df["complete"].fillna(False)
+    combined_df["complete"] = combined_df["complete"].astype(bool)
 
     return combined_df
 
@@ -162,10 +232,13 @@ def create_directories(base_dir, dataset_type):
     """Create directories for the dataset."""
     os.makedirs(f"{base_dir}{dataset_type}_{version}/images", exist_ok=True)
     os.makedirs(f"{base_dir}{dataset_type}_{version}/masks", exist_ok=True)
+    os.makedirs(f"{base_dir}{dataset_type}_{version}/footprints", exist_ok=True)
     os.makedirs(f"{base_dir}Mini{dataset_type}_{version}/images", exist_ok=True)
     os.makedirs(f"{base_dir}Mini{dataset_type}_{version}/masks", exist_ok=True)
+    os.makedirs(f"{base_dir}Mini{dataset_type}_{version}/footprints", exist_ok=True)
     os.makedirs(f"{base_dir}Small{dataset_type}_{version}/images", exist_ok=True)
     os.makedirs(f"{base_dir}Small{dataset_type}_{version}/masks", exist_ok=True)
+    os.makedirs(f"{base_dir}Small{dataset_type}_{version}/footprints", exist_ok=True)
 
 
 def copy_images(datasets, base_dir, dataset_type):
@@ -200,8 +273,167 @@ def copy_masks(datasets, base_dir, dataset_type, mask_source_dir):
     return datasets
 
 
-def copy_packaged_assets_from_full(base_dir, dataset_type, version, filenames, suffix, subdir):
-    """Copy already-packaged assets (images/masks) into suffixed dataset folders."""
+# Counting-metric eval footprints
+# -------------------------------
+#
+# For each image in a source flagged ``complete=True`` (see
+# ``source_completeness.csv``), we compute a buffered convex hull of all GT
+# annotations in original-image pixel coordinates and rasterize it to a binary
+# PNG. The CountingError metric uses this footprint to gate which predictions
+# and GT detections contribute to MAE: anything outside the footprint (e.g.
+# trees beyond the field-mapped plot boundary) is ignored. The footprint masks
+# ride through the eval transform pipeline alongside ``tree_coverage_mask``.
+
+EVAL_FOOTPRINT_BUFFER_FRAC = 0.5
+EVAL_FOOTPRINT_MIN_BUFFER_PX = 8
+
+
+def _vertices_for_geom_type(group, geom_type):
+    """Collect 2-D vertices in original image pixel coords for a group of rows."""
+    if geom_type == "point":
+        coords = group[["x", "y"]].dropna().to_numpy(dtype=float)
+        return coords
+    if geom_type == "box":
+        df = group[["xmin", "ymin", "xmax", "ymax"]].dropna()
+        if df.empty:
+            return np.zeros((0, 2), dtype=float)
+        corners = np.concatenate([
+            df[["xmin", "ymin"]].to_numpy(dtype=float),
+            df[["xmax", "ymin"]].to_numpy(dtype=float),
+            df[["xmax", "ymax"]].to_numpy(dtype=float),
+            df[["xmin", "ymax"]].to_numpy(dtype=float),
+        ], axis=0)
+        return corners
+    if geom_type == "polygon":
+        verts = []
+        for wkt_str in group["polygon"].dropna():
+            geom = shapely.wkt.loads(wkt_str)
+            if geom.is_empty:
+                continue
+            if geom.geom_type == "Polygon":
+                verts.append(np.asarray(geom.exterior.coords, dtype=float))
+        if not verts:
+            return np.zeros((0, 2), dtype=float)
+        return np.concatenate(verts, axis=0)
+    raise ValueError(f"Unsupported geom_type {geom_type!r}")
+
+
+def _median_geom_extent(group, geom_type):
+    """Median linear extent of annotations, used to size the hull buffer."""
+    if geom_type == "box":
+        df = group[["xmin", "ymin", "xmax", "ymax"]].dropna()
+        if df.empty:
+            return 0.0
+        sides = np.concatenate([
+            (df["xmax"] - df["xmin"]).to_numpy(dtype=float),
+            (df["ymax"] - df["ymin"]).to_numpy(dtype=float),
+        ])
+        sides = sides[sides > 0]
+        return float(np.median(sides)) if sides.size else 0.0
+    if geom_type == "polygon":
+        sizes = []
+        for wkt_str in group["polygon"].dropna():
+            geom = shapely.wkt.loads(wkt_str)
+            if geom.is_empty or geom.area <= 0:
+                continue
+            sizes.append(float(np.sqrt(geom.area)))
+        return float(np.median(sizes)) if sizes else 0.0
+    if geom_type == "point":
+        # No native crown size; let the caller fall back to MIN_BUFFER_PX.
+        return 0.0
+    raise ValueError(f"Unsupported geom_type {geom_type!r}")
+
+
+def compute_eval_footprints(datasets, base_dir, dataset_type, geom_type, version):
+    """Write per-image eval-footprint PNGs for counting-eligible sources.
+
+    Footprints are buffered convex hulls of GT vertices, in original image pixel
+    coordinates, rasterized to a binary mask matching the source image
+    dimensions. They're written to
+    ``{base_dir}{dataset_type}_{version}/footprints/{stem}.png``. Images whose
+    source is not marked ``complete`` are skipped; images with fewer than 3
+    unique vertices are also skipped (no hull possible).
+    """
+    from shapely.geometry import MultiPoint
+    from shapely.geometry.polygon import Polygon as ShapelyPolygon
+
+    footprint_dir = Path(f"{base_dir}{dataset_type}_{version}/footprints")
+    footprint_dir.mkdir(parents=True, exist_ok=True)
+
+    if "complete" not in datasets.columns:
+        print("compute_eval_footprints: no 'complete' column, nothing written.")
+        return
+
+    eligible = datasets[datasets["complete"] == True]
+    if eligible.empty:
+        print(f"compute_eval_footprints: no counting-eligible rows for {dataset_type}.")
+        return
+
+    written = 0
+    skipped_no_hull = 0
+    skipped_no_image = 0
+    for filename, group in eligible.groupby("filename"):
+        image_path = filename if os.path.isabs(filename) else os.path.join(
+            f"{base_dir}{dataset_type}_{version}/images", os.path.basename(filename)
+        )
+        if not os.path.exists(image_path):
+            skipped_no_image += 1
+            continue
+
+        img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+        if img is None:
+            skipped_no_image += 1
+            continue
+        h, w = img.shape[:2]
+
+        verts = _vertices_for_geom_type(group, geom_type)
+        if len(verts) < 3:
+            skipped_no_hull += 1
+            continue
+
+        hull = MultiPoint([(float(x), float(y)) for x, y in verts]).convex_hull
+        if not isinstance(hull, ShapelyPolygon) or hull.is_empty or hull.area <= 0:
+            skipped_no_hull += 1
+            continue
+
+        median_extent = _median_geom_extent(group, geom_type)
+        buffer_px = max(EVAL_FOOTPRINT_MIN_BUFFER_PX,
+                        EVAL_FOOTPRINT_BUFFER_FRAC * median_extent)
+        hull = hull.buffer(buffer_px)
+        if hull.is_empty:
+            skipped_no_hull += 1
+            continue
+
+        # Rasterize the (possibly multi-polygon after buffer) hull
+        mask = np.zeros((h, w), dtype=np.uint8)
+        polys = [hull] if isinstance(hull, ShapelyPolygon) else list(hull.geoms)
+        for poly in polys:
+            if poly.is_empty:
+                continue
+            ext = np.asarray(poly.exterior.coords, dtype=np.int32)
+            cv2.fillPoly(mask, [ext], 255)
+            for interior in poly.interiors:
+                hole = np.asarray(interior.coords, dtype=np.int32)
+                cv2.fillPoly(mask, [hole], 0)
+
+        out_path = footprint_dir / f"{Path(filename).stem}.png"
+        cv2.imwrite(str(out_path), mask)
+        written += 1
+
+    print(
+        f"compute_eval_footprints[{dataset_type}]: wrote {written} footprints, "
+        f"skipped {skipped_no_hull} (no hull), {skipped_no_image} (missing image)."
+    )
+
+
+def copy_packaged_assets_from_full(base_dir, dataset_type, version, filenames,
+                                   suffix, subdir, optional=False):
+    """Copy already-packaged assets (images / masks / footprints) into suffixed
+    dataset folders.
+
+    ``optional=True`` lets per-image assets be missing without raising. This is
+    used for ``footprints/``, since only counting-eligible images have one.
+    """
     source_dir = Path(f"{base_dir}{dataset_type}_{version}/{subdir}")
     dest_dir = Path(f"{base_dir}{dataset_type}{suffix}_{version}/{subdir}")
     os.makedirs(dest_dir, exist_ok=True)
@@ -213,6 +445,8 @@ def copy_packaged_assets_from_full(base_dir, dataset_type, version, filenames, s
         src = source_dir / src_name
         dst = dest_dir / src_name
         if not src.exists():
+            if optional:
+                continue
             raise FileNotFoundError(f"Missing packaged {subdir[:-1]} file: {src}")
         if not dst.exists():
             shutil.copy(src, dst)
@@ -257,6 +491,9 @@ def create_mini_datasets(datasets, base_dir, dataset_type, version):
         mask_name = f"{Path(image).stem}.png"
         mini_mask_destination = f"{base_dir}Mini{dataset_type}_{version}/masks/"
         shutil.copy(f"{base_dir}{dataset_type}_{version}/masks/" + mask_name, mini_mask_destination)
+        footprint_src = f"{base_dir}{dataset_type}_{version}/footprints/" + mask_name
+        if os.path.exists(footprint_src):
+            shutil.copy(footprint_src, f"{base_dir}Mini{dataset_type}_{version}/footprints/")
 
     # Generate visualizations for each source (one image per source to avoid overlaying
     # annotations from multiple images onto a single background image)
@@ -291,6 +528,9 @@ def create_small_datasets(datasets, base_dir, dataset_type, version):
             f"{base_dir}{dataset_type}_{version}/masks/" + mask_name,
             f"{base_dir}Small{dataset_type}_{version}/masks/",
         )
+        footprint_src = f"{base_dir}{dataset_type}_{version}/footprints/" + mask_name
+        if os.path.exists(footprint_src):
+            shutil.copy(footprint_src, f"{base_dir}Small{dataset_type}_{version}/footprints/")
 
     return small_annotations
 
@@ -328,6 +568,10 @@ def process_splits_and_release(TreePolygons_datasets, TreePoints_datasets, TreeB
             )
             os.makedirs(
                 f"{adjusted_base_dir}{prefix}{dataset_type}{suffix}_{version}/masks",
+                exist_ok=True,
+            )
+            os.makedirs(
+                f"{adjusted_base_dir}{prefix}{dataset_type}{suffix}_{version}/footprints",
                 exist_ok=True,
             )
     
@@ -449,11 +693,10 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
     # Assign all polygons to train, points to test, and boxes to test
     TreePolygons_datasets["split"] = "test"
 
-    # Filter which datasets go to polygon tests
-    TreePolygons_datasets = TreePolygons_datasets[TreePolygons_datasets.source.isin([
-        "Troles et al. 2024",
-        "Lefebvre et al. 2024"
-    ])]
+    # Cross-geometry polygon test sources match the polygon zero-shot test set.
+    TreePolygons_datasets = TreePolygons_datasets[
+        TreePolygons_datasets.source.isin(ZEROSHOT_TEST_SOURCES_POLYGONS)
+    ]
     TreePoints_datasets["split"] = "train"
     TreeBoxes_datasets["split"] = "train"
 
@@ -484,38 +727,53 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
     print(f"TreeBoxes: {base_dir}{prefix}TreeBoxes{suffix}_{version}/crossgeometry.csv")
 
 
-# Limit test datasets to 50 images per source (unless existing split column exists)
-def limit_test_images(df, test_sources, max_images=50):
-    """Limit test split to max_images per source, unless existing_split column exists."""
-    # Check if existing_split column exists
-    if "existing_split" in df.columns:
-        # Honor existing splits regardless of size
-        if "test" in df["existing_split"].unique():
-            return df
-        else:
-            pass
-    else:
-        pass
-    
-    # Limit test images per source
+# Limit test datasets to max_images per source (unless existing_split column exists)
+def limit_test_images(df, test_sources, max_images=50, excess_mode="train"):
+    """Limit test split to max_images per source.
+
+    Sources already pinned via an ``existing_split == "test"`` column are honored
+    in full and the cap is skipped.
+
+    excess_mode controls what happens to test images beyond the cap:
+      - "train": demote excess to the train split. Use for random splits, where
+        the held-out source already has rows in train by construction.
+      - "drop":  drop excess rows entirely so they appear in neither split. Use
+        for zero-shot splits, where held-out sources must never leak into train.
+    """
+    if excess_mode not in {"train", "drop"}:
+        raise ValueError(f"excess_mode must be 'train' or 'drop', got {excess_mode!r}")
+
+    if "existing_split" in df.columns and "test" in df["existing_split"].unique():
+        return df
+
     df = df.copy()
-    test_mask = df["split"] == "test"
-    test_data = df[test_mask].copy()
-    
+    test_data = df[df["split"] == "test"]
+
+    drop_indices = []
     for source in test_sources:
         source_test = test_data[test_data["source"] == source]
-        if len(source_test) == 0:
+        if source_test.empty:
             continue
-        
-        # Get unique images for this source
+
         unique_images = source_test["filename"].unique()
-        if len(unique_images) > max_images:
-            # Sample max_images images
-            selected_images = pd.Series(unique_images).sample(n=max_images, random_state=42)
-            # Move excess images to train
-            excess_mask = (df["source"] == source) & (df["split"] == "test") & (~df["filename"].isin(selected_images))
+        if len(unique_images) <= max_images:
+            continue
+
+        selected_images = pd.Series(unique_images).sample(n=max_images, random_state=42)
+        excess_mask = (
+            (df["source"] == source)
+            & (df["split"] == "test")
+            & (~df["filename"].isin(selected_images))
+        )
+
+        if excess_mode == "train":
             df.loc[excess_mask, "split"] = "train"
-    
+        else:
+            drop_indices.extend(df.index[excess_mask].tolist())
+
+    if drop_indices:
+        df = df.drop(index=drop_indices)
+
     return df
         
 # Zero-shot split
@@ -523,13 +781,13 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
                     base_dir, version, suffix="", prefix=""):
     """Perform zero-shot split and save the results."""
     # Define test and train sources
-    test_sources_polygons = ["Troles et al. 2024","Bolhman 2008","Lefebvre et al. 2024","NEON MultiTemporal"]
+    test_sources_polygons = ZEROSHOT_TEST_SOURCES_POLYGONS
     train_sources_polygons = [x for x in TreePolygons_datasets.source.unique() if x not in test_sources_polygons]
 
-    test_sources_points = ["Amirkolaee et al. 2023","NEON_points","NEON MultiTemporal"]
+    test_sources_points = ZEROSHOT_TEST_SOURCES_POINTS
     train_sources_points = [x for x in TreePoints_datasets.source.unique() if x not in test_sources_points]
 
-    test_sources_boxes = ["Radogoshi et al. 2021","SelvaBox","NEON_benchmark","NEON MultiTemporal"]
+    test_sources_boxes = ZEROSHOT_TEST_SOURCES_BOXES
     train_sources_boxes = [x for x in TreeBoxes_datasets.source.unique() if x not in test_sources_boxes]
 
     # Assign splits for polygons
@@ -544,9 +802,17 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     TreeBoxes_datasets.loc[TreeBoxes_datasets.source.isin(train_sources_boxes), "split"] = "train"
     TreeBoxes_datasets.loc[TreeBoxes_datasets.source.isin(test_sources_boxes), "split"] = "test"
 
-    TreePolygons_datasets = limit_test_images(TreePolygons_datasets, test_sources_polygons)
-    TreePoints_datasets = limit_test_images(TreePoints_datasets, test_sources_points)
-    TreeBoxes_datasets = limit_test_images(TreeBoxes_datasets, test_sources_boxes)
+    # Zero-shot: drop excess images instead of demoting to train so held-out
+    # sources never leak into the train split.
+    TreePolygons_datasets = limit_test_images(
+        TreePolygons_datasets, test_sources_polygons, excess_mode="drop"
+    )
+    TreePoints_datasets = limit_test_images(
+        TreePoints_datasets, test_sources_points, excess_mode="drop"
+    )
+    TreeBoxes_datasets = limit_test_images(
+        TreeBoxes_datasets, test_sources_boxes, excess_mode="drop"
+    )
 
     # Remove Feng, unsupervised, and weak supervised from test (shouldn't be there, but filter for safety)
     def remove_feng_and_unsupervised_from_test(df):
@@ -741,6 +1007,12 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     TreePoints_datasets = copy_masks(TreePoints_datasets, base_dir, "TreePoints", mask_source_dir)
     TreePolygons_datasets = copy_masks(TreePolygons_datasets, base_dir, "TreePolygons", mask_source_dir)
 
+    # Counting-metric eval footprints for sources flagged complete=True.
+    # Must run AFTER copy_images so we can read original image dimensions.
+    compute_eval_footprints(TreeBoxes_datasets, base_dir, "TreeBoxes", "box", version)
+    compute_eval_footprints(TreePoints_datasets, base_dir, "TreePoints", "point", version)
+    compute_eval_footprints(TreePolygons_datasets, base_dir, "TreePolygons", "polygon", version)
+
     # change filenames to relative path
     TreeBoxes_datasets["filename"] = TreeBoxes_datasets["filename"].apply(os.path.basename)
     TreePoints_datasets["filename"] = TreePoints_datasets["filename"].apply(os.path.basename)
@@ -810,6 +1082,19 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     )
     copy_packaged_assets_from_full(
         base_dir, "TreePolygons", version, TreePolygons_supervised["filename"], "_supervised", "masks"
+    )
+    # Footprints exist only for counting-eligible images; missing files are expected.
+    copy_packaged_assets_from_full(
+        base_dir, "TreeBoxes", version, TreeBoxes_supervised["filename"],
+        "_supervised", "footprints", optional=True,
+    )
+    copy_packaged_assets_from_full(
+        base_dir, "TreePoints", version, TreePoints_supervised["filename"],
+        "_supervised", "footprints", optional=True,
+    )
+    copy_packaged_assets_from_full(
+        base_dir, "TreePolygons", version, TreePolygons_supervised["filename"],
+        "_supervised", "footprints", optional=True,
     )
 
     # Zip datasets (commented out for large datasets to save space/time)

@@ -2,7 +2,10 @@ from pathlib import Path
 
 from milliontrees.datasets.TreeBoxes import TreeBoxesDataset
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
-from milliontrees.common.metrics.all_metrics import MaskAwareDetectionPrecision
+from milliontrees.common.metrics.all_metrics import (
+    CountingError,
+    MaskAwareDetectionPrecision,
+)
 
 import torch
 import pytest
@@ -242,6 +245,71 @@ def test_maskaware_precision_falls_back_without_tree_mask():
 
     score = metric.compute(pred, gt)[metric.agg_metric_field]
     assert score == pytest.approx(0.5)
+
+
+def test_counting_error_gated_by_eval_footprint():
+    """GT and predictions outside the footprint must not affect the MAE."""
+    metric = CountingError(score_threshold=0.1, geometry_name="y")
+
+    # 3 GT boxes inside footprint, 1 outside. 3 preds inside (perfect), 2 outside (ignored).
+    gt_boxes = torch.tensor([
+        [10., 10., 20., 20.],
+        [15., 25., 25., 35.],
+        [30., 20., 40., 30.],
+        [80., 80., 90., 90.],
+    ])
+    pred_boxes = torch.tensor([
+        [10., 10., 20., 20.],
+        [15., 25., 25., 35.],
+        [30., 20., 40., 30.],
+        [80., 80., 90., 90.],
+        [70., 70., 75., 75.],
+    ])
+    scores = torch.tensor([0.9, 0.9, 0.9, 0.9, 0.9])
+
+    footprint = torch.zeros((100, 100), dtype=torch.uint8)
+    footprint[0:50, 0:50] = 1
+
+    gt = [{"y": gt_boxes, "eval_footprint": footprint}]
+    pred = [{"y": pred_boxes, "scores": scores}]
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(0.0)
+
+
+def test_counting_error_nan_without_footprint_excludes_from_aggregate():
+    """Images without an eval_footprint must not contribute to counting MAE."""
+    metric = CountingError(score_threshold=0.1, geometry_name="y")
+    # Image 0: no footprint -> excluded. Image 1: footprint -> contributes |3 - 2| = 1.
+    footprint = torch.ones((50, 50), dtype=torch.uint8)
+    gt = [
+        {"y": torch.tensor([[1., 1., 5., 5.], [10., 10., 15., 15.]])},
+        {
+            "y": torch.tensor([[1., 1., 5., 5.], [10., 10., 15., 15.],
+                               [20., 20., 25., 25.]]),
+            "eval_footprint": footprint,
+        },
+    ]
+    pred = [
+        {
+            "y": torch.tensor([[1., 1., 5., 5.]]),
+            "scores": torch.tensor([0.9]),
+        },
+        {
+            "y": torch.tensor([[1., 1., 5., 5.], [10., 10., 15., 15.]]),
+            "scores": torch.tensor([0.9, 0.9]),
+        },
+    ]
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(1.0)
+
+
+def test_counting_error_all_missing_footprints_returns_nan():
+    metric = CountingError(score_threshold=0.1, geometry_name="y")
+    gt = [{"y": torch.tensor([[1., 1., 5., 5.]])}]
+    pred = [{"y": torch.tensor([[1., 1., 5., 5.]]), "scores": torch.tensor([0.9])}]
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert np.isnan(score)
 
 
 def test_TreeBoxes_download_url(dataset):

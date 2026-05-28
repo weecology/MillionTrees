@@ -1,6 +1,9 @@
 from milliontrees.datasets.TreePoints import TreePointsDataset
 from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
-from milliontrees.common.metrics.all_metrics import MaskAwareKeypointPrecision
+from milliontrees.common.metrics.all_metrics import (
+    CountingError,
+    MaskAwareKeypointPrecision,
+)
 
 import torch
 import pytest
@@ -175,6 +178,21 @@ def test_maskaware_keypoint_precision_falls_back_without_tree_mask():
 
     score = metric.compute(pred, gt)[metric.agg_metric_field]
     assert score == pytest.approx(0.5)
+
+def test_counting_error_points_gated_by_footprint():
+    metric = CountingError(score_threshold=0.1, geometry_name="y")
+    gt_points = torch.tensor([[10., 10.], [12., 12.], [80., 80.]])
+    pred_points = torch.tensor([[10., 10.], [12., 12.], [80., 80.], [70., 70.]])
+    scores = torch.tensor([0.9, 0.9, 0.9, 0.9])
+    footprint = torch.zeros((100, 100), dtype=torch.uint8)
+    footprint[0:30, 0:30] = 1
+
+    gt = [{"y": gt_points, "eval_footprint": footprint}]
+    pred = [{"y": pred_points, "scores": scores}]
+
+    score = metric.compute(pred, gt)[metric.agg_metric_field]
+    assert score == pytest.approx(0.0)
+
 
 def test_TreePoints_download_url(dataset):
     ds = TreePointsDataset(download=False, root_dir=dataset, version="0.0")
