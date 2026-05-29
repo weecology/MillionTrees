@@ -189,7 +189,14 @@ def main():
     # Build DeepForest model and load pretrained weights
     model = df_main.deepforest(
         config_args={
-            "train": {"epochs": args.max_epochs, "lr": args.lr},
+            # csv_file must be non-None or DeepForest.on_fit_start raises, even
+            # though training uses existing_train_dataloader below and never reads it.
+            "train": {
+                "epochs": args.max_epochs,
+                "lr": args.lr,
+                "csv_file": str(box_dataset._data_dir / f"{args.split_scheme}.csv"),
+                "root_dir": str(box_dataset._data_dir / "images"),
+            },
             "validation": {"root_dir": str(box_dataset._data_dir / "images")},
             "batch_size": args.batch_size,
             "devices": args.gpus,

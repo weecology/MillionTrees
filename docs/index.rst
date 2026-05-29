@@ -18,6 +18,8 @@ There are 3 datasets available for the MillionTrees benchmark (v0.10, 292 GB tot
 
 * TreePoints: 1,219,904 annotations from 33,369 images across 7 sources.
 
+In total, the release contains 3,641,520 annotations across 73,211 images from 32 sources.
+
 There are 3 split_schemes available for the MillionTrees benchmark:
 
 * Random: For each source, 80% of the data is used for training and 20% for testing.

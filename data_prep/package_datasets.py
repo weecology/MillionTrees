@@ -10,6 +10,13 @@ import rasterio
 import glob
 from pathlib import Path
 from shapely.geometry.base import BaseGeometry
+try:
+    from data_prep.packaging_utils import (
+        build_unique_name_map,
+        collect_image_source_pairs,
+    )
+except ImportError:  # when run as a script from inside data_prep/
+    from packaging_utils import build_unique_name_map, collect_image_source_pairs
 import shapely.wkt
 
 # Zero-shot test sources shared between zero_shot_split and cross_geometry_split.
@@ -237,30 +244,62 @@ def create_directories(base_dir, dataset_type):
     os.makedirs(f"{base_dir}Small{dataset_type}_{version}/masks", exist_ok=True)
 
 
+def assign_packaged_filenames(datasets, name_map):
+    """Rename images to a source-unique packaged name (see packaging_utils).
+
+    Image basenames are not unique across sources, which silently mispairs
+    images with the wrong source's tree-coverage mask (and merges annotations
+    across sources). Store the original source path in ``orig_path`` (used to
+    copy the image/mask) and overwrite ``filename`` with the packaged name from
+    ``name_map`` (built from the same CSV union as the mask precompute, so the
+    keys agree). Raises if any image path is missing from the map, or if the
+    result is not unique at the stem level (masks are keyed by stem).
+    """
+    datasets = datasets.copy()
+    datasets["orig_path"] = datasets["filename"]
+    missing = sorted(set(datasets["orig_path"]) - set(name_map))
+    if missing:
+        raise ValueError(
+            f"{len(missing)} image path(s) absent from the packaged name map, "
+            f"e.g. {missing[:3]}. Is the annotation_csvs.cfg union consistent?"
+        )
+    datasets["filename"] = datasets["orig_path"].map(name_map)
+    stems = datasets["filename"].map(lambda f: Path(f).stem)
+    distinct_sources = datasets.assign(_stem=stems).groupby("_stem")["orig_path"].nunique()
+    collisions = distinct_sources[distinct_sources > 1]
+    if len(collisions):
+        raise ValueError(
+            f"Packaged filename collision: {len(collisions)} stem(s) map to >1 "
+            f"source image, e.g. {collisions.index[:5].tolist()}."
+        )
+    return datasets
+
+
 def copy_images(datasets, base_dir, dataset_type):
-    """Copy images to the destination folder."""
-    for image in datasets["filename"].unique():
-        destination = f"{base_dir}{dataset_type}_{version}/images/"
-        if not os.path.exists(os.path.join(destination, os.path.basename(image))):
-            shutil.copy(image, destination)
+    """Copy each source image to the package under its source-unique name."""
+    destination = f"{base_dir}{dataset_type}_{version}/images/"
+    pairs = datasets[["orig_path", "filename"]].drop_duplicates()
+    for orig_path, packaged_name in zip(pairs["orig_path"], pairs["filename"]):
+        dst = os.path.join(destination, packaged_name)
+        if not os.path.exists(dst):
+            shutil.copy(orig_path, dst)
 
 
 def copy_masks(datasets, base_dir, dataset_type, mask_source_dir):
-    """Copy precomputed tree coverage masks to the destination folder.
+    """Copy precomputed tree coverage masks (keyed by the source-unique name).
 
     Returns a filtered dataset with rows removed for any images missing a mask.
     """
     mask_source_dir = Path(mask_source_dir)
+    destination = f"{base_dir}{dataset_type}_{version}/masks/"
     missing_images = set()
-    for image in datasets["filename"].unique():
-        image_basename = os.path.basename(image)
-        mask_name = f"{Path(image_basename).stem}.png"
+    for packaged_name in datasets["filename"].unique():
+        mask_name = f"{Path(packaged_name).stem}.png"
         source_mask = mask_source_dir / mask_name
         if not source_mask.exists():
-            print(f"Warning: Missing tree coverage mask for {image_basename}, removing from dataset.")
-            missing_images.add(image)
+            print(f"Warning: Missing tree coverage mask for {packaged_name}, removing from dataset.")
+            missing_images.add(packaged_name)
             continue
-        destination = f"{base_dir}{dataset_type}_{version}/masks/"
         destination_mask = os.path.join(destination, mask_name)
         if not os.path.exists(destination_mask):
             shutil.copy(source_mask, destination_mask)
@@ -785,6 +824,12 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
         )
     TreeBoxes, TreePoints, TreePolygons = load_annotation_csvs()
 
+    # Build the source-unique packaged-name map from the same CSV union the mask
+    # precompute uses, so image/mask filenames agree between the two scripts.
+    packaged_name_map = build_unique_name_map(
+        collect_image_source_pairs(TreeBoxes + TreePoints + TreePolygons)
+    )
+
     # Combine datasets
     TreeBoxes_datasets = combine_datasets(TreeBoxes, debug=debug)
     TreePoints_datasets = combine_datasets(TreePoints, debug=debug)
@@ -825,6 +870,12 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     # Remove degenerate polygons (those that would create invalid bounding boxes)
     TreePolygons_datasets = filter_degenerate_polygons(TreePolygons_datasets)
 
+    # Assign source-unique packaged filenames (<stem>_<source><ext>) so basenames
+    # don't collide across sources; keeps the original path in 'orig_path' for copy.
+    TreeBoxes_datasets = assign_packaged_filenames(TreeBoxes_datasets, packaged_name_map)
+    TreePoints_datasets = assign_packaged_filenames(TreePoints_datasets, packaged_name_map)
+    TreePolygons_datasets = assign_packaged_filenames(TreePolygons_datasets, packaged_name_map)
+
     # Copy images
     copy_images(TreeBoxes_datasets, base_dir, "TreeBoxes")
     copy_images(TreePoints_datasets, base_dir, "TreePoints")
@@ -833,10 +884,11 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     TreePoints_datasets = copy_masks(TreePoints_datasets, base_dir, "TreePoints", mask_source_dir)
     TreePolygons_datasets = copy_masks(TreePolygons_datasets, base_dir, "TreePolygons", mask_source_dir)
 
-    # change filenames to relative path
-    TreeBoxes_datasets["filename"] = TreeBoxes_datasets["filename"].apply(os.path.basename)
-    TreePoints_datasets["filename"] = TreePoints_datasets["filename"].apply(os.path.basename)
-    TreePolygons_datasets["filename"] = TreePolygons_datasets["filename"].apply(os.path.basename)
+    # 'filename' now holds the packaged basename; drop the source-path helper column
+    # so absolute server paths don't leak into the published CSVs.
+    TreeBoxes_datasets = TreeBoxes_datasets.drop(columns=["orig_path"])
+    TreePoints_datasets = TreePoints_datasets.drop(columns=["orig_path"])
+    TreePolygons_datasets = TreePolygons_datasets.drop(columns=["orig_path"])
 
     create_mini_datasets(TreeBoxes_datasets, base_dir, "TreeBoxes", version)
     create_mini_datasets(TreePoints_datasets, base_dir, "TreePoints", version)
@@ -923,7 +975,7 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.13"
+    version = "v0.16"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     mask_source_dir = "/orange/ewhite/DeepForest/tree_coverage_masks"
     debug = False
