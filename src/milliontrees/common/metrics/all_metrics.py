@@ -1422,8 +1422,8 @@ class CountingError(ElementwiseMetric):
     Counting MAE is only meaningful when annotations are exhaustive — partially-annotated images
     artificially inflate the per-image error. The metric therefore only contributes a value for
     images whose target dict carries ``complete=True`` (set per-source from
-    ``data_prep/source_completeness.csv``). Other images yield NaN and are dropped from
-    aggregation, so ``counting_mae`` is computed only over fully-annotated sources.
+    ``data_prep/source_completeness.csv``). Other images yield NaN and are dropped from aggregation,
+    so ``counting_mae`` is computed only over fully-annotated sources.
     """
 
     def __init__(self,

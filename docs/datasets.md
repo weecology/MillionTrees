@@ -382,6 +382,8 @@ Both crowns and points are available.
 
 ## Hickman et al. 2021
 
+![sample_image](public/Hickman_et_al._2021.png)
+
 **Link:** [https://zenodo.org/records/5515408](https://zenodo.org/records/5515408)
 
 **Location:** Sabah, Malaysia

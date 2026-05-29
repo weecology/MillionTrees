@@ -11,6 +11,15 @@ The MillionTrees benchmark is designed to provide *open*, *reproducible*, and *r
 
 We have released a beta version of *public* data, these are datasets that have previously been published and have a DOI. We will followup this release, likely with a 1.0 tag, of the previously unpublished parts of the dataset along with a scientific manuscript.
 
+The current release (v0.10) contains **3,641,520 annotations** across **73,211 images** from **32 sources**, totaling **292 GB**:
+
+| Dataset | Annotations | Images | Sources | Size |
+|---------|-------------|--------|---------|------|
+| TreeBoxes | 1,615,798 | 19,894 | 10 | 39.97 GB |
+| TreePolygons | 805,818 | 19,948 | 15 | 98.80 GB |
+| TreePoints | 1,219,904 | 33,369 | 7 | 153.41 GB |
+| **Total** | **3,641,520** | **73,211** | **32** | **292 GB** |
+
 📊 **Current Dataset Status**: See our comprehensive [Dataset Release Report](https://milliontrees.idtrees.org/en/latest/dataset_release_report.html) for up-to-date information on dataset versions, sizes, and download links.
 
 

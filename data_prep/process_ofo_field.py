@@ -123,7 +123,10 @@ def load_field_trees(path: str,
         if 'predicted_overstory' in gdf.columns:
             mask = gdf['predicted_overstory'].astype('boolean').fillna(False)
             if 'ohvis' in gdf.columns:
-                mask = mask | gdf['ohvis'].astype('boolean').fillna(False)
+                # ohvis is a numeric code (1 == overhead-visible); other codes
+                # (e.g. stray 7.0) and NaN are not "explicitly visible".
+                ohvis_visible = (gdf['ohvis'] == 1).fillna(False)
+                mask = mask | ohvis_visible
             gdf = gdf[mask].copy()
         else:
             print("Warning: 'predicted_overstory' missing; skipping overstory filter")
@@ -155,7 +158,9 @@ def tile_mission(
 
     arr[np.isnan(arr)] = 0
     arr3 = arr[:3, :, :].astype(np.uint8)
-    profile.update(count=3, dtype=rio.uint8, nodata=0)
+    # BIGTIFF=IF_SAFER lets large orthos (>4 GB uncompressed) write as BigTIFF
+    # while keeping small ones as classic TIFF.
+    profile.update(count=3, dtype=rio.uint8, nodata=0, BIGTIFF='IF_SAFER')
 
     out_ortho = os.path.join(os.path.dirname(orthomosaic_path),
                              f"{mission_id}_ortho.tif")
@@ -174,6 +179,27 @@ def tile_mission(
         keep_cols.append('withhold_from_training')
     df_for_split = mission_trees[keep_cols].copy()
     df_for_split = read_file(df_for_split, root_dir=os.path.dirname(out_ortho))
+
+    height, width = arr3.shape[1], arr3.shape[2]
+    if height < patch_size or width < patch_size:
+        print(f"  {mission_id}: ortho {width}x{height} smaller than patch_size"
+              f" {patch_size}, skipping")
+        return None
+
+    # read_file projects points into ortho-pixel coordinates; drop any field
+    # trees that fall outside the downloaded orthomosaic footprint. They cannot
+    # appear on any tile and would otherwise trip split_raster's bounds check.
+    px = df_for_split.geometry.x
+    py = df_for_split.geometry.y
+    in_bounds = (px >= 0) & (px < width) & (py >= 0) & (py < height)
+    n_out = int((~in_bounds).sum())
+    if n_out:
+        print(f"  {mission_id}: dropping {n_out}/{len(df_for_split)} trees"
+              " outside ortho extent")
+    df_for_split = df_for_split[in_bounds].copy()
+    if df_for_split.empty:
+        print(f"  {mission_id}: no trees within ortho extent, skipping")
+        return None
 
     points_tiled = preprocess.split_raster(
         df_for_split,
@@ -262,14 +288,24 @@ def run(
     print(f"Processing {len(mission_ids)} missions: {mission_ids}")
 
     tiled_records: List[pd.DataFrame] = []
+    failed_missions: List[str] = []
     for mid in mission_ids:
         ortho_path = download_mission_orthomosaic(mid, ofo_root)
         if ortho_path is None:
             continue
-        tiled = tile_mission(mid, ortho_path, field_trees, images_dir,
-                             patch_size=patch_size)
+        try:
+            tiled = tile_mission(mid, ortho_path, field_trees, images_dir,
+                                 patch_size=patch_size)
+        except Exception as e:  # noqa: BLE001 - keep going so one bad mission
+            print(f"  ERROR tiling mission {mid}: {e}")
+            failed_missions.append(mid)
+            continue
         if tiled is not None:
             tiled_records.append(tiled)
+
+    if failed_missions:
+        print(f"Skipped {len(failed_missions)} missions due to errors:"
+              f" {failed_missions}")
 
     if not tiled_records:
         raise RuntimeError(
