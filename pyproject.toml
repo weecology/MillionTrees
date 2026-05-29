@@ -65,7 +65,7 @@ dev = [
     "outdated",
     "build",
     "twine",
-    "deepforest",
+    "deepforest @ git+https://github.com/weecology/DeepForest.git@main",
     "geopandas",
     "rasterio",
     "scikit-image",
