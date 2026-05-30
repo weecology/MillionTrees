@@ -42,6 +42,20 @@ class TreePointsDataset(MillionTreesDataset):
         This dataset is distributed under Creative Commons Attribution License
     """
 
+    # Ground sample distance (meters/pixel) for each source at native resolution.
+    # Used to compute a physically-meaningful matching threshold at eval time.
+    # Sources not listed here fall back to the dataset-level distance_threshold.
+    SOURCE_GSD = {
+        'Amirkolaee et al. 2023': 0.20,
+        'Beery et al. 2022': 0.05,
+        'Chen & Shang (2022)': 0.12,
+        'Dubrovin et al. 2024': 0.07,
+        'NEON MultiTemporal': 0.10,
+        'NEON_points': 0.10,
+        'Ventura et al. 2022': 0.60,
+        'Young et al. 2025 unsupervised': 0.10,
+    }
+
     _dataset_name = 'TreePoints'
     _versions_dict = {
         '0.0': {
@@ -81,7 +95,9 @@ class TreePointsDataset(MillionTreesDataset):
                  small=False,
                  image_size=448,
                  verbose=True,
-                 include_unsupervised=False):
+                 include_unsupervised=False,
+                 eval_score_threshold=0.4,
+                 real_world_threshold_m=3.0):
 
         if mini and small:
             raise ValueError(
@@ -90,6 +106,8 @@ class TreePointsDataset(MillionTreesDataset):
         self._version = version
         self._split_scheme = split_scheme
         self.geometry_name = geometry_name
+        self.eval_score_threshold = eval_score_threshold
+        self.real_world_threshold_m = real_world_threshold_m
         self.distance_threshold = distance_threshold
         self.mini = mini
         self.small = small
@@ -238,12 +256,14 @@ class TreePointsDataset(MillionTreesDataset):
                 KeypointAccuracy(
                     distance_threshold=distance_threshold,
                     image_size=self.image_size,
+                    score_threshold=self.eval_score_threshold,
                 ),
             "maskaware_precision":
                 MaskAwareKeypointPrecision(
                     distance_threshold=distance_threshold,
                     image_size=self.image_size,
                     geometry_name=self.geometry_name,
+                    score_threshold=self.eval_score_threshold,
                 ),
             "counting_mae":
                 CountingError(geometry_name=self.geometry_name,),
@@ -252,8 +272,12 @@ class TreePointsDataset(MillionTreesDataset):
                     distance_threshold=distance_threshold,
                     image_size=self.image_size,
                     geometry_name=self.geometry_name,
+                    score_threshold=self.eval_score_threshold,
                 ),
         }
+
+        # Per-source normalized distance thresholds derived from GSD and real_world_threshold_m.
+        self._source_thresholds = self._compute_source_thresholds()
 
         self._collate = TreePointsDataset._collate_fn
 
@@ -298,6 +322,32 @@ class TreePointsDataset(MillionTreesDataset):
         indices = self._input_lookup[filename]
         return self._y_array[indices]
 
+    def _compute_source_thresholds(self):
+        """Return a dict mapping source name → normalized distance threshold.
+
+        For sources in SOURCE_GSD the threshold is derived from real_world_threshold_m
+        and the native image resolution:  threshold = real_world_m / (gsd * orig_px_size).
+        Sources without a known GSD fall back to self.distance_threshold.
+        """
+        thresholds = {}
+        images_dir = self._data_dir / 'images'
+        for source_name in self.df['source'].unique():
+            gsd = self.SOURCE_GSD.get(source_name)
+            if gsd is None:
+                thresholds[source_name] = self.distance_threshold
+                continue
+            fname = self.df[self.df['source'] ==
+                            source_name]['filename'].iloc[0]
+            try:
+                img = Image.open(images_dir / fname)
+                orig_size = img.size[0]  # assume square crops
+            except Exception:
+                thresholds[source_name] = self.distance_threshold
+                continue
+            thresholds[source_name] = self.real_world_threshold_m / (gsd *
+                                                                     orig_size)
+        return thresholds
+
     def eval(self,
              y_pred,
              y_true,
@@ -305,33 +355,64 @@ class TreePointsDataset(MillionTreesDataset):
              *,
              viz_dir=None,
              viz_n_per_source=4):
-        """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
-        detection accuracies of each domain.
+        """Evaluate predictions.
 
-        Optional ``viz_dir`` / ``viz_n_per_source`` write qualitative overlays (see TreeBoxes.eval).
+        KeypointAccuracy (recall) uses a per-source distance threshold derived from each source's
+        GSD so that the matching radius is always ``real_world_threshold_m`` metres regardless of
+        image resolution. All other metrics use the dataset-level ``distance_threshold``.
+
+        Optional ``viz_dir`` / ``viz_n_per_source`` write qualitative overlays.
         """
         results = {}
         results_str = ''
-        for metric in self.metrics:
-            result, result_str = self.standard_group_eval(
-                self.metrics[metric], self._eval_grouper, y_pred, y_true,
-                metadata)
-            results[metric] = result
-            results_str += result_str
 
-        # Compute average keypoint accuracy across sources (domains)
+        # --- KeypointAccuracy with per-source GSD-aware thresholds ---
+        g = self._eval_grouper.metadata_to_group(metadata)
+        kp_results = {}
         kp_accs = []
-        kp_results = results.get("KeypointAccuracy", {})
-        for k, v in kp_results.items():
-            if k.startswith('keypoint_acc_source:'):
-                d = k.split(':')[1]
-                count = kp_results.get(f'count_source:{d}', 0)
-                if count > 0:
-                    kp_accs.append(v)
-        if len(kp_accs) > 0:
-            keypoint_acc_avg_dom = np.array(kp_accs).mean()
-            results['keypoint_acc_avg_dom'] = keypoint_acc_avg_dom
-            results_str = f'Average keypoint_acc across source: {keypoint_acc_avg_dom:.3f}\n' + results_str
+        kp_results_str = ''
+        for source_id in range(self._n_groups):
+            indices = (g == source_id).nonzero(as_tuple=True)[0].tolist()
+            kp_results[f'count_source:{source_id}'] = len(indices)
+            if not indices:
+                continue
+            source_name = self._source_id_to_code[source_id]
+            threshold = self._source_thresholds.get(source_name,
+                                                    self.distance_threshold)
+            metric = KeypointAccuracy(
+                distance_threshold=threshold,
+                image_size=self.image_size,
+                score_threshold=self.eval_score_threshold,
+            )
+            y_pred_src = [y_pred[i] for i in indices]
+            y_true_src = [y_true[i] for i in indices]
+            result = metric.compute(y_pred_src, y_true_src)
+            acc = float(result[metric.agg_metric_field])
+            kp_results[f'keypoint_acc_source:{source_id}'] = acc
+            kp_accs.append(acc)
+            kp_results_str += (
+                f'  source:{source_id}  [{source_name}]'
+                f'  [n = {len(indices):6d}]'
+                f'  [threshold = {threshold:.4f} ({self.real_world_threshold_m:.1f} m)]:'
+                f'\tkeypoint_acc = {acc:.3f}\n')
+
+        if kp_accs:
+            kp_results['worst_group_keypoint_acc'] = float(min(kp_accs))
+            avg = float(np.mean(kp_accs))
+            results['keypoint_acc_avg_dom'] = avg
+            results_str += f'Average keypoint_acc across source: {avg:.3f}\n'
+            results_str += f'Worst-group keypoint_acc: {min(kp_accs):.3f}\n'
+            results_str += kp_results_str
+        results['KeypointAccuracy'] = kp_results
+
+        # --- All other metrics via standard_group_eval ---
+        for metric_name in ('maskaware_precision', 'counting_mae',
+                            'merge_commission'):
+            result, result_str = self.standard_group_eval(
+                self.metrics[metric_name], self._eval_grouper, y_pred, y_true,
+                metadata)
+            results[metric_name] = result
+            results_str += result_str
 
         # Format results with tables
         formatted_results = format_eval_results(results, self)
@@ -345,8 +426,7 @@ class TreePointsDataset(MillionTreesDataset):
                 metadata,
                 viz_dir,
                 n_per_source=viz_n_per_source,
-                score_threshold=self.metrics["KeypointAccuracy"].
-                score_threshold,
+                score_threshold=self.eval_score_threshold,
             )
             results["eval_visualization_paths"] = [str(p) for p in paths]
 
