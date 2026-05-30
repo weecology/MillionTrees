@@ -602,7 +602,7 @@ class MaskAwareDetectionPrecision(ElementwiseMetric):
 
 
 class KeypointAccuracy(ElementwiseMetric):
-    """Keypoint accuracy for a one-class detector.
+    """Keypoint recall for a one-class detector: tp / (tp + fn).
 
     The ``distance_threshold`` is interpreted as a **normalized** distance with
     respect to the image size rather than raw pixels. For a square image of
@@ -657,9 +657,8 @@ class KeypointAccuracy(ElementwiseMetric):
             pixel_threshold = self.distance_threshold * float(self.image_size)
             gt_to_pred = greedy_distance_match(distance_matrix, pixel_threshold)
             tp = n_matched_gt(gt_to_pred)
-            fp = float(total_pred) - float(tp)
             fn = float(total_gt) - float(tp)
-            return torch.tensor(float(tp / (tp + fp + fn)))
+            return torch.tensor(float(tp / (tp + fn)))
         elif total_gt == 0:
             if total_pred > 0:
                 return torch.round(torch.tensor(0.), decimals=3)
