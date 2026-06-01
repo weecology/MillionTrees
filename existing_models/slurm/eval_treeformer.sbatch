@@ -19,7 +19,7 @@ OUT_BASE=$REPO/existing_models/treeformer/outputs/$SPLIT
 
 cd $REPO/existing_models/treeformer
 
-echo "=== TreeFormer eval: split=$SPLIT ==="
+echo "=== TreeFormer pretrained baseline (no MT training): split=$SPLIT ==="
 
 uv run python eval_points.py \
   --root-dir "$ROOT_DIR" \

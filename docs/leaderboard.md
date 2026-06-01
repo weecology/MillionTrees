@@ -4,7 +4,10 @@
 
 ## Zero-shot
 
-The first task is to create a zero-shot detection system to generalize across geography and acquisition conditions. Selected datasets are held out from training completely and used for evaluation in new conditions. This is a challenging task with no local training data.
+The first task evaluates generalization across geography and acquisition conditions.
+Selected source datasets are held out from the train split; models are fine-tuned on
+the remaining sources and evaluated on the held-out test sources (no images from test
+localities appear in train).
 
 ## Random
 
@@ -45,7 +48,11 @@ branch until merged to main).
 | TreeFormer | ✓ | pending | pending | <small>`uv run --extra treeformer python training/points/train_treeformer.py --split-scheme random`</small> |
 | DeepForest (legacy pseudo-box) | ✓ | 35.189 | 0.505 | <small>`uv run python training/points/train_points.py --split-scheme random`</small> |
 
-### Zero-shot
+### Zeroshot split
+
+Models with Fine-tuned ✓ train on the zeroshot **train** split (non-held-out sources)
+and are scored on geographically held-out **test** sources. Fine-tuned ✗ rows use a
+released checkpoint with no MillionTrees training at all.
 
 | Model | Fine-tuned | Counting MAE | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|

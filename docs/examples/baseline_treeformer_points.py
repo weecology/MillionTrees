@@ -1,4 +1,8 @@
-"""Zero-shot TreeFormer (DeepForest point model) on MillionTrees TreePoints.
+"""Pretrained TreeFormer on MillionTrees TreePoints (no MillionTrees fine-tuning).
+
+Evaluates the released checkpoint on a split's test set. For the zeroshot split,
+sources in train are never seen at test time, but this script does not train on
+them — use ``train_treeformer.py`` for split fine-tuning (leaderboard Fine-tuned ✓).
 
 Requires ``uv sync --extra treeformer`` (DeepForest treeformer-training branch).
 """
@@ -19,7 +23,10 @@ from training.points.train_treeformer import predict_batch
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Pretrained TreeFormer on TreePoints (native point predictions)."
+        description=(
+            "Pretrained TreeFormer on TreePoints test split (no MillionTrees training). "
+            "Use train_treeformer.py to fine-tune on the split train set."
+        )
     )
     parser.add_argument("--root-dir", type=str,
                         default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
