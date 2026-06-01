@@ -80,6 +80,11 @@ dev = [
     "opencv-python",
     "comet-ml",
 ]
+# TreeFormer point training (DeepForest treeformer-training branch until merged to main).
+treeformer = [
+    "deepforest @ git+https://github.com/jveitchmichaelis/DeepForest.git@treeformer-training",
+    "geopandas",
+]
 docs = [
     "sphinx",
     "furo",

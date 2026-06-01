@@ -1,0 +1,31 @@
+#!/bin/bash
+#SBATCH --job-name=mt_eval_treeformer
+#SBATCH --output=/home/b.weinstein/logs/%x_%A_%a.out
+#SBATCH --error=/home/b.weinstein/logs/%x_%A_%a.err
+#SBATCH --array=0-1
+#SBATCH --time=12:00:00
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+#SBATCH --partition=hpg-turin
+#SBATCH --gpus=1
+
+set -euo pipefail
+
+REPO=/blue/ewhite/b.weinstein/src/MillionTrees
+ROOT_DIR=${MT_ROOT:-/orange/ewhite/web/public/MillionTrees}
+SPLITS=(random zeroshot)
+SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
+OUT_BASE=$REPO/existing_models/treeformer/outputs/$SPLIT
+
+cd $REPO/existing_models/treeformer
+
+echo "=== TreeFormer eval: split=$SPLIT ==="
+
+uv run python eval_points.py \
+  --root-dir "$ROOT_DIR" \
+  --split-scheme "$SPLIT" \
+  --batch-size 8 \
+  --num-workers 4 \
+  --output-dir "$OUT_BASE"
+
+echo "=== TreeFormer eval done. Results in $OUT_BASE ==="

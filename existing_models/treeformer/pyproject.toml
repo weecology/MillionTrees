@@ -1,0 +1,14 @@
+[project]
+name = "milliontrees-treeformer"
+version = "0.1.0"
+description = "TreeFormer (DeepForest point) evaluation on MillionTrees"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "milliontrees",
+    "deepforest",
+    "matplotlib",
+]
+
+[tool.uv.sources]
+milliontrees = { path = "../..", editable = true }
+deepforest = { git = "https://github.com/jveitchmichaelis/DeepForest", branch = "treeformer-training" }
