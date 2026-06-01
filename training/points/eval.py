@@ -9,7 +9,7 @@ import torch
 from deepforest import main as df_main
 
 from milliontrees import get_dataset
-from training.points.train_treeformer import evaluate
+from training.points.train import evaluate
 
 
 def main():

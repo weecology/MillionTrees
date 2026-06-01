@@ -180,7 +180,7 @@ Follow the docs/contributing.md for adding new datasets.
 
 # Update the leaderboard
 
-For reproducible update to the leaderboard, run all the scripts in docs/examples. For SLURM systems, a wrapper function is available in slurm/submit_all.sh
+For a reproducible leaderboard update, run the fine-tuned models in `training/` and the pretrained baselines in `existing_models/` (see `docs/repository_structure.md`). For SLURM systems, `slurm/submit_all.sh` launches both, then `scripts/make_benchmark_table.py` regenerates the tables.
 The logs are available in /logs and will report the performance of each model. Update the leaderboard with the top-level metrics.
 
 ## SLURM Workflow

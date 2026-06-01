@@ -31,7 +31,7 @@ OUT_COCO="training/weak_supervision/outputs/eval_current/polygon_coco/$SPLIT"
 mkdir -p "$OUT_BOX" "$OUT_COCO"
 
 echo "=== Eval box_pretrained ($SPLIT) ==="
-uv run python training/polygons/eval_checkpoint.py \
+uv run python training/polygons/eval.py \
   --checkpoint "${BOX_CKPTS[$SPLIT]}" \
   --root-dir /orange/ewhite/web/public/MillionTrees \
   --split-scheme "$SPLIT" \
@@ -43,7 +43,7 @@ uv run python training/polygons/eval_checkpoint.py \
   --output-dir "$OUT_BOX"
 
 echo "=== Eval coco ($SPLIT) ==="
-uv run python training/polygons/eval_checkpoint.py \
+uv run python training/polygons/eval.py \
   --checkpoint "${COCO_CKPTS[$SPLIT]}" \
   --root-dir /orange/ewhite/web/public/MillionTrees \
   --split-scheme "$SPLIT" \

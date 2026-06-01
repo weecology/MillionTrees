@@ -19,26 +19,12 @@ OUT_BASE=$REPO/existing_models/deepforest/outputs/$SPLIT
 
 cd $REPO/existing_models/deepforest
 
-echo "=== DeepForest eval: split=$SPLIT ==="
+echo "=== DeepForest pretrained eval (boxes): split=$SPLIT ==="
 
 uv run python eval_boxes.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --batch-size 12 \
-  --num-workers 4 \
-  --output-dir "$OUT_BASE"
-
-uv run python eval_points.py \
-  --root-dir "$ROOT_DIR" \
-  --split-scheme "$SPLIT" \
-  --batch-size 32 \
-  --num-workers 4 \
-  --output-dir "$OUT_BASE"
-
-uv run python eval_polygons.py \
-  --root-dir "$ROOT_DIR" \
-  --split-scheme "$SPLIT" \
-  --batch-size 32 \
   --num-workers 4 \
   --output-dir "$OUT_BASE"
 

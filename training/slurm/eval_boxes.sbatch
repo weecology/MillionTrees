@@ -25,7 +25,7 @@ CKPT_VER=${CKPT_VERSIONS[$SLURM_ARRAY_TASK_ID]}
 
 CKPT="training/boxes/outputs/${SPLIT}/checkpoints/boxes-best-${CKPT_VER}.ckpt"
 
-srun uv run python training/boxes/eval_checkpoint.py \
+srun uv run python training/boxes/eval.py \
   --checkpoint "$CKPT" \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \

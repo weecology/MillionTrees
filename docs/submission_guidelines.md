@@ -33,7 +33,7 @@ These submissions will be differentiated from standard submissions in our leader
 Submitting to the leaderboard consists of two steps: first, uploading your predictions in .csv format, and second, filling up our submission form.
 
 ## Submission formatting
-Please submit your predictions in .csv format. The example scripts in `docs/examples/` will automatically train models and save their predictions in the right format; see the Get Started page for information on how to use these scripts.
+Please submit your predictions in .csv format. The scripts in `training/` (fine-tuned models) and `existing_models/` (pretrained baselines) save their predictions in the right format; see the [Models and repository structure](repository_structure.md) page for how they are organized.
 
 If you are not using the example scripts, see the [evaluation docs](evaluation.md) for details on the expected prediction format.
 

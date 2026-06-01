@@ -43,7 +43,7 @@ The evaluation returns a dictionary of metrics and a formatted string with per-s
 
 ## TreePolygons train / checkpoint eval
 
-Polygon training and `eval_checkpoint.py` use **`--eval-mode stream`** by default: metrics are updated each batch instead of building full `y_pred` / `y_true` lists (much lower peak RAM on large test splits). Metrics match **`--eval-mode legacy`**, which keeps the old “accumulate everything, then `dataset.eval()`” flow.
+Polygon training and `training/polygons/eval.py` use **`--eval-mode stream`** by default: metrics are updated each batch instead of building full `y_pred` / `y_true` lists (much lower peak RAM on large test splits). Metrics match **`--eval-mode legacy`**, which keeps the old “accumulate everything, then `dataset.eval()`” flow.
 
 For custom scripts, the pattern above (lists + `dataset.eval()`) is unchanged.
 
@@ -87,12 +87,12 @@ The script uses **`include_unsupervised=True`** so a local tree layout such as `
 
 If your model outputs instance masks (for example, a segmentation model such as DeepTrees), use the adapter example:
 
-`docs/examples/external_segmentation_adapter.py`
+`existing_models/external_segmentation_adapter.py`
 
 Run a full smoke test without any external dependency:
 
 ```bash
-python docs/examples/external_segmentation_adapter.py \
+python existing_models/external_segmentation_adapter.py \
   --mini --download --mock --root-dir onboarding_data
 ```
 
@@ -105,7 +105,7 @@ The adapter function `adapt_segmentation_prediction(...)` handles conversion to 
 
 ## TreeBoxes
 
-The following can be recreated in the git repo: https://github.com/weecology/MillionTrees/blob/main/docs/examples/baseline_boxes.py
+The following can be recreated in the git repo: https://github.com/weecology/MillionTrees/blob/main/existing_models/deepforest/eval_boxes.py
 
 ### Accuracy
 

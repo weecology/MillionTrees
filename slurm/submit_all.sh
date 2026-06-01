@@ -1,27 +1,21 @@
 #!/usr/bin/env bash
+# Launch the full MillionTrees leaderboard for a new dataset version:
+#   1. fine-tuned models (training/) on the train splits
+#   2. pretrained existing_models/ on the test splits
+#
+# After all jobs finish, regenerate the leaderboard tables with:
+#   uv run python scripts/make_benchmark_table.py --splits random zeroshot
+#
+# For a dependency-chained version that also auto-builds the table, use
+# slurm/run_benchmark.sbatch instead.
 set -euo pipefail
 
 cd /blue/ewhite/b.weinstein/src/MillionTrees
-mkdir -p logs/slurm
-# Create a per-run log directory and point 'latest' to it
-RUN_ID="$(date +%Y%m%d-%H%M%S)"
-RUN_DIR="logs/slurm/${RUN_ID}"
-mkdir -p "${RUN_DIR}"
-ln -sfn "${RUN_ID}" logs/slurm/latest
 
-SCRIPTS=(
-  slurm/df_points.sbatch
-  slurm/df_treeformer_points.sbatch
-  slurm/df_boxes.sbatch
-  slurm/df_polygons.sbatch
-  slurm/sam3_points.sbatch
-  slurm/sam3_boxes.sbatch
-  slurm/sam3_polygons.sbatch
-)
+echo "=== Submitting fine-tuned training jobs ==="
+bash training/slurm/submit_all_training.sh
 
-for s in "${SCRIPTS[@]}"; do
-  echo "Submitting: $s -> ${RUN_DIR}"
-  sbatch --output "${RUN_DIR}/%x_%A_%a.out" --error "${RUN_DIR}/%x_%A_%a.err" "$s"
-done
+echo "=== Submitting pretrained existing-model eval jobs ==="
+bash existing_models/slurm/submit_all_eval.sh
 
-
+echo "All jobs submitted. Monitor with: squeue -u \$USER"
