@@ -1,4 +1,8 @@
-"""Evaluate pretrained TreeFormer on MillionTrees TreePoints (zero-shot)."""
+"""Evaluate pretrained TreeFormer on MillionTrees TreePoints.
+
+Inference-only baseline (no training on MillionTrees). For zeroshot or random
+splits, pass ``--split-scheme`` to select which held-out test sources to score.
+"""
 
 import argparse
 import json

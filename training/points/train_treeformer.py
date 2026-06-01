@@ -1,5 +1,10 @@
 """Fine-tune DeepForest TreeFormer on MillionTrees TreePoints.
 
+Trains on the MillionTrees train split and evaluates on test. Use
+``--split-scheme random`` or ``--split-scheme zeroshot`` (zeroshot holds out
+entire source datasets from train, but fine-tuning still runs on the remaining
+sources).
+
 Uses the point-detection stack from the DeepForest ``treeformer-training`` branch
 (https://github.com/jveitchmichaelis/DeepForest/tree/treeformer-training).
 Install with ``uv sync --extra treeformer`` until this lands on weecology/DeepForest main.
