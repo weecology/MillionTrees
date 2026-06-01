@@ -42,10 +42,15 @@ def parse_metrics(text: str) -> Dict[str, float]:
 
 
 def find_training_results(split: str) -> List[Dict]:
-    """Discover training result files for a given split."""
+    """Discover fine-tuned training result files for a given split."""
     entries = []
-    for task_dir, task_name in [("boxes", "TreeBoxes"), ("points", "TreePoints"),
-                                  ("polygons", "TreePolygons")]:
+    # (output subdir, task name, fine-tuned model name)
+    training_models = [
+        ("boxes", "TreeBoxes", "DeepForest-finetuned"),
+        ("points", "TreePoints", "TreeFormer-finetuned"),
+        ("polygons", "TreePolygons", "MaskRCNN-finetuned"),
+    ]
+    for task_dir, task_name, model_name in training_models:
         path = os.path.join(ROOT, "training", task_dir, "outputs", split,
                             f"results_{split}.txt")
         if os.path.isfile(path):
@@ -54,7 +59,7 @@ def find_training_results(split: str) -> List[Dict]:
             metrics = parse_metrics(text)
             if metrics:
                 entries.append({
-                    "model": "DeepForest-finetuned",
+                    "model": model_name,
                     "task": task_name,
                     "split": split,
                     "metrics": metrics,
@@ -66,17 +71,20 @@ def find_training_results(split: str) -> List[Dict]:
 def find_existing_model_results(split: str) -> List[Dict]:
     """Discover existing-model result files for a given split."""
     entries = []
-    model_dirs = {
-        "deepforest": "DeepForest-pretrained",
-        "sam3": "SAM3",
-    }
     task_map = {
         "boxes": "TreeBoxes",
         "points": "TreePoints",
         "polygons": "TreePolygons",
     }
-    for model_dir, model_name in model_dirs.items():
-        for task_key, task_name in task_map.items():
+    # Each pretrained model only competes on the geometries it natively predicts.
+    model_tasks = {
+        ("deepforest", "DeepForest-pretrained"): ["boxes"],
+        ("treeformer", "TreeFormer-pretrained"): ["points"],
+        ("sam3", "SAM3"): ["boxes", "points", "polygons"],
+    }
+    for (model_dir, model_name), task_keys in model_tasks.items():
+        for task_key in task_keys:
+            task_name = task_map[task_key]
             path = os.path.join(ROOT, "existing_models", model_dir, "outputs", split,
                                 f"results_{task_key}_{split}.txt")
             if os.path.isfile(path):

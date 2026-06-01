@@ -1,0 +1,85 @@
+# Models and repository structure
+
+Every leaderboard number is produced by a script in one of two top-level folders.
+The split is deliberate and maps directly onto the **Fine-tuned** column of the
+[leaderboard](leaderboard.md):
+
+| Folder | Purpose | Leaderboard column | Data used |
+|---|---|---|---|
+| `training/` | Models **trained** on the MillionTrees train split, then evaluated on the test split | Fine-tuned ✓ | train + test |
+| `existing_models/` | **Pretrained** released weights evaluated against the MillionTrees test split | Fine-tuned ✗ | test only |
+
+There are no model scripts in `docs/examples/`. If you are looking for a runnable
+template, see `existing_models/external_segmentation_adapter.py`.
+
+## `training/` — fine-tuned models (✓)
+
+One folder per geometry, each with the same two entry points:
+
+| Geometry | Model | Train | Evaluate a checkpoint |
+|---|---|---|---|
+| `training/boxes/` | DeepForest (RetinaNet) | `train.py` | `eval.py` |
+| `training/points/` | TreeFormer | `train.py` | `eval.py` |
+| `training/polygons/` | Mask R-CNN | `train.py` | `eval.py` |
+
+Common usage (works for `random` and `zeroshot` split schemes):
+
+```bash
+uv run python training/boxes/train.py --split-scheme random --root-dir "$MT_ROOT"
+```
+
+The point model needs the TreeFormer extra (DeepForest
+[`treeformer-training`](https://github.com/jveitchmichaelis/DeepForest/tree/treeformer-training)
+branch until it merges to weecology main):
+
+```bash
+uv sync --extra treeformer
+uv run --extra treeformer python training/points/train.py --split-scheme random
+```
+
+Each run writes `training/<geometry>/outputs/<split>/results_<split>.txt` (+ `.json`),
+which `scripts/make_benchmark_table.py` reads to regenerate the leaderboard tables.
+
+## `existing_models/` — pretrained baselines (✗)
+
+One folder per model, each containing `eval_<geometry>.py` for the geometries that
+model natively predicts. Each model folder has its own `pyproject.toml` so its
+dependencies stay isolated from the core package.
+
+| Model | Folder | Geometries |
+|---|---|---|
+| DeepForest | `existing_models/deepforest/` | boxes |
+| TreeFormer | `existing_models/treeformer/` | points |
+| SAM3 | `existing_models/sam3/` | boxes, points, polygons |
+
+```bash
+uv run python existing_models/deepforest/eval_boxes.py --split-scheme zeroshot --root-dir "$MT_ROOT"
+```
+
+Results are written to `existing_models/<model>/outputs/<split>/results_<geometry>_<split>.txt`.
+
+`existing_models/external_segmentation_adapter.py` is a template showing how to convert
+an arbitrary external model's outputs into the MillionTrees evaluation format; copy it as
+the starting point for a new `existing_models/<your_model>/` entry.
+
+## Reproducing the leaderboard for a new dataset version
+
+SLURM launchers fan out over geometry × split. To launch everything after packaging a
+new dataset version:
+
+```bash
+# 1. fine-tuned training jobs + pretrained eval jobs
+bash slurm/submit_all.sh
+
+# 2. once all jobs finish, regenerate the tables
+uv run python scripts/make_benchmark_table.py --splits random zeroshot
+```
+
+`slurm/submit_all.sh` simply calls the two per-folder launchers, which you can also run
+independently:
+
+- `training/slurm/submit_all_training.sh` → `train_boxes.sbatch`, `train_points.sbatch`, `train_polygons.sbatch`
+- `existing_models/slurm/submit_all_eval.sh` → `eval_deepforest.sbatch`, `eval_treeformer.sbatch`, `eval_sam3.sbatch`
+
+For a dependency-chained run that automatically rebuilds the table once every job
+finishes, use `slurm/run_benchmark.sbatch` instead.

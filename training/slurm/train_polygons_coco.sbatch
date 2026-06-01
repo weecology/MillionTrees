@@ -18,7 +18,7 @@ SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 OUT_DIR="training/weak_supervision/outputs/polygon_coco/$SPLIT"
 mkdir -p "$OUT_DIR"
 
-uv run python training/polygons/train_polygons.py \
+uv run python training/polygons/train.py \
   --root-dir /orange/ewhite/web/public/MillionTrees \
   --split-scheme "$SPLIT" \
   --batch-size 4 \

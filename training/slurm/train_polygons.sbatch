@@ -22,7 +22,7 @@ ROOT_DIR=/orange/ewhite/web/public/MillionTrees
 SPLITS=(random zeroshot)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
-uv run python training/polygons/train_polygons.py \
+uv run python training/polygons/train.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --batch-size 8 \

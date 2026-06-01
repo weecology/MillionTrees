@@ -19,7 +19,7 @@ OUT_DIR="training/weak_supervision/outputs/polygon_box_pretrained/$SPLIT"
 BACKBONE="training/weak_supervision/outputs/pretrain/$SPLIT/box_backbone_${SPLIT}.pt"
 mkdir -p "$OUT_DIR"
 
-uv run python training/polygons/train_polygons.py \
+uv run python training/polygons/train.py \
   --root-dir /orange/ewhite/web/public/MillionTrees \
   --split-scheme "$SPLIT" \
   --batch-size 24 \

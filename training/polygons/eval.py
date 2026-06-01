@@ -7,7 +7,7 @@ import sys
 
 import torch
 
-from training.polygons.train_polygons import MaskRCNNPolygonTrainer, evaluate
+from training.polygons.train import MaskRCNNPolygonTrainer, evaluate
 from milliontrees import get_dataset
 
 sys.modules['__main__'].MaskRCNNPolygonTrainer = MaskRCNNPolygonTrainer

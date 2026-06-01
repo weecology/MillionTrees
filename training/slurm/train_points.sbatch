@@ -17,12 +17,14 @@ ROOT_DIR=/orange/ewhite/web/public/MillionTrees
 SPLITS=(random zeroshot)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
-uv run python training/points/train_points.py \
+# TreeFormer point model lives on the DeepForest treeformer-training branch;
+# --extra treeformer pulls it in (see pyproject.toml).
+uv run --extra treeformer python training/points/train.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --batch-size 8 \
   --max-epochs 20 \
-  --lr 1e-4 \
+  --lr 2e-4 \
   --num-workers 4 \
   --output-dir "training/points/outputs/$SPLIT" \
   --comet

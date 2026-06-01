@@ -8,8 +8,6 @@ sources).
 Uses the point-detection stack from the DeepForest ``treeformer-training`` branch
 (https://github.com/jveitchmichaelis/DeepForest/tree/treeformer-training).
 Install with ``uv sync --extra treeformer`` until this lands on weecology/DeepForest main.
-
-Replaces the legacy pseudo-box / centroid workaround in ``train_points.py``.
 """
 
 import argparse
@@ -126,7 +124,7 @@ def main():
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
     parser.add_argument("--download", action="store_true")
-    parser.add_argument("--output-dir", type=str, default="training/points/outputs_treeformer")
+    parser.add_argument("--output-dir", type=str, default="training/points/outputs")
     parser.add_argument("--gpus", type=int, default=1)
     parser.add_argument(
         "--accelerator", type=str, default="auto",
