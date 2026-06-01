@@ -1,8 +1,10 @@
-"""Train a point detection model on MillionTrees TreePoints.
+"""Train a point detection model on MillionTrees TreePoints (legacy).
 
-Fine-tunes DeepForest on TreePoints by converting ground truth points to
-pseudo-boxes for training, and converting predicted box centroids back to
-points for evaluation.
+.. deprecated::
+   Prefer ``train_treeformer.py``, which fine-tunes the native TreeFormer point
+   model from DeepForest's ``treeformer-training`` branch. This script trains
+   RetinaNet on pseudo-boxes around each point and converts box centroids back
+   to points at eval time.
 """
 
 import argparse

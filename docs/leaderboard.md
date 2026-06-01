@@ -30,21 +30,30 @@ All point sources are used to train and predict all box sources.
 
 ## TreePoints
 
+Point models use native keypoint prediction (TreeFormer) or, for legacy RetinaNet rows,
+box centroids. Install TreeFormer support with `uv sync --extra treeformer` (DeepForest
+[`treeformer-training`](https://github.com/jveitchmichaelis/DeepForest/tree/treeformer-training)
+branch until merged to main).
+
 ### Random
 
 | Model | Fine-tuned | Counting MAE | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
 | DeepForest | ✗ | 22.304 | 0.547 | <small>`uv run python docs/examples/baseline_points.py --split-scheme random`</small> |
+| TreeFormer | ✗ | pending | pending | <small>`uv run --extra treeformer python docs/examples/baseline_treeformer_points.py --split-scheme random`</small> |
 | SAM3 | ✗ | 26.675 | 0.714 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
-| DeepForest | ✓ | 35.189 | 0.505 | <small>`uv run python training/points/train.py --split-scheme random`</small> |
+| TreeFormer | ✓ | pending | pending | <small>`uv run --extra treeformer python training/points/train_treeformer.py --split-scheme random`</small> |
+| DeepForest (legacy pseudo-box) | ✓ | 35.189 | 0.505 | <small>`uv run python training/points/train_points.py --split-scheme random`</small> |
 
 ### Zero-shot
 
 | Model | Fine-tuned | Counting MAE | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
 | DeepForest | ✗ | 50.602 | 0.732 | <small>`uv run python docs/examples/baseline_points.py --split-scheme zeroshot`</small> |
+| TreeFormer | ✗ | pending | pending | <small>`uv run --extra treeformer python docs/examples/baseline_treeformer_points.py --split-scheme zeroshot`</small> |
 | SAM3 | ✗ | 51.860 | 0.544 | <small>`uv run python docs/examples/sam3_points.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
-| DeepForest | ✓ | 74.581 | 0.666 | <small>`uv run python training/points/train.py --split-scheme zeroshot`</small> |
+| TreeFormer | ✓ | pending | pending | <small>`uv run --extra treeformer python training/points/train_treeformer.py --split-scheme zeroshot`</small> |
+| DeepForest (legacy pseudo-box) | ✓ | 74.581 | 0.666 | <small>`uv run python training/points/train_points.py --split-scheme zeroshot`</small> |
 
 ### Cross-geometry
 

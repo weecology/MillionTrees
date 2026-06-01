@@ -7,6 +7,9 @@ cd /blue/ewhite/b.weinstein/src/MillionTrees
 echo "Submitting DeepForest (pretrained) evaluation..."
 sbatch existing_models/slurm/eval_deepforest.sbatch
 
+echo "Submitting TreeFormer (pretrained point model) evaluation..."
+sbatch existing_models/slurm/eval_treeformer.sbatch
+
 echo "Submitting SAM3 evaluation..."
 sbatch existing_models/slurm/eval_sam3.sbatch
 
