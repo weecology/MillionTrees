@@ -83,3 +83,33 @@ independently:
 
 For a dependency-chained run that automatically rebuilds the table once every job
 finishes, use `slurm/run_benchmark.sbatch` instead.
+
+## Leaderboard panel figures (fine-tuned)
+
+The images embedded in [leaderboard.md](leaderboard.md) (`leaderboard_predictions_*.png`)
+are **not** produced by `submit_all.sh`. They are regenerated from **fine-tuned checkpoints**
+after training completes:
+
+| Geometry | Model | Checkpoint path |
+|---|---|---|
+| TreePoints | TreeFormer | `training/points/outputs/<split>/checkpoints/` |
+| TreeBoxes | DeepForest | `training/boxes/outputs/<split>/checkpoints/` |
+| TreePolygons | Mask R-CNN | `training/polygons/outputs/<split>/checkpoints/` |
+
+Each figure has two rows (**random**, **zeroshot** fine-tuning tasks) and two columns
+(ground truth vs fine-tuned prediction on the same test image).
+
+```bash
+uv run --extra treeformer python scripts/create_finetuned_visualizations.py \
+  --root-dir "$MT_ROOT" \
+  --output-dir docs \
+  --panel-dir docs/figures/finetuned_panels
+```
+
+Outputs:
+
+- `docs/leaderboard_predictions_{points,boxes,polygons}.png` and `.svg` (combined panels)
+- `docs/figures/finetuned_panels/<geometry>_<split>_{ground_truth,finetuned}.svg` (one file per panel for manuscript layout)
+
+On SLURM: `sbatch slurm/visualize_finetuned.sbatch` (included as a dependent step in
+`run_benchmark.sbatch` after the three training array jobs).
