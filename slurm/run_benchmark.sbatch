@@ -30,11 +30,16 @@ SAM3_JID=$(sbatch --parsable existing_models/slurm/eval_sam3.sbatch)
 echo "  eval_deepforest: $DF_JID"
 echo "  eval_sam3:       $SAM3_JID"
 
-# Wait for all training + eval array jobs to complete before generating the table.
-# SLURM array jobs have IDs like 12345_0 and 12345_1; depend on the whole array with 12345.
-ALL_DEPS="${BOXES_JID}:${POINTS_JID}:${POLYS_JID}:${DF_JID}:${SAM3_JID}"
+TRAIN_DEPS="${BOXES_JID}:${POINTS_JID}:${POLYS_JID}"
+ALL_DEPS="${TRAIN_DEPS}:${DF_JID}:${SAM3_JID}"
 
-echo "=== Submitting table generation (depends on all above) ==="
+echo "=== Submitting fine-tuned panel figures (depends on training) ==="
+VIZ_JID=$(sbatch --parsable \
+  --dependency=afterany:"$TRAIN_DEPS" \
+  slurm/visualize_finetuned.sbatch)
+echo "  visualize_finetuned: $VIZ_JID"
+
+echo "=== Submitting table generation (depends on training + eval) ==="
 TABLE_JID=$(sbatch --parsable \
   --job-name=mt_benchmark_table \
   --output=/home/b.weinstein/logs/mt_benchmark_table_%j.out \
@@ -49,4 +54,5 @@ echo "  make_benchmark_table: $TABLE_JID"
 
 echo ""
 echo "All jobs submitted. Monitor with: squeue -u \$USER"
-echo "Final table will be written to docs/leaderboard.md"
+echo "Metrics table -> docs/leaderboard.md (Benchmark Results section)"
+echo "Panel figures -> docs/leaderboard_predictions_*.{png,svg}"

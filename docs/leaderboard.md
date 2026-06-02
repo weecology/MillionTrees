@@ -31,6 +31,10 @@ All point sources are used to train and predict all box sources.
 
 # Results
 
+Fine-tuned panel figures (random + zeroshot splits, ground truth vs prediction) are
+generated from training checkpoints via `scripts/create_finetuned_visualizations.py`
+(PNG + SVG under `docs/`). See [repository_structure.md](repository_structure.md).
+
 ## TreePoints
 
 Fine-tuned (✓) rows train on the MillionTrees train split (`training/points/train.py`);
