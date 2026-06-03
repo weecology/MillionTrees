@@ -8,6 +8,9 @@
 /data_prep/images_to_annotate/
 /data_prep/AutoArborist/
 /data_prep/neon_token.txt
+/data_prep/_treefinder_probe/
+/tiles224_v3.zip
+/tile_info224_v3*.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -186,8 +189,14 @@ cython_debug/
 # IDE
 /.vscode/
 
-# Local training smoke checkpoints (too large for GitHub)
-training/boxes/outputs_smoke/checkpoints/*.ckpt
+# Local training run artifacts (outputs, checkpoints, lightning logs, SLURM logs)
+training/*/outputs/
+training/*/outputs_*/
+training/*/mini_test/
+training/**/lightning_logs/
+slurm/**/*.out
+training/slurm/*.out
+existing_models/*/outputs/
 
 # Comet ML credentials (copy .comet.config.example to .comet.config)
 .comet.config

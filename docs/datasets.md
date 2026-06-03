@@ -542,6 +542,22 @@ Per-plot bounding box, point, and polygon annotations over NEON AOP camera image
 
 Urban tree crown polygons from the ITCD Urban Berlin/Osnabrück dataset, drawn over 20 cm DOP false-color orthoimagery and tiled for MillionTrees.
 
+## Wang et al. 2025 (TreeFinder)
+
+### Source Name: "Wang et al. 2025"
+
+![sample_image](public/Wang_et_al._2025.png)
+
+**Citation:** Wang, Zhihao, Cooper Li, Ruichen Wang, Lei Ma, George Hurtt, Xiaowei Jia, Gengchen Mai, Zhili Li, and Yiqun Xie. *TreeFinder: A US-Scale Benchmark Dataset for Individual Tree Mortality Monitoring Using High-Resolution Aerial Imagery.* NeurIPS 2025 Datasets and Benchmarks Track.
+
+**Links:** [Kaggle](https://www.kaggle.com/datasets/zhihaow/tree-finder) · [Hugging Face](https://huggingface.co/datasets/zhwang1/TreeFinder) · [Paper (OpenReview)](https://openreview.net/pdf?id=BH2miB6Smc)
+
+**Location:** Contiguous United States (48 states; 0.6 m NAIP aerial imagery)
+
+**Description:** Hand-labeled *dead-tree* segmentation tiles (224×224 px, RGB+NIR+mask). MillionTrees converts dead-tree mask instances to crown polygons (`TreePolygons`). Only tiles with mortality labels are packaged (~3.8k images, ~7.5k polygon rows); annotations are mortality-focused, not full-crown inventories (`complete=False`).
+
+**Preparation:** `data_prep/TreeFinder.py` (set `TREE_FINDER_ROOT` to the downloaded Hugging Face/Kaggle folder).
+
 ## Zuniga-Gonzalez et al. 2023
 
 ### Source Name: "Zuniga-Gonzalez et al. 2023"
