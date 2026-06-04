@@ -1,0 +1,69 @@
+Table X. Combination of Tables 2-4
+
+Paste the block below into Google Docs / Word to create a table.
+
+Geometry	Model	Fine-tuned	Split	Tree Counting (mae)	Tree Detection (recall, precision)	Tree Segmentation (mAP)
+Points	CenterNet	✓	Random	TBD	TBD	TBD
+Points	TreeFormer	✗	Random	63.517	0.239, 0.777	N/A
+Points	SAM3	✗	Random	58.343	0.181, 0.714	N/A
+Points	DeepForest	✗	Random	58.422	0.175, 0.711	N/A
+Points	DeepForest	✓	Random	51.328	0.182, 0.761	N/A
+Points	TreeFormer	✗	Zero-shot	19.567	0.290, 0.884	N/A
+Points	DeepForest	✗	Zero-shot	32.782	0.214, 0.830	N/A
+Points	SAM3	✗	Zero-shot	18.578	0.124, 0.766	N/A
+Points	DeepForest	✓	Zero-shot	49.989	0.198, 0.611	N/A
+Boxes	DeepForest	✗	Random	25.755	0.404, 0.734	0.138
+Boxes	DeepForest	✓	Random	28.101	0.489, 0.671	0.289
+Boxes	SAM3	✗	Random	39.986	0.159, 0.610	0.114
+Boxes	DeepForest	✗	Zero-shot	36.252	0.416, 0.959	0.100
+Boxes	DeepForest	✓	Zero-shot	43.448	0.452, 0.896	0.275
+Boxes	SAM3	✗	Zero-shot	70.331	0.201, 0.810	0.130
+Polygons	Mask R-CNN	✓	Random	N/A	0.662, 0.898	0.407
+Polygons	SAM3	✗	Random	N/A	0.304, 0.656	0.209
+Polygons	DeepForest	✗	Random	N/A	0.082, 0.004	0.078
+Polygons	SAM3	✗	Zero-shot	N/A	0.224, 0.734	0.185
+Polygons	Mask R-CNN	✓	Zero-shot	N/A	0.173, 0.906	0.086
+Polygons	DeepForest	✗	Zero-shot	N/A	0.106, 0.000	0.098
+Polygons	SAM3	✗	Cross-geometry	N/A	0.224, 0.734	0.185
+Polygons	TreeFormer+SAM2	✗	Cross-geometry	N/A	0.377, 0.828	0.254
+
+Notes / provenance:
+- All numbers from v0.16 runs completed 2026-05-30 unless otherwise noted.
+- Columns: "Tree Counting" = counting_mae (gated on per-source `complete` flag).
+  "Tree Detection" = (recall, precision): for Points, recall is KeypointAccuracy and
+  precision is maskaware_keypoint_precision; for Boxes and Polygons, recall is average
+  recall and precision is maskaware_precision.
+  "Tree Segmentation (mAP)": for Boxes this is AP50; for Polygons this is mask IoU
+  accuracy (fraction of predictions matched to ground truth by mask IoU); N/A for Points
+  (centroid outputs only).
+- Points "CenterNet ✓ Random": no CenterNet model exists in this repo. The fine-tuned
+  points model is DeepForest/RetinaNet (training/points/train_points.py). Row left TBD.
+- Boxes counting_mae is now available (gated on complete flag); previous table notes
+  stating "Boxes have no Counting MAE" are no longer accurate.
+- Polygons counting_mae = N/A (no polygon sources carry the complete flag).
+- Polygons AP50 = -1 (sentinel; not computed by the polygon evaluator). Segmentation
+  column uses mask IoU accuracy instead.
+- DeepForest ✗ Polygons maskaware_precision is near-zero (0.004 random, 0.000 zeroshot).
+  DeepForest outputs bounding boxes, not masks; the polygon evaluator's mask-aware
+  precision collapses when the model produces no valid segmentation masks.
+- TreeFormer cross-geometry: 0 test images in this split — vacuous; omitted from table.
+- TreeFormer+SAM3 cross-geometry: TreeFormer (weecology/deepforest-tree-point) runs on polygon-annotated images
+  to predict centroids; those centroids are then used as SAM3 point prompts (no text, point_box_size=12px)
+  via deepforest branch bw4sz/cursor/sam3-polygon-integration to generate polygon masks.
+  Run: existing_models/treeformer_sam3/eval_polygons_crossgeometry.py via slurm/eval_treeformer_sam3.sbatch.
+  Job 33646192 completed 2026-06-01. Very low recall (0.004) — cross-geometry transfer is difficult;
+  high precision (0.912) indicates the polygons that are generated match well when they exist.
+- SAM3 cross-geometry Polygons: same test sources as zero-shot for the polygon split;
+  values are identical (0.224, 0.734 / 0.185).
+
+Source files (v0.16 runs):
+- Points (unfine-tuned DF):   logs/slurm/20260530-153639/mt_df_points_33529304_{0,1}.out
+- Points (TreeFormer):        logs/slurm/20260530-153639/mt_df_treeformer_points_33529305_{0,1}.out
+- Points (SAM3):              logs/slurm/20260530-153639/mt_sam3_points_33529308_{0,1}.out
+- Points (fine-tuned):        training/points/outputs/{random,zeroshot}/results_*.txt
+- Boxes (unfine-tuned DF):    logs/slurm/20260530-153639/mt_df_boxes_33529306_{0,1}.out
+- Boxes (SAM3):               logs/slurm/20260530-153639/mt_sam3_boxes_33529309_{0,1}.out
+- Boxes (fine-tuned):         training/boxes/outputs/{random,zeroshot}/results_*.txt
+- Polygons (unfine-tuned DF): logs/slurm/20260530-153639/mt_df_polygons_33529307_{0,1}.out
+- Polygons (SAM3):            logs/slurm/20260530-153639/mt_sam3_polygons_33529310_{0,1,2}.out
+- Polygons (fine-tuned):      training/polygons/outputs/{random,zeroshot}/results_*.txt

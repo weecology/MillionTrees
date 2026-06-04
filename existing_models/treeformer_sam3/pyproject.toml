@@ -1,0 +1,20 @@
+[project]
+name = "milliontrees-treeformer-sam3"
+version = "0.1.0"
+description = "TreeFormer -> SAM3 cross-geometry polygon evaluation on MillionTrees"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "milliontrees",
+    "deepforest",
+    "transformers>=5.0.0rc1",
+    "accelerate",
+    "huggingface-hub>=1.0.0",
+    "safetensors",
+    "tokenizers>=0.20.0",
+    "geopandas",
+    "rasterio",
+]
+
+[tool.uv.sources]
+milliontrees = { path = "../..", editable = true }
+deepforest = { git = "https://github.com/bw4sz/DeepForest.git", branch = "cursor/sam3-polygon-integration" }

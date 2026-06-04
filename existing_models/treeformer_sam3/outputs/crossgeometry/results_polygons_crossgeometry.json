@@ -1,0 +1,8 @@
+{
+  "model": "TreeFormer+SAM3",
+  "task": "TreePolygons",
+  "split": "crossgeometry",
+  "metrics": {
+    "detection_acc_avg_dom": NaN
+  }
+}

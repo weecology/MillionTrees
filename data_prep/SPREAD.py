@@ -347,7 +347,7 @@ def collect_spread_annotations():
             df = open_coco_json(json_file)
             
             # Add required fields
-            df["source"] = "Feng et al. 2025"
+            df["source"] = "Feng et al. 2025 unsupervised"
             df["label"] = "Tree"
             df["image_path"] = df.apply(
                 lambda x: os.path.join(rgb_folder, x["image_path"]), axis=1
@@ -383,5 +383,5 @@ def remove_alpha_channel():
                 print(f"Skipped {img_path} (not a 4-channel image)")
 
 if __name__ == "__main__":
-    #collect_spread_annotations()
-    remove_alpha_channel()
+    collect_spread_annotations()
+    #remove_alpha_channel()
