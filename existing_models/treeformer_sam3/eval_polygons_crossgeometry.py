@@ -14,17 +14,23 @@ Visualization (--viz-dir):
 """
 
 import argparse
+import base64
 import json
 import os
 import re
+from io import BytesIO
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
+import shapely.affinity
 import torch
 from PIL import Image, ImageDraw
 from rasterio.features import rasterize as rio_rasterize
+from rasterio.features import shapes as rio_shapes
+from shapely.geometry import shape
+from shapely.ops import unary_union
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
@@ -114,6 +120,140 @@ def _slug(name: str, max_len: int = 80) -> str:
     return s[:max_len] if len(s) > max_len else s or "source"
 
 
+def _mask_to_polygon_scaled(mask_np: np.ndarray, eval_h: int, eval_w: int, orig_h: int, orig_w: int):
+    """Extract polygon from a boolean mask and scale to original image dimensions."""
+    m = mask_np.astype(np.uint8)
+    polys = [shape(g) for g, v in rio_shapes(m, mask=m) if v == 1]
+    if not polys:
+        return None
+    merged = unary_union(polys)
+    if merged.is_empty:
+        return None
+    sx, sy = orig_w / eval_w, orig_h / eval_h
+    if abs(sx - 1.0) > 1e-6 or abs(sy - 1.0) > 1e-6:
+        merged = shapely.affinity.scale(merged, xfact=sx, yfact=sy, origin=(0, 0))
+    return merged
+
+
+def _polygon_to_svg_path(polygon) -> str:
+    """Convert a shapely Polygon or MultiPolygon to an SVG path d attribute."""
+    from shapely.geometry import MultiPolygon
+    parts = list(polygon.geoms) if isinstance(polygon, MultiPolygon) else [polygon]
+    d_parts = []
+    for poly in parts:
+        coords = list(poly.exterior.coords)
+        d = f"M {coords[0][0]:.2f},{coords[0][1]:.2f}"
+        for x, y in coords[1:]:
+            d += f" L {x:.2f},{y:.2f}"
+        d += " Z"
+        for interior in poly.interiors:
+            ic = list(interior.coords)
+            d += f" M {ic[0][0]:.2f},{ic[0][1]:.2f}"
+            for x, y in ic[1:]:
+                d += f" L {x:.2f},{y:.2f}"
+            d += " Z"
+        d_parts.append(d)
+    return " ".join(d_parts)
+
+
+def save_full_scale_viz_and_svg(
+    img_path: str,
+    y_pred: dict,
+    y_true: dict,
+    tf_points,
+    eval_size: int,
+    out_stem: Path,
+    score_threshold: float = 0.5,
+) -> None:
+    """Save a full-resolution PNG and an editable SVG for one image.
+
+    SVG groups:
+      #ground-truth   — purple GT polygon fills
+      #predictions    — orange predicted polygon fills
+      #treeformer-points — cyan tree centroid circles
+    """
+    with Image.open(img_path).convert("RGB") as orig_img:
+        orig_w, orig_h = orig_img.size
+        orig_np = np.array(orig_img)
+
+    gt_m = _tensor_masks(y_true.get("y"), eval_size)
+    pred_m = _tensor_masks(y_pred.get("y"), eval_size)
+    scores = y_pred.get("scores")
+    if scores is not None and pred_m.shape[0] > 0:
+        sc = scores if isinstance(scores, torch.Tensor) else torch.as_tensor(scores, dtype=torch.float32)
+        pred_m = pred_m[sc.detach().cpu().float().numpy() > score_threshold]
+
+    sx, sy = orig_w / eval_size, orig_h / eval_size
+
+    # --- Full-resolution PNG ---
+    arr = orig_np.copy().astype(np.float32)
+    for mask_set, color in [(gt_m, _COLOR_GROUND_TRUTH), (pred_m, _COLOR_PREDICTION)]:
+        for idx in range(mask_set.shape[0]):
+            m_eval = (mask_set[idx].numpy() if isinstance(mask_set[idx], torch.Tensor) else mask_set[idx]).astype(np.uint8)
+            m_orig = np.array(
+                Image.fromarray(m_eval * 255).resize((orig_w, orig_h), Image.Resampling.NEAREST)
+            ) > 127
+            for c in range(3):
+                arr[:, :, c][m_orig] = arr[:, :, c][m_orig] * 0.65 + float(color[c]) * 0.35
+    arr = np.clip(arr, 0, 255).astype(np.uint8)
+
+    png_img = Image.fromarray(arr, mode="RGB")
+    draw = ImageDraw.Draw(png_img)
+    if tf_points is not None and len(tf_points) > 0:
+        pts_np = tf_points.detach().cpu().float().numpy() if isinstance(tf_points, torch.Tensor) else np.asarray(tf_points)
+        r_circ = max(6, int(6 * min(sx, sy)))
+        for px, py in pts_np:
+            px_s, py_s = float(px) * sx, float(py) * sy
+            draw.ellipse([px_s - r_circ, py_s - r_circ, px_s + r_circ, py_s + r_circ],
+                         outline=_COLOR_TF_POINTS, width=2)
+    png_img.save(str(out_stem) + ".png")
+
+    # --- SVG ---
+    buf = BytesIO()
+    Image.fromarray(orig_np).save(buf, format="PNG")
+    img_b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+
+    def _mask_group(mask_set, color, gid):
+        r, g, b = color
+        paths = []
+        for idx in range(mask_set.shape[0]):
+            m_np = mask_set[idx].numpy() if isinstance(mask_set[idx], torch.Tensor) else mask_set[idx]
+            poly = _mask_to_polygon_scaled(m_np, eval_size, eval_size, orig_h, orig_w)
+            if poly is not None:
+                paths.append(f'    <path d="{_polygon_to_svg_path(poly)}" />')
+        if not paths:
+            return []
+        return (
+            [f'  <g id="{gid}" fill="rgba({r},{g},{b},0.35)" stroke="rgb({r},{g},{b})"'
+             f' stroke-width="{max(1, int(min(sx, sy)))}" fill-rule="evenodd">']
+            + paths
+            + ["  </g>"]
+        )
+
+    svg = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
+        f' width="{orig_w}" height="{orig_h}" viewBox="0 0 {orig_w} {orig_h}">',
+        f'  <image href="data:image/png;base64,{img_b64}" x="0" y="0" width="{orig_w}" height="{orig_h}"/>',
+    ]
+    svg += _mask_group(gt_m, _COLOR_GROUND_TRUTH, "ground-truth")
+    svg += _mask_group(pred_m, _COLOR_PREDICTION, "predictions")
+
+    if tf_points is not None and len(tf_points) > 0:
+        pts_np = tf_points.detach().cpu().float().numpy() if isinstance(tf_points, torch.Tensor) else np.asarray(tf_points)
+        r_val, g_val, b_val = _COLOR_TF_POINTS
+        r_circ = max(5, int(5 * min(sx, sy)))
+        svg.append(f'  <g id="treeformer-points" fill="rgba({r_val},{g_val},{b_val},0.8)"'
+                   f' stroke="rgb({r_val},{g_val},{b_val})" stroke-width="1.5">')
+        for px, py in pts_np:
+            svg.append(f'    <circle cx="{float(px) * sx:.1f}" cy="{float(py) * sy:.1f}" r="{r_circ}" />')
+        svg.append("  </g>")
+
+    svg.append("</svg>")
+    with open(str(out_stem) + ".svg", "w", encoding="utf-8") as f:
+        f.write("\n".join(svg))
+
+
 def save_viz_with_tf_points(
     dataset,
     y_pred: List[dict],
@@ -124,8 +264,14 @@ def save_viz_with_tf_points(
     n_per_source: int = 4,
     score_threshold: float = 0.5,
     viz_size: int | None = None,
+    img_paths: Optional[List[str]] = None,
 ) -> None:
-    """Write overlay PNGs: purple=GT masks, orange=SAM3 masks, cyan=TreeFormer points."""
+    """Write overlay PNGs (and SVGs when img_paths provided) per source.
+
+    When img_paths is given, also calls save_full_scale_viz_and_svg for each
+    sample, producing full-resolution PNGs and editable SVGs alongside the
+    standard downscaled PNGs.
+    """
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
     if not isinstance(metadata, torch.Tensor):
@@ -147,7 +293,6 @@ def save_viz_with_tf_points(
         ds_idx = fid_to_ds_idx[filename_id]
 
         raw = _to_numpy_image(dataset.get_input(ds_idx))
-        # Blend masks at eval_size (matches y_pred/y_true resolution)
         rgb = _resize_eval_image(raw, eval_size)
         gt_m = _tensor_masks(y_true[row].get("y"), eval_size)
         pm = _tensor_masks(y_pred[row].get("y"), eval_size)
@@ -159,7 +304,6 @@ def save_viz_with_tf_points(
         arr = _blend_masks(rgb, gt_m, _COLOR_GROUND_TRUTH, alpha=0.35)
         arr = _blend_masks(arr, pm, _COLOR_PREDICTION, alpha=0.35)
 
-        # Upscale to viz_size for the final PNG
         base = Image.fromarray(arr, mode="RGB")
         if image_size != eval_size:
             base = base.resize((image_size, image_size), Image.Resampling.BILINEAR)
@@ -168,7 +312,6 @@ def save_viz_with_tf_points(
         pts = tf_points[row]
         if pts is not None and len(pts) > 0:
             pts_np = pts.detach().cpu().float().numpy() if isinstance(pts, torch.Tensor) else np.asarray(pts)
-            # Scale point coords from eval_size to viz output size
             scale = image_size / eval_size
             pts_np = pts_np * scale
             _draw_points(draw, pts_np, _COLOR_TF_POINTS, r=max(4, int(4 * scale)))
@@ -178,7 +321,21 @@ def save_viz_with_tf_points(
         sub = out_path / _slug(src_name)
         sub.mkdir(parents=True, exist_ok=True)
         k = per_source_count.get(source_id, 0)
-        base.save(sub / f"{k:03d}_{_slug(stem)}.png")
+        fname_stem = sub / f"{k:03d}_{_slug(stem)}"
+        base.save(str(fname_stem) + "_thumb.png")
+
+        # Full-scale PNG + SVG when original image path is available
+        if img_paths is not None and row < len(img_paths) and os.path.exists(img_paths[row]):
+            save_full_scale_viz_and_svg(
+                img_path=img_paths[row],
+                y_pred=y_pred[row],
+                y_true=y_true[row],
+                tf_points=pts,
+                eval_size=eval_size,
+                out_stem=fname_stem,
+                score_threshold=score_threshold,
+            )
+
         per_source_count[source_id] = k + 1
 
 
@@ -271,7 +428,8 @@ def main() -> None:
     viz_y_pred: List[dict] = []
     viz_y_true: List[dict] = []
     viz_metadata_rows: List[torch.Tensor] = []
-    viz_tf_points: List[torch.Tensor] = []  # cyan dots — parallel to viz_y_pred
+    viz_tf_points: List[torch.Tensor] = []
+    viz_img_paths: List[str] = []  # original image paths for full-scale PNG+SVG
 
     images_dir = os.path.join(str(dataset._data_dir), "images")
     use_tile = args.patch_size > 0 or args.patch_fraction > 0
@@ -383,6 +541,9 @@ def main() -> None:
             for j in range(len(batch_y_pred)):
                 sid = int(batch_meta[j, 1].item())
                 if viz_cap.get(sid, 0) < args.viz_n_per_source:
+                    fid = int(batch_meta[j, 0].item())
+                    basename = dataset._filename_id_to_code.get(fid, f"id_{fid}")
+                    viz_img_paths.append(os.path.join(images_dir, basename))
                     viz_y_pred.append(batch_y_pred[j])
                     viz_y_true.append(batch_y_true[j])
                     viz_metadata_rows.append(batch_meta[j])
@@ -408,6 +569,7 @@ def main() -> None:
             n_per_source=args.viz_n_per_source,
             score_threshold=args.iou_threshold,
             viz_size=args.viz_size,
+            img_paths=viz_img_paths if viz_img_paths else None,
         )
         print(f"Visualizations written to {args.viz_dir}")
 
