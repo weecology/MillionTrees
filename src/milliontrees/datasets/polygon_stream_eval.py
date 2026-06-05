@@ -8,7 +8,11 @@ import numpy as np
 import torch
 
 from milliontrees.common.eval_visualization import save_eval_visualizations
-from milliontrees.common.metrics.all_metrics import DetectionMAP
+from milliontrees.common.metrics.all_metrics import (
+    DetectionMAP,
+    compute_polygon_mask_elementwise_batch,
+    make_mean_average_precision,
+)
 from milliontrees.common.utils import maximum, minimum
 
 
@@ -37,21 +41,17 @@ class TreePolygonsStreamingEvalState:
                 "g_cnt": torch.zeros(self._n_groups, dtype=torch.float64),
             }
 
-        from torchmetrics.detection import MeanAveragePrecision
-
         self._map_metric: DetectionMAP = dataset.metrics[self._MAP_KEY]
-        self._map_global = MeanAveragePrecision(
+        map_kwargs = dict(
             iou_type=self._map_metric.iou_type,
             iou_thresholds=self._map_metric.iou_thresholds,
             max_detection_thresholds=self._map_metric.max_detection_thresholds,
-            class_metrics=False)
+            class_metrics=False,
+        )
+        self._map_global = make_mean_average_precision(**map_kwargs)
         _disable_torchmetric_sync(self._map_global)
         self._map_per_group = [
-            MeanAveragePrecision(iou_type=self._map_metric.iou_type,
-                                 iou_thresholds=self._map_metric.iou_thresholds,
-                                 max_detection_thresholds=self._map_metric.
-                                 max_detection_thresholds,
-                                 class_metrics=False)
+            make_mean_average_precision(**map_kwargs)
             for _ in range(self._n_groups)
         ]
         for m in self._map_per_group:
@@ -67,9 +67,16 @@ class TreePolygonsStreamingEvalState:
             metadata = torch.as_tensor(metadata)
         g = self._grouper.metadata_to_group(metadata)
 
+        ew_scores = compute_polygon_mask_elementwise_batch(
+            y_pred,
+            y_true,
+            accuracy_metric=self._dataset.metrics["accuracy"],
+            recall_metric=self._dataset.metrics["recall"],
+            maskaware_metric=self._dataset.metrics["maskaware_precision"],
+            merge_metric=self._dataset.metrics["merge_commission"],
+        )
         for key in self._EW_KEYS:
-            metric = self._dataset.metrics[key]
-            v = metric._compute_element_wise(y_pred, y_true).float()
+            v = ew_scores[key].float()
             if v.device != g.device:
                 v = v.to(g.device)
             st = self._ew[key]
