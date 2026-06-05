@@ -220,10 +220,12 @@ class TreeBoxesDataset(MillionTreesDataset):
         # Splits
         self._split_dict = {
             'train': 0,
-            'test': 1,
+            'validation': 1,
+            'test': 2,
         }
         self._split_names = {
             'train': 'Train',
+            'validation': 'Validation',
             'test': 'Test (OOD/Trans)',
         }
 

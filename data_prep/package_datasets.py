@@ -342,8 +342,39 @@ def _top_filenames_per_source(datasets, n_per_source):
     return top_per_source["filename"].unique().tolist()
 
 
+def apply_existing_splits(df):
+    """Honor pre-assigned train, test, or validation splits from existing_split."""
+    df = df.copy()
+    if "existing_split" not in df.columns:
+        return df
+    for split_name in ("train", "test", "validation"):
+        mask = df["existing_split"] == split_name
+        df.loc[mask, "split"] = split_name
+    return df
+
+
+def _validation_sources(df):
+    """Return sources whose rows are pinned to the validation split."""
+    if "existing_split" not in df.columns:
+        return set()
+    return set(
+        df.loc[df["existing_split"] == "validation", "source"].dropna().unique())
+
+
+def _rows_needing_auto_split(df):
+    """Rows without a pre-assigned split from existing_split."""
+    if "existing_split" not in df.columns:
+        return pd.Series(True, index=df.index)
+    pinned = df["existing_split"].isin(["train", "test", "validation"])
+    return ~pinned
+
+
 def _ensure_test_split(annotations):
     """Ensure at least one test image so val loaders are non-empty."""
+    if "split" not in annotations.columns:
+        return annotations
+    if (annotations["split"] == "validation").any() and (annotations["split"] == "test").sum() == 0:
+        return annotations
     if (annotations["split"] == "test").sum() == 0 and len(annotations) > 0:
         first_filename = annotations["filename"].iloc[0]
         annotations.loc[annotations["filename"] == first_filename, "split"] = "test"
@@ -478,17 +509,9 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
                  base_dir, version, suffix="", prefix=""):
     """Perform random split and save the results."""
     
-    # Helper function to create the "split" column based on instructions
     def apply_split(df):
-        df = df.copy()
-        # If "existing_split" is present and value is "test", set "split" to "test"
-        if "existing_split" in df.columns:
-            mask = df["existing_split"] == "test"
-            df.loc[mask, "split"] = "test"
-            needs_split = ~mask
-        else:
-            needs_split = pd.Series([True]*len(df), index=df.index)
-        # For each source not yet assigned "test", random split 0.9/0.1
+        df = apply_existing_splits(df)
+        needs_split = _rows_needing_auto_split(df)
         remaining = df.loc[needs_split].copy()
         if not remaining.empty:
             for source in remaining["source"].dropna().unique():
@@ -555,15 +578,20 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
 def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
                          base_dir, version, suffix="", prefix=""):
     """Perform cross-geometry split and save the results."""
-    # Assign all polygons to train, points to test, and boxes to test
-    TreePolygons_datasets["split"] = "test"
+    TreePolygons_datasets = apply_existing_splits(TreePolygons_datasets)
+    TreePoints_datasets = apply_existing_splits(TreePoints_datasets)
+    TreeBoxes_datasets = apply_existing_splits(TreeBoxes_datasets)
 
-    # Cross-geometry polygon test sources match the polygon zero-shot test set.
+    TreePolygons_datasets.loc[
+        TreePolygons_datasets["split"] != "validation", "split"] = "test"
     TreePolygons_datasets = TreePolygons_datasets[
         TreePolygons_datasets.source.isin(ZEROSHOT_TEST_SOURCES_POLYGONS)
+        | (TreePolygons_datasets["split"] == "validation")
     ]
-    TreePoints_datasets["split"] = "train"
-    TreeBoxes_datasets["split"] = "train"
+    TreePoints_datasets.loc[
+        TreePoints_datasets["split"] != "validation", "split"] = "train"
+    TreeBoxes_datasets.loc[
+        TreeBoxes_datasets["split"] != "validation", "split"] = "train"
 
     # remove any source with unsupervised, weak supervised, or Feng from test
     unsupervised_mask_polygons = (TreePolygons_datasets.source.str.contains('unsupervised|weak supervised', case=False, na=False)) & (TreePolygons_datasets.split == "test")
@@ -653,19 +681,60 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     train_sources_points = [x for x in TreePoints_datasets.source.unique() if x not in test_sources_points]
 
     test_sources_boxes = ZEROSHOT_TEST_SOURCES_BOXES
-    train_sources_boxes = [x for x in TreeBoxes_datasets.source.unique() if x not in test_sources_boxes]
 
-    # Assign splits for polygons
-    TreePolygons_datasets.loc[TreePolygons_datasets.source.isin(train_sources_polygons), "split"] = "train"
-    TreePolygons_datasets.loc[TreePolygons_datasets.source.isin(test_sources_polygons), "split"] = "test"
+    val_polygons = _validation_sources(TreePolygons_datasets)
+    val_points = _validation_sources(TreePoints_datasets)
+    val_boxes = _validation_sources(TreeBoxes_datasets)
 
-    # Assign splits for points
-    TreePoints_datasets.loc[TreePoints_datasets.source.isin(train_sources_points), "split"] = "train"
-    TreePoints_datasets.loc[TreePoints_datasets.source.isin(test_sources_points), "split"] = "test"
+    train_sources_polygons = [
+        x for x in TreePolygons_datasets.source.unique()
+        if x not in test_sources_polygons and x not in val_polygons
+    ]
+    train_sources_points = [
+        x for x in TreePoints_datasets.source.unique()
+        if x not in test_sources_points and x not in val_points
+    ]
+    train_sources_boxes = [
+        x for x in TreeBoxes_datasets.source.unique()
+        if x not in test_sources_boxes and x not in val_boxes
+    ]
 
-    # Assign splits for boxes
-    TreeBoxes_datasets.loc[TreeBoxes_datasets.source.isin(train_sources_boxes), "split"] = "train"
-    TreeBoxes_datasets.loc[TreeBoxes_datasets.source.isin(test_sources_boxes), "split"] = "test"
+    TreePolygons_datasets = apply_existing_splits(TreePolygons_datasets)
+    TreePoints_datasets = apply_existing_splits(TreePoints_datasets)
+    TreeBoxes_datasets = apply_existing_splits(TreeBoxes_datasets)
+
+    TreePolygons_datasets.loc[
+        TreePolygons_datasets.source.isin(train_sources_polygons)
+        & _rows_needing_auto_split(TreePolygons_datasets),
+        "split",
+    ] = "train"
+    TreePolygons_datasets.loc[
+        TreePolygons_datasets.source.isin(test_sources_polygons)
+        & _rows_needing_auto_split(TreePolygons_datasets),
+        "split",
+    ] = "test"
+
+    TreePoints_datasets.loc[
+        TreePoints_datasets.source.isin(train_sources_points)
+        & _rows_needing_auto_split(TreePoints_datasets),
+        "split",
+    ] = "train"
+    TreePoints_datasets.loc[
+        TreePoints_datasets.source.isin(test_sources_points)
+        & _rows_needing_auto_split(TreePoints_datasets),
+        "split",
+    ] = "test"
+
+    TreeBoxes_datasets.loc[
+        TreeBoxes_datasets.source.isin(train_sources_boxes)
+        & _rows_needing_auto_split(TreeBoxes_datasets),
+        "split",
+    ] = "train"
+    TreeBoxes_datasets.loc[
+        TreeBoxes_datasets.source.isin(test_sources_boxes)
+        & _rows_needing_auto_split(TreeBoxes_datasets),
+        "split",
+    ] = "test"
 
     # Zero-shot: drop excess images instead of demoting to train so held-out
     # sources never leak into the train split.

@@ -72,7 +72,7 @@ The MillionTrees structure is a tabular dataframe with each annotation as a row,
 image_path: the full path to the image on disk
 source: the abbreviated citation name used to identify the dataset, e.g. 'Weinstein et al. 2021'
 geometry: a shapely geometry column in wkt with the annotation coordinates in the image coordinate reference, not the geospatial coordinate system. Top left of the image is 0,0. For example, 'POINT (115 90)'
-'existing_split': If the annotation belongs to a train or test split. This is optional can be excluded.
+'existing_split': Optional pre-assigned split. Supported values are ``train``, ``test``, and ``validation``. When set, packaging honors the value across all split schemes (``random``, ``zeroshot``, ``crossgeometry``). Use ``validation`` for held-out TLS or other independent ground-truth sources that must never enter training or the standard test splits — for example, post-hoc zero-shot evaluation after models are trained and evaluated on ``train``/``test``.
 
 
 There are useful utilities in the [DeepForest](https://deepforest.readthedocs.io/en/stable/user_guide/01_Reading_data.html) python package for converting from geographic to image coordinate systems. 

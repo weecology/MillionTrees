@@ -71,7 +71,8 @@ def main():
         '/orange/ewhite/DeepForest/ReForestTree/images/train.csv',
         "/orange/ewhite/DeepForest/Santos2019/annotations.csv",
         "/orange/ewhite/DeepForest/Zenodo_15155081/parsed_annotations.csv",
-        "/orange/ewhite/DeepForest/SelvaBox/annotations.csv"
+        "/orange/ewhite/DeepForest/SelvaBox/annotations.csv",
+        "/orange/ewhite/DeepForest/Allen2025/crops/annotations_boxes.csv",
     ]
 
     TreePoints = [
@@ -80,7 +81,8 @@ def main():
         "/orange/ewhite/MillionTrees/NEON_points/annotations.csv",
         "/orange/ewhite/DeepForest/Tonga/annotations.csv",
         '/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_points.csv',
-        "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv"
+        "/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv",
+        "/orange/ewhite/DeepForest/Allen2025/crops/annotations_points.csv",
     ]
 
     TreePolygons = [
@@ -103,7 +105,8 @@ def main():
         "/orange/ewhite/DeepForest/Quebec_Lefebvre/Dataset/Crops/annotations.csv",
         "/orange/ewhite/DeepForest/BohlmanBCI/crops/annotations_crowns.csv",
         "/orange/ewhite/DeepForest/TreeCountSegHeight/extracted_data_2aux_v4_cleaned_centroid_raw 2/annotations.csv",
-        "/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv"
+        "/orange/ewhite/DeepForest/takeshige2025/crops/annotations.csv",
+        "/orange/ewhite/DeepForest/Allen2025/crops/annotations_polygons.csv",
     ]
 
     # Combine all datasets
