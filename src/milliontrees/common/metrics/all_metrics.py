@@ -18,6 +18,83 @@ import sklearn.metrics
 from scipy.stats import pearsonr
 
 
+def detection_map_backend() -> str:
+    """Prefer faster_coco_eval when installed; fall back to pycocotools."""
+    from torchmetrics.utilities.imports import _FASTER_COCO_EVAL_AVAILABLE
+    if _FASTER_COCO_EVAL_AVAILABLE:
+        return "faster_coco_eval"
+    return "pycocotools"
+
+
+def make_mean_average_precision(**kwargs):
+    """Construct torchmetrics MeanAveragePrecision with the fastest available backend."""
+    from torchmetrics.detection import MeanAveragePrecision
+    return MeanAveragePrecision(backend=detection_map_backend(), **kwargs)
+
+
+def compute_polygon_mask_elementwise_batch(
+    y_pred: list,
+    y_true: list,
+    *,
+    accuracy_metric: "MaskAccuracy",
+    recall_metric: "MaskAccuracy",
+    maskaware_metric: "MaskAwareMaskPrecision",
+    merge_metric: "MergeCommissionMetric",
+) -> dict[str, torch.Tensor]:
+    """Per-image elementwise polygon metrics with a single ``_mask_iou`` per image."""
+    acc_out: list[torch.Tensor] = []
+    rec_out: list[torch.Tensor] = []
+    map_out: list[torch.Tensor] = []
+    merge_out: list[torch.Tensor] = []
+
+    for gt, target in zip(y_true, y_pred):
+        scores = target["scores"]
+        if not isinstance(scores, torch.Tensor):
+            scores = torch.as_tensor(scores, dtype=torch.float32)
+        target_masks = target[accuracy_metric.geometry_name]
+        gt_masks = gt[accuracy_metric.geometry_name]
+        pred_masks = target_masks[scores > accuracy_metric.score_threshold]
+
+        total_gt = len(gt_masks)
+        total_pred = len(pred_masks)
+        if total_gt > 0 and total_pred > 0:
+            iou = accuracy_metric._mask_iou(gt_masks, pred_masks)
+        else:
+            iou = None
+
+        acc_out.append(
+            accuracy_metric._accuracy(gt_masks,
+                                      pred_masks,
+                                      accuracy_metric.iou_threshold,
+                                      iou=iou))
+        rec_out.append(
+            recall_metric._recall(gt_masks,
+                                  pred_masks,
+                                  recall_metric.iou_threshold,
+                                  iou=iou))
+
+        if total_gt == 0 or total_pred == 0:
+            merge_out.append(torch.tensor(0.0))
+        else:
+            merge_out.append(
+                merge_commission_rate_iou(
+                    iou, merge_metric.iou_threshold).to(dtype=torch.float32))
+
+        tree_mask = gt.get(maskaware_metric.tree_coverage_key)
+        map_out.append(
+            maskaware_metric._precision(gt_masks,
+                                        pred_masks,
+                                        tree_mask,
+                                        iou=iou))
+
+    return {
+        "accuracy": torch.stack(acc_out),
+        "recall": torch.stack(rec_out),
+        "maskaware_precision": torch.stack(map_out),
+        "merge_commission": torch.stack(merge_out),
+    }
+
+
 def binary_logits_to_score(logits):
     assert logits.dim() in (1, 2)
     if logits.dim() == 2:  #multi-class logits
@@ -1023,11 +1100,12 @@ class MaskAccuracy(ElementwiseMetric):
 
         return iou  # Returns [N, M] matrix
 
-    def _recall(self, src_masks, pred_masks, iou_threshold):
+    def _recall(self, src_masks, pred_masks, iou_threshold, *, iou=None):
         total_gt = len(src_masks)
         total_pred = len(pred_masks)
         if total_gt > 0 and total_pred > 0:
-            iou = self._mask_iou(src_masks, pred_masks)
+            if iou is None:
+                iou = self._mask_iou(src_masks, pred_masks)
             gt_to_pred = greedy_iou_match(iou, iou_threshold)
             tp = n_matched_gt(gt_to_pred)
             return tp / float(total_gt)
@@ -1035,11 +1113,12 @@ class MaskAccuracy(ElementwiseMetric):
             return torch.tensor(0.) if total_pred > 0 else torch.tensor(1.)
         return torch.tensor(0.)
 
-    def _accuracy(self, src_masks, pred_masks, iou_threshold):
+    def _accuracy(self, src_masks, pred_masks, iou_threshold, *, iou=None):
         total_gt = len(src_masks)
         total_pred = len(pred_masks)
         if total_gt > 0 and total_pred > 0:
-            iou = self._mask_iou(src_masks, pred_masks)
+            if iou is None:
+                iou = self._mask_iou(src_masks, pred_masks)
             gt_to_pred = greedy_iou_match(iou, iou_threshold)
             tp = n_matched_gt(gt_to_pred)
             fp = float(total_pred) - float(tp)
@@ -1125,24 +1204,25 @@ class MaskAwareMaskPrecision(ElementwiseMetric):
     def _count_ignored_unmatched_predictions(self,
                                              unmatched_masks,
                                              tree_mask,
-                                             src_masks=None,
+                                             *,
+                                             iou=None,
+                                             unmatched_indices=None,
                                              iou_threshold=None):
         if tree_mask is None or len(unmatched_masks) == 0:
             return 0
         ignored_count = 0
-        for pred_mask in unmatched_masks:
-            if (src_masks is not None and len(src_masks) > 0 and
-                    iou_threshold is not None):
-                block = self._mask_accuracy._mask_iou(src_masks,
-                                                      pred_mask.unsqueeze(0))
-                if block.max().item() > iou_threshold:
+        for local_idx, pred_mask in enumerate(unmatched_masks):
+            if (iou is not None and unmatched_indices is not None and
+                    iou_threshold is not None and iou.numel() > 0):
+                pred_col = int(unmatched_indices[local_idx])
+                if iou[:, pred_col].max().item() > iou_threshold:
                     continue
             tree_fraction = self._mask_tree_fraction(pred_mask, tree_mask)
             if tree_fraction >= self.tree_fraction_threshold:
                 ignored_count += 1
         return ignored_count
 
-    def _precision(self, src_masks, pred_masks, tree_mask):
+    def _precision(self, src_masks, pred_masks, tree_mask, *, iou=None):
         src_masks = self._prepare_masks(src_masks)
         pred_masks = self._prepare_masks(pred_masks)
         tree_mask = self._prepare_tree_mask(tree_mask)
@@ -1163,7 +1243,8 @@ class MaskAwareMaskPrecision(ElementwiseMetric):
                 return torch.tensor(1.)
             return torch.tensor(0.)
 
-        iou = self._mask_accuracy._mask_iou(src_masks, pred_masks)
+        if iou is None:
+            iou = self._mask_accuracy._mask_iou(src_masks, pred_masks)
         gt_to_pred = greedy_iou_match(iou, self.iou_threshold)
         true_positive = n_matched_gt(gt_to_pred)
         matched = gt_to_pred[gt_to_pred >= 0]
@@ -1177,7 +1258,12 @@ class MaskAwareMaskPrecision(ElementwiseMetric):
                                           as_tuple=False).squeeze(1)
         unmatched_masks = pred_masks[unmatched_indices]
         ignored_unmatched = self._count_ignored_unmatched_predictions(
-            unmatched_masks, tree_mask, src_masks, self.iou_threshold)
+            unmatched_masks,
+            tree_mask,
+            iou=iou,
+            unmatched_indices=unmatched_indices,
+            iou_threshold=self.iou_threshold,
+        )
         adjusted_false_positive = float(
             unmatched_indices.numel()) - float(ignored_unmatched)
 
@@ -1378,8 +1464,7 @@ class DetectionMAP(Metric):
 
     def _compute(self, y_pred, y_true):
         import torch
-        from torchmetrics.detection import MeanAveragePrecision
-        metric = MeanAveragePrecision(
+        metric = make_mean_average_precision(
             iou_type=self.iou_type,
             iou_thresholds=self.iou_thresholds,
             max_detection_thresholds=self.max_detection_thresholds,

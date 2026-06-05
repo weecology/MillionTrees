@@ -45,6 +45,7 @@ dependencies = [
     "scikit-learn",
     "shapely",
     "torchmetrics[detection]",
+    "faster-coco-eval",
     'albumentations',
     "pyarrow>=17.0.0",
     "datasets",

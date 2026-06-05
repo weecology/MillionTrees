@@ -39,7 +39,7 @@ class MillionTreesDataset:
         return len(self._input_array)
 
     def __getitem__(self, idx):
-        # Any transformations are handled by the WILDSSubset
+        # Any transformations are handled by the MillionTreesSubset
         # since different subsets (e.g., train vs test) might have different transforms
         x = self.get_input(idx)
         y_indices = self._input_lookup[self._input_array[idx]]
@@ -132,7 +132,7 @@ class MillionTreesDataset:
                             Used for fast development on a small dataset.
             - transform (function): Any data transformations to be applied to the input x.
         Output:
-            - subset (MillionTreesSubset): A (potentially subsampled) subset of the WILDSDataset.
+            - subset (MillionTreesSubset): A (potentially subsampled) subset of the MillionTreesDataset.
         """
         if split not in self.split_dict:
             raise ValueError(
@@ -151,7 +151,7 @@ class MillionTreesDataset:
                                   self.geometry_name)
 
     def check_init(self):
-        """Convenience function to check that the WILDSDataset is properly configured."""
+        """Convenience function to check that the MillionTreesDataset is properly configured."""
         required_attrs = [
             '_dataset_name', '_data_dir', '_split_scheme', '_split_array',
             '_y_array', '_y_size', '_metadata_fields', '_metadata_array'

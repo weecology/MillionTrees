@@ -24,9 +24,11 @@ This looks at the file fine-tune.csv and gets the 'split' column that designates
 
 The MillionTrees benchmark supports multiple dataset split schemes to accommodate various tasks:
 
-- **Fine-tune**: For each source, part of the data is used for training and part for testing (the same sources appear in both splits), matching a typical fine-tuning workflow.
+- **Random**: For each source, most images are used for training and a subset for testing (the same sources appear in both splits), matching a typical fine-tuning workflow.
 - **Zeroshot**: Entire sources are held out for testing, simulating a common applied example in which a user applies to model to new data outside of training distributions. 
 - **Crossgeometry**: Combines boxes and points annotations to predict Polygons.
+
+In addition to ``train`` and ``test``, packaged CSVs may include a ``validation`` split. Validation images are held out from both training and the benchmark test splits. They are intended for independent, post-hoc evaluation — for example TLS-derived crown labels — and must **not** be used for hyperparameter tuning or model selection. Access validation rows with ``dataset.get_subset("validation")``.
 
 Each split scheme uses the same underlying data, so you don't need to redownload when changing split schemes! 
 
@@ -130,7 +132,7 @@ The DataFrame contains:
 - `x`, `y`: Point coordinates (TreePoints)
 - `xmin`, `ymin`, `xmax`, `ymax`: Box coordinates (TreeBoxes)
 - `source`: Original data source
-- `split`: Train/test/validation split
+- `split`: ``train``, ``test``, or ``validation`` (validation = held-out independent ground truth, not for tuning)
 - `source_id`: Numeric ID for each source
 - `filename_id`: Numeric ID for each image
 
