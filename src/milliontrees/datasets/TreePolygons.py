@@ -455,7 +455,7 @@ class TreePolygonsDataset(MillionTreesDataset):
              metadata,
              *,
              viz_dir=None,
-             viz_n_per_source=4):
+             viz_n_per_source=10):
         """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
         detection accuracies of each domain.
 
@@ -521,16 +521,9 @@ class TreePolygonsDataset(MillionTreesDataset):
         # All images are in the images folder
         img_path = os.path.join(self._data_dir / 'images' /
                                 self._input_array[idx])
-        try:
-            img = Image.open(img_path)
-            img = np.asarray(img.convert('RGB'), dtype=np.float32)
-            img /= 255.0
-        except Exception as e:
-            import warnings
-            warnings.warn(
-                f"Could not load image {img_path}: {e}. Returning blank image.")
-            img = np.zeros((self.image_size, self.image_size, 3),
-                           dtype=np.float32)
+        img = Image.open(img_path)
+        img = np.asarray(img.convert('RGB'), dtype=np.float32)
+        img /= 255.0
 
         return img
 

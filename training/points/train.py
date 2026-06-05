@@ -177,8 +177,8 @@ def main():
     val_adapted = MillionTreesPointBatchAdapter(val_loader, filename_id_to_path) if has_val else None
 
     model = df_main.deepforest(
-        config="point",
         config_args={
+            "architecture": "treeformer",
             "train": {"epochs": args.max_epochs, "lr": args.lr},
             "validation": {"root_dir": str(point_dataset._data_dir / "images")},
             "batch_size": args.batch_size,

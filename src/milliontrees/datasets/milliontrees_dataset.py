@@ -106,7 +106,7 @@ class MillionTreesDataset:
              metadata,
              *,
              viz_dir=None,
-             viz_n_per_source=4):
+             viz_n_per_source=10):
         """
         Args:
             - y_pred (list[dict]): Predicted targets per image
@@ -114,7 +114,8 @@ class MillionTreesDataset:
             - metadata (Tensor): Metadata rows aligned with predictions
             - viz_dir (str | Path | None): If set, write up to ``viz_n_per_source`` overlay
               PNGs per ``source_id`` under this directory (see ``eval_visualization``).
-            - viz_n_per_source (int): Max images to save per source when ``viz_dir`` is set.
+            - viz_n_per_source (int | None): Max images to save per source when ``viz_dir`` is set.
+              Pass None to write all images.
 
         Output:
             - results (dict): Dictionary of results (may include ``eval_visualization_paths``)
@@ -699,7 +700,7 @@ class MillionTreesSubset(MillionTreesDataset):
              metadata,
              *,
              viz_dir=None,
-             viz_n_per_source=4):
+             viz_n_per_source=10):
         return self.dataset.eval(
             y_pred,
             y_true,

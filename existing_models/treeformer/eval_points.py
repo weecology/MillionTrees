@@ -69,7 +69,7 @@ def main():
 
     warnings.filterwarnings("ignore")
 
-    model = df_main.deepforest(config="point")
+    model = df_main.deepforest(config_args={"architecture": "treeformer"})
     model.load_model(args.checkpoint)
     model.eval()
     if torch.cuda.is_available():

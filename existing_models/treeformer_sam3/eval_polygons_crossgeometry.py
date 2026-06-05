@@ -24,6 +24,7 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
+import time
 import shapely.affinity
 import torch
 from PIL import Image, ImageDraw
@@ -107,6 +108,41 @@ def polygons_to_prediction(poly_gdf, height: int, width: int) -> dict:
 
     if not masks:
         return _empty_pred(height, width)
+
+    return {
+        "y": torch.tensor(np.stack(masks), dtype=torch.bool),
+        "labels": torch.zeros(len(masks), dtype=torch.int64),
+        "scores": torch.tensor(scores_list, dtype=torch.float32),
+    }
+
+
+def polygons_to_prediction_native(poly_gdf, eval_h: int, eval_w: int,
+                                   native_h: int, native_w: int) -> dict:
+    """Rasterize polygons in native pixel coords, then resize to eval resolution."""
+    if poly_gdf is None or len(poly_gdf) == 0:
+        return _empty_pred(eval_h, eval_w)
+
+    masks: List[np.ndarray] = []
+    scores_list: List[float] = []
+    for _, row in poly_gdf.iterrows():
+        geom = row.geometry
+        if geom is None or geom.is_empty:
+            continue
+        m_native = rio_rasterize(
+            [(geom.__geo_interface__, 1)],
+            out_shape=(native_h, native_w),
+            fill=0, dtype=np.uint8,
+        ).astype(bool)
+        m_eval = np.array(
+            Image.fromarray(m_native.astype(np.uint8) * 255)
+            .resize((eval_w, eval_h), Image.Resampling.NEAREST)
+        ) > 127
+        masks.append(m_eval)
+        score = float(row["score"]) if "score" in poly_gdf.columns and pd.notna(row["score"]) else 1.0
+        scores_list.append(score)
+
+    if not masks:
+        return _empty_pred(eval_h, eval_w)
 
     return {
         "y": torch.tensor(np.stack(masks), dtype=torch.bool),
@@ -261,7 +297,7 @@ def save_viz_with_tf_points(
     tf_points: List[torch.Tensor],
     metadata: torch.Tensor,
     out_dir: str,
-    n_per_source: int = 4,
+    n_per_source: int | None = 10,
     score_threshold: float = 0.5,
     viz_size: int | None = None,
     img_paths: Optional[List[str]] = None,
@@ -286,7 +322,7 @@ def save_viz_with_tf_points(
 
     for row in range(len(y_pred)):
         source_id = int(metadata[row, 1].item())
-        if per_source_count.get(source_id, 0) >= n_per_source:
+        if n_per_source is not None and per_source_count.get(source_id, 0) >= n_per_source:
             continue
 
         filename_id = int(metadata[row, 0].item())
@@ -383,11 +419,14 @@ def main() -> None:
                         help="HuggingFace model ID for SAM2")
     parser.add_argument("--hf-token", type=str, default=os.environ.get("HF_TOKEN"))
     parser.add_argument("--max-batches", type=int, default=None)
+    parser.add_argument("--profile", action="store_true",
+                        help="Print per-batch timing breakdown (TreeFormer vs SAM2 vs data load)")
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--viz-dir", type=str, default=None,
                         help="Directory for per-source overlay PNGs "
                              "(purple=GT, orange=SAM3 masks, cyan=TreeFormer points)")
-    parser.add_argument("--viz-n-per-source", type=int, default=4)
+    parser.add_argument("--viz-n-per-source", type=lambda x: None if x.lower() == "none" else int(x), default=10,
+                        help="Max images per source for viz (default 10); pass 'none' for all")
     parser.add_argument("--viz-size", type=int, default=512,
                         help="Output PNG resolution (pixels); independent of --image-size used for eval")
     parser.add_argument("--image-size", type=int, default=448)
@@ -434,12 +473,26 @@ def main() -> None:
     images_dir = os.path.join(str(dataset._data_dir), "images")
     use_tile = args.patch_size > 0 or args.patch_fraction > 0
 
+    # Profiling state — only used when --profile is set
+    _p_t_tf = _p_t_sam2 = _p_t_data = 0.0
+    _p_n_img = _p_n_batches = _p_n_pts = 0
+    _p_t_loop_start = _p_t_batch_end = time.perf_counter()
+
     for b_idx, (metadata, images, targets) in enumerate(test_loader):
+        if args.profile and b_idx > 0:
+            _p_t_data += time.perf_counter() - _p_t_batch_end
+
         if not use_tile:
             images_tensor = torch.as_tensor(images)
+            if args.profile:
+                if torch.cuda.is_available(): torch.cuda.synchronize()
+                _tf_t0 = time.perf_counter()
             tf_preds = model.predict_step(images_tensor, b_idx)
+            if args.profile:
+                if torch.cuda.is_available(): torch.cuda.synchronize()
+                _p_t_tf += time.perf_counter() - _tf_t0
         else:
-            tf_preds = None  # computed per-image below
+            tf_preds = None  # computed per-image in the tile branch
 
         batch_y_pred: List[dict] = []
         batch_y_true: List[dict] = []
@@ -461,12 +514,18 @@ def main() -> None:
                 else:
                     patch_size = args.patch_size
 
+                if args.profile:
+                    if torch.cuda.is_available(): torch.cuda.synchronize()
+                    _tile_t0 = time.perf_counter()
                 tile_df = model.predict_tile(
                     path=img_path,
                     patch_size=patch_size,
                     patch_overlap=0.0,
                 )
                 torch.cuda.empty_cache()
+                if args.profile:
+                    if torch.cuda.is_available(): torch.cuda.synchronize()
+                    _p_t_tf += time.perf_counter() - _tile_t0
 
                 if tile_df is None or len(tile_df) == 0:
                     pts_cpu = torch.zeros((0, 2))
@@ -525,12 +584,22 @@ def main() -> None:
                 )
                 if args.max_point_prompts is not None:
                     kw["max_point_prompts"] = args.max_point_prompts
+                if args.profile:
+                    if torch.cuda.is_available(): torch.cuda.synchronize()
+                    _sam_t0 = time.perf_counter()
+                    _p_n_pts += len(pts_cpu)
                 poly_gdf = model.predict_polygons(**kw)
+                if args.profile:
+                    if torch.cuda.is_available(): torch.cuda.synchronize()
+                    _p_t_sam2 += time.perf_counter() - _sam_t0
                 y_pred_img = polygons_to_prediction(poly_gdf, H, W)
 
             batch_y_pred.append(y_pred_img)
             batch_y_true.append(target)
-            batch_pts.append(pts_cpu)
+
+        # Single cache flush after all per-image SAM2 calls in this batch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
         # Stream metrics update — no need to hold the full dataset in memory
         batch_meta = metadata[:len(batch_y_pred)]
@@ -540,7 +609,7 @@ def main() -> None:
         if args.viz_dir:
             for j in range(len(batch_y_pred)):
                 sid = int(batch_meta[j, 1].item())
-                if viz_cap.get(sid, 0) < args.viz_n_per_source:
+                if args.viz_n_per_source is None or viz_cap.get(sid, 0) < args.viz_n_per_source:
                     fid = int(batch_meta[j, 0].item())
                     basename = dataset._filename_id_to_code.get(fid, f"id_{fid}")
                     viz_img_paths.append(os.path.join(images_dir, basename))
@@ -550,10 +619,39 @@ def main() -> None:
                     viz_tf_points.append(batch_pts[j])
                     viz_cap[sid] = viz_cap.get(sid, 0) + 1
 
+        if args.profile:
+            if torch.cuda.is_available(): torch.cuda.synchronize()
+            _p_t_batch_end = time.perf_counter()
+            _p_n_batches += 1
+            _p_n_img += len(batch_y_pred)
+            _avg_tf = _p_t_tf / _p_n_batches
+            _avg_sam2 = _p_t_sam2 / max(_p_n_img, 1)
+            _avg_pts = _p_n_pts / max(_p_n_img, 1)
+            _thr = _p_n_img / max(_p_t_batch_end - _p_t_loop_start, 1e-6)
+            print(
+                f"[profile] batch {b_idx+1}/{len(test_loader)} | "
+                f"tf={_avg_tf:.2f}s/batch | "
+                f"sam2={_avg_sam2:.2f}s/img ({_avg_pts:.1f}pts/img avg) | "
+                f"throughput={_thr:.3f}img/s",
+                flush=True,
+            )
+
         print(f"  batch {b_idx + 1}/{len(test_loader)}", flush=True)
 
         if args.max_batches is not None and (b_idx + 1) >= args.max_batches:
             break
+
+    if args.profile and _p_n_batches > 0:
+        _total = time.perf_counter() - _p_t_loop_start
+        print(
+            f"\n[profile] === Summary over {_p_n_batches} batches, {_p_n_img} images ===\n"
+            f"  Data load:  {_p_t_data / max(_p_n_batches-1, 1):.3f}s/batch (between-batch gap)\n"
+            f"  TreeFormer: {_p_t_tf / _p_n_batches:.3f}s/batch  ({_p_t_tf / max(_p_n_img, 1):.3f}s/img)\n"
+            f"  SAM2:       {_p_t_sam2 / _p_n_batches:.3f}s/batch  "
+            f"({_p_t_sam2 / max(_p_n_img, 1):.3f}s/img, {_p_n_pts / max(_p_n_img, 1):.1f}pts/img avg)\n"
+            f"  Total wall: {_total:.1f}s  ({_p_n_img / max(_total, 1e-6):.3f}img/s throughput)\n",
+            flush=True,
+        )
 
     results, results_str = stream_eval.finalize()
     print(results_str)

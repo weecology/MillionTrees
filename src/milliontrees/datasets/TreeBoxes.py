@@ -354,7 +354,7 @@ class TreeBoxesDataset(MillionTreesDataset):
              metadata,
              *,
              viz_dir=None,
-             viz_n_per_source=4):
+             viz_n_per_source=10):
         """Performs evaluation on the given predictions.
 
         The main evaluation metric, detection_acc_avg_dom, measures the simple average of the

@@ -247,6 +247,7 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
     )
     
     points_tiled['source'] = 'Young et al. 2025 unsupervised'
+    points_tiled['mission_id'] = mission_id
     points_tiled = points_tiled.rename(columns={'image_path': 'filename'})
 
     # Tile boxes (OFO may use crowns-silva.gpkg or {mission_id}_crowns-silva.gpkg)
@@ -268,6 +269,7 @@ def tile_mission_orthomosaic(mission_path: str, images_dir: str, patch_size: int
     )
     
     boxes_tiled['source'] = 'Young et al. 2025 unsupervised'
+    boxes_tiled['mission_id'] = mission_id
     boxes_tiled = boxes_tiled.rename(columns={'image_path': 'filename'})
 
     return points_tiled, boxes_tiled

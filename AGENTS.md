@@ -36,7 +36,7 @@ Use `uv run pre-commit install` once per clone if you want the same checks to ru
 - **Fail Fast**: Let code fail quickly and visibly rather than hiding errors
 - **Minimal Try/Except**: Avoid excessive try/except blocks that mask underlying issues
 - **Explicit Failures**: When errors occur, they should be obvious and informative
-- **No Silent Failures**: Don't catch exceptions unless you can meaningfully handle them
+- **No Silent Failures**: Don't catch exceptions unless you can meaningfully handle them. In particular, never swallow I/O errors in dataset `get_input()` methods by returning blank/zero images — a missing or unreadable file is a real data problem that must surface as a hard error, not be silently skipped.
 
 ### Testing Strategy
 - **Minimal Testing**: Write only essential tests that catch critical functionality

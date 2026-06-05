@@ -79,7 +79,7 @@ dev = [
     "huggingface-hub>=1.5.0,<2.0",
     "tokenizers>=0.20.0",
     "opencv-python",
-    "comet-ml",
+    "comet-ml>=3.44.4",
 ]
 # TreeFormer point training (DeepForest treeformer-training branch until merged to main).
 treeformer = [
@@ -103,7 +103,7 @@ package-dir = {"" = "src"}
 packages.find = {where = ["src"], include = ["milliontrees*"]}
 
 [tool.uv.sources]
-deepforest = { git = "https://github.com/weecology/DeepForest.git", branch = "main" }
+deepforest = { git = "https://github.com/jveitchmichaelis/DeepForest.git", branch = "treeformer-training" }
 torch = [
     { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
 ]
