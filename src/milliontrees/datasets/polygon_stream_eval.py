@@ -198,7 +198,7 @@ class TreePolygonsStreamingEvalState:
         viz_y_pred: list | None = None,
         viz_y_true: list | None = None,
         viz_metadata: torch.Tensor | None = None,
-        viz_n_per_source: int = 4,
+        viz_n_per_source: int | None = 10,
     ) -> tuple[dict[str, Any], str]:
         results: dict[str, Any] = {}
         results_str = ""
@@ -257,14 +257,14 @@ def merge_viz_samples(
     viz_y_pred: list,
     viz_y_true: list,
     viz_rows: list[torch.Tensor],
-    n_per_source: int,
+    n_per_source: int | None,
 ) -> None:
     """Append up to ``n_per_source`` samples per source_id for visualization."""
     if not isinstance(metadata, torch.Tensor):
         metadata = torch.as_tensor(metadata)
     for i in range(len(preds)):
         sid = int(metadata[i, 1].item())
-        if cap.get(sid, 0) >= n_per_source:
+        if n_per_source is not None and cap.get(sid, 0) >= n_per_source:
             continue
         viz_y_pred.append(preds[i])
         viz_y_true.append(targets[i])

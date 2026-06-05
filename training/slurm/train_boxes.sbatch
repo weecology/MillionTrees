@@ -5,10 +5,9 @@
 #SBATCH --array=0-1
 #SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=90GB
+#SBATCH --mem=80GB
 #SBATCH --partition=hpg-turin
 #SBATCH --gpus=2
-#SBATCH --nodes=1
 #SBATCH --ntasks-per-node=2
 
 # Dataset is loaded from ROOT_DIR/TreeBoxes_v{version} (version from TreeBoxes._versions_dict, e.g. 0.11).

@@ -22,13 +22,19 @@ Polygons	Mask R-CNN	✓	Random	N/A	0.662, 0.898	0.407
 Polygons	SAM3	✗	Random	N/A	0.304, 0.656	0.209
 Polygons	DeepForest	✗	Random	N/A	0.082, 0.004	0.078
 Polygons	SAM3	✗	Zero-shot	N/A	0.224, 0.734	0.185
-Polygons	Mask R-CNN	✓	Zero-shot	N/A	0.173, 0.906	0.086
+Polygons	Mask R-CNN	✓	Zero-shot	N/A	0.197, 0.886	0.101
 Polygons	DeepForest	✗	Zero-shot	N/A	0.106, 0.000	0.098
 Polygons	SAM3	✗	Cross-geometry	N/A	0.224, 0.734	0.185
 Polygons	TreeFormer+SAM2	✗	Cross-geometry	N/A	0.377, 0.828	0.254
 
 Notes / provenance:
-- All numbers from v0.16 runs completed 2026-05-30 unless otherwise noted.
+- Most numbers from v0.16 runs completed 2026-05-30 unless otherwise noted.
+- Polygons Mask R-CNN ✓ Zero-shot updated 2026-06-04 from retrained model (job 33924927_1).
+- DeepForest ✗ Boxes (random, zeroshot): new eval running (jobs 33924928_0,1); numbers will update.
+- SAM3 ✗ all geometry zeroshot: new eval running (job 33924930_1); numbers will update.
+- DeepForest ✓ Points (random, zeroshot): new training run underway (job 33913952_0,1); numbers will update.
+- Polygons Mask R-CNN ✓ Random: new training run underway (job 33924927_0); numbers will update.
+- FAILED/needs resubmit: mt_train_boxes (memory flag conflict), mt_eval_treeformer (deepforest point.yaml missing), mt_eval_sam3 random (missing TreeBoxes_supervised_v0.16 image file).
 - Columns: "Tree Counting" = counting_mae (gated on per-source `complete` flag).
   "Tree Detection" = (recall, precision): for Points, recall is KeypointAccuracy and
   precision is maskaware_keypoint_precision; for Boxes and Polygons, recall is average

@@ -362,7 +362,7 @@ class TreePointsDataset(MillionTreesDataset):
              metadata,
              *,
              viz_dir=None,
-             viz_n_per_source=4):
+             viz_n_per_source=10):
         """Evaluate predictions.
 
         KeypointAccuracy (recall) uses a per-source distance threshold derived from each source's

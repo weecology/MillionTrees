@@ -128,7 +128,7 @@ def save_eval_visualizations(
     metadata: torch.Tensor,
     out_dir: str | Path,
     *,
-    n_per_source: int = 4,
+    n_per_source: int | None = 10,
     score_threshold: float | None = None,
 ) -> list[Path]:
     """Write up to ``n_per_source`` images per ``source_id`` with GT and predictions overlaid.
@@ -137,6 +137,8 @@ def save_eval_visualizations(
 
     Images are resized to ``dataset.image_size`` so coordinates match ``y_pred`` / ``y_true`` from
     the standard eval loader.
+
+    Pass ``n_per_source=None`` to write all images without a per-source cap.
 
     Returns paths of written PNG files.
     """
@@ -163,7 +165,8 @@ def save_eval_visualizations(
 
     for row in range(len(y_pred)):
         source_id = int(metadata[row, 1].item())
-        if per_source_count.get(source_id, 0) >= n_per_source:
+        if n_per_source is not None and per_source_count.get(source_id,
+                                                             0) >= n_per_source:
             continue
 
         filename_id = int(metadata[row, 0].item())

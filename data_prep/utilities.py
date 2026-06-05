@@ -9,7 +9,10 @@ import re
 import rasterio
 import math
 import numpy as np
-from deepforest.utilities import xml_to_annotations
+try:
+    from deepforest.utilities import xml_to_annotations
+except ImportError:
+    xml_to_annotations = None
 import warnings
 import shapely
 import re
