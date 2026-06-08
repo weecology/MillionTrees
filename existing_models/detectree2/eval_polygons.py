@@ -87,6 +87,10 @@ def main() -> None:
                         help="Directory for per-source prediction overlay PNGs")
     args = parser.parse_args()
 
+    # Eval viz is on by default: write per-source overlays to <output-dir>/viz.
+    if args.viz_dir is None and args.output_dir:
+        args.viz_dir = os.path.join(args.output_dir, "viz")
+
     device = select_device(args.device)
     predictor = build_predictor(args.model_path, args.base_model, device,
                                 args.score_threshold)
