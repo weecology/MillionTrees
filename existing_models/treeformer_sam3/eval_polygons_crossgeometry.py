@@ -432,6 +432,12 @@ def main() -> None:
     parser.add_argument("--image-size", type=int, default=448)
     args = parser.parse_args()
 
+    # Visualization on by default: 10 overlays per source (--viz-n-per-source).
+    if args.viz_dir is None:
+        args.viz_dir = os.path.join(args.output_dir, "viz") if args.output_dir else "eval_viz"
+    elif args.viz_dir == "":
+        args.viz_dir = None
+
     from deepforest import main as df_main
 
     config_args = dict(TREEFORMER_CONFIG)

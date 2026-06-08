@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from PIL import Image
+import rasterio
 
 from data_prep.filter_auto_arborist_tcd import (
     load_model,
@@ -31,6 +32,19 @@ def _save_binary_mask(mask: np.ndarray, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     img = Image.fromarray((mask > 0).astype(np.uint8) * 255, mode="L")
     img.save(output_path)
+
+
+def _image_hw(image_file: Path) -> tuple[int, int] | None:
+    """Return the (height, width) of an image, or None if it can't be read.
+
+    Uses rasterio so the dimensions match what ``predict_tree_mask`` sees and
+    what the dataloader validates against at train/eval time.
+    """
+    try:
+        with rasterio.open(image_file) as src:
+            return (src.height, src.width)
+    except Exception:
+        return None
 
 
 def run(
@@ -63,7 +77,7 @@ def run(
     processor = model = None  # lazy-load the model only if we actually compute
     rows = []
     skipped = []
-    reused = computed = 0
+    reused = computed = stale = 0
     for resolved, source in pairs:
         image_file = Path(resolved)
         if not image_file.exists():
@@ -73,9 +87,25 @@ def run(
         mask_path = output_root / f"{Path(name_map[resolved]).stem}.png"
         legacy_path = output_root / f"{image_file.stem}.png"
 
+        image_hw = _image_hw(image_file)
+        if image_hw is None:
+            print(f"WARNING: Cannot read image size, skipping: {image_file}")
+            skipped.append(str(image_file))
+            continue
+
+        # Reuse an existing/legacy mask only if its dimensions match the current
+        # image. A source that was re-tiled or resized keeps the same stem, so a
+        # stale mask of the old size would otherwise be silently reused and then
+        # crash the dataloader at train/eval time. On any mismatch we recompute.
+        mask = None
         if mask_path.exists() and not overwrite:
-            mask = np.array(Image.open(mask_path).convert("L"), dtype=np.uint8) > 0
-        else:
+            candidate = np.array(Image.open(mask_path).convert("L"), dtype=np.uint8) > 0
+            if candidate.shape[:2] == image_hw:
+                mask = candidate
+            else:
+                stale += 1  # fall through to recompute
+
+        if mask is None:
             reusable = (
                 reuse_legacy
                 and image_file.stem not in collided_stems
@@ -84,21 +114,32 @@ def run(
             )
             if reusable:
                 # The legacy mask is the one TCD produced for this exact image
-                # (unique stem) and was sized to it; copy it under the new key.
-                shutil.copy(legacy_path, mask_path)
-                mask = np.array(Image.open(mask_path).convert("L"), dtype=np.uint8) > 0
-                reused += 1
-            else:
-                if model is None:
-                    processor, model = load_model(device)
-                try:
-                    mask = predict_tree_mask(processor, model, str(image_file), device)
-                    _save_binary_mask(mask, mask_path)
-                    computed += 1
-                except Exception as e:
-                    print(f"WARNING: Failed to process {image_file} — {e}")
-                    skipped.append(str(image_file))
-                    continue
+                # (unique stem); reuse it only if it still matches the image size.
+                candidate = np.array(
+                    Image.open(legacy_path).convert("L"), dtype=np.uint8) > 0
+                if candidate.shape[:2] == image_hw:
+                    shutil.copy(legacy_path, mask_path)
+                    mask = candidate
+                    reused += 1
+                else:
+                    stale += 1
+
+        if mask is None:
+            if model is None:
+                processor, model = load_model(device)
+            try:
+                mask = predict_tree_mask(processor, model, str(image_file), device)
+                if mask.shape[:2] != image_hw:
+                    raise ValueError(
+                        f"Computed mask {mask.shape[:2]} does not match image "
+                        f"{image_hw}"
+                    )
+                _save_binary_mask(mask, mask_path)
+                computed += 1
+            except Exception as e:
+                print(f"WARNING: Failed to process {image_file} — {e}")
+                skipped.append(str(image_file))
+                continue
 
         rows.append(
             {
@@ -109,7 +150,10 @@ def run(
             }
         )
 
-    print(f"\nMasks reused from legacy: {reused} | recomputed: {computed}")
+    print(
+        f"\nMasks reused from legacy: {reused} | recomputed: {computed} | "
+        f"stale (size mismatch, recomputed): {stale}"
+    )
 
     if skipped:
         print(f"\nSkipped {len(skipped)} image(s) due to errors:")

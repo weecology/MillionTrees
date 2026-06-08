@@ -419,6 +419,7 @@ def main():
         test_subset,
         batch_size=args.batch_size,
         device=device,
+        viz_dir=os.path.join(args.output_dir, "viz"),
         eval_mode=args.eval_mode,
     )
     print(results_str)

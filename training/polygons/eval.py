@@ -31,7 +31,8 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--include-unsupervised", action="store_true")
     parser.add_argument("--viz-dir", type=str, default=None,
-                        help="Directory for per-source prediction overlay PNGs")
+                        help="Directory for per-source prediction overlay PNGs "
+                             "(default: <output-dir>/viz, else ./eval_viz; pass '' to disable)")
     parser.add_argument(
         "--eval-mode",
         type=str,
@@ -40,6 +41,12 @@ def main():
         help="stream = low-memory per-batch metrics; legacy = accumulate then dataset.eval()",
     )
     args = parser.parse_args()
+
+    # Visualization on by default: 10 overlays per source (dataset.eval viz_n_per_source=10).
+    if args.viz_dir is None:
+        args.viz_dir = os.path.join(args.output_dir, "viz") if args.output_dir else "eval_viz"
+    elif args.viz_dir == "":
+        args.viz_dir = None
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 

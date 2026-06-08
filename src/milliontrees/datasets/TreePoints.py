@@ -86,6 +86,14 @@ class TreePointsDataset(MillionTreesDataset):
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.16.zip",
             'compressed_size':
                 164722449837
+        },
+        "0.17": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.17.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.17.zip",
+            'compressed_size':
+                190778146908
         }
     }
 

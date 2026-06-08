@@ -14,6 +14,7 @@ To integrate a real model, implement `run_external_model_batch`.
 """
 
 import argparse
+import os
 from pathlib import Path
 from typing import Any
 
@@ -157,8 +158,18 @@ def main() -> None:
         help="Run with mock predictions instead of an external model.",
     )
     parser.add_argument("--max-batches", type=int, default=None)
+    parser.add_argument("--output-dir", type=str, default=None)
+    parser.add_argument("--viz-dir", type=str, default=None,
+                        help="Directory for per-source prediction overlay PNGs "
+                             "(default: <output-dir>/viz, else ./eval_viz; pass '' to disable)")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
+
+    # Visualization on by default: 10 overlays per source (dataset.eval viz_n_per_source=10).
+    if args.viz_dir is None:
+        args.viz_dir = os.path.join(args.output_dir, "viz") if args.output_dir else "eval_viz"
+    elif args.viz_dir == "":
+        args.viz_dir = None
 
     dataset = get_dataset(
         "TreePolygons",
@@ -198,7 +209,8 @@ def main() -> None:
             break
 
     used_metadata = test_subset.metadata_array[:len(all_y_true)]
-    results, results_str = dataset.eval(all_y_pred, all_y_true, metadata=used_metadata)
+    results, results_str = dataset.eval(all_y_pred, all_y_true, metadata=used_metadata,
+                                        viz_dir=args.viz_dir)
     print(results_str)
 
     if args.verbose:

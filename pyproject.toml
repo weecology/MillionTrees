@@ -85,6 +85,7 @@ dev = [
 treeformer = [
     "deepforest @ git+https://github.com/jveitchmichaelis/DeepForest.git@treeformer-training",
     "geopandas",
+    "comet-ml>=3.44.4",
 ]
 docs = [
     "sphinx",
