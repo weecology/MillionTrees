@@ -285,6 +285,7 @@ def main():
 
     eval_max_batches = 2 if args.smoke_test else None
     results, results_str = evaluate(model, box_dataset, test_subset, batch_size=args.batch_size,
+                                    viz_dir=os.path.join(args.output_dir, "viz"),
                                     max_batches=eval_max_batches)
     print(results_str)
 

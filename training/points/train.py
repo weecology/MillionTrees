@@ -119,8 +119,8 @@ def main():
                         choices=["random", "zeroshot", "crossgeometry"])
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--max-epochs", type=int, default=20)
-    parser.add_argument("--lr", type=float, default=2e-4,
-                        help="Learning rate (TreeFormer point config default)")
+    parser.add_argument("--lr", type=float, default=1e-5,
+                        help="Learning rate. Use ~1e-5 for pretrained fine-tuning, ~2e-4 for random-weights training.")
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
     parser.add_argument("--download", action="store_true")
@@ -137,7 +137,12 @@ def main():
         "--checkpoint",
         type=str,
         default="weecology/deepforest-tree-point",
-        help="Hugging Face repo or local checkpoint for TreeFormer weights",
+        help="Hugging Face repo for TreeFormer weights. Ignored when --random-weights is set.",
+    )
+    parser.add_argument(
+        "--random-weights", action="store_true",
+        help="Initialize from ImageNet backbone only (no pretrained TreeFormer head). "
+             "Use a higher LR (e.g. 2e-4) with this flag.",
     )
     parser.add_argument("--smoke-test", action="store_true",
                         help="Limit to 2 train/val batches and 1 epoch")
@@ -189,7 +194,17 @@ def main():
         existing_train_dataloader=train_adapted,
         existing_val_dataloader=val_adapted,
     )
-    model.load_model(args.checkpoint)
+
+    if args.random_weights:
+        # ImageNet backbone + randomly-initialized head; skip pretrained TreeFormer weights.
+        print("Initializing from ImageNet backbone only (random head weights).")
+        model.load_model(model_name=None)
+    else:
+        print(f"Loading pretrained TreeFormer checkpoint: {args.checkpoint}")
+        model.load_model(args.checkpoint)
+
+    init_label = "random-weights" if args.random_weights else "pretrained"
+    print(f"Init: {init_label}  |  LR: {args.lr}  |  Split: {args.split_scheme}")
 
     loggers = []
     if args.comet:
@@ -198,7 +213,7 @@ def main():
 
             loggers.append(CometLogger(
                 project_name="milliontrees-treeformer-points",
-                tags=[f"split-{args.split_scheme}", "geometry-points", "treeformer"],
+                tags=[f"split-{args.split_scheme}", "geometry-points", "treeformer", init_label],
             ))
         except Exception as e:
             print(f"Comet ML logging disabled: {e}")
@@ -248,6 +263,7 @@ def main():
     results, results_str = evaluate(
         model, point_dataset, test_subset,
         batch_size=args.batch_size,
+        viz_dir=os.path.join(args.output_dir, "viz"),
         max_batches=eval_max_batches,
     )
     print(results_str)
@@ -267,7 +283,8 @@ def main():
             "model": "TreeFormer-finetuned",
             "task": "TreePoints",
             "split": args.split_scheme,
-            "checkpoint": args.checkpoint,
+            "checkpoint": "random-weights" if args.random_weights else args.checkpoint,
+            "lr": args.lr,
             "metrics": flat,
         }, f, indent=2)
     print(f"Results saved to {results_path}")
