@@ -27,7 +27,8 @@ fi
 
 echo "=== Detectree2 eval: split=$SPLIT ==="
 
-uv run python eval_polygons.py \
+# --no-sync: keep the hand-built detectron2 + pinned torch (not in pyproject.toml).
+uv run --no-sync python eval_polygons.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --device cuda \
