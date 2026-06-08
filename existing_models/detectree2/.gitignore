@@ -1,0 +1,4 @@
+# Model garden checkpoints (downloaded, ~480MB each)
+*.pth
+# Locally downloaded MillionTrees data
+data/

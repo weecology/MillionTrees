@@ -1,0 +1,18 @@
+[project]
+name = "milliontrees-detectree2"
+version = "0.1.0"
+description = "Detectree2 (Mask R-CNN tree crown delineation) evaluation on MillionTrees TreePolygons"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "milliontrees",
+    "detectree2",
+    "torch",
+    "torchvision",
+    "opencv-python",
+]
+
+[tool.uv.sources]
+milliontrees = { path = "../..", editable = true }
+
+# detectron2 has no PyPI release and must be built against the installed torch.
+# Install it (and detectree2) following README.md; uv cannot resolve it from PyPI.
