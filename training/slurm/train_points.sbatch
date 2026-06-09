@@ -3,13 +3,14 @@
 #SBATCH --output=/home/b.weinstein/logs/%x_%A_%a.out
 #SBATCH --error=/home/b.weinstein/logs/%x_%A_%a.err
 #SBATCH --array=0-1
-#SBATCH --time=48:00:00
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=80GB
 #SBATCH --partition=hpg-turin
+#SBATCH --gpus=3
 #SBATCH --nodes=1
-#SBATCH --gpus=2
-#SBATCH --ntasks-per-node=2
+#SBATCH --ntasks-per-node=3
+
 
 set -euo pipefail
 cd /blue/ewhite/b.weinstein/src/MillionTrees
@@ -28,6 +29,6 @@ srun uv run --extra treeformer python training/points/train.py \
   --max-epochs 20 \
   --lr 2e-4 \
   --num-workers 4 \
-  --gpus 2 \
+  --gpus 3 \
   --output-dir "training/points/outputs/$SPLIT" \
   --comet

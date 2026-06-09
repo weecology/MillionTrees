@@ -389,8 +389,9 @@ def main() -> None:
     parser.add_argument("--download", action="store_true")
     parser.add_argument(
         "--split-scheme", type=str, default="crossgeometry",
-        choices=["crossgeometry"],
-        help="Only crossgeometry makes sense for this model.",
+        choices=["crossgeometry", "random", "zeroshot"],
+        help="crossgeometry is the headline benchmark; random/zeroshot "
+             "evaluate the same pipeline against the standard TreePolygons test splits.",
     )
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"])
     parser.add_argument("--iou-threshold", type=float, default=0.3,
