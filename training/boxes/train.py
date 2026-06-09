@@ -14,54 +14,56 @@ import warnings
 
 import pytorch_lightning as pl
 import torch
+from torch.utils.data import DataLoader
 
 from deepforest import main as df_main
 
 from milliontrees import get_dataset
-from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
+from milliontrees.common.data_loaders import get_eval_loader
 
 
 # ---------------------------------------------------------------------------
 # Batch format adapter
 # ---------------------------------------------------------------------------
 
-class MillionTreesBatchAdapter:
-    """Wraps a MillionTrees dataloader to yield (path, images, targets) batches
-    compatible with the DeepForest training API.
+class _AdaptCollate:
+    """collate_fn that emits DeepForest-format (images, targets, paths) batches.
 
-    MillionTrees: (metadata[B,2], images[B,C,H,W], [{"y": boxes, "labels": int64}])
-    DeepForest:   (images[B,C,H,W], [{"boxes": boxes, "labels": int64}], list[str])
+    Wraps the MillionTrees subset collate, then translates batch format:
+      MillionTrees: (metadata[B,2], images[B,C,H,W], [{"y": boxes, "labels": int64}])
+      DeepForest:   (images[B,C,H,W], [{"boxes": boxes, "labels": int64}], list[str])
 
+    Implemented as a top-level callable (not a closure) so it pickles cleanly to
+    DataLoader workers. Crucially, returning a *real* DataLoader with this
+    collate — instead of a hand-rolled iterable wrapper — lets Lightning inject a
+    DistributedSampler under DDP, so each GPU trains on its own data shard.
     Images are already CHW float32 0-1 from MillionTrees, so no conversion needed.
     """
 
-    def __init__(self, loader, filename_id_to_path=None):
-        self.loader = loader
+    def __init__(self, base_collate, filename_id_to_path=None):
+        self.base_collate = base_collate
         self.filename_id_to_path = filename_id_to_path or {}
 
-    def __iter__(self):
-        for metadata, images, targets in self.loader:
-            paths = [
-                self.filename_id_to_path.get(int(metadata[i, 0]), str(int(metadata[i, 0])))
-                for i in range(len(metadata))
-            ]
-            adapted = []
-            for t in targets:
-                boxes = t["y"]
-                if boxes.dim() == 1:
-                    boxes = boxes.unsqueeze(0)
-                if len(boxes) == 0:
-                    boxes = torch.zeros((0, 4), dtype=torch.float32)
-                labels = t["labels"]
-                if not isinstance(labels, torch.Tensor):
-                    labels = torch.tensor(labels, dtype=torch.int64)
-                else:
-                    labels = labels.long()
-                adapted.append({"boxes": boxes.float(), "labels": labels})
-            yield images, adapted, paths
-
-    def __len__(self):
-        return len(self.loader)
+    def __call__(self, batch):
+        metadata, images, targets = self.base_collate(batch)
+        paths = [
+            self.filename_id_to_path.get(int(metadata[i, 0]), str(int(metadata[i, 0])))
+            for i in range(len(metadata))
+        ]
+        adapted = []
+        for t in targets:
+            boxes = t["y"]
+            if boxes.dim() == 1:
+                boxes = boxes.unsqueeze(0)
+            if len(boxes) == 0:
+                boxes = torch.zeros((0, 4), dtype=torch.float32)
+            labels = t["labels"]
+            if not isinstance(labels, torch.Tensor):
+                labels = torch.tensor(labels, dtype=torch.int64)
+            else:
+                labels = labels.long()
+            adapted.append({"boxes": boxes.float(), "labels": labels})
+        return images, adapted, paths
 
 
 # ---------------------------------------------------------------------------
@@ -173,31 +175,48 @@ def main():
         print("No training samples for this split; skipping training.")
         return
 
-    train_loader = get_train_loader(
-        "standard", train_subset, batch_size=args.batch_size, num_workers=args.num_workers
-    )
-    val_loader = get_eval_loader(
-        "standard", test_subset, batch_size=args.batch_size, num_workers=args.num_workers
-    )
-    has_val = len(val_loader) > 0
+    # Real DataLoaders (not a custom iterable) so Lightning can inject a
+    # DistributedSampler under DDP and shard data across GPUs. The collate_fn
+    # translates MillionTrees batches into DeepForest's (images, targets, paths).
+    adapt_collate = _AdaptCollate(train_subset.collate, box_dataset._filename_id_to_code)
+    has_val = len(test_subset) > 0
 
-    # Adapt batch format: (metadata, images, {"y":…}) → (path, images, {"boxes":…})
-    filename_id_to_path = box_dataset._filename_id_to_code
-    train_adapted = MillionTreesBatchAdapter(train_loader, filename_id_to_path)
-    val_adapted = MillionTreesBatchAdapter(val_loader, filename_id_to_path) if has_val else None
+    train_adapted = DataLoader(
+        train_subset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        collate_fn=adapt_collate,
+        num_workers=args.num_workers,
+    )
+    val_adapted = (
+        DataLoader(
+            test_subset,
+            batch_size=args.batch_size,
+            shuffle=False,
+            collate_fn=adapt_collate,
+            num_workers=args.num_workers,
+        )
+        if has_val
+        else None
+    )
 
     # Build DeepForest model and load pretrained weights
     model = df_main.deepforest(
         config_args={
-            # csv_file must be non-None or DeepForest.on_fit_start raises, even
-            # though training uses existing_train_dataloader below and never reads it.
             "train": {
                 "epochs": args.max_epochs,
                 "lr": args.lr,
-                "csv_file": str(box_dataset._data_dir / f"{args.split_scheme}.csv"),
                 "root_dir": str(box_dataset._data_dir / "images"),
             },
-            "validation": {"root_dir": str(box_dataset._data_dir / "images")},
+            "validation": {
+                "root_dir": str(box_dataset._data_dir / "images"),
+                # Compute box_precision/box_recall/mAP every epoch. The base
+                # config defaults this to 20, so with ~20 epochs the metrics
+                # would only ever log on the final epoch and you'd see nothing
+                # but the losses. These metrics come from the val dataloader,
+                # not a csv_file.
+                "val_accuracy_interval": 1,
+                },
             "batch_size": args.batch_size,
             "devices": args.gpus,
             "accelerator": args.accelerator,
@@ -246,19 +265,22 @@ def main():
     callbacks = []
     checkpoint_cb = None
     if has_val:
+        # Monitor box_recall (mode=max) rather than the regression loss: the
+        # loss can drift upward while detections stay good, so it's a poor
+        # signal for checkpointing/early stopping.
         checkpoint_cb = pl.callbacks.ModelCheckpoint(
             dirpath=os.path.join(args.output_dir, "checkpoints"),
             filename="boxes-best",
-            monitor="val_bbox_regression",
-            mode="min",
+            monitor="box_recall",
+            mode="max",
             save_last=True,
             save_top_k=1,
         )
         callbacks.append(checkpoint_cb)
         callbacks.append(pl.callbacks.EarlyStopping(
-            monitor="val_bbox_regression",
+            monitor="box_recall",
             patience=args.early_stop_patience,
-            mode="min",
+            mode="max",
         ))
 
     trainer_kwargs = {}
@@ -275,6 +297,11 @@ def main():
     )
 
     model.trainer.fit(model)
+
+    # Under DDP all ranks return from fit(); only rank 0 runs the final
+    # MillionTrees eval and writes results (avoids redundant work / file races).
+    if not model.trainer.is_global_zero:
+        return
 
     print("\n=== Evaluating best checkpoint ===")
     if checkpoint_cb is not None:

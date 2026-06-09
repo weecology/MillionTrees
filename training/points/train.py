@@ -181,16 +181,29 @@ def main():
     train_adapted = MillionTreesPointBatchAdapter(train_loader, filename_id_to_path)
     val_adapted = MillionTreesPointBatchAdapter(val_loader, filename_id_to_path) if has_val else None
 
-    model = df_main.deepforest(
-        config_args={
-            "architecture": "treeformer",
-            "train": {"epochs": args.max_epochs, "lr": args.lr},
-            "validation": {"root_dir": str(point_dataset._data_dir / "images")},
-            "batch_size": args.batch_size,
-            "devices": args.gpus,
-            "accelerator": args.accelerator,
-            "workers": args.num_workers,
+    config_args = {
+        "architecture": "treeformer",
+        "train": {"epochs": args.max_epochs, "lr": args.lr},
+        "validation": {
+            "root_dir": str(point_dataset._data_dir / "images"),
+            # Compute point_precision/point_recall/val_mae every epoch. The base
+            # config defaults this to 20, so with ~20 epochs the metrics would
+            # only ever log on the final epoch and you'd see nothing but val_loss.
+            # These metrics come from the val dataloader, not a csv_file.
+            "val_accuracy_interval": 1,
         },
+        "batch_size": args.batch_size,
+        "devices": args.gpus,
+        "accelerator": args.accelerator,
+        "workers": args.num_workers,
+    }
+    if args.gpus > 1:
+        # TreeFormer has heads (box detection / cropmodel) that don't contribute
+        # to the point loss, so DDP must be told to expect unused parameters.
+        config_args["strategy"] = "ddp_find_unused_parameters_true"
+
+    model = df_main.deepforest(
+        config_args=config_args,
         existing_train_dataloader=train_adapted,
         existing_val_dataloader=val_adapted,
     )
@@ -221,19 +234,22 @@ def main():
     callbacks = []
     checkpoint_cb = None
     if has_val:
+        # Monitor point_recall (mode=max) rather than val_loss: TreeFormer's
+        # val_loss can drift upward while detections stay good, so it's a poor
+        # signal for checkpointing/early stopping.
         checkpoint_cb = pl.callbacks.ModelCheckpoint(
             dirpath=os.path.join(args.output_dir, "checkpoints"),
-            filename="treeformer-{epoch:02d}-{val_loss:.4f}",
-            monitor="val_loss",
-            mode="min",
+            filename="treeformer-{epoch:02d}-{point_recall:.4f}",
+            monitor="point_recall",
+            mode="max",
             save_top_k=1,
             save_last=True,
         )
         callbacks.append(checkpoint_cb)
         callbacks.append(pl.callbacks.EarlyStopping(
-            monitor="val_loss",
+            monitor="point_recall",
             patience=args.early_stop_patience,
-            mode="min",
+            mode="max",
         ))
 
     trainer_kwargs = {}

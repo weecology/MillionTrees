@@ -34,9 +34,9 @@ fi
 srun uv run python training/boxes/train.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
-  --batch-size 16 \
-  --max-epochs 40 \
-  --lr 0.001 \
+  --batch-size 32 \
+  --max-epochs 200 \
+  --lr 0.01 \
   --num-workers 8 \
   --gpus 3 \
   --early-stop-patience "$EARLY_STOP_PATIENCE" \
