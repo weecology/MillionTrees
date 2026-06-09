@@ -63,30 +63,6 @@ class TreePointsDataset(MillionTreesDataset):
             'supervised_download_url': '',
             'compressed_size': 160938856
         },
-        "0.13": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.13.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.13.zip",
-            'compressed_size':
-                164722449837
-        },
-        "0.15": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.15.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.15.zip",
-            'compressed_size':
-                164722449837
-        },
-        "0.16": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.16.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.16.zip",
-            'compressed_size':
-                164722449837
-        },
         "0.17": {
             'download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.17.zip",
