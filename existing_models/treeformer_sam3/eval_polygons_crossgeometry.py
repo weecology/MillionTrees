@@ -430,6 +430,12 @@ def main() -> None:
     parser.add_argument("--viz-size", type=int, default=512,
                         help="Output PNG resolution (pixels); independent of --image-size used for eval")
     parser.add_argument("--image-size", type=int, default=448)
+    parser.add_argument("--checkpoint", type=str,
+                        default=TREEFORMER_CONFIG["model"]["name"],
+                        help="TreeFormer weights: HuggingFace repo ID or local checkpoint dir")
+    parser.add_argument("--revision", type=str,
+                        default=TREEFORMER_CONFIG["model"]["revision"],
+                        help="Model revision/tag (ignored for local checkpoint dirs)")
     args = parser.parse_args()
 
     # Visualization on by default: 10 overlays per source (--viz-n-per-source).
@@ -442,8 +448,12 @@ def main() -> None:
 
     config_args = dict(TREEFORMER_CONFIG)
     config_args["score_thresh"] = args.score_thresh_tf
+    config_args["model"] = dict(TREEFORMER_CONFIG["model"])
+    config_args["model"]["name"] = args.checkpoint
+    config_args["model"]["revision"] = args.revision
     config_args["point"] = dict(TREEFORMER_CONFIG["point"])
     config_args["point"]["nms_distance_thresh"] = args.nms_distance_thresh
+    print(f"TreeFormer checkpoint: {args.checkpoint} (revision={args.revision})")
     model = df_main.deepforest(config_args=config_args)
     model.eval()
 
@@ -692,7 +702,8 @@ def main() -> None:
         with open(os.path.join(args.output_dir, f"results_polygons_{args.split_scheme}.json"), "w") as f:
             json.dump(
                 {"model": "TreeFormer+SAM3", "task": "TreePolygons",
-                 "split": args.split_scheme, "metrics": flat},
+                 "split": args.split_scheme, "checkpoint": args.checkpoint,
+                 "metrics": flat},
                 f, indent=2,
             )
         print(f"Results written to {args.output_dir}")

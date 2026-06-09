@@ -28,5 +28,6 @@ srun uv run --extra treeformer python training/points/train.py \
   --max-epochs 20 \
   --lr 2e-4 \
   --num-workers 4 \
+  --gpus 2 \
   --output-dir "training/points/outputs/$SPLIT" \
   --comet
