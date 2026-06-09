@@ -1479,7 +1479,13 @@ class DetectionMAP(Metric):
         if torch.distributed.is_available(
         ) and torch.distributed.is_initialized():
             metric._to_sync = False
-        return metric.compute()["map"]
+        result = metric.compute()
+        # torchmetrics >=1.x puts AP@0.5 in "map_50"; the primary "map" key is
+        # -1 when a custom max_detection_thresholds is combined with a single
+        # IoU threshold, so read map_50 directly for the AP50 configuration.
+        if self.iou_thresholds == [0.5]:
+            return result["map_50"]
+        return result["map"]
 
     def _compute_group_wise(self, y_pred, y_true, g, n_groups):
         group_counts = get_counts(g, n_groups)

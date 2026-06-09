@@ -55,7 +55,12 @@ class MaskRCNNPolygonTrainer(pl.LightningModule):
             masks = t["y"]
             if isinstance(masks, np.ndarray):
                 masks = torch.from_numpy(masks)
-            masks = masks.to(device).float()
+            # GT masks are rasterized with foreground value 255 (see
+            # TreePolygons.create_polygon_mask). Mask R-CNN's mask loss is
+            # binary_cross_entropy_with_logits against these as targets, which
+            # requires {0, 1}; passing 255 makes the -x*target term explode and
+            # drives the loss arbitrarily negative. Binarize at this boundary.
+            masks = (masks.to(device) > 0).float()
 
             if "bboxes" in t:
                 boxes = t["bboxes"]
@@ -83,6 +88,12 @@ class MaskRCNNPolygonTrainer(pl.LightningModule):
         loss_dict = self.model(images, rt)
         loss = sum(l for l in loss_dict.values())
         self.log("train_loss", loss, prog_bar=True, batch_size=len(images))
+        # Break out the per-component losses so we can see whether the model is
+        # learning at all (a flat total can hide a classifier that learns while
+        # box/mask regression stalls, or vice versa).
+        for name, value in loss_dict.items():
+            self.log(f"train_{name}", value, batch_size=len(images))
+        self.log("lr", self.optimizers().param_groups[0]["lr"], prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -93,6 +104,8 @@ class MaskRCNNPolygonTrainer(pl.LightningModule):
         self.model.eval()
         loss = sum(l for l in loss_dict.values())
         self.log("val_loss", loss, prog_bar=True, batch_size=len(images), sync_dist=True)
+        for name, value in loss_dict.items():
+            self.log(f"val_{name}", value, batch_size=len(images), sync_dist=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
@@ -316,6 +329,19 @@ def main():
         help="Tag for experiment aggregation (subset vs full data pull).",
     )
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--early-stopping",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable/disable EarlyStopping on val_loss. Use --no-early-stopping "
+             "to train the full --max-epochs (e.g. for LR sweeps).",
+    )
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=5,
+        help="EarlyStopping patience (val checks) when --early-stopping is set.",
+    )
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -372,7 +398,9 @@ def main():
         mode="min",
         save_top_k=3,
     )
-    early_stop_cb = pl.callbacks.EarlyStopping(monitor="val_loss", patience=5, mode="min")
+    early_stop_cb = pl.callbacks.EarlyStopping(
+        monitor="val_loss", patience=args.patience, mode="min"
+    )
 
     loggers = []
     if args.comet:
@@ -380,12 +408,21 @@ def main():
             from pytorch_lightning.loggers import CometLogger
             loggers.append(CometLogger(
                 project_name="milliontrees-polygons",
-                tags=[f"split-{args.split_scheme}", "geometry-polygons"],
+                tags=[
+                    f"split-{args.split_scheme}",
+                    "geometry-polygons",
+                    f"lr-{args.lr:g}",
+                    f"init-{args.init_mode}",
+                ],
             ))
         except Exception as e:
             print(f"Comet ML logging disabled: {e}")
 
-    callbacks = [checkpoint_cb, early_stop_cb] if has_val else []
+    callbacks = []
+    if has_val:
+        callbacks.append(checkpoint_cb)
+        if args.early_stopping:
+            callbacks.append(early_stop_cb)
 
     trainer = pl.Trainer(
         max_epochs=args.max_epochs,

@@ -21,6 +21,19 @@ def _disable_torchmetric_sync(metric: Any) -> None:
         metric._to_sync = False
 
 
+def _read_map(result: dict, iou_thresholds: Any) -> torch.Tensor:
+    """Read the mAP value, mirroring ``DetectionMAP.compute_strict``.
+
+    torchmetrics >=1.x returns ``map = -1`` when a single IoU threshold is
+    combined with a custom ``max_detection_thresholds``; the AP@0.5 value lives
+    in ``map_50`` instead. The AP50 metric is configured with
+    ``iou_thresholds=[0.5]``, so read ``map_50`` in that case.
+    """
+    if list(iou_thresholds) == [0.5]:
+        return result["map_50"]
+    return result["map"]
+
+
 class TreePolygonsStreamingEvalState:
     """Accumulates metrics batch-wise; results match ``standard_group_eval`` semantics."""
 
@@ -168,7 +181,9 @@ class TreePolygonsStreamingEvalState:
             return results, results_str
 
         _disable_torchmetric_sync(self._map_global)
-        agg_map = float(self._map_global.compute()["map"].item())
+        agg_map = float(
+            _read_map(self._map_global.compute(),
+                      self._map_metric.iou_thresholds).item())
         results[metric.agg_metric_field] = agg_map
         results_str += f"Average {metric.name}: {agg_map:.3f}\n"
 
@@ -180,7 +195,8 @@ class TreePolygonsStreamingEvalState:
                 gv = torch.tensor(0.0)
             else:
                 _disable_torchmetric_sync(self._map_per_group[group_idx])
-                gv = self._map_per_group[group_idx].compute()["map"]
+                gv = _read_map(self._map_per_group[group_idx].compute(),
+                               self._map_metric.iou_thresholds)
             group_metrics_list.append(gv)
             results[f"{metric.name}_{group_str}"] = float(gv.item())
             results[f"count_{group_str}"] = float(gcnt[group_idx].item())
