@@ -78,6 +78,7 @@ released checkpoint with no MillionTrees training at all.
 | DeepForest | ✓ | 0.526 | 0.650 | <small>`uv run python training/boxes/train.py --split-scheme random`</small> |
 | DeepForest | ✗ | 0.407 | 0.731 | <small>`uv run python existing_models/deepforest/eval_boxes.py --split-scheme random`</small> |
 | SAM3 | ✗ | 0.190 | 0.608 | <small>`uv run python existing_models/sam3/eval_boxes.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| CanopyRS DINO Swin-L | ✗ | pending | pending | <small>`python existing_models/canopyrs/eval_boxes.py --device cuda --split-scheme random`</small> |
 
 ### Zero-shot
 
@@ -86,6 +87,7 @@ released checkpoint with no MillionTrees training at all.
 | DeepForest | ✓ | 0.535 | 0.908 | <small>`uv run python training/boxes/train.py --split-scheme zeroshot`</small> |
 | DeepForest | ✗ | 0.432 | 0.962 | <small>`uv run python existing_models/deepforest/eval_boxes.py --split-scheme zeroshot`</small> |
 | SAM3 | ✗ | 0.209 | 0.798 | <small>`uv run python existing_models/sam3/eval_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| CanopyRS DINO Swin-L | ✗ | pending | pending | <small>`python existing_models/canopyrs/eval_boxes.py --device cuda --split-scheme zeroshot`</small> |
 
 ### Cross-geometry
 
@@ -110,6 +112,7 @@ SAM3 and detectree2.
 | Mask R-CNN | ✓ | 0.416 | 0.900 | <small>`uv run python training/polygons/train.py --split-scheme random`</small> |
 | detectree2 | ✗ | 0.304 | 0.891 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme random`</small> |
 | SAM3 | ✗ | 0.186 | 0.619 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | pending | pending | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 
 ### Zero-shot
 
@@ -118,6 +121,7 @@ SAM3 and detectree2.
 | detectree2 | ✗ | 0.375 | 0.945 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme zeroshot`</small> |
 | SAM3 | ✗ | 0.165 | 0.663 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 | Mask R-CNN | ✓ | 0.064 | 0.814 | <small>`uv run python training/polygons/train.py --split-scheme zeroshot`</small> |
+| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | pending | pending | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 
 > **Note:** The Mask R-CNN ✓ zeroshot row is from the pre-fix polygon evaluator
 > (before GT-mask binarization / AP50; commit b2ff776) and is not directly comparable

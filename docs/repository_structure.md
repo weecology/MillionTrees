@@ -51,6 +51,7 @@ dependencies stay isolated from the core package.
 | DeepForest | `existing_models/deepforest/` | boxes |
 | TreeFormer | `existing_models/treeformer/` | points |
 | SAM3 | `existing_models/sam3/` | boxes, points, polygons |
+| CanopyRS (DINO Swin-L / DINO+SAM3) | `existing_models/canopyrs/` | boxes, polygons |
 
 ```bash
 uv run python existing_models/deepforest/eval_boxes.py --split-scheme zeroshot --root-dir "$MT_ROOT"
@@ -79,7 +80,7 @@ uv run python scripts/make_benchmark_table.py --splits random zeroshot
 independently:
 
 - `training/slurm/submit_all_training.sh` → `train_boxes.sbatch`, `train_points.sbatch`, `train_polygons.sbatch`
-- `existing_models/slurm/submit_all_eval.sh` → `eval_deepforest.sbatch`, `eval_treeformer.sbatch`, `eval_sam3.sbatch`
+- `existing_models/slurm/submit_all_eval.sh` → `eval_deepforest.sbatch`, `eval_treeformer.sbatch`, `eval_sam3.sbatch`, `eval_canopyrs.sbatch`
 
 For a dependency-chained run that automatically rebuilds the table once every job
 finishes, use `slurm/run_benchmark.sbatch` instead.

@@ -81,6 +81,8 @@ def find_existing_model_results(split: str) -> List[Dict]:
         ("deepforest", "DeepForest-pretrained"): ["boxes"],
         ("treeformer", "TreeFormer-pretrained"): ["points"],
         ("sam3", "SAM3"): ["boxes", "points", "polygons"],
+        ("canopyrs", "CanopyRS-DINO-SwinL"): ["boxes"],
+        ("canopyrs", "CanopyRS-DINO-SAM3-SelvaMask"): ["polygons"],
     }
     for (model_dir, model_name), task_keys in model_tasks.items():
         for task_key in task_keys:
