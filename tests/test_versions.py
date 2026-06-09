@@ -30,27 +30,27 @@ def _subset_default_download_url(dataset_class, subset_prefix):
 
 
 @pytest.mark.parametrize("dataset_class,mini_basename", [
-    (TreePolygons.TreePolygonsDataset, "MiniTreePolygons_v0.13.zip"),
-    (TreeBoxes.TreeBoxesDataset, "MiniTreeBoxes_v0.13.zip"),
-    (TreePoints.TreePointsDataset, "MiniTreePoints_v0.13.zip"),
+    (TreePolygons.TreePolygonsDataset, "MiniTreePolygons_v0.17.zip"),
+    (TreeBoxes.TreeBoxesDataset, "MiniTreeBoxes_v0.17.zip"),
+    (TreePoints.TreePointsDataset, "MiniTreePoints_v0.17.zip"),
 ])
 def test_mini_supervised_default_uses_full_mini_zip(dataset_class,
                                                     mini_basename):
     """Regression: published mini archives are full splits only; supervised mini zips 404."""
     urls = _subset_default_download_url(dataset_class, "Mini")
-    assert urls["0.13"]["download_url"].endswith(mini_basename)
-    assert "supervised" not in urls["0.13"]["download_url"]
+    assert urls["0.17"]["download_url"].endswith(mini_basename)
+    assert "supervised" not in urls["0.17"]["download_url"]
 
 
 @pytest.mark.parametrize("dataset_class,small_basename", [
-    (TreePolygons.TreePolygonsDataset, "SmallTreePolygons_v0.13.zip"),
-    (TreeBoxes.TreeBoxesDataset, "SmallTreeBoxes_v0.13.zip"),
-    (TreePoints.TreePointsDataset, "SmallTreePoints_v0.13.zip"),
+    (TreePolygons.TreePolygonsDataset, "SmallTreePolygons_v0.17.zip"),
+    (TreeBoxes.TreeBoxesDataset, "SmallTreeBoxes_v0.17.zip"),
+    (TreePoints.TreePointsDataset, "SmallTreePoints_v0.17.zip"),
 ])
 def test_small_default_uses_small_zip(dataset_class, small_basename):
     urls = _subset_default_download_url(dataset_class, "Small")
-    assert urls["0.13"]["download_url"].endswith(small_basename)
-    assert "supervised" not in urls["0.13"]["download_url"]
+    assert urls["0.17"]["download_url"].endswith(small_basename)
+    assert "supervised" not in urls["0.17"]["download_url"]
 
 
 def test_mini_and_small_mutually_exclusive():
