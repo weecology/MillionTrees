@@ -16,4 +16,7 @@ sbatch existing_models/slurm/eval_sam3.sbatch
 echo "Submitting Detectree2 (pretrained polygon model) evaluation..."
 sbatch existing_models/slurm/eval_detectree2.sbatch
 
+echo "Submitting CanopyRS (DINO boxes + DINO/SAM3 polygons) evaluation..."
+sbatch existing_models/slurm/eval_canopyrs.sbatch
+
 echo "All eval jobs submitted."

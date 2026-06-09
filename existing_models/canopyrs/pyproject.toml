@@ -1,0 +1,19 @@
+[project]
+name = "milliontrees-canopyrs"
+version = "0.1.0"
+description = "CanopyRS DINO Swin-L (SelvaBox) and DINO + SAM3 (SelvaMask) baselines on MillionTrees"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "milliontrees",
+    "canopyrs",
+    "transformers>=5.0.0rc1",
+    "huggingface-hub>=1.0.0",
+]
+
+[tool.uv.sources]
+milliontrees = { path = "../..", editable = true }
+
+# NOTE: CanopyRS pulls in detrex + Detectron2, which must be built from source and
+# cannot be resolved by pip/uv alone. Follow the CanopyRS installation guide and
+# install milliontrees into that environment instead of using `uv sync` here. See
+# README.md.
