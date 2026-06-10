@@ -119,21 +119,40 @@ def read_random_csv_counts_from_zip(url: str) -> Optional[dict]:
             name = sorted(candidates, key=lambda s: s.count("/"))[0]
             with zf.open(name) as f:
                 reader = csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"))
-                num_rows = 0
-                filenames = set()
-                sources = set()
+                # Track counts split by supervision type. A source is treated as
+                # unsupervised if its name contains 'unsupervised' (matching the
+                # loader's default '*unsupervised*' exclusion pattern).
+                stats = {
+                    "supervised": {"rows": 0, "filenames": set(), "sources": set()},
+                    "unsupervised": {"rows": 0, "filenames": set(), "sources": set()},
+                }
                 for row in reader:
-                    num_rows += 1
+                    src = row.get("source")
+                    key = "unsupervised" if src and "unsupervised" in src.lower() else "supervised"
+                    stats[key]["rows"] += 1
                     fn = row.get("filename")
                     if fn:
-                        filenames.add(fn)
-                    src = row.get("source")
+                        stats[key]["filenames"].add(fn)
                     if src:
-                        sources.add(src)
+                        stats[key]["sources"].add(src)
+
+                def summarize(group):
+                    return {
+                        "images": len(group["filenames"]),
+                        "annotations": group["rows"],
+                        "sources": len(group["sources"]),
+                    }
+
+                sup = summarize(stats["supervised"])
+                unsup = summarize(stats["unsupervised"])
+                all_filenames = stats["supervised"]["filenames"] | stats["unsupervised"]["filenames"]
+                all_sources = stats["supervised"]["sources"] | stats["unsupervised"]["sources"]
                 return {
-                    "images": len(filenames),
-                    "annotations": num_rows,
-                    "sources": len(sources),
+                    "images": len(all_filenames),
+                    "annotations": sup["annotations"] + unsup["annotations"],
+                    "sources": len(all_sources),
+                    "supervised": sup,
+                    "unsupervised": unsup,
                 }
     except zipfile.BadZipFile:
         # Some URLs may point to non-zip resources; treat as missing stats.
@@ -198,14 +217,15 @@ def generate_dataset_report(output_path=None, include_test_results=False, test_e
     # Summary table
     report_content.append('## Dataset Summary')
     report_content.append('')
-    report_content.append('| Dataset | Latest Version | Size (GB) | Images | Annotations | Sources | Download URL |')
-    report_content.append('|---------|----------------|-----------|--------|-------------|---------|--------------|')
-    
+    report_content.append('| Dataset | Latest Version | Size (GB) | Supervision | Images | Annotations | Sources | Download URL |')
+    report_content.append('|---------|----------------|-----------|-------------|--------|-------------|---------|--------------|')
+
     total_size = 0
-    
+    empty_counts = {"images": 0, "annotations": 0, "sources": 0}
+
     for dataset_name, dataset_class in datasets_info:
         versions_dict = get_versions_dict(dataset_class)
-        
+
         if versions_dict:
             # Get latest version (highest version number)
             def version_sort_key(v):
@@ -213,7 +233,7 @@ def generate_dataset_report(output_path=None, include_test_results=False, test_e
                     return tuple(map(int, v.split('.')))
                 except ValueError:
                     return (0, 0)
-            
+
             latest_version = max(versions_dict.keys(), key=version_sort_key)
             latest_info = versions_dict[latest_version]
             url = latest_info.get('download_url', 'N/A')
@@ -224,24 +244,40 @@ def generate_dataset_report(output_path=None, include_test_results=False, test_e
                 size_bytes_meta = 0
             size_bytes_int = get_on_disk_size_bytes(url, size_bytes_meta)
             total_size += size_bytes_int
-            counts = read_random_csv_counts_from_zip(url) or {"images": 0, "annotations": 0, "sources": 0}
-            
+            counts = read_random_csv_counts_from_zip(url) or dict(empty_counts)
+
             # Handle missing URLs
             if not url or url.strip() == '':
                 url = 'N/A'
-            
+
             # Truncate URL for display
             display_url = url
             if url != 'N/A' and len(url) > 50:
                 display_url = url[:47] + "..."
-            report_content.append(
-                f'| {dataset_name} | {latest_version} | {format_gb(size_bytes_int)} | '
-                f'{counts["images"]} | {counts["annotations"]} | {counts["sources"]} | {display_url} |'
-            )
+
+            # One sub-row per supervision type, then a Total row for the dataset.
+            sup = counts.get("supervised", dict(empty_counts))
+            unsup = counts.get("unsupervised", dict(empty_counts))
+            rows = [
+                ('Supervised', sup),
+                ('Unsupervised', unsup),
+                ('Total', counts),
+            ]
+            for i, (label, c) in enumerate(rows):
+                # Only repeat dataset/version/size/url on the first sub-row.
+                name_cell = dataset_name if i == 0 else ''
+                version_cell = latest_version if i == 0 else ''
+                size_cell = format_gb(size_bytes_int) if i == 0 else ''
+                url_cell = display_url if i == 0 else ''
+                label_cell = f'**{label}**' if label == 'Total' else label
+                report_content.append(
+                    f'| {name_cell} | {version_cell} | {size_cell} | {label_cell} | '
+                    f'{c["images"]} | {c["annotations"]} | {c["sources"]} | {url_cell} |'
+                )
         else:
-            report_content.append(f'| {dataset_name} | N/A | N/A | N/A | N/A | N/A | N/A |')
-    
-    report_content.append(f'| **Total** | - | **{format_gb(total_size)}** | - | - | - | - |')
+            report_content.append(f'| {dataset_name} | N/A | N/A | - | N/A | N/A | N/A | N/A |')
+
+    report_content.append(f'| **Total** | - | **{format_gb(total_size)}** | - | - | - | - | - |')
     report_content.append('')
 
     # Detailed version information

@@ -30,7 +30,7 @@ echo "Checkpoint: $CKPT"
 VIZ_DIR="outputs/viz/trained_points/${SPLIT}"
 mkdir -p "$VIZ_DIR"
 
-uv run python training/points/eval_checkpoint.py \
+uv run python training/points/eval.py \
   --checkpoint "$CKPT" \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \

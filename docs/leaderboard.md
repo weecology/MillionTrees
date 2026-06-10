@@ -47,9 +47,9 @@ branch until merged to main).
 
 | Model | Fine-tuned | Counting MAE | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| TreeFormer | ✗ | pending | pending | <small>`uv run python existing_models/treeformer/eval_points.py --split-scheme random`</small> |
-| SAM3 | ✗ | 26.675 | 0.714 | <small>`uv run python existing_models/sam3/eval_points.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
-| TreeFormer | ✓ | pending | pending | <small>`uv run --extra treeformer python training/points/train.py --split-scheme random`</small> |
+| TreeFormer | ✗ | 56.435 | 0.775 | <small>`uv run python existing_models/treeformer/eval_points.py --split-scheme random`</small> |
+| SAM3 | ✗ | 54.593 | 0.711 | <small>`uv run python existing_models/sam3/eval_points.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| TreeFormer | ✓ | 57.461 | 0.784 | <small>`uv run --extra treeformer python training/points/train.py --split-scheme random`</small> |
 
 ### Zeroshot split
 
@@ -59,9 +59,9 @@ released checkpoint with no MillionTrees training at all.
 
 | Model | Fine-tuned | Counting MAE | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| TreeFormer | ✗ | pending | pending | <small>`uv run python existing_models/treeformer/eval_points.py --split-scheme zeroshot`</small> |
-| SAM3 | ✗ | 51.860 | 0.544 | <small>`uv run python existing_models/sam3/eval_points.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
-| TreeFormer | ✓ | pending | pending | <small>`uv run --extra treeformer python training/points/train.py --split-scheme zeroshot`</small> |
+| TreeFormer | ✗ | 15.717 | 0.882 | <small>`uv run python existing_models/treeformer/eval_points.py --split-scheme zeroshot`</small> |
+| SAM3 | ✗ | 14.878 | 0.759 | <small>`uv run python existing_models/sam3/eval_points.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| TreeFormer | ✓ | 17.024 | 0.869 | <small>`uv run --extra treeformer python training/points/train.py --split-scheme zeroshot`</small> |
 
 ### Cross-geometry
 
@@ -75,17 +75,17 @@ released checkpoint with no MillionTrees training at all.
 
 | Model | Fine-tuned | Avg Recall | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| DeepForest | ✓ | 0.721 | 0.610 | <small>`uv run python training/boxes/train.py --split-scheme random`</small> |
-| DeepForest | ✗ | 0.414 | 0.760 | <small>`uv run python existing_models/deepforest/eval_boxes.py --split-scheme random`</small> |
-| SAM3 | ✗ | 0.175 | 0.619 | <small>`uv run python existing_models/sam3/eval_boxes.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| DeepForest | ✓ | 0.526 | 0.650 | <small>`uv run python training/boxes/train.py --split-scheme random`</small> |
+| DeepForest | ✗ | 0.407 | 0.731 | <small>`uv run python existing_models/deepforest/eval_boxes.py --split-scheme random`</small> |
+| SAM3 | ✗ | 0.190 | 0.608 | <small>`uv run python existing_models/sam3/eval_boxes.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 
 ### Zero-shot
 
 | Model | Fine-tuned | Avg Recall | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| DeepForest | ✓ | 0.460 | 0.900 | <small>`uv run python training/boxes/train.py --split-scheme zeroshot`</small> |
-| DeepForest | ✗ | 0.416 | 0.959 | <small>`uv run python existing_models/deepforest/eval_boxes.py --split-scheme zeroshot`</small> |
-| SAM3 | ✗ | 0.201 | 0.810 | <small>`uv run python existing_models/sam3/eval_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| DeepForest | ✓ | 0.535 | 0.908 | <small>`uv run python training/boxes/train.py --split-scheme zeroshot`</small> |
+| DeepForest | ✗ | 0.432 | 0.962 | <small>`uv run python existing_models/deepforest/eval_boxes.py --split-scheme zeroshot`</small> |
+| SAM3 | ✗ | 0.209 | 0.798 | <small>`uv run python existing_models/sam3/eval_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 
 ### Cross-geometry
 
@@ -100,27 +100,35 @@ released checkpoint with no MillionTrees training at all.
 
 ## TreePolygons
 
-Fine-tuned (✓) uses Mask R-CNN (`training/polygons/train.py`). Pretrained (✗) uses SAM3.
+Fine-tuned (✓) uses Mask R-CNN (`training/polygons/train.py`). Pretrained (✗) uses
+SAM3 and detectree2.
 
 ### Random
 
 | Model | Fine-tuned | Avg Mask Accuracy | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| Mask R-CNN | ✓ | 0.232 | 0.872 | <small>`uv run python training/polygons/train.py --split-scheme random`</small> |
-| SAM3 | ✗ | 0.223 | 0.681 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| Mask R-CNN | ✓ | 0.416 | 0.900 | <small>`uv run python training/polygons/train.py --split-scheme random`</small> |
+| detectree2 | ✗ | 0.304 | 0.891 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme random`</small> |
+| SAM3 | ✗ | 0.186 | 0.619 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 
 ### Zero-shot
 
 | Model | Fine-tuned | Avg Mask Accuracy | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| Mask R-CNN | ✓ | 0.146 | 0.758 | <small>`uv run python training/polygons/train.py --split-scheme zeroshot`</small> |
-| SAM3 | ✗ | 0.180 | 0.719 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| detectree2 | ✗ | 0.375 | 0.945 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme zeroshot`</small> |
+| SAM3 | ✗ | 0.165 | 0.663 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| Mask R-CNN | ✓ | 0.064 | 0.814 | <small>`uv run python training/polygons/train.py --split-scheme zeroshot`</small> |
+
+> **Note:** The Mask R-CNN ✓ zeroshot row is from the pre-fix polygon evaluator
+> (before GT-mask binarization / AP50; commit b2ff776) and is not directly comparable
+> to the post-fix random row above. Rerun to refresh.
 
 ### Cross-geometry
 
 | Model | Fine-tuned | Avg Mask Accuracy | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| SAM3 | ✗ | pending | pending | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
+| TreeFormer+SAM2 | ✗ | 0.254 | 0.828 | <small>`uv run python existing_models/treeformer_sam3/eval_polygons_crossgeometry.py`</small> |
+| SAM3 | ✗ | 0.165 | 0.663 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme crossgeometry --hf-token $HF_TOKEN`</small> |
 
 ![TreePolygons: model predictions by split](leaderboard_predictions_polygons.png)
 

@@ -6,13 +6,15 @@ import os
 import sys
 import torch
 from deepforest import main as df_main
-from training.boxes.train import MillionTreesBatchAdapter, evaluate
+from training.boxes.train import _AdaptCollate, evaluate
 from milliontrees import get_dataset
 
-# The checkpoint was saved when train.py ran as __main__, so pickle
-# stored the adapter as __main__.MillionTreesBatchAdapter.  Inject it here
-# so deserialization can resolve that reference.
-sys.modules['__main__'].MillionTreesBatchAdapter = MillionTreesBatchAdapter
+# The checkpoint was saved when train.py ran as __main__, so pickle stored the
+# batch adapter under __main__.  Inject it here so deserialization can resolve
+# that reference. The class was renamed _AdaptCollate; alias the old name too so
+# checkpoints saved before the rename still load.
+sys.modules['__main__']._AdaptCollate = _AdaptCollate
+sys.modules['__main__'].MillionTreesBatchAdapter = _AdaptCollate
 
 
 def _load_model(checkpoint_path):

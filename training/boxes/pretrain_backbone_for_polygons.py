@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytorch_lightning as pl
 import torch
+from torch.utils.data import DataLoader
 
 from deepforest import main as df_main
 
 from milliontrees import get_dataset
-from milliontrees.common.data_loaders import get_eval_loader, get_train_loader
-from training.boxes.train_boxes import MillionTreesBatchAdapter, evaluate
+from training.boxes.train import _AdaptCollate, evaluate
 
 
 def _flatten_numeric_metrics(results):
@@ -96,17 +96,30 @@ def main():
     if len(train_subset) == 0:
         raise RuntimeError("No training samples for this split; cannot pretrain.")
 
-    train_loader = get_train_loader(
-        "standard", train_subset, batch_size=args.batch_size, num_workers=args.num_workers
-    )
-    val_loader = get_eval_loader(
-        "standard", test_subset, batch_size=args.batch_size, num_workers=args.num_workers
-    )
-    has_val = len(val_loader) > 0
+    # Real DataLoaders (not a custom iterable) so Lightning can inject a
+    # DistributedSampler under DDP and shard data across GPUs. The collate_fn
+    # translates MillionTrees batches into DeepForest's (images, targets, paths).
+    adapt_collate = _AdaptCollate(train_subset.collate, box_dataset._filename_id_to_code)
+    has_val = len(test_subset) > 0
 
-    filename_id_to_path = box_dataset._filename_id_to_code
-    train_adapted = MillionTreesBatchAdapter(train_loader, filename_id_to_path)
-    val_adapted = MillionTreesBatchAdapter(val_loader, filename_id_to_path) if has_val else None
+    train_adapted = DataLoader(
+        train_subset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        collate_fn=adapt_collate,
+        num_workers=args.num_workers,
+    )
+    val_adapted = (
+        DataLoader(
+            test_subset,
+            batch_size=args.batch_size,
+            shuffle=False,
+            collate_fn=adapt_collate,
+            num_workers=args.num_workers,
+        )
+        if has_val
+        else None
+    )
 
     model = df_main.deepforest(
         config_args={
