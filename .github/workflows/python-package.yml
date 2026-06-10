@@ -94,7 +94,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          uv sync --all-extras --dev
+          uv sync --all-extras --all-groups
           uv pip install nbqa
 
       - name: Verify nbqa installation

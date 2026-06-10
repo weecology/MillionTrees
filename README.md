@@ -55,10 +55,10 @@ To build from the GitHub source and install the required dependencies, follow th
     cd MillionTrees
     ```
 
-3. (Recommended) Create and activate a virtual environment, then install dev extras:
+3. (Recommended) Install the dev tooling and docs dependencies with uv (the `dev`
+   dependency group is installed by default):
     ```
-    python -m venv .venv && source .venv/bin/activate
-    pip install -e .[dev,docs]
+    uv sync --extra docs
     ```
 
 4. (Optional) Build distributions:

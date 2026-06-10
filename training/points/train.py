@@ -7,7 +7,7 @@ sources).
 
 Uses the point-detection stack from the DeepForest ``treeformer-training`` branch
 (https://github.com/jveitchmichaelis/DeepForest/tree/treeformer-training).
-Install with ``uv sync --extra treeformer`` until this lands on weecology/DeepForest main.
+Install with ``uv sync --group treeformer`` until this lands on weecology/DeepForest main.
 """
 
 import argparse

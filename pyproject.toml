@@ -52,6 +52,24 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# docs stays an installable extra because ReadTheDocs (.readthedocs.yaml) pulls it
+# via pip extra_requirements, and it has no direct-URL deps to break PyPI uploads.
+docs = [
+    "sphinx",
+    "furo",
+    "sphinx_markdown_tables",
+    "myst_parser",
+    "sphinx_rtd_theme",
+    "sphinx-design",
+    "nbmake",
+    "nbsphinx",
+    "nbqa",
+]
+
+# PEP 735 dependency groups are never written into the published wheel/sdist
+# metadata, so the deepforest git+https refs below stay out of the PyPI upload
+# and `pip install milliontrees` users don't pull the dev/analysis stack.
+[dependency-groups]
 dev = [
     "pytest",
     "bumpversion",
@@ -86,17 +104,6 @@ treeformer = [
     "deepforest @ git+https://github.com/jveitchmichaelis/DeepForest.git@treeformer-training",
     "geopandas",
     "comet-ml>=3.44.4",
-]
-docs = [
-    "sphinx",
-    "furo",
-    "sphinx_markdown_tables",
-    "myst_parser",
-    "sphinx_rtd_theme",
-    "sphinx-design",
-    "nbmake",
-    "nbsphinx",
-    "nbqa",
 ]
 
 [tool.setuptools]

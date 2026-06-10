@@ -4,7 +4,7 @@
 # use uv (https://github.com/astral-sh/uv):
 
 ```bash
-uv sync --extra dev
+uv sync --group dev
 uv run python
 ```
 
@@ -13,7 +13,7 @@ uv run python
 CI runs [pre-commit](https://pre-commit.com/) hooks (YAPF and docformatter on `src/milliontrees/`). **Pull requests must pass `pre-commit` before merge**; fix style locally instead of relying on CI to fail.
 
 ```bash
-uv sync --extra dev
+uv sync --group dev
 uv run pre-commit run --all-files
 ```
 

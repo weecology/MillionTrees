@@ -33,8 +33,8 @@ The point model needs the TreeFormer extra (DeepForest
 branch until it merges to weecology main):
 
 ```bash
-uv sync --extra treeformer
-uv run --extra treeformer python training/points/train.py --split-scheme random
+uv sync --group treeformer
+uv run --group treeformer python training/points/train.py --split-scheme random
 ```
 
 Each run writes `training/<geometry>/outputs/<split>/results_<split>.txt` (+ `.json`),
@@ -101,7 +101,7 @@ Each figure has two rows (**random**, **zeroshot** fine-tuning tasks) and two co
 (ground truth vs fine-tuned prediction on the same test image).
 
 ```bash
-uv run --extra treeformer python scripts/create_finetuned_visualizations.py \
+uv run --group treeformer python scripts/create_finetuned_visualizations.py \
   --root-dir "$MT_ROOT" \
   --output-dir docs \
   --panel-dir docs/figures/finetuned_panels

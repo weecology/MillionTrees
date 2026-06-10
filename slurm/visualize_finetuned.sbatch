@@ -16,8 +16,8 @@ cd "$REPO"
 
 echo "=== Fine-tuned panel figures (random + zeroshot) ==="
 
-# TreeFormer point checkpoints need the treeformer DeepForest extra.
-uv run --extra treeformer python scripts/create_finetuned_visualizations.py \
+# TreeFormer point checkpoints need the treeformer DeepForest group.
+uv run --group treeformer python scripts/create_finetuned_visualizations.py \
   --root-dir "$ROOT_DIR" \
   --output-dir "$REPO/docs" \
   --panel-dir "$REPO/docs/figures/finetuned_panels" \

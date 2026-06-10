@@ -39,7 +39,7 @@ generated from training checkpoints via `scripts/create_finetuned_visualizations
 
 Fine-tuned (✓) rows train on the MillionTrees train split (`training/points/train.py`);
 pretrained (✗) rows evaluate released weights on the test split (`existing_models/`).
-The TreeFormer point model needs `uv sync --extra treeformer` (DeepForest
+The TreeFormer point model needs `uv sync --group treeformer` (DeepForest
 [`treeformer-training`](https://github.com/jveitchmichaelis/DeepForest/tree/treeformer-training)
 branch until merged to main).
 
@@ -49,7 +49,7 @@ branch until merged to main).
 |---|:---:|---|---|---|
 | TreeFormer | ✗ | 56.435 | 0.775 | <small>`uv run python existing_models/treeformer/eval_points.py --split-scheme random`</small> |
 | SAM3 | ✗ | 54.593 | 0.711 | <small>`uv run python existing_models/sam3/eval_points.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
-| TreeFormer | ✓ | 57.461 | 0.784 | <small>`uv run --extra treeformer python training/points/train.py --split-scheme random`</small> |
+| TreeFormer | ✓ | 57.461 | 0.784 | <small>`uv run --group treeformer python training/points/train.py --split-scheme random`</small> |
 
 ### Zeroshot split
 
@@ -61,7 +61,7 @@ released checkpoint with no MillionTrees training at all.
 |---|:---:|---|---|---|
 | TreeFormer | ✗ | 15.717 | 0.882 | <small>`uv run python existing_models/treeformer/eval_points.py --split-scheme zeroshot`</small> |
 | SAM3 | ✗ | 14.878 | 0.759 | <small>`uv run python existing_models/sam3/eval_points.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
-| TreeFormer | ✓ | 17.024 | 0.869 | <small>`uv run --extra treeformer python training/points/train.py --split-scheme zeroshot`</small> |
+| TreeFormer | ✓ | 17.024 | 0.869 | <small>`uv run --group treeformer python training/points/train.py --split-scheme zeroshot`</small> |
 
 ### Cross-geometry
 
