@@ -5,7 +5,6 @@ description = "CanopyRS DINO Swin-L (SelvaBox) and DINO + SAM3 (SelvaMask) basel
 requires-python = ">=3.10,<3.11"
 dependencies = [
     "milliontrees",
-    "canopyrs",
     "transformers>=5.0.0rc1",
     "huggingface-hub>=1.0.0",
 ]
@@ -13,7 +12,8 @@ dependencies = [
 [tool.uv.sources]
 milliontrees = { path = "../..", editable = true }
 
-# NOTE: CanopyRS pulls in detrex + Detectron2, which must be built from source and
-# cannot be resolved by pip/uv alone. Follow the CanopyRS installation guide and
-# install milliontrees into that environment instead of using `uv sync` here. See
-# README.md.
+# NOTE: CanopyRS itself, plus detrex (DINO's ms_deform_attn CUDA op) and Detectron2,
+# are compiled from source against the installed torch and are kept OUT of this file
+# on purpose (uv/pip cannot resolve them). The pinned, reproducible build env lives
+# in detrex.toml. Build that first (see build_env.sh / README.md), then run
+# `uv pip install -e .` here to add milliontrees + SAM 3 transformers on top.

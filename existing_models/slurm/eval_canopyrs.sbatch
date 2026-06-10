@@ -17,12 +17,21 @@ SPLITS=(random zeroshot)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 OUT_BASE=$REPO/existing_models/canopyrs/outputs/$SPLIT
 
-# CanopyRS (detrex + Detectron2 + SAM3) lives in its own conda env; see README.md.
-CANOPYRS_ENV=${CANOPYRS_ENV:-canopyrs}
-source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate "$CANOPYRS_ENV"
+# CanopyRS (detrex + Detectron2 + SAM3) lives in a uv venv built by build_env.sh.
+# detectron2 CUDA ops are compiled for L4/sm_89; load the matching CUDA + GDAL modules.
+module load cuda/12.8.1 gdal/3.7.0
+export CUDA_HOME=/apps/compilers/cuda/12.8.1
+export PATH="$CUDA_HOME/bin:$PATH"
 
-cd $REPO/existing_models/canopyrs
+cd "$REPO/existing_models/canopyrs"
+source .venv/bin/activate
+
+# SAM3 (facebook/sam3) is gated; authenticate from the (untracked) token file in
+# the main checkout.
+HF_TOKEN_FILE=/blue/ewhite/b.weinstein/src/MillionTrees/.hf_token
+if [ -f "$HF_TOKEN_FILE" ]; then
+  export HF_TOKEN="$(tr -d '[:space:]' < "$HF_TOKEN_FILE")"
+fi
 
 echo "=== CanopyRS eval: split=$SPLIT ==="
 

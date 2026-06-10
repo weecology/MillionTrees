@@ -1,0 +1,43 @@
+# detrex / Detectron2 build pins — kept OUT of pyproject.toml on purpose.
+#
+# CanopyRS' DINO detector depends on detrex, whose MultiScaleDeformableAttention
+# (`ms_deform_attn`) is a custom CUDA op. detrex is not on PyPI and, like
+# Detectron2, must be compiled against the *exact* installed torch, so neither can
+# live in the resolver-managed pyproject.toml. This file records the pinned,
+# reproducible build environment (analogous to detectree2/detectron2.toml).
+#
+# Hardware target: UF HiPerGator `hpg-turin` partition = NVIDIA L4 (Ada, sm_89).
+
+[source]
+# detrex bundles its own Detectron2 fork as a submodule.
+canopyrs = "git+https://github.com/hugobaudchon/CanopyRS.git"   # detrex lives at CanopyRS/detrex (submodule)
+detrex = "CanopyRS/detrex"                                       # editable, built from source
+detectron2 = "CanopyRS/detrex/detectron2"                        # editable, built from source
+
+[build]
+python = "3.10"                       # CanopyRS requires >=3.10,<3.11
+cuda-module = "cuda/12.8.1"           # provides nvcc; cu128 torch wheels match exactly
+gdal-module = "gdal/3.7.0"            # CanopyRS needs GDAL<=3.8.0
+torch = "2.7.1+cu128"                 # CanopyRS pins torch==2.7.1; cu128 matches nvcc 12.8
+torchvision = "0.22.1+cu128"
+torch-index = "https://download.pytorch.org/whl/cu128"
+
+[build.env]
+TORCH_CUDA_ARCH_LIST = "8.9"          # L4 = sm_89
+MAX_JOBS = "4"
+FORCE_CUDA = "1"                      # login node has no visible GPU; force CUDA ops to compile
+
+# Reproduce (see build_env.sh for the scripted version):
+#   git clone https://github.com/hugobaudchon/CanopyRS.git
+#   git -C CanopyRS submodule update --init --recursive
+#   uv venv --python 3.10 && source .venv/bin/activate
+#   module load cuda/12.8.1 gdal/3.7.0
+#   export CUDA_HOME=$(dirname $(dirname $(which nvcc)))
+#   export TORCH_CUDA_ARCH_LIST=8.9 MAX_JOBS=4 FORCE_CUDA=1
+#   uv pip install torch==2.7.1 torchvision==0.22.1 \
+#       --index-url https://download.pytorch.org/whl/cu128
+#   uv pip install "GDAL==$(gdal-config --version)"
+#   uv pip install --no-build-isolation -e CanopyRS/detrex/detectron2 -e CanopyRS/detrex
+#   uv pip install -e CanopyRS              # the canopyrs package (torch/GDAL already satisfied)
+#   uv pip install "transformers>=5.0.0rc1" # SAM 3
+#   uv pip install -e ../..                 # milliontrees
