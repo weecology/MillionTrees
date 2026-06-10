@@ -40,15 +40,38 @@ def format_neon_annotations(csv_glob_pattern: str, output_dir: str) -> Tuple[str
     csvs = glob.glob(csv_glob_pattern)
     if not csvs:
         raise ValueError(f"No CSV files found matching pattern: {csv_glob_pattern}")
-        
-    print(f"Found {len(csvs)} CSV files to process")
-    
+
+    # The output dir contains both per-site CSVs (e.g. ABBY_2019.csv, with
+    # confidence_mean/confidence_std) and a roll-up `all_annotations.csv` that
+    # holds the SAME boxes without the confidence columns. Globbing both ingests
+    # every box twice (once valued, once NaN-confidence), which silently doubled
+    # every annotation in past releases. Read only the per-site files.
+    csvs = [c for c in csvs if os.path.basename(c) != "all_annotations.csv"]
+    if not csvs:
+        raise ValueError(
+            "Only all_annotations.csv was found; expected per-site CSVs with "
+            "confidence columns to avoid duplicate boxes."
+        )
+
+    print(f"Found {len(csvs)} per-site CSV files to process")
+
     annotations = []
     for csv in csvs:
         df = pd.read_csv(csv)
         df["source"] = "Weinstein et al. 2018 unsupervised"
         annotations.append(df)
     annotations = pd.concat(annotations, ignore_index=True)
+
+    # Safety net in case any per-site file overlaps another: collapse exact box
+    # duplicates, preferring the copy that carries a confidence score.
+    box_id = ["image_path", "xmin", "ymin", "xmax", "ymax"]
+    if "confidence_mean" in annotations.columns:
+        annotations = annotations.sort_values("confidence_mean", na_position="last")
+    n_before = len(annotations)
+    annotations = annotations.drop_duplicates(subset=box_id, keep="first").reset_index(drop=True)
+    if len(annotations) < n_before:
+        print(f"Dropped {n_before - len(annotations)} duplicate boxes "
+              f"({n_before} -> {len(annotations)})")
 
     # Extract siteID and tile_name from the filename
     annotations["siteID"] = annotations["image_path"].apply(lambda x: x.split("_")[1])
@@ -57,14 +80,14 @@ def format_neon_annotations(csv_glob_pattern: str, output_dir: str) -> Tuple[str
     print(f"Number of sites: {annotations['siteID'].nunique()}")
     print(f"Number of tiles: {annotations['tile_name'].nunique()}")
 
-    # Sample up to 10 tiles per site, keeping all trees from sampled tiles
+    # Sample up to 30 tiles per site, keeping all trees from sampled tiles
     unique_tiles = annotations[["siteID", "tile_name"]].drop_duplicates()
     sampled_tiles = pd.concat([
-        grp.sample(min(len(grp), 10), random_state=42)
+        grp.sample(min(len(grp), 30), random_state=42)
         for _, grp in unique_tiles.groupby("siteID")
     ])
     annotations = annotations.merge(sampled_tiles[["siteID", "tile_name"]], on=["siteID", "tile_name"])
-    print(f"After sampling (10 tiles per site): {len(annotations)} annotations")
+    print(f"After sampling (30 tiles per site): {len(annotations)} annotations")
 
     # Create metadata column
     annotations["metadata"] = annotations.apply(lambda row: f"{row['siteID']}_{row['tile_name']}", axis=1)

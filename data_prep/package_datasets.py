@@ -43,6 +43,86 @@ ZEROSHOT_TEST_SOURCES_BOXES = [
     "NEON_benchmark",
 ]
 
+# Canonical token that marks a source as unsupervised/weakly-labeled. The data
+# loader excludes these by default via exclude_sources=['*unsupervised*'].
+UNSUPERVISED_SUFFIX = "unsupervised"
+
+# Sources that are unsupervised/weakly-labeled but whose upstream annotation CSVs
+# can ship WITHOUT the canonical suffix (e.g. SPREAD's "Feng et al. 2025" when
+# data_prep/SPREAD.py has not been re-run). normalize_unsupervised_sources()
+# rewrites these to "<name> unsupervised" at packaging time so the label is
+# permanent in every released CSV and the loader's '*unsupervised*' exclusion
+# always catches them. This is the single source of truth — add a source here
+# instead of sprinkling per-source masks through the splitting code.
+UNSUPERVISED_SOURCE_ALIASES = {
+    "Feng et al. 2025",
+}
+
+
+def normalize_unsupervised_sources(datasets):
+    """Force every known-unsupervised source name to carry the canonical suffix.
+
+    Idempotent: a source that already contains 'unsupervised' or 'weak supervised'
+    (case-insensitive) is left unchanged; declared aliases get ' unsupervised'
+    appended exactly once. Run this immediately after loading/combining so all
+    downstream splitting, filtering, and the published CSVs see the correct name.
+    """
+    if "source" not in datasets.columns:
+        return datasets
+    src = datasets["source"].astype(str)
+    already = src.str.contains("unsupervised|weak supervised", case=False, na=False)
+    alias = src.isin(UNSUPERVISED_SOURCE_ALIASES) & ~already
+    if alias.any():
+        renamed = sorted(src[alias].unique())
+        datasets.loc[alias, "source"] = src[alias] + f" {UNSUPERVISED_SUFFIX}"
+        print(f"Relabeled unsupervised sources (added '{UNSUPERVISED_SUFFIX}'): {renamed}")
+    return datasets
+
+
+# Canonical full names of every unsupervised/weakly-labeled source we ship, per
+# geometry. verify_unsupervised_sources() checks these survived packaging: it
+# fails loudly if a base name shows up WITHOUT the 'unsupervised' suffix (the
+# SPREAD/Feng regression). Unlike UNSUPERVISED_SOURCE_ALIASES it does NOT rename
+# anything, so listing a source whose base also has a supervised variant (e.g.
+# the NEON 'Weinstein et al. 2018' box benchmark) is safe.
+UNSUPERVISED_SOURCES_EXPECTED = {
+    "TreePolygons": ["Feng et al. 2025 unsupervised"],
+    "TreePoints": ["Young et al. 2025 unsupervised"],
+    "TreeBoxes": ["Weinstein et al. 2018 unsupervised"],
+}
+
+
+def verify_unsupervised_sources(datasets, dataset_type):
+    """Verify expected unsupervised sources kept their canonical suffix.
+
+    Turns a silent labeling regression (an unsupervised source shipping without
+    the 'unsupervised' suffix, as SPREAD/Feng did) into a hard failure at
+    packaging time. Does not modify the data.
+    """
+    expected = UNSUPERVISED_SOURCES_EXPECTED.get(dataset_type, [])
+    if not expected or "source" not in datasets.columns:
+        return
+    present = set(datasets["source"].astype(str).unique())
+    present_lower = {s.lower() for s in present}
+    problems = []
+    for canonical in expected:
+        base = canonical.lower()
+        if base.endswith(UNSUPERVISED_SUFFIX):
+            base = base[: -len(UNSUPERVISED_SUFFIX)].strip()
+        # The bare (un-suffixed) base name must not appear as its own source.
+        if base in present_lower:
+            problems.append(
+                f"{base!r} is present without the '{UNSUPERVISED_SUFFIX}' suffix "
+                f"(expected {canonical!r}) -- add it to UNSUPERVISED_SOURCE_ALIASES"
+            )
+        elif canonical not in present:
+            # Not fatal: a sub-release (Mini/Small) may legitimately drop it.
+            print(f"Note: expected unsupervised source {canonical!r} not present in {dataset_type}")
+    if problems:
+        raise ValueError(
+            f"{dataset_type}: unsupervised labeling regression -> " + "; ".join(problems)
+        )
+
 def remove_alpha_channel(datasets):
     """Remove alpha channels from images in the dataset."""
     for source in datasets["source"].unique():
@@ -232,6 +312,26 @@ def filter_degenerate_polygons(datasets):
         print(f"Filtered out {n_filtered} degenerate polygons (zero width or height)")
     
     return datasets.loc[valid_mask].copy()
+
+
+def drop_duplicate_annotations(datasets, label=""):
+    """Drop exact duplicate annotations (same image + geometry + source).
+
+    Upstream prediction CSVs have shipped the same box/point/polygon multiple
+    times (differing only in columns the packager drops, such as prediction
+    confidence), which collapses into identical published rows and inflates
+    annotation counts. This removes those duplicates on the canonical identity.
+    """
+    key = [c for c in ("filename", "geometry", "source") if c in datasets.columns]
+    if not key or "geometry" not in datasets.columns:
+        return datasets
+    n_before = len(datasets)
+    datasets = datasets.drop_duplicates(subset=key).copy()
+    n_dropped = n_before - len(datasets)
+    if n_dropped > 0:
+        print(f"{label}: dropped {n_dropped} duplicate annotations "
+              f"({n_before} -> {len(datasets)})")
+    return datasets
 
 
 def create_directories(base_dir, dataset_type):
@@ -532,12 +632,13 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
     TreePoints_datasets = apply_split(TreePoints_datasets)
     TreeBoxes_datasets = apply_split(TreeBoxes_datasets)
 
-    # Remove from test split any entries with 'unsupervised' or 'weak supervised' in the source column or Feng source
+    # Remove from test split any entries with 'unsupervised' or 'weak supervised'
+    # in the source column. normalize_unsupervised_sources() guarantees aliases
+    # like SPREAD/Feng already carry the 'unsupervised' suffix, so a single
+    # substring check covers them.
     def remove_unsupervised_test_entries(df):
         if "split" in df.columns and "source" in df.columns:
-            unsupervised_mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised|weak supervised", case=False, na=False))
-            feng_mask = (df["split"] == "test") & (df["source"] == "Feng et al. 2025")
-            mask = unsupervised_mask | feng_mask
+            mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised|weak supervised", case=False, na=False))
             return df.loc[~mask]
         return df
 
@@ -593,18 +694,16 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
     TreeBoxes_datasets.loc[
         TreeBoxes_datasets["split"] != "validation", "split"] = "train"
 
-    # remove any source with unsupervised, weak supervised, or Feng from test
+    # remove any unsupervised / weak supervised source from test (aliases such as
+    # SPREAD/Feng are already suffixed by normalize_unsupervised_sources)
     unsupervised_mask_polygons = (TreePolygons_datasets.source.str.contains('unsupervised|weak supervised', case=False, na=False)) & (TreePolygons_datasets.split == "test")
-    feng_mask_polygons = (TreePolygons_datasets.source == "Feng et al. 2025") & (TreePolygons_datasets.split == "test")
-    TreePolygons_datasets = TreePolygons_datasets[~(unsupervised_mask_polygons | feng_mask_polygons)]
+    TreePolygons_datasets = TreePolygons_datasets[~unsupervised_mask_polygons]
 
     unsupervised_mask_points = (TreePoints_datasets.source.str.contains('unsupervised|weak supervised', case=False, na=False)) & (TreePoints_datasets.split == "test")
-    feng_mask_points = (TreePoints_datasets.source == "Feng et al. 2025") & (TreePoints_datasets.split == "test")
-    TreePoints_datasets = TreePoints_datasets[~(unsupervised_mask_points | feng_mask_points)]
+    TreePoints_datasets = TreePoints_datasets[~unsupervised_mask_points]
 
     unsupervised_mask_boxes = (TreeBoxes_datasets.source.str.contains('unsupervised|weak supervised', case=False, na=False)) & (TreeBoxes_datasets.split == "test")
-    feng_mask_boxes = (TreeBoxes_datasets.source == "Feng et al. 2025") & (TreeBoxes_datasets.split == "test")
-    TreeBoxes_datasets = TreeBoxes_datasets[~(unsupervised_mask_boxes | feng_mask_boxes)]
+    TreeBoxes_datasets = TreeBoxes_datasets[~unsupervised_mask_boxes]
 
     TreePolygons_datasets.to_csv(
         f"{base_dir}{prefix}TreePolygons{suffix}_{version}/crossgeometry.csv", index=False)
@@ -748,12 +847,12 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
         TreeBoxes_datasets, test_sources_boxes, excess_mode="drop"
     )
 
-    # Remove Feng, unsupervised, and weak supervised from test (shouldn't be there, but filter for safety)
+    # Move any unsupervised / weak supervised source out of test (shouldn't be
+    # there, but filter for safety). Aliases like SPREAD/Feng are already
+    # suffixed by normalize_unsupervised_sources, so one substring check covers them.
     def remove_feng_and_unsupervised_from_test(df):
         if "split" in df.columns and "source" in df.columns:
-            unsupervised_mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised|weak supervised", case=False, na=False))
-            feng_mask = (df["split"] == "test") & (df["source"] == "Feng et al. 2025")
-            mask = unsupervised_mask | feng_mask
+            mask = (df["split"] == "test") & (df["source"].str.contains("unsupervised|weak supervised", case=False, na=False))
             if mask.any():
                 df.loc[mask, "split"] = "train"
         return df
@@ -904,6 +1003,18 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     TreePoints_datasets = combine_datasets(TreePoints, debug=debug)
     TreePolygons_datasets = combine_datasets(TreePolygons, debug=debug)
 
+    # Enforce canonical unsupervised source names up front so the label is baked
+    # into every released CSV (and caught by the loader's '*unsupervised*'
+    # exclusion) regardless of whether upstream generators were re-run.
+    TreeBoxes_datasets = normalize_unsupervised_sources(TreeBoxes_datasets)
+    TreePoints_datasets = normalize_unsupervised_sources(TreePoints_datasets)
+    TreePolygons_datasets = normalize_unsupervised_sources(TreePolygons_datasets)
+
+    # Fail loudly if any expected unsupervised source lost its suffix upstream.
+    verify_unsupervised_sources(TreeBoxes_datasets, "TreeBoxes")
+    verify_unsupervised_sources(TreePoints_datasets, "TreePoints")
+    verify_unsupervised_sources(TreePolygons_datasets, "TreePolygons")
+
     # Coerce box columns early (avoids mixed str/float rows) and drop degenerate rows
     for col in ("xmin", "ymin", "xmax", "ymax"):
         TreeBoxes_datasets[col] = pd.to_numeric(TreeBoxes_datasets[col], errors="coerce")
@@ -935,9 +1046,17 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
 
     # Remove degenerate boxes (zero width/height) so albumentations does not raise
     TreeBoxes_datasets = filter_degenerate_boxes(TreeBoxes_datasets)
-    
+
     # Remove degenerate polygons (those that would create invalid bounding boxes)
     TreePolygons_datasets = filter_degenerate_polygons(TreePolygons_datasets)
+
+    # Defensive guard: collapse exact duplicate annotations (same image + same
+    # geometry within a source). Upstream prediction CSVs have shipped doubled
+    # boxes before (e.g. NEON unsupervised), which silently inflated release
+    # counts. Geometry is now normalized to WKT, so identity is well-defined.
+    TreeBoxes_datasets = drop_duplicate_annotations(TreeBoxes_datasets, "TreeBoxes")
+    TreePoints_datasets = drop_duplicate_annotations(TreePoints_datasets, "TreePoints")
+    TreePolygons_datasets = drop_duplicate_annotations(TreePolygons_datasets, "TreePolygons")
 
     # Assign source-unique packaged filenames (<stem>_<source><ext>) so basenames
     # don't collide across sources; keeps the original path in 'orig_path' for copy.

@@ -14,7 +14,11 @@ from training.points.train import evaluate
 
 def main():
     parser = argparse.ArgumentParser(description="Eval a TreeFormer TreePoints checkpoint.")
-    parser.add_argument("--checkpoint", type=str, required=True, help="Path to .ckpt file")
+    parser.add_argument("--checkpoint", type=str, required=True,
+                        help="Lightning .ckpt file, or a HuggingFace repo id / local "
+                             "HF checkpoint dir (config.json + model.safetensors)")
+    parser.add_argument("--revision", type=str, default="main",
+                        help="HF revision/tag (ignored for .ckpt files and local dirs)")
     parser.add_argument("--root-dir", type=str,
                         default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
     parser.add_argument("--split-scheme", type=str, default="zeroshot",
@@ -34,8 +38,21 @@ def main():
     elif args.viz_dir == "":
         args.viz_dir = None
 
-    print(f"Loading checkpoint: {args.checkpoint}")
-    model = df_main.deepforest.load_from_checkpoint(args.checkpoint, weights_only=False)
+    # Two checkpoint formats: a Lightning .ckpt (load_from_checkpoint), or a
+    # HuggingFace-format TreeFormer checkpoint (repo id, or local dir with
+    # config.json + model.safetensors). The latter must be loaded the same way
+    # the polygon eval and points training do: build a treeformer deepforest,
+    # then load_model() the weights.
+    if args.checkpoint.endswith(".ckpt") and os.path.isfile(args.checkpoint):
+        print(f"Loading Lightning checkpoint: {args.checkpoint}")
+        model = df_main.deepforest.load_from_checkpoint(args.checkpoint, weights_only=False)
+    else:
+        print(f"Loading TreeFormer weights: {args.checkpoint} (revision={args.revision})")
+        model = df_main.deepforest(config_args={
+            "architecture": "treeformer",
+            "model": {"name": args.checkpoint, "revision": args.revision},
+        })
+        model.load_model(args.checkpoint, revision=args.revision)
     model.eval()
     if torch.cuda.is_available():
         model = model.cuda()
