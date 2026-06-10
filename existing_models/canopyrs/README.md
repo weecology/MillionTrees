@@ -15,30 +15,38 @@ wrappers, driven per image over the MillionTrees test loader.
 
 ## Setup
 
-CanopyRS depends on detrex + Detectron2, which must be built from source, so this folder
-cannot be provisioned with a plain `uv sync`. Install CanopyRS first (its conda recipe is
-the supported path), then install MillionTrees into the same environment:
+This is a uv env, like `existing_models/detectree2`. The only pieces uv/pip can't
+resolve are CanopyRS itself plus detrex (DINO's `ms_deform_attn` CUDA op) and
+Detectron2, which are compiled from source against the installed torch — so those,
+along with the torch/CUDA build pins, are kept out of `pyproject.toml` and recorded
+in [`detrex.toml`](detrex.toml). The scripted build is [`build_env.sh`](build_env.sh):
 
 ```bash
-# 1. Install CanopyRS per its installation guide:
-#    https://hugobaudchon.github.io/CanopyRS/getting-started/installation/
-git clone https://github.com/hugobaudchon/CanopyRS.git
-cd CanopyRS
-conda create -n canopyrs -c conda-forge python=3.10 mamba && conda activate canopyrs
-mamba install gdal=3.6.2 -c conda-forge
-pip install torch==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu126
-git submodule update --init --recursive
-pip install -e .
-pip install --no-build-isolation -e ./detrex/detectron2 -e ./detrex
-# SAM 3 is required for eval_polygons.py and needs transformers>=5.0.0rc1
-pip install "transformers>=5.0.0rc1"
+bash existing_models/canopyrs/build_env.sh
+```
 
-# 2. Install MillionTrees into the same env
-pip install -e /path/to/MillionTrees
+Or the equivalent steps by hand (see `detrex.toml` for the exact pins):
+
+```bash
+git clone https://github.com/hugobaudchon/CanopyRS.git
+git -C CanopyRS submodule update --init --recursive   # detrex (+ its Detectron2 fork)
+
+cd existing_models/canopyrs
+uv venv --python 3.10 && source .venv/bin/activate
+module load cuda/12.8.1 gdal/3.7.0
+export CUDA_HOME=$(dirname $(dirname $(which nvcc)))
+export TORCH_CUDA_ARCH_LIST=8.9 MAX_JOBS=4 FORCE_CUDA=1   # L4/sm_89; FORCE_CUDA: login node has no GPU
+
+uv pip install torch==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu128
+uv pip install "GDAL==$(gdal-config --version)"
+uv pip install --no-build-isolation -e ../../../CanopyRS/detrex/detectron2 -e ../../../CanopyRS/detrex
+uv pip install -e ../../../CanopyRS                       # the canopyrs package
+uv pip install -e .                                       # milliontrees + SAM 3 transformers
 ```
 
 SAM 3 (`facebook/sam3`) is gated: request access on the model page and
-`huggingface-cli login` (or pass `--hf-token`) before running `eval_polygons.py`.
+`huggingface-cli login` (or set `HF_TOKEN` / pass `--hf-token`) before running
+`eval_polygons.py`.
 
 ## Run
 
