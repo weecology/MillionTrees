@@ -11,7 +11,7 @@
 #SBATCH --error=/home/b.weinstein/logs/neon_unsupervised_%j.err
 
 # Use uv for Python environment management
-uv sync --extra dev
+uv sync --group dev
 
 # Set working directory
 cd /blue/ewhite/b.weinstein/src/MillionTrees/data_prep

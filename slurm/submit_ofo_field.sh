@@ -10,7 +10,7 @@
 #SBATCH --output=/home/b.weinstein/logs/ofo_field_%j.out
 #SBATCH --error=/home/b.weinstein/logs/ofo_field_%j.err
 
-uv sync --extra dev
+uv sync --group dev
 
 cd /blue/ewhite/b.weinstein/src/MillionTrees/data_prep
 

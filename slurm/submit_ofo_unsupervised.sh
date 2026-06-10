@@ -10,7 +10,7 @@
 #SBATCH --output=/home/b.weinstein/logs/ofo_unsupervised_%j.out
 #SBATCH --error=/home/b.weinstein/logs/ofo_unsupervised_%j.err
 
-uv sync --extra dev
+uv sync --group dev
 
 # Set working directory
 cd /blue/ewhite/b.weinstein/src/MillionTrees/data_prep

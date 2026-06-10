@@ -21,8 +21,8 @@ SPLITS=(random zeroshot)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 # TreeFormer point model lives on the DeepForest treeformer-training branch;
-# --extra treeformer pulls it in (see pyproject.toml).
-srun uv run --extra treeformer python training/points/train.py \
+# --group treeformer pulls it in (see pyproject.toml).
+srun uv run --group treeformer python training/points/train.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --batch-size 8 \

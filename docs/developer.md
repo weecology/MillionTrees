@@ -29,8 +29,8 @@
 
     ```bash
     pip install . -U
-    # Or, if using uv for development:
-    # uv sync --dev extra
+    # Or, if using uv for development (installs the `dev` dependency group):
+    # uv sync --group dev
     ```
 
 ## Documentation

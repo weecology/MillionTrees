@@ -15,7 +15,7 @@ set -euo pipefail
 cd /blue/ewhite/b.weinstein/src/MillionTrees
 mkdir -p logs/slurm
 
-uv sync --extra dev
+uv sync --group dev
 
 ANNOTATIONS_CSV="/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations.csv"
 OUTPUT_CSV="/orange/ewhite/DeepForest/AutoArborist/downloaded_imagery/AutoArborist_combined_annotations_tcd_filtered.csv"
