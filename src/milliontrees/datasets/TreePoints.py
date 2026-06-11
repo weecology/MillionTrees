@@ -226,6 +226,16 @@ class TreePointsDataset(MillionTreesDataset):
         self._filename_id_to_code = self.df.set_index(
             'filename_id')['filename'].to_dict()
 
+        # Expose source names to the grouper so per-source eval lines print the
+        # source name instead of the numeric source_id. Ordered by source_id
+        # (contiguous 0..n-1 from pandas category codes).
+        self._metadata_map = {
+            'source_id': [
+                self._source_id_to_code[i]
+                for i in sorted(self._source_id_to_code)
+            ]
+        }
+
         # Location/group info
         n_groups = max(self.df['source_id']) + 1
         self._n_groups = n_groups
