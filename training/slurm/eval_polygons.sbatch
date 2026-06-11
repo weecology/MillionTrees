@@ -33,12 +33,13 @@ echo "Checkpoint: $CKPT"
 VIZ_DIR="outputs/viz/trained_polygons/${SPLIT}"
 mkdir -p "$VIZ_DIR"
 
-uv run python training/polygons/eval_checkpoint.py \
+uv run python training/polygons/eval.py \
   --checkpoint "$CKPT" \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --batch-size 4 \
   --num-workers 4 \
   --image-size 448 \
+  --score-threshold 0.1 \
   --output-dir "training/polygons/outputs/${SPLIT}" \
   --viz-dir "$VIZ_DIR"

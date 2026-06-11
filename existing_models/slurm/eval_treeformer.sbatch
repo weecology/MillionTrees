@@ -26,6 +26,7 @@ uv run python eval_points.py \
   --split-scheme "$SPLIT" \
   --batch-size 8 \
   --num-workers 4 \
+  --score-thresh 0.10 \
   --output-dir "$OUT_BASE"
 
 echo "=== TreeFormer eval done. Results in $OUT_BASE ==="

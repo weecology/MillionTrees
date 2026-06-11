@@ -187,5 +187,20 @@ The logs are available in /logs and will report the performance of each model. U
 
 After submitting any `sbatch` job, always:
 1. Note the job ID returned by `sbatch`.
-2. Wait 60 seconds (use `ScheduleWakeup` with `delaySeconds=60`).
-3. Run `squeue -j <JOBID>` and check the `.out`/`.err` logs to confirm the job is running (ST=R) with no errors.
+2. **Append an entry to the job ledger** at `/home/b.weinstein/logs/job_ledger.md` (see below).
+3. Wait 60 seconds (use `ScheduleWakeup` with `delaySeconds=60`).
+4. Run `squeue -j <JOBID>` and check the `.out`/`.err` logs to confirm the job is running (ST=R) with no errors.
+
+### Job ledger
+
+Every time Claude submits a SLURM job, append one entry to `/home/b.weinstein/logs/job_ledger.md` so that `checklog` can explain *why* each run exists and *what comes next*. Format:
+
+```
+## <JOBID> — <YYYY-MM-DD HH:MM> — <script name>
+Why: <one line — the goal/hypothesis behind this run>
+Next: <one line — what to do when it finishes (read which log, kick off which dependent job, update which table)>
+```
+
+- Keep it to those two lines (`Why` / `Next`); no more.
+- For job arrays or chained submissions, write one entry per job ID, and use `Next` to record the dependency (e.g. "blocks JOBID 12345 polygon train").
+- Never edit or delete prior entries; the ledger is an append-only history.

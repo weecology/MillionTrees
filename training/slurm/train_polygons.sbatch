@@ -26,8 +26,8 @@ uv run python training/polygons/train.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --batch-size 8 \
-  --max-epochs 20 \
-  --lr 1e-4 \
+  --max-epochs 40 \
+  --lr 2e-4 \
   --num-workers 8 \
   --image-size 448 \
   --output-dir "training/polygons/outputs/$SPLIT" \

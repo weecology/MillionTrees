@@ -3,18 +3,20 @@ Table X. Combination of Tables 2-4
 Paste the block below into Google Docs / Word to create a table.
 
 Geometry	Model	Fine-tuned	Split	Tree Counting (mae)	Tree Detection (recall, precision)	Tree Segmentation (mAP)
-Points	TreeFormer	✗	Random	56.435	0.239, 0.775	N/A
+Points	TreeFormer	✗	Random	53.150	0.214, 0.830	N/A
 Points	SAM3	✗	Random	54.593	0.182, 0.711	N/A
-Points	TreeFormer	✓	Random	57.461	0.276, 0.784	N/A
-Points	TreeFormer	✗	Zero-shot	15.717	0.291, 0.882	N/A
+Points	TreeFormer	✓	Random	57.523	0.279, 0.782	N/A
+Points	TreeFormer	✗	Zero-shot	16.451	0.233, 0.789	N/A
 Points	SAM3	✗	Zero-shot	14.878	0.129, 0.759	N/A
-Points	TreeFormer	✓	Zero-shot	17.024	0.315, 0.869	N/A
+Points	TreeFormer	✓	Zero-shot	17.007	0.316, 0.872	N/A
 Boxes	DeepForest	✗	Random	24.069	0.407, 0.731	0.143
 Boxes	SAM3	✗	Random	37.868	0.190, 0.608	0.121
-Boxes	DeepForest	✓	Random	26.761	0.526, 0.650	0.314
+Boxes	CanopyRS DINO Swin-L	✗	Random	55.338	0.688, 0.679	0.427
+Boxes	DeepForest	✓	Random	27.132	0.547, 0.592	0.336
 Boxes	DeepForest	✗	Zero-shot	28.741	0.432, 0.962	0.101
 Boxes	SAM3	✗	Zero-shot	62.323	0.209, 0.798	0.139
-Boxes	DeepForest	✓	Zero-shot	28.068	0.535, 0.908	0.334
+Boxes	CanopyRS DINO Swin-L	✗	Zero-shot	83.351	0.885, 0.815	0.627
+Boxes	DeepForest	✓	Zero-shot	30.366	0.525, 0.947	0.255
 Polygons	SAM3	✗	Random	N/A	0.282, 0.619	0.064
 Polygons	detectree2	✗	Random	N/A	0.480, 0.891	0.167
 Polygons	Mask R-CNN	✓	Random	N/A	0.626, 0.900	0.304
@@ -25,8 +27,11 @@ Polygons	SAM3	✗	Cross-geometry	N/A	0.214, 0.663	0.131
 Polygons	TreeFormer+SAM2	✗	Cross-geometry	N/A	0.377, 0.828	0.254
 
 Notes / provenance:
-- Numbers regenerated 2026-06-10 from the latest result files (overnight runs of
-  2026-06-09). Earlier provenance (v0.16, 2026-05-30) superseded.
+- Numbers regenerated 2026-06-11 from the latest result files (overnight runs of
+  2026-06-10/06-11). Earlier provenance (2026-06-10, 2026-06-09; v0.16, 2026-05-30)
+  superseded.
+- New this refresh: CanopyRS box rows (DINO Swin-L, pretrained ✗) for both splits;
+  Points TreeFormer ✓ and Boxes DeepForest ✓ re-trained overnight (numbers updated).
 - Columns: "Tree Counting" = counting_mae (gated on per-source `complete` flag).
   "Tree Detection" = (recall, precision): for Points, recall is keypoint_acc and
   precision is maskaware_keypoint_precision; for Boxes and Polygons, recall is average
@@ -35,11 +40,29 @@ Notes / provenance:
   (map_50) as well, computed by the polygon evaluator after the 2026-06-08 fix
   (binarize GT masks + AP50/map_50; commit b2ff776). N/A for Points (centroid outputs).
 - Points fine-tuned = DeepForest TreeFormer stack (training/points/train.py,
-  --extra treeformer). Random from training/points/outputs/random (2026-06-10),
-  zeroshot from training/points/outputs/zeroshot (2026-06-09). No DeepForest point
+  --extra treeformer). Random from training/points/outputs/random (2026-06-11),
+  zeroshot from training/points/outputs/zeroshot (2026-06-10). No DeepForest point
   baseline in the current results set (only TreeFormer ✗ and SAM3 ✗).
-- Boxes fine-tuned = DeepForest (training/boxes/outputs/{random,zeroshot}, 2026-06-09).
+- Points TreeFormer ✗ (pretrained, not fine-tuned) = KCL TreeFormer HF checkpoint
+  (J. Veitch-Michaelis, /home/veitchmichaelisj/code/DeepForest_jvm/kcl_hf_checkpoint),
+  evaluated 2026-06-10 with training/points/eval.py. Random from
+  training/points/outputs/random_kcl, zeroshot from training/points/outputs/zeroshot_kcl.
+  Replaces the prior weecology/deepforest-tree-point ✗ rows.
+- Boxes fine-tuned = DeepForest (training/boxes/outputs/{random,zeroshot}, 2026-06-10).
   Boxes counting_mae is gated on the complete flag.
+- Boxes CanopyRS DINO Swin-L (pretrained ✗) = CanopyRS DINO detector (SwinL backbone,
+  SelvaBox-trained), evaluated 2026-06-11 from the relocated uv venv
+  (existing_models/canopyrs/outputs/{random,zeroshot}/results_boxes_*.txt). Best box
+  recall on both splits (0.688 random, 0.885 zeroshot) despite no MillionTrees training.
+- CanopyRS DINO + SAM3 (SelvaMask) polygon eval is omitted: the 2026-06-10 random run
+  scored ~0 on every source except Khan_et_al._2026 (0.350; existing_models/canopyrs/
+  outputs/random/results_polygons_random.txt) and the zeroshot polygon run was not
+  produced. Cause is the score-threshold floor, not a geometry bug: the polygon
+  evaluator filters every metric (recall/precision/AP50) at eval_score_threshold=0.5
+  while TreeBoxes uses 0.1, and the CanopyRS DINO detector's confidences on the polygon
+  imagery mostly fall below 0.5 (boxes prove it detects the trees). Rerun and log the
+  detector score distribution before publishing; do NOT lower the polygon threshold
+  (detectree2/SAM3/Mask R-CNN are all scored at the same 0.5 floor).
 - Polygons fine-tuned = Mask R-CNN (torchvision maskrcnn_resnet50_fpn_v2).
   Random from training/polygons/outputs/lr_sweep/random_lr1e-5 (2026-06-09, post-fix
   evaluator with real AP50). Zeroshot from training/polygons/outputs/zeroshot
@@ -56,19 +79,20 @@ Notes / provenance:
   values are identical (0.214, 0.663 / 0.131).
 - TreeFormer+SAM2 cross-geometry retained from the prior table (0.377, 0.828 / 0.254);
   TreeFormer (weecology/deepforest-tree-point) predicts centroids on polygon-annotated
-  images, which seed SAM3 point prompts (no text, point_box_size=12px) to generate
-  masks. A newer treeformer_sam3 cross-geometry run exists
-  (existing_models/treeformer_sam3/outputs/crossgeometry_kcl, 2026-06-08:
+  images, which seed SAM2 point prompts (no text, point_box_size=12px) to generate
+  masks. A newer treeformer_sam2 cross-geometry run exists
+  (existing_models/treeformer_sam2/outputs/crossgeometry_kcl, 2026-06-08:
   recall 0.234, prec 0.960, AP50 0.145) but was intentionally not adopted here.
 - Polygons counting_mae = N/A (no polygon sources carry the complete flag).
 
 Source files (latest runs):
-- Points (TreeFormer ✗):      existing_models/treeformer/outputs/{random,zeroshot}/results_points_*.txt
+- Points (TreeFormer ✗):      training/points/outputs/{random,zeroshot}_kcl/results_*.txt (KCL HF checkpoint)
 - Points (SAM3 ✗):            existing_models/sam3/outputs/{random,zeroshot}/results_points_*.txt
 - Points (TreeFormer ✓):      training/points/outputs/{random,zeroshot}/results_*.txt
 - Boxes (DeepForest ✗):       existing_models/deepforest/outputs/{random,zeroshot}/results_boxes_*.txt
 - Boxes (SAM3 ✗):             existing_models/sam3/outputs/{random,zeroshot}/results_boxes_*.txt
 - Boxes (DeepForest ✓):       training/boxes/outputs/{random,zeroshot}/results_*.txt
+- Boxes (CanopyRS ✗):         existing_models/canopyrs/outputs/{random,zeroshot}/results_boxes_*.txt
 - Polygons (SAM3 ✗):          existing_models/sam3/outputs/{random,zeroshot}/results_polygons_*.txt
 - Polygons (detectree2 ✗):    existing_models/detectree2/outputs/{random,zeroshot}/results_polygons_*.txt
 - Polygons (Mask R-CNN ✓):    training/polygons/outputs/lr_sweep/random_lr1e-5/results_random.txt (random),

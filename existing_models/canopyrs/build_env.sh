@@ -1,8 +1,9 @@
 #!/bin/bash
 # Build the CanopyRS eval environment with uv (mirrors existing_models/detectree2).
 # detrex + Detectron2 are the only pieces that must be compiled from source against
-# the installed torch; everything else is a normal wheel. CUDA ops are built for the
-# hpg-turin L4 GPU (sm_89). Build pins live in detrex.toml; see README.md.
+# the installed torch; everything else is a normal wheel. CUDA ops are built as a fat
+# binary for both L4 (sm_89, hpg-turin) and B200 (sm_100, hpg-b200) so the same venv
+# runs on either partition. Build pins live in detrex.toml; see README.md.
 set -euo pipefail
 
 REPO=/blue/ewhite/b.weinstein/src/MillionTrees/.claude/worktrees/add-selvamask-dataset
@@ -14,7 +15,8 @@ step() { echo "===== [$(date +%H:%M:%S)] $* ====="; }
 module load cuda/12.8.1 gdal/3.7.0
 export CUDA_HOME=/apps/compilers/cuda/12.8.1
 export PATH="$CUDA_HOME/bin:$PATH"
-export TORCH_CUDA_ARCH_LIST=8.9
+# Fat binary: cubins for L4 (8.9) and B200 (10.0) + PTX from 10.0 for forward compat.
+export TORCH_CUDA_ARCH_LIST="8.9 10.0+PTX"
 export MAX_JOBS=4
 # Built on a login node with no visible GPU, so torch.cuda.is_available() is False;
 # force the detectron2 / detrex CUDA extensions (e.g. ms_deform_attn) to compile.

@@ -18,7 +18,9 @@ SPLITS=(random zeroshot)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 CKPT_DIR="training/points/outputs/${SPLIT}/checkpoints"
-CKPT=$(ls -1 "$CKPT_DIR"/points-epoch=*.ckpt \
+# TreeFormer checkpoints are named treeformer-epoch=NN-val_loss=*.ckpt. Restrict to the
+# val_loss-monitored files (skip the point_recall ones) and pick the lowest val_loss.
+CKPT=$(ls -1 "$CKPT_DIR"/treeformer-epoch=*-val_loss=*.ckpt \
   | awk -F'val_loss=' '{print $2"\t"$0}' \
   | sort -g \
   | head -1 \
@@ -36,5 +38,6 @@ uv run python training/points/eval.py \
   --split-scheme "$SPLIT" \
   --batch-size 16 \
   --num-workers 8 \
+  --score-thresh 0.10 \
   --output-dir "training/points/outputs/${SPLIT}" \
   --viz-dir "$VIZ_DIR"

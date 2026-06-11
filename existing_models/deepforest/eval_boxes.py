@@ -15,6 +15,8 @@ from deepforest.utilities import format_geometry
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
+from milliontrees.common.eval_sweep import (add_sweep_args, maybe_run_sweep,
+                                            maybe_subsample)
 
 
 def predict_batch(
@@ -56,10 +58,14 @@ def main():
     parser.add_argument("--split-scheme", type=str, default="random",
                         choices=["random", "zeroshot", "crossgeometry"])
     parser.add_argument("--max-batches", type=int, default=None)
+    parser.add_argument("--score-threshold", type=float, default=None,
+                        help="Override DeepForest's internal score_thresh "
+                             "(set low, e.g. 0.01, when sweeping).")
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--viz-dir", type=str, default=None,
                         help="Directory for per-source prediction overlay PNGs "
                              "(default: <output-dir>/viz, else ./eval_viz; pass '' to disable)")
+    add_sweep_args(parser)
     args = parser.parse_args()
 
     # Visualization on by default: 10 overlays per source (dataset.eval viz_n_per_source=10).
@@ -70,11 +76,15 @@ def main():
 
     model = df_main.deepforest()
     model.load_model("weecology/deepforest-tree")
+    if args.score_threshold is not None:
+        model.config["score_thresh"] = args.score_threshold
+        if getattr(model, "model", None) is not None:
+            model.model.score_thresh = args.score_threshold
     model.eval()
 
     dataset = get_dataset("TreeBoxes", root_dir=args.root_dir, download=args.download,
                           mini=args.mini, split_scheme=args.split_scheme)
-    test_subset = dataset.get_subset("test")
+    test_subset = maybe_subsample(dataset, dataset.get_subset("test"), args)
     test_loader = get_eval_loader("standard", test_subset, batch_size=args.batch_size,
                                   num_workers=args.num_workers)
 
@@ -88,6 +98,10 @@ def main():
             all_y_true.append(target)
         if args.max_batches is not None and (b_idx + 1) >= args.max_batches:
             break
+
+    if maybe_run_sweep(args, dataset, test_subset, all_y_pred, all_y_true,
+                       model="DeepForest-pretrained", task="TreeBoxes"):
+        return
 
     results, results_str = dataset.eval(
         all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)],

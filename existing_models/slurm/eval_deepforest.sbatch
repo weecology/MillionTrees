@@ -26,6 +26,7 @@ uv run python eval_boxes.py \
   --split-scheme "$SPLIT" \
   --batch-size 12 \
   --num-workers 4 \
+  --score-threshold 0.1 \
   --output-dir "$OUT_BASE"
 
 echo "=== DeepForest eval done. Results in $OUT_BASE ==="

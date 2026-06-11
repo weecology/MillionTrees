@@ -26,6 +26,7 @@ uv run python eval_boxes.py \
   --split-scheme "$SPLIT" \
   --device cuda \
   --batch-size 8 \
+  --score-threshold 0.1 \
   --output-dir "$OUT_BASE"
 
 uv run python eval_points.py \
@@ -33,6 +34,7 @@ uv run python eval_points.py \
   --split-scheme "$SPLIT" \
   --device cuda \
   --batch-size 16 \
+  --score-threshold 0.1 \
   --output-dir "$OUT_BASE"
 
 uv run python eval_polygons.py \
@@ -40,6 +42,7 @@ uv run python eval_polygons.py \
   --split-scheme "$SPLIT" \
   --device cuda \
   --batch-size 8 \
+  --score-threshold 0.1 \
   --output-dir "$OUT_BASE"
 
 echo "=== SAM3 eval done. Results in $OUT_BASE ==="

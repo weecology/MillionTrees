@@ -19,6 +19,8 @@ import torch
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
+from milliontrees.common.eval_sweep import (add_sweep_args, maybe_run_sweep,
+                                            maybe_subsample)
 
 DETECTOR_CONFIG = "detectors/dino_swinL_multi_NQOS.yaml"
 MODEL_NAME = "CanopyRS-DINO-SwinL"
@@ -57,6 +59,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--viz-dir", type=str, default=None,
                         help="Directory for per-source prediction overlay PNGs")
+    add_sweep_args(parser)
     args = parser.parse_args()
 
     device = select_device(args.device)
@@ -64,7 +67,7 @@ def main() -> None:
 
     dataset = get_dataset("TreeBoxes", root_dir=args.root_dir, download=args.download,
                           mini=args.mini, split_scheme=args.split_scheme)
-    test_subset = dataset.get_subset("test")
+    test_subset = maybe_subsample(dataset, dataset.get_subset("test"), args)
     test_loader = get_eval_loader("standard", test_subset, batch_size=args.batch_size,
                                   num_workers=args.num_workers)
 
@@ -89,6 +92,10 @@ def main() -> None:
 
         if args.max_batches is not None and (b_idx + 1) >= args.max_batches:
             break
+
+    if maybe_run_sweep(args, dataset, test_subset, all_y_pred, all_y_true,
+                       model="CanopyRS-DINO-SwinL", task="TreeBoxes"):
+        return
 
     results, results_str = dataset.eval(
         all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)],

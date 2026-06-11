@@ -19,11 +19,12 @@ cd /blue/ewhite/b.weinstein/src/MillionTrees
 
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
 SPLITS=(random zeroshot)
-CKPT_VERSIONS=(v4 v5)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
-CKPT_VER=${CKPT_VERSIONS[$SLURM_ARRAY_TASK_ID]}
 
-CKPT="training/boxes/outputs/${SPLIT}/checkpoints/boxes-best-${CKPT_VER}.ckpt"
+# Latest trained box checkpoint = most recently modified boxes-best*.ckpt.
+# (Lightning appends -vN per re-run; mtime is the robust "newest" signal.)
+CKPT=$(ls -t "training/boxes/outputs/${SPLIT}/checkpoints"/boxes-best*.ckpt | head -1)
+echo "Checkpoint: $CKPT"
 
 srun uv run python training/boxes/eval.py \
   --checkpoint "$CKPT" \
@@ -31,4 +32,5 @@ srun uv run python training/boxes/eval.py \
   --split-scheme "$SPLIT" \
   --batch-size 16 \
   --num-workers 8 \
+  --score-threshold 0.1 \
   --output-dir "training/boxes/outputs/${SPLIT}"

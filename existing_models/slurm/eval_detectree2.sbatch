@@ -34,6 +34,7 @@ uv run --no-sync python eval_polygons.py \
   --device cuda \
   --batch-size 8 \
   --model-path "$MODEL" \
+  --score-threshold 0.1 \
   --output-dir "$OUT_BASE"
 
 echo "=== Detectree2 eval done. Results in $OUT_BASE ==="
