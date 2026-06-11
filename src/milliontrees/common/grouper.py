@@ -182,19 +182,24 @@ class CombinatorialGrouper(Grouper):
         else:
             return groups
 
-    def group_str(self, group):
-        if self.groupby_fields is None:
-            return 'all'
-
+    def _group_to_values(self, group):
+        """Decode an integer group index into its per-field integer values."""
         # group is just an integer, not a Tensor
         n = len(self.factors_np)
         metadata = np.zeros(n)
         for i in range(n - 1):
             metadata[i] = (group % self.factors_np[i + 1]) // self.factors_np[i]
         metadata[n - 1] = group // self.factors_np[n - 1]
+        return [int(metadata[i]) for i in range(n)]
+
+    def group_str(self, group):
+        if self.groupby_fields is None:
+            return 'all'
+
+        values = self._group_to_values(group)
         group_name = ''
-        for i in reversed(range(n)):
-            meta_val = int(metadata[i])
+        for i in reversed(range(len(values))):
+            meta_val = values[i]
             if self.metadata_map is not None:
                 if self.groupby_fields[i] in self.metadata_map:
                     meta_val = self.metadata_map[
@@ -214,6 +219,13 @@ class CombinatorialGrouper(Grouper):
         # a_n * x_n
 
     def group_field_str(self, group):
-        return self.group_str(group).replace('=',
-                                             ':').replace(',',
-                                                          '_').replace(' ', '')
+        # Result-dict keys must stay numeric (e.g. ``source_id:3``) even when
+        # ``group_str`` renders human-readable names via ``metadata_map``.
+        if self.groupby_fields is None:
+            return 'all'
+        values = self._group_to_values(group)
+        parts = [
+            f'{self.groupby_fields[i]}:{values[i]}'
+            for i in reversed(range(len(values)))
+        ]
+        return '_'.join(parts)
