@@ -33,6 +33,9 @@ def main():
     parser.add_argument("--viz-dir", type=str, default=None,
                         help="Directory for per-source prediction overlay PNGs "
                              "(default: <output-dir>/viz, else ./eval_viz; pass '' to disable)")
+    parser.add_argument("--score-threshold", type=float, default=None,
+                        help="Override the Mask R-CNN roi_heads box score threshold "
+                             "(standardized to 0.1 for the leaderboard).")
     parser.add_argument(
         "--eval-mode",
         type=str,
@@ -52,6 +55,9 @@ def main():
 
     print(f"Loading checkpoint: {args.checkpoint}")
     model = MaskRCNNPolygonTrainer.load_from_checkpoint(args.checkpoint, weights_only=False)
+    if args.score_threshold is not None:
+        model.model.roi_heads.score_thresh = args.score_threshold
+        print(f"roi_heads.score_thresh: {model.model.roi_heads.score_thresh}")
     model.eval()
     model = model.to(device)
 

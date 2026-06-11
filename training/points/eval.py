@@ -26,6 +26,10 @@ def main():
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
+    parser.add_argument("--score-thresh", type=float, default=None,
+                        help="Relative peak threshold in [0, 1] for density_to_points "
+                             "(standardized to 0.10 for the leaderboard). TreeFormer's "
+                             "analog of a detection score_threshold.")
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--viz-dir", type=str, default=None,
                         help="Directory for per-source prediction overlay PNGs "
@@ -53,6 +57,10 @@ def main():
             "model": {"name": args.checkpoint, "revision": args.revision},
         })
         model.load_model(args.checkpoint, revision=args.revision)
+    if args.score_thresh is not None:
+        model.model.score_thresh = args.score_thresh
+        print(f"score_thresh: {model.model.score_thresh} "
+              f"score_integration_radius: {model.model.score_integration_radius}")
     model.eval()
     if torch.cuda.is_available():
         model = model.cuda()

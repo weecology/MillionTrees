@@ -12,6 +12,8 @@ from torchvision.ops import masks_to_boxes
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
+from milliontrees.common.eval_sweep import (add_sweep_args, maybe_run_sweep,
+                                            maybe_subsample)
 
 
 def select_device(device_arg: str) -> torch.device:
@@ -45,6 +47,7 @@ def main() -> None:
     parser.add_argument("--viz-dir", type=str, default=None,
                         help="Directory for per-source prediction overlay PNGs "
                              "(default: <output-dir>/viz, else ./eval_viz; pass '' to disable)")
+    add_sweep_args(parser)
     args = parser.parse_args()
 
     # Visualization on by default: 10 overlays per source (dataset.eval viz_n_per_source=10).
@@ -68,7 +71,7 @@ def main() -> None:
 
     dataset = get_dataset("TreeBoxes", root_dir=args.root_dir, download=args.download,
                           mini=args.mini, split_scheme=args.split_scheme)
-    test_subset = dataset.get_subset("test")
+    test_subset = maybe_subsample(dataset, dataset.get_subset("test"), args)
     test_loader = get_eval_loader("standard", test_subset, batch_size=args.batch_size,
                                   num_workers=args.num_workers)
 
@@ -114,6 +117,10 @@ def main() -> None:
 
         if args.max_batches is not None and (b_idx + 1) >= args.max_batches:
             break
+
+    if maybe_run_sweep(args, dataset, test_subset, all_y_pred, all_y_true,
+                       model="SAM3", task="TreeBoxes"):
+        return
 
     results, results_str = dataset.eval(
         all_y_pred, all_y_true, metadata=test_subset.metadata_array[:len(all_y_true)],

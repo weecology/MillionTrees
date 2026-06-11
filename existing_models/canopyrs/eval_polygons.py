@@ -23,6 +23,10 @@ from PIL import Image
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
+from milliontrees.common.eval_sweep import (add_sweep_args, maybe_run_sweep,
+                                            maybe_subsample)
+from milliontrees.datasets.polygon_stream_eval import (
+    TreePolygonsStreamingEvalState, merge_viz_samples)
 
 DETECTOR_CONFIG = "detectors/dino_swinL_multi_NQOS_selvamask_FT.yaml"
 SEGMENTER_CONFIG = "segmenters/sam3_multi_selvamask_FT.yaml"
@@ -103,6 +107,9 @@ def main() -> None:
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--viz-dir", type=str, default=None,
                         help="Directory for per-source prediction overlay PNGs")
+    parser.add_argument("--viz-n-per-source", type=int, default=10,
+                        help="Number of overlay PNGs to write per source.")
+    add_sweep_args(parser)
     args = parser.parse_args()
 
     device = select_device(args.device)
@@ -112,17 +119,31 @@ def main() -> None:
     dataset = get_dataset("TreePolygons", root_dir=args.root_dir, download=args.download,
                           mini=args.mini, split_scheme=args.split_scheme,
                           image_size=args.image_size)
-    test_subset = dataset.get_subset("test")
+    test_subset = maybe_subsample(dataset, dataset.get_subset("test"), args)
     test_loader = get_eval_loader("standard", test_subset, batch_size=args.batch_size,
                                   num_workers=args.num_workers)
 
     print(f"Batches: {len(test_loader)}")
 
-    all_y_pred, all_y_true = [], []
+    # Sweeping thresholds needs every prediction held in memory; a plain full eval
+    # streams metrics batch-by-batch so peak RAM is one batch of masks, not the whole
+    # test set (~270 GiB of dense 1024x1024 masks otherwise).
+    sweep_mode = getattr(args, "sweep", False)
+    stream_eval = None if sweep_mode else TreePolygonsStreamingEvalState(dataset)
+    all_y_pred, all_y_true = [], []  # only populated in sweep mode
+
+    # Capped per-source subset kept for visualization in streaming mode.
+    viz_cap: dict = {}
+    viz_y_pred: List[dict] = []
+    viz_y_true: List[dict] = []
+    viz_rows: List[torch.Tensor] = []
+
     for b_idx, (metadata, images, targets) in enumerate(test_loader):
         image_list: List[torch.Tensor] = [img.to(device) for img in images]
         preds = detector.forward(image_list)
 
+        batch_y_pred: List[dict] = []
+        batch_y_true: List[dict] = []
         for img, pred, target in zip(images, preds, targets):
             boxes = pred["boxes"].float().cpu()
             scores = pred["scores"].float().cpu()
@@ -131,32 +152,56 @@ def main() -> None:
 
             height, width = img.shape[-2], img.shape[-1]
             if boxes.shape[0] == 0:
-                all_y_pred.append({
+                batch_y_pred.append({
                     "y": torch.zeros((0, height, width), dtype=torch.uint8),
                     "labels": torch.zeros((0,), dtype=torch.int64),
                     "scores": torch.zeros((0,), dtype=torch.float32),
                 })
-                all_y_true.append(target)
+                batch_y_true.append(target)
                 continue
 
             pil_image = image_to_pil(img)
             masks, valid = segment_boxes(segmenter, pil_image, boxes.numpy())
             masks = torch.from_numpy(masks).to(torch.uint8)
             scores = scores * torch.from_numpy(valid.astype(np.float32))
-            all_y_pred.append({
+            batch_y_pred.append({
                 "y": masks,
                 "labels": torch.zeros(masks.shape[0], dtype=torch.int64),
                 "scores": scores,
             })
-            all_y_true.append(target)
+            batch_y_true.append(target)
+
+        batch_meta = metadata[:len(batch_y_pred)]
+        if sweep_mode:
+            all_y_pred.extend(batch_y_pred)
+            all_y_true.extend(batch_y_true)
+        else:
+            stream_eval.update(batch_y_pred, batch_y_true, batch_meta)
+            if args.viz_dir:
+                merge_viz_samples(viz_cap, batch_meta, batch_y_pred, batch_y_true,
+                                  viz_y_pred=viz_y_pred, viz_y_true=viz_y_true,
+                                  viz_rows=viz_rows, n_per_source=args.viz_n_per_source)
 
         if args.max_batches is not None and (b_idx + 1) >= args.max_batches:
             break
 
-    results, results_str = dataset.eval(
-        all_y_pred, all_y_true, metadata=test_subset.metadata_array[:len(all_y_true)],
-        viz_dir=args.viz_dir,
-    )
+    if sweep_mode:
+        if maybe_run_sweep(args, dataset, test_subset, all_y_pred, all_y_true,
+                           model=MODEL_NAME, task="TreePolygons"):
+            return
+        results, results_str = dataset.eval(
+            all_y_pred, all_y_true,
+            metadata=test_subset.metadata_array[:len(all_y_true)],
+            viz_dir=args.viz_dir,
+        )
+    else:
+        results, results_str = stream_eval.finalize(
+            viz_dir=args.viz_dir,
+            viz_y_pred=viz_y_pred or None,
+            viz_y_true=viz_y_true or None,
+            viz_metadata=torch.stack(viz_rows) if viz_rows else None,
+            viz_n_per_source=args.viz_n_per_source,
+        )
     print(results_str)
 
     if args.output_dir:

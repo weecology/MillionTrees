@@ -21,9 +21,9 @@ mkdir -p "$OUT_DIR"
 uv run python training/polygons/train.py \
   --root-dir /orange/ewhite/web/public/MillionTrees \
   --split-scheme "$SPLIT" \
-  --batch-size 4 \
+  --batch-size 8 \
   --max-epochs 40 \
-  --lr 1e-4 \
+  --lr 2e-4 \
   --num-workers 8 \
   --image-size 448 \
   --init-mode coco \

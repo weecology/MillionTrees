@@ -15,19 +15,25 @@ from typing import Dict, List, Optional
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Metric keys to extract (lowercase prefix matched against results_str lines)
+# Metric keys to extract (lowercase prefix matched against results_str lines).
+# Box/point files emit geometry-specific headline lines (detection_accuracy,
+# keypointaccuracy); every geometry also emits the generic "Average accuracy/
+# recall/AP50" block, which for polygons is the mask accuracy/recall.
 METRIC_PATTERNS = {
-    "KeypointAccuracy": r"average keypointaccuracy:\s*([\d.]+)",
+    "KeypointAccuracy": r"average (?:keypointaccuracy|keypoint_acc across source):\s*([\d.]+)",
     "CountingMAE": r"average counting_mae:\s*([\d.]+)",
     "DetectionAccuracy": r"average detection_accuracy:\s*([\d.]+)",
     "DetectionRecall": r"average detection_recall:\s*([\d.]+)",
+    "MaskAccuracy": r"average accuracy:\s*([\d.]+)",
+    "MaskRecall": r"average recall:\s*([\d.]+)",
+    "AP50": r"average ap50:\s*([\d.]+)",
 }
 
 # Map task names to which metrics are relevant
 TASK_METRICS = {
     "TreeBoxes": ["DetectionAccuracy", "DetectionRecall", "CountingMAE"],
     "TreePoints": ["KeypointAccuracy", "CountingMAE"],
-    "TreePolygons": ["DetectionAccuracy", "DetectionRecall"],
+    "TreePolygons": ["MaskAccuracy", "MaskRecall", "AP50"],
 }
 
 
@@ -83,6 +89,7 @@ def find_existing_model_results(split: str) -> List[Dict]:
         ("sam3", "SAM3"): ["boxes", "points", "polygons"],
         ("canopyrs", "CanopyRS-DINO-SwinL"): ["boxes"],
         ("canopyrs", "CanopyRS-DINO-SAM3-SelvaMask"): ["polygons"],
+        ("detectree2", "Detectree2"): ["polygons"],
     }
     for (model_dir, model_name), task_keys in model_tasks.items():
         for task_key in task_keys:

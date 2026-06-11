@@ -90,7 +90,8 @@ def process_takeshige2025():
         crop_annotations = split_raster(
             annotation,
             cleaned_image_path,
-            patch_size=1000,  # Using 1000px windows as requested
+            patch_size=2200,  # ~2cm GSD orthos: 2200px ~= 50m ground footprint
+            patch_overlap=0,  # no overlap
             allow_empty=False,
             image_name=os.path.basename(ortho_path),
             save_dir=output_dir

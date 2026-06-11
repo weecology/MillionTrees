@@ -274,9 +274,9 @@ def main():
                         default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
     parser.add_argument("--split-scheme", type=str, default="random",
                         choices=["random", "zeroshot", "crossgeometry"])
-    parser.add_argument("--batch-size", type=int, default=4)
+    parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--max-epochs", type=int, default=20)
-    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
     parser.add_argument("--download", action="store_true")
@@ -339,8 +339,9 @@ def main():
     parser.add_argument(
         "--patience",
         type=int,
-        default=5,
-        help="EarlyStopping patience (val checks) when --early-stopping is set.",
+        default=10,
+        help="EarlyStopping patience (val checks) when --early-stopping is set. "
+             "With once-per-epoch validation this equals epochs of no improvement.",
     )
     args = parser.parse_args()
 
@@ -431,7 +432,7 @@ def main():
         callbacks=callbacks,
         default_root_dir=args.output_dir,
         log_every_n_steps=10,
-        val_check_interval=0.5,
+        val_check_interval=1.0,
         logger=loggers if loggers else True,
         enable_checkpointing=has_val,
         limit_train_batches=args.limit_train_batches if args.limit_train_batches is not None else 1.0,

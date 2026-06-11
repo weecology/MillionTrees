@@ -15,6 +15,8 @@ from deepforest import main as df_main
 
 from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
+from milliontrees.common.eval_sweep import (add_sweep_args, maybe_run_sweep,
+                                            maybe_subsample)
 
 
 def predict_batch(model, images):
@@ -67,6 +69,23 @@ def main():
         type=str,
         default="weecology/deepforest-tree-point",
     )
+    parser.add_argument(
+        "--score-thresh",
+        type=float,
+        default=None,
+        help="Relative peak threshold in [0, 1] for density_to_points. Lower "
+             "values yield more (lower-confidence) points, trading precision "
+             "for recall. Defaults to the model config value (0.1).",
+    )
+    parser.add_argument(
+        "--score-integration-radius",
+        type=int,
+        default=None,
+        help="min_distance (in density-map pixels, ~4x in image px) for "
+             "peak_local_max. Lower values allow closer-spaced detections, "
+             "raising recall in dense canopy. Defaults to config (5).",
+    )
+    add_sweep_args(parser)
     args = parser.parse_args()
 
     # Visualization on by default: 10 overlays per source (dataset.eval viz_n_per_source=10).
@@ -79,6 +98,16 @@ def main():
 
     model = df_main.deepforest(config_args={"architecture": "treeformer"})
     model.load_model(args.checkpoint)
+    # NOTE: postprocess_density reads the *submodule* attributes
+    # (model.model.score_thresh / .score_integration_radius), which are frozen
+    # at construction from config. Overriding model.config after load_model is a
+    # no-op, so set them on the submodule directly.
+    if args.score_thresh is not None:
+        model.model.score_thresh = args.score_thresh
+    if args.score_integration_radius is not None:
+        model.model.score_integration_radius = args.score_integration_radius
+    print(f"score_thresh: {model.model.score_thresh} "
+          f"score_integration_radius: {model.model.score_integration_radius}")
     model.eval()
     if torch.cuda.is_available():
         model = model.cuda()
@@ -90,7 +119,7 @@ def main():
         mini=args.mini,
         split_scheme=args.split_scheme,
     )
-    test_subset = dataset.get_subset("test")
+    test_subset = maybe_subsample(dataset, dataset.get_subset("test"), args)
     test_loader = get_eval_loader(
         "standard", test_subset,
         batch_size=args.batch_size,
@@ -106,6 +135,10 @@ def main():
         all_y_true.extend(targets)
         if args.max_batches is not None and (b_idx + 1) >= args.max_batches:
             break
+
+    if maybe_run_sweep(args, dataset, test_subset, all_y_pred, all_y_true,
+                       model="TreeFormer-pretrained", task="TreePoints"):
+        return
 
     results, results_str = dataset.eval(
         all_y_pred,
