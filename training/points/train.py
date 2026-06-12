@@ -146,6 +146,11 @@ def main():
     )
     parser.add_argument("--smoke-test", action="store_true",
                         help="Limit to 2 train/val batches and 1 epoch")
+    parser.add_argument("--score-thresh", type=float, default=0.1,
+                        help="Relative peak threshold for density_to_points (standard 0.1).")
+    parser.add_argument("--score-integration-radius", type=int, default=2,
+                        help="peak_local_max min_distance in density-map px (~4x image px). "
+                             "Standard default 2 (tuned from the deepforest default of 5).")
     args = parser.parse_args()
 
     if args.smoke_test:
@@ -216,6 +221,16 @@ def main():
         print(f"Loading pretrained TreeFormer checkpoint: {args.checkpoint}")
         model.load_model(args.checkpoint)
 
+    # Standardized point-extraction hyperparams (see existing_models/treeformer
+    # grid). peak_local_max min_distance=2 (down from deepforest's 5) recovers
+    # recall in dense canopy; set on the submodule since postprocess_density
+    # reads model.model.* (config is ignored after load_model). score_thresh
+    # stays 0.1 (the dataset eval_score_threshold is the binding score filter).
+    model.model.score_thresh = args.score_thresh
+    model.model.score_integration_radius = args.score_integration_radius
+    print(f"score_thresh: {model.model.score_thresh} "
+          f"score_integration_radius: {model.model.score_integration_radius}")
+
     init_label = "random-weights" if args.random_weights else "pretrained"
     print(f"Init: {init_label}  |  LR: {args.lr}  |  Split: {args.split_scheme}")
 
@@ -274,6 +289,14 @@ def main():
         if best_path:
             print(f"Loading best checkpoint: {best_path}")
             model = df_main.deepforest.load_from_checkpoint(best_path, weights_only=False)
+            # load_from_checkpoint rebuilds the treeformer submodule from config,
+            # reverting score_thresh/score_integration_radius to deepforest
+            # defaults (5). Re-apply the standardized values so the final eval
+            # matches the pretrained-baseline post-processing.
+            model.model.score_thresh = args.score_thresh
+            model.model.score_integration_radius = args.score_integration_radius
+            print(f"score_thresh: {model.model.score_thresh} "
+                  f"score_integration_radius: {model.model.score_integration_radius}")
 
     eval_max_batches = 2 if args.smoke_test else None
     results, results_str = evaluate(

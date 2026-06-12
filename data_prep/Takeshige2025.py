@@ -55,16 +55,18 @@ def process_takeshige2025():
         # Read as MillionTrees annotation
         annotation = read_file(gdf, root_dir=ortho_dir)
 
-        # Read image with rasterio and handle NaN values
+        # Read image with rasterio and handle NaN values. These orthos are
+        # float32 and can be tens of GB; operate in-place to avoid holding
+        # multiple full-size copies (otherwise OOM on the larger sites).
         with rio.open(ortho_path) as src:
-            # Read all bands
+            # Read all bands (float32), channels-first (C, H, W)
             image = src.read()
-            # Transpose to channels last format (H, W, C)
+            # Clean and clip in-place on the float buffer
+            np.nan_to_num(image, nan=0, copy=False)
+            np.clip(image, 0, 255, out=image)
+            # Single new uint8 array; transpose to channels-last (H, W, C)
+            image = image.astype(np.uint8)
             image = np.transpose(image, (1, 2, 0))
-            # Replace NaN values with 0
-            image = np.nan_to_num(image, nan=0)
-            # Ensure values are in uint8 range
-            image = np.clip(image, 0, 255).astype(np.uint8)
 
         # Optionally, save cleaned image
         cleaned_image_path = os.path.join(output_dir, f"{base_id}_cleaned.tif")

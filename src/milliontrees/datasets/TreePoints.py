@@ -48,12 +48,24 @@ class TreePointsDataset(MillionTreesDataset):
     SOURCE_GSD = {
         'Amirkolaee et al. 2023': 0.20,
         'Beery et al. 2022': 0.05,
+        'Bohlman et al. 2008': 0.30,
         'Chen & Shang (2022)': 0.12,
         'Dubrovin et al. 2024': 0.07,
         'NEON MultiTemporal': 0.10,
         'NEON_points': 0.10,
+        'OFO field 2025': 0.05,
+        'OSBS megaplot 2025': 0.20,
         'Ventura et al. 2022': 0.60,
         'Young et al. 2025 unsupervised': 0.10,
+    }
+
+    # Sources usable for training but not accurate enough to trust for
+    # evaluation (e.g. AutoArborist / "Beery et al. 2022": street-level
+    # inventory points only loosely aligned to the imagery). Any test rows for
+    # these sources are demoted to train at load time so they never enter eval.
+    # Mirrors TRAIN_ONLY_SOURCES in data_prep/package_datasets.py.
+    TRAIN_ONLY_SOURCES = {
+        'Beery et al. 2022',
     }
 
     _dataset_name = 'TreePoints'
@@ -140,6 +152,15 @@ class TreePointsDataset(MillionTreesDataset):
 
         # Load splits
         self.df = pd.read_csv(self._data_dir / f"{self._split_scheme}.csv")
+
+        # Demote any test rows from training-only sources back to train so they
+        # are never evaluated, regardless of what the packaged CSV says. Keeps
+        # the data available for training (no rows dropped).
+        if 'split' in self.df.columns:
+            train_only_mask = (self.df['split'] == 'test') & (
+                self.df['source'].isin(self.TRAIN_ONLY_SOURCES))
+            if train_only_mask.any():
+                self.df.loc[train_only_mask, 'split'] = 'train'
 
         # Cache available sources for convenience
         self.sources = self.df['source'].unique()

@@ -58,6 +58,16 @@ UNSUPERVISED_SOURCE_ALIASES = {
     "Feng et al. 2025",
 }
 
+# Sources whose annotations are usable for *training* but not accurate enough to
+# trust for *evaluation* (e.g. AutoArborist / "Beery et al. 2022": street-level
+# inventory points only loosely aligned to the aerial imagery). Any test rows
+# for these sources are demoted to the train split so they never appear in
+# test/eval. Kept in sync with TreePointsDataset.TRAIN_ONLY_SOURCES, which
+# enforces the same demotion at load time for already-released CSVs.
+TRAIN_ONLY_SOURCES = {
+    "Beery et al. 2022",
+}
+
 
 def normalize_unsupervised_sources(datasets):
     """Force every known-unsupervised source name to carry the canonical suffix.
@@ -645,7 +655,19 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
     TreePolygons_datasets = remove_unsupervised_test_entries(TreePolygons_datasets)
     TreePoints_datasets = remove_unsupervised_test_entries(TreePoints_datasets)
     TreeBoxes_datasets = remove_unsupervised_test_entries(TreeBoxes_datasets)
-    
+
+    # Demote training-only sources (TRAIN_ONLY_SOURCES) out of the test split.
+    # Their rows stay available for training but are never evaluated.
+    def remove_train_only_test_entries(df):
+        if "split" in df.columns and "source" in df.columns:
+            mask = (df["split"] == "test") & (df["source"].isin(TRAIN_ONLY_SOURCES))
+            df.loc[mask, "split"] = "train"
+        return df
+
+    TreePolygons_datasets = remove_train_only_test_entries(TreePolygons_datasets)
+    TreePoints_datasets = remove_train_only_test_entries(TreePoints_datasets)
+    TreeBoxes_datasets = remove_train_only_test_entries(TreeBoxes_datasets)
+
     # Limit test images to 100 per source
     # Get all sources that have test data
     def get_test_sources(df):
