@@ -72,18 +72,20 @@ def main():
     parser.add_argument(
         "--score-thresh",
         type=float,
-        default=None,
+        default=0.1,
         help="Relative peak threshold in [0, 1] for density_to_points. Lower "
              "values yield more (lower-confidence) points, trading precision "
-             "for recall. Defaults to the model config value (0.1).",
+             "for recall. Standard default 0.1 (note: the binding score filter "
+             "is the dataset eval_score_threshold, not this).",
     )
     parser.add_argument(
         "--score-integration-radius",
         type=int,
-        default=None,
+        default=2,
         help="min_distance (in density-map pixels, ~4x in image px) for "
              "peak_local_max. Lower values allow closer-spaced detections, "
-             "raising recall in dense canopy. Defaults to config (5).",
+             "raising recall in dense canopy. Standard default 2 (tuned from "
+             "the deepforest default of 5).",
     )
     add_sweep_args(parser)
     args = parser.parse_args()
