@@ -463,6 +463,56 @@ def apply_existing_splits(df):
     return df
 
 
+# Sources whose MillionTrees tiles come from rasters CanopyRS uses to *train* its
+# models. CanopyRS splits each raster into spatial AOIs, so a naive per-tile random
+# split scatters those training tiles into our test set and contaminates any
+# comparison against CanopyRS models. assign_canopyrs_aligned_existing_split pins
+# them to a CanopyRS-aligned train/test boundary via existing_split.
+CANOPYRS_TRAIN_ONLY_SOURCES = {"Weecology_University_Florida"}
+
+
+def assign_canopyrs_aligned_existing_split(df):
+    """Pin existing_split so splits line up with CanopyRS train/test rasters.
+
+    Must run on original (pre-packaging) filenames, before
+    ``assign_packaged_filenames``, because it keys off zone/prefix tokens in the
+    source filename. Only the listed sources are touched; every other row keeps
+    whatever existing_split it already carries.
+
+    - ``Weecology_University_Florida``: the NeonTreeEvaluation *training* tiles in
+      CanopyRS (the held-out NEON test set is ``NEON_benchmark``) -> all train.
+    - ``Cloutier et al. 2023``: CanopyRS QuebecTrees trains on zones 1-2 and tests
+      on zone 3 -> assign by the ``-zN-`` token.
+    - ``OAM-TCD``: CanopyRS reuses OAM-TCD's official split -> honor the upstream
+      ``train_``/``test_`` tile prefix.
+    - ``Troles et al. 2024``: CanopyRS tests on the Hain forest
+      (``BAMForest_TestSet1_2023`` == Troles ``test1``) and trains on Stadtwald
+      (``BAMForest_train2023``) -> Hain is the only test split.
+    """
+    df = df.copy()
+    if "existing_split" not in df.columns:
+        df["existing_split"] = pd.NA
+    src = df["source"]
+    name = df["filename"].astype(str).str.rsplit("/", n=1).str[-1]
+
+    df.loc[src.isin(CANOPYRS_TRAIN_ONLY_SOURCES), "existing_split"] = "train"
+
+    cloutier = src == "Cloutier et al. 2023"
+    df.loc[cloutier & name.str.contains("-z3-"), "existing_split"] = "test"
+    df.loc[cloutier & name.str.contains("-z1-|-z2-"), "existing_split"] = "train"
+
+    oam = src == "OAM-TCD"
+    df.loc[oam & name.str.startswith("test_"), "existing_split"] = "test"
+    df.loc[oam & name.str.startswith("train_"), "existing_split"] = "train"
+
+    troles = src == "Troles et al. 2024"
+    troles_test1 = troles & (df["existing_split"] == "test1")
+    df.loc[troles, "existing_split"] = "train"
+    df.loc[troles_test1, "existing_split"] = "test"
+
+    return df
+
+
 def _validation_sources(df):
     """Return sources whose rows are pinned to the validation split."""
     if "existing_split" not in df.columns:
@@ -1036,6 +1086,12 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     verify_unsupervised_sources(TreeBoxes_datasets, "TreeBoxes")
     verify_unsupervised_sources(TreePoints_datasets, "TreePoints")
     verify_unsupervised_sources(TreePolygons_datasets, "TreePolygons")
+
+    # Align CanopyRS-overlapping sources to CanopyRS train/test boundaries using
+    # the original filenames (zone/prefix tokens), before packaging renames them.
+    TreeBoxes_datasets = assign_canopyrs_aligned_existing_split(TreeBoxes_datasets)
+    TreePoints_datasets = assign_canopyrs_aligned_existing_split(TreePoints_datasets)
+    TreePolygons_datasets = assign_canopyrs_aligned_existing_split(TreePolygons_datasets)
 
     # Coerce box columns early (avoids mixed str/float rows) and drop degenerate rows
     for col in ("xmin", "ymin", "xmax", "ymax"):
