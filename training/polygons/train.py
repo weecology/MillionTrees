@@ -27,6 +27,9 @@ from milliontrees.datasets.polygon_stream_eval import (
     TreePolygonsStreamingEvalState,
     merge_viz_samples,
 )
+from milliontrees.common.metrics.all_metrics import (
+    compute_polygon_mask_elementwise_batch,
+)
 
 
 def get_mask_rcnn(num_classes=2, init_mode="coco"):
@@ -44,10 +47,17 @@ def get_mask_rcnn(num_classes=2, init_mode="coco"):
 
 class MaskRCNNPolygonTrainer(pl.LightningModule):
 
-    def __init__(self, lr=1e-4, weight_decay=1e-5, init_mode="coco"):
+    def __init__(self, lr=1e-4, weight_decay=1e-5, init_mode="coco",
+                 eval_metrics=None):
         super().__init__()
-        self.save_hyperparameters()
+        # eval_metrics holds live dataset metric objects (not serializable and
+        # only needed during training-time validation), so keep it off the
+        # saved hyperparameters / checkpoint.
+        self.save_hyperparameters(ignore=["eval_metrics"])
         self.model = get_mask_rcnn(num_classes=2, init_mode=init_mode)
+        self._eval_metrics = eval_metrics
+        self._val_acc_sum = 0.0
+        self._val_acc_n = 0
 
     def _prepare_targets(self, targets_list, device):
         rt = []
@@ -96,6 +106,10 @@ class MaskRCNNPolygonTrainer(pl.LightningModule):
         self.log("lr", self.optimizers().param_groups[0]["lr"], prog_bar=True)
         return loss
 
+    def on_validation_epoch_start(self):
+        self._val_acc_sum = 0.0
+        self._val_acc_n = 0
+
     def validation_step(self, batch, batch_idx):
         metadata, images, targets_list = batch
         rt = self._prepare_targets(targets_list, images.device)
@@ -106,6 +120,37 @@ class MaskRCNNPolygonTrainer(pl.LightningModule):
         self.log("val_loss", loss, prog_bar=True, batch_size=len(images), sync_dist=True)
         for name, value in loss_dict.items():
             self.log(f"val_{name}", value, batch_size=len(images), sync_dist=True)
+
+        # Track the actual eval metric (mask_acc) so we can select checkpoints on
+        # it instead of the noisy summed val_loss surrogate. Requires an extra
+        # eval-mode forward pass to get scored predictions.
+        if self._eval_metrics is not None:
+            preds = format_predictions_for_eval(images, self, images.device)
+            # format_predictions_for_eval returns CPU preds; Lightning has moved
+            # the batch targets to GPU. The metric does masks_to_boxes on both, so
+            # they must share a device — mirror the CPU test-eval path.
+            targets_cpu = [
+                {k: (v.cpu() if isinstance(v, torch.Tensor) else v)
+                 for k, v in t.items()}
+                for t in targets_list
+            ]
+            ew = compute_polygon_mask_elementwise_batch(
+                preds,
+                targets_cpu,
+                accuracy_metric=self._eval_metrics["accuracy"],
+                recall_metric=self._eval_metrics["recall"],
+                maskaware_metric=self._eval_metrics["maskaware_precision"],
+                merge_metric=self._eval_metrics["merge_commission"],
+            )
+            acc = ew["accuracy"].float()
+            self._val_acc_sum += float(acc.sum().item())
+            self._val_acc_n += int(acc.numel())
+
+    def on_validation_epoch_end(self):
+        if self._eval_metrics is None:
+            return
+        mask_acc = (self._val_acc_sum / self._val_acc_n) if self._val_acc_n else 0.0
+        self.log("val_mask_acc", mask_acc, prog_bar=True, sync_dist=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
@@ -330,6 +375,14 @@ def main():
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
+        "--debug-overfit",
+        action="store_true",
+        help="Sanity check: make the val/eval set identical to the train set, "
+             "disable checkpointing + early stopping, and skip writing leaderboard "
+             "results. Answers 'is the model learning and is eval wired up?' — on "
+             "identical data, loss should fall and mask_acc/AP50 should climb high.",
+    )
+    parser.add_argument(
         "--early-stopping",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -342,6 +395,13 @@ def main():
         default=10,
         help="EarlyStopping patience (val checks) when --early-stopping is set. "
              "With once-per-epoch validation this equals epochs of no improvement.",
+    )
+    parser.add_argument(
+        "--augment",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Apply train-time augmentation (flips, 90-deg rotations, mild "
+             "brightness/contrast). Disabled automatically under --debug-overfit.",
     )
     args = parser.parse_args()
 
@@ -359,12 +419,30 @@ def main():
         include_unsupervised=args.include_unsupervised,
     )
 
-    train_subset = polygon_dataset.get_subset("train")
+    # Augmentation is train-only: build the train subset with the augmenting
+    # transform, leave test on the deterministic resize. Skip it under
+    # --debug-overfit so the train==val sanity check stays truly identical.
+    use_augment = args.augment and not args.debug_overfit
+    train_transform = polygon_dataset._train_transform_() if use_augment else None
+    train_subset = polygon_dataset.get_subset("train", transform=train_transform)
     test_subset = polygon_dataset.get_subset("test")
+    print(f"[augment] train-time augmentation: {'on' if use_augment else 'off'}")
 
     if len(train_subset) == 0:
         print("No training samples for this split; skipping training.")
         return
+
+    if args.debug_overfit:
+        # Sanity check: train and evaluate on the *same* rows. The only loader
+        # difference is shuffle (transforms are a deterministic resize), so this
+        # removes any generalization gap. A healthy model + eval pipeline must
+        # drive loss down and push mask_acc/AP50 high on this set.
+        print(
+            "[debug-overfit] val/eval set := train set "
+            f"({len(train_subset)} rows); checkpointing + early stopping disabled; "
+            "leaderboard results will NOT be written."
+        )
+        test_subset = train_subset
 
     train_loader = get_train_loader(
         "standard", train_subset, batch_size=args.batch_size, num_workers=args.num_workers,
@@ -377,7 +455,9 @@ def main():
         prefetch_factor=4 if args.num_workers > 0 else None,
     )
 
-    model = MaskRCNNPolygonTrainer(lr=args.lr, init_mode=args.init_mode)
+    model = MaskRCNNPolygonTrainer(
+        lr=args.lr, init_mode=args.init_mode, eval_metrics=polygon_dataset.metrics
+    )
     init_details = {"init_mode": args.init_mode}
     if args.init_mode == "box_pretrained":
         if args.box_backbone_checkpoint is None:
@@ -392,15 +472,18 @@ def main():
 
     has_val = len(val_loader) > 0
 
+    # Select + early-stop on the actual eval metric (mask_acc), not the noisy
+    # summed val_loss surrogate, which rises from classifier overfitting while
+    # detection quality is still flat/improving.
     checkpoint_cb = pl.callbacks.ModelCheckpoint(
         dirpath=os.path.join(args.output_dir, "checkpoints"),
-        filename="polygons-{epoch:02d}-{val_loss:.4f}",
-        monitor="val_loss",
-        mode="min",
+        filename="polygons-{epoch:02d}-{val_mask_acc:.4f}",
+        monitor="val_mask_acc",
+        mode="max",
         save_top_k=3,
     )
     early_stop_cb = pl.callbacks.EarlyStopping(
-        monitor="val_loss", patience=args.patience, mode="min"
+        monitor="val_mask_acc", patience=args.patience, mode="max"
     )
 
     loggers = []
@@ -414,13 +497,14 @@ def main():
                     "geometry-polygons",
                     f"lr-{args.lr:g}",
                     f"init-{args.init_mode}",
-                ],
+                ] + (["debug-overfit"] if args.debug_overfit else []),
             ))
         except Exception as e:
             print(f"Comet ML logging disabled: {e}")
 
+    enable_ckpt = has_val and not args.debug_overfit
     callbacks = []
-    if has_val:
+    if enable_ckpt:
         callbacks.append(checkpoint_cb)
         if args.early_stopping:
             callbacks.append(early_stop_cb)
@@ -434,21 +518,25 @@ def main():
         log_every_n_steps=10,
         val_check_interval=1.0,
         logger=loggers if loggers else True,
-        enable_checkpointing=has_val,
+        enable_checkpointing=enable_ckpt,
         limit_train_batches=args.limit_train_batches if args.limit_train_batches is not None else 1.0,
         limit_val_batches=(args.limit_val_batches if args.limit_val_batches is not None else 1.0) if has_val else 0,
     )
 
     trainer.fit(model, train_loader, val_loader)
 
-    print("\\n=== Evaluating best checkpoint ===")
-    best_path = checkpoint_cb.best_model_path if has_val else None
-    if best_path:
-        print(f"Loading best checkpoint: {best_path}")
-        model = MaskRCNNPolygonTrainer.load_from_checkpoint(
-            best_path,
-            weights_only=False,
-        )
+    if args.debug_overfit:
+        print("\\n=== [debug-overfit] Evaluating final model on the TRAIN set ===")
+        best_path = None
+    else:
+        print("\\n=== Evaluating best checkpoint ===")
+        best_path = checkpoint_cb.best_model_path if enable_ckpt else None
+        if best_path:
+            print(f"Loading best checkpoint: {best_path}")
+            model = MaskRCNNPolygonTrainer.load_from_checkpoint(
+                best_path,
+                weights_only=False,
+            )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     results, results_str = evaluate(
@@ -461,6 +549,12 @@ def main():
         eval_mode=args.eval_mode,
     )
     print(results_str)
+
+    if args.debug_overfit:
+        # Sanity run: print metrics (and Comet has the curves) but do not emit the
+        # leaderboard-shaped JSON/results files.
+        print("[debug-overfit] skipping leaderboard results/JSON writes.")
+        return
 
     results_path = os.path.join(args.output_dir, f"results_{args.split_scheme}.txt")
     with open(results_path, "w") as f:

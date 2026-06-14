@@ -149,6 +149,9 @@ def main():
     parser.add_argument("--early-stop-patience", type=int, default=10)
     parser.add_argument("--comet", action="store_true",
                         help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
+    parser.add_argument("--comet-name", type=str, default=None,
+                        help="Comet experiment name. Defaults to "
+                             "boxes-<split>-lr<lr> (see CLAUDE.md naming scheme).")
     parser.add_argument("--smoke-test", action="store_true",
                         help="Limit to 2 train/val batches and 1 epoch for local testing")
     args = parser.parse_args()
@@ -254,8 +257,10 @@ def main():
                             safe[k] = type(v).__name__
                     super().log_hyperparams(safe)
 
+            comet_name = args.comet_name or f"boxes-{args.split_scheme}-lr{args.lr:g}"
             loggers.append(_SafeCometLogger(
                 project_name="milliontrees-boxes",
+                name=comet_name,
                 tags=[f"split-{args.split_scheme}", "geometry-boxes"],
             ))
         except Exception as e:

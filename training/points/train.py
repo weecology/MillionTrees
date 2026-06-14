@@ -133,6 +133,9 @@ def main():
     parser.add_argument("--early-stop-patience", type=int, default=10)
     parser.add_argument("--comet", action="store_true",
                         help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
+    parser.add_argument("--comet-name", type=str, default=None,
+                        help="Comet experiment name. Defaults to "
+                             "points-<split>-<init>-lr<lr> (see CLAUDE.md naming scheme).")
     parser.add_argument(
         "--checkpoint",
         type=str,
@@ -148,6 +151,11 @@ def main():
                         help="Limit to 2 train/val batches and 1 epoch")
     parser.add_argument("--score-thresh", type=float, default=0.1,
                         help="Relative peak threshold for density_to_points (standard 0.1).")
+    parser.add_argument("--image-size", type=int, default=448,
+                        help="Resize images (and points) to this square size for "
+                             "train and eval. The density map is image_size/4 per "
+                             "side; larger sizes give a finer grid and better "
+                             "separation of close-together trees.")
     parser.add_argument("--score-integration-radius", type=int, default=2,
                         help="peak_local_max min_distance in density-map px (~4x image px). "
                              "Standard default 2 (tuned from the deepforest default of 5).")
@@ -165,6 +173,7 @@ def main():
         mini=args.mini,
         root_dir=args.root_dir,
         split_scheme=args.split_scheme,
+        image_size=args.image_size,
     )
 
     train_subset = point_dataset.get_subset("train")
@@ -239,8 +248,12 @@ def main():
         try:
             from pytorch_lightning.loggers import CometLogger
 
+            init_tok = "scratch" if args.random_weights else "pretrained"
+            comet_name = (args.comet_name
+                          or f"points-{args.split_scheme}-{init_tok}-lr{args.lr:g}")
             loggers.append(CometLogger(
                 project_name="milliontrees-treeformer-points",
+                name=comet_name,
                 tags=[f"split-{args.split_scheme}", "geometry-points", "treeformer", init_label],
             ))
         except Exception as e:

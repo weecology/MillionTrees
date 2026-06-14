@@ -11,6 +11,11 @@
 
 set -euo pipefail
 
+# 22 GiB turin GPUs OOM'd in the points stage (batch 16) with ~6 GiB reserved-but-
+# unallocated fragmentation; expandable_segments reclaims it. Batch sizes lowered for
+# headroom (eval metrics are batch-size invariant).
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 REPO=/blue/ewhite/b.weinstein/src/MillionTrees
 ROOT_DIR=${MT_ROOT:-/orange/ewhite/web/public/MillionTrees}
 SPLITS=(random zeroshot)
@@ -33,7 +38,7 @@ uv run python eval_points.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --device cuda \
-  --batch-size 16 \
+  --batch-size 8 \
   --score-threshold 0.1 \
   --output-dir "$OUT_BASE"
 
@@ -41,7 +46,7 @@ uv run python eval_polygons.py \
   --root-dir "$ROOT_DIR" \
   --split-scheme "$SPLIT" \
   --device cuda \
-  --batch-size 8 \
+  --batch-size 4 \
   --score-threshold 0.1 \
   --output-dir "$OUT_BASE"
 

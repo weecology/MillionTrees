@@ -66,6 +66,14 @@ class TreePolygonsDataset(MillionTreesDataset):
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.17.zip",
             'compressed_size':
                 118069539057
+        },
+        "0.18": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.18.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.18.zip",
+            'compressed_size':
+                120747553994
         }
     }
 
@@ -523,6 +531,30 @@ class TreePolygonsDataset(MillionTreesDataset):
 
     def _transform_(self):
         transform = A.Compose([
+            A.Resize(height=self.image_size, width=self.image_size, p=1.0),
+            ToTensorV2()
+        ],
+                              bbox_params=A.BboxParams(format='pascal_voc',
+                                                       label_fields=['labels'],
+                                                       clip=True))
+
+        return transform
+
+    def _train_transform_(self):
+        """Train-time transform: simple augmentation on top of the resize.
+
+        Overhead imagery is flip/rotation invariant, so horizontal/vertical flips and 90-degree
+        rotations are label-preserving; Albumentations transforms the image, per-instance masks, and
+        bboxes jointly so they stay aligned. A mild brightness/contrast jitter adds photometric
+        variation. The default ``_transform_`` (resize only) stays the eval path so test-time inputs
+        are deterministic.
+        """
+        transform = A.Compose([
+            A.HorizontalFlip(p=0.5),
+            A.VerticalFlip(p=0.5),
+            A.RandomRotate90(p=0.5),
+            A.RandomBrightnessContrast(
+                brightness_limit=0.2, contrast_limit=0.2, p=0.3),
             A.Resize(height=self.image_size, width=self.image_size, p=1.0),
             ToTensorV2()
         ],
