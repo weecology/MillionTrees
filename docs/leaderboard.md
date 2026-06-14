@@ -190,54 +190,54 @@ Comparison of fine-tuned models (trained on MillionTrees) vs. pretrained models 
 ### TreeBoxes
 
 | Model | DetectionAccuracy | DetectionRecall | CountingMAE |
-|---||---||---||---|
-| CanopyRS-DINO-SwinL | 0.169 | 0.750 | 130.693 |
-| DeepForest-finetuned | 0.269 | 0.547 | 27.142 |
-| DeepForest-pretrained | 0.268 | 0.407 | 24.069 |
-| SAM3 | 0.207 | 0.554 | 43.950 |
+|---|---|---|---|
+| CanopyRS-DINO-SwinL | 0.177 | 0.841 | 169.941 |
+| DeepForest-finetuned | 0.327 | 0.591 | 32.844 |
+| DeepForest-pretrained | 0.261 | 0.399 | 28.399 |
+| SAM3 | 0.239 | 0.635 | 53.283 |
 
 ### TreePoints
 
 | Model | KeypointAccuracy | CountingMAE |
-|---||---||---|
-| SAM3 | 0.182 | 54.593 |
+|---|---|---|
+| SAM3 | 0.195 | 38.336 |
 | TreeFormer-finetuned | 0.278 | 57.444 |
-| TreeFormer-pretrained | 0.239 | 56.519 |
+| TreeFormer-pretrained | 0.284 | 52.938 |
 
 ### TreePolygons
 
 | Model | MaskAccuracy | MaskRecall | AP50 |
-|---||---||---||---|
-| CanopyRS-DINO-SAM3-SelvaMask | 0.327 | 0.593 | 0.176 |
-| Detectree2 | 0.277 | 0.465 | 0.163 |
+|---|---|---|---|
+| CanopyRS-DINO-SAM3-SelvaMask | 0.312 | 0.565 | 0.220 |
+| Detectree2 | 0.215 | 0.378 | 0.106 |
 | MaskRCNN-finetuned | 0.387 | 0.658 | 0.278 |
-| SAM3 | 0.186 | 0.282 | 0.064 |
+| SAM3 | 0.154 | 0.235 | 0.045 |
 
 ### Split: zeroshot
 
 ### TreeBoxes
 
 | Model | DetectionAccuracy | DetectionRecall | CountingMAE |
-|---||---||---||---|
-| CanopyRS-DINO-SwinL | 0.220 | 0.919 | 203.784 |
-| DeepForest-finetuned | 0.377 | 0.525 | 30.365 |
-| DeepForest-pretrained | 0.302 | 0.432 | 28.741 |
-| SAM3 | 0.379 | 0.732 | 47.854 |
+|---|---|---|---|
+| CanopyRS-DINO-SwinL | 0.214 | 0.901 | 199.248 |
+| DeepForest-finetuned | 0.341 | 0.534 | 34.757 |
+| DeepForest-pretrained | 0.277 | 0.397 | 29.918 |
+| SAM3 | 0.357 | 0.706 | 48.121 |
 
 ### TreePoints
 
 | Model | KeypointAccuracy | CountingMAE |
-|---||---||---|
+|---|---|---|
 | SAM3 | 0.129 | 14.878 |
 | TreeFormer-finetuned | 0.314 | 17.124 |
-| TreeFormer-pretrained | 0.291 | 15.717 |
+| TreeFormer-pretrained | 0.392 | 18.627 |
 
 ### TreePolygons
 
 | Model | MaskAccuracy | MaskRecall | AP50 |
-|---||---||---||---|
+|---|---|---|---|
 | CanopyRS-DINO-SAM3-SelvaMask | 0.380 | 0.635 | 0.298 |
-| Detectree2 | 0.375 | 0.520 | 0.366 |
+| Detectree2 | 0.247 | 0.354 | 0.142 |
 | MaskRCNN-finetuned | 0.194 | 0.408 | 0.117 |
 | SAM3 | 0.165 | 0.214 | 0.131 |
 
