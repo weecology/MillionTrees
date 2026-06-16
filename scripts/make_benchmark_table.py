@@ -142,7 +142,7 @@ def build_table(entries: List[Dict], split: str) -> str:
             present_metrics = sorted({k for e in task_entries for k in e["metrics"]})
 
         header = "| Model | " + " | ".join(present_metrics) + " |\n"
-        sep = "|---|" + "|---|" * len(present_metrics) + "\n"
+        sep = "|---" * (len(present_metrics) + 1) + "|\n"
         rows = []
         for e in sorted(task_entries, key=lambda x: x["model"]):
             vals = " | ".join(format_metric(e["metrics"].get(m)) for m in present_metrics)

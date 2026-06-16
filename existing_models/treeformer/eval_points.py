@@ -56,6 +56,16 @@ def main():
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
+    parser.add_argument("--small", action="store_true",
+                        help="Use the SmallTreePoints release for fast iteration.")
+    parser.add_argument("--image-size", type=int, default=448,
+                        help="Square resize for images/points at eval. Also sets "
+                             "the KeypointAccuracy pixel threshold (= normalized "
+                             "distance x image_size).")
+    parser.add_argument("--eval-score-threshold", type=float, default=None,
+                        help="Override the dataset eval_score_threshold (the hard "
+                             "filter on predicted-point scores). Default (None) "
+                             "keeps the dataset default of 0.4. Ignored under --sweep.")
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--split-scheme", type=str, default="random",
                         choices=["random", "zeroshot", "crossgeometry"])
@@ -114,13 +124,17 @@ def main():
     if torch.cuda.is_available():
         model = model.cuda()
 
-    dataset = get_dataset(
-        "TreePoints",
+    dataset_kwargs = dict(
         root_dir=args.root_dir,
         download=args.download,
         mini=args.mini,
+        small=args.small,
+        image_size=args.image_size,
         split_scheme=args.split_scheme,
     )
+    if args.eval_score_threshold is not None:
+        dataset_kwargs["eval_score_threshold"] = args.eval_score_threshold
+    dataset = get_dataset("TreePoints", **dataset_kwargs)
     test_subset = maybe_subsample(dataset, dataset.get_subset("test"), args)
     test_loader = get_eval_loader(
         "standard", test_subset,

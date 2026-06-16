@@ -24,7 +24,7 @@ import shapely.wkt
 # splits stay aligned.
 ZEROSHOT_TEST_SOURCES_POLYGONS = [
     "Troles et al. 2024",
-    "Bolhman 2008",
+    "Bohlman et al. 2008",
     "Lefebvre et al. 2024",
     "NEON MultiTemporal",
     "Takeshige et al. 2025",
