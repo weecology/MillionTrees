@@ -26,6 +26,14 @@ def main():
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
+    parser.add_argument("--small", action="store_true",
+                        help="Use the SmallTreePoints release for fast iteration.")
+    parser.add_argument("--image-size", type=int, default=448,
+                        help="Square resize for images/points at eval; also sets "
+                             "the KeypointAccuracy pixel threshold.")
+    parser.add_argument("--eval-score-threshold", type=float, default=None,
+                        help="Override the dataset eval_score_threshold (hard score "
+                             "filter). Default (None) keeps the dataset default 0.4.")
     parser.add_argument("--score-thresh", type=float, default=0.1,
                         help="Relative peak threshold in [0, 1] for density_to_points "
                              "(standardized to 0.10 for the leaderboard). TreeFormer's "
@@ -54,7 +62,16 @@ def main():
     # then load_model() the weights.
     if args.checkpoint.endswith(".ckpt") and os.path.isfile(args.checkpoint):
         print(f"Loading Lightning checkpoint: {args.checkpoint}")
-        model = df_main.deepforest.load_from_checkpoint(args.checkpoint, weights_only=False)
+        # Checkpoints trained on multiple GPUs save devices=[0,1,..] in their
+        # config; deepforest.__init__ builds a trainer from it at load time and
+        # crashes on a single-GPU eval node. Merge a single-device override over
+        # the saved config (main.py merges config_args onto the checkpoint dict).
+        model = df_main.deepforest.load_from_checkpoint(
+            args.checkpoint,
+            weights_only=False,
+            config_args={"devices": 1, "accelerator": "auto",
+                         "workers": args.num_workers},
+        )
     else:
         print(f"Loading TreeFormer weights: {args.checkpoint} (revision={args.revision})")
         model = df_main.deepforest(config_args={
@@ -72,12 +89,16 @@ def main():
     if torch.cuda.is_available():
         model = model.cuda()
 
-    dataset = get_dataset(
-        "TreePoints",
+    dataset_kwargs = dict(
         root_dir=args.root_dir,
         mini=args.mini,
+        small=args.small,
+        image_size=args.image_size,
         split_scheme=args.split_scheme,
     )
+    if args.eval_score_threshold is not None:
+        dataset_kwargs["eval_score_threshold"] = args.eval_score_threshold
+    dataset = get_dataset("TreePoints", **dataset_kwargs)
     test_subset = dataset.get_subset("test")
 
     results, results_str = evaluate(

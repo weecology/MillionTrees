@@ -106,35 +106,25 @@ released checkpoint with no MillionTrees training at all.
 ## TreePolygons
 
 Fine-tuned (✓) uses Mask R-CNN (`training/polygons/train.py`). Pretrained (✗) uses
-SAM3 and detectree2.
-
-> **Note:** CanopyRS DINO + SAM3 (SelvaMask) polygon rows are marked "rerun pending".
-> The 2026-06-10 random run scored ≈ 0 on every source except Khan_et_al._2026 (0.350),
-> and no zeroshot polygon run was produced. Cause: the polygon evaluator filters every
-> metric (recall/precision/AP50) at `eval_score_threshold = 0.5`, while TreeBoxes uses
-> 0.1. The CanopyRS DINO detector finds the trees (see TreeBoxes above) but its
-> confidences on the polygon imagery mostly fall below 0.5, so nearly all predictions
-> are dropped at eval time. Re-run and log the detector score distribution before
-> publishing; do **not** lower the polygon threshold, since detectree2/SAM3/Mask R-CNN
-> are all scored at the same 0.5 floor.
+SAM3, detectree2, and CanopyRS DINO + SAM3 (SelvaMask).
 
 ### Random
 
 | Model | Fine-tuned | Avg Mask Accuracy | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
 | Mask R-CNN | ✓ | 0.416 | 0.900 | <small>`uv run python training/polygons/train.py --split-scheme random`</small> |
+| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.312 | 0.879 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 | detectree2 | ✗ | 0.304 | 0.891 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme random`</small> |
 | SAM3 | ✗ | 0.186 | 0.619 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
-| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | rerun pending | rerun pending | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
 
 ### Zero-shot
 
 | Model | Fine-tuned | Avg Mask Accuracy | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
 | detectree2 | ✗ | 0.375 | 0.945 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme zeroshot`</small> |
+| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.355 | 0.912 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 | SAM3 | ✗ | 0.165 | 0.663 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 | Mask R-CNN | ✓ | 0.064 | 0.814 | <small>`uv run python training/polygons/train.py --split-scheme zeroshot`</small> |
-| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | rerun pending | rerun pending | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
 
 > **Note:** The Mask R-CNN ✓ zeroshot row is from the pre-fix polygon evaluator
 > (before GT-mask binarization / AP50; commit b2ff776) and is not directly comparable
@@ -200,9 +190,9 @@ Comparison of fine-tuned models (trained on MillionTrees) vs. pretrained models 
 
 | Model | KeypointAccuracy | CountingMAE |
 |---|---|---|
-| SAM3 | 0.195 | 38.336 |
-| TreeFormer-finetuned | 0.278 | 57.444 |
-| TreeFormer-pretrained | 0.284 | 52.938 |
+| SAM3 | 0.218 | 38.336 |
+| TreeFormer-finetuned | 0.411 | 65.230 |
+| TreeFormer-pretrained | 0.318 | 52.938 |
 
 ### TreePolygons
 
@@ -210,7 +200,7 @@ Comparison of fine-tuned models (trained on MillionTrees) vs. pretrained models 
 |---|---|---|---|
 | CanopyRS-DINO-SAM3-SelvaMask | 0.312 | 0.565 | 0.220 |
 | Detectree2 | 0.215 | 0.378 | 0.106 |
-| MaskRCNN-finetuned | 0.387 | 0.658 | 0.278 |
+| MaskRCNN-finetuned | 0.375 | 0.604 | 0.284 |
 | SAM3 | 0.154 | 0.235 | 0.045 |
 
 ### Split: zeroshot
@@ -228,16 +218,16 @@ Comparison of fine-tuned models (trained on MillionTrees) vs. pretrained models 
 
 | Model | KeypointAccuracy | CountingMAE |
 |---|---|---|
-| SAM3 | 0.129 | 14.878 |
-| TreeFormer-finetuned | 0.314 | 17.124 |
+| SAM3 | 0.243 | 52.164 |
+| TreeFormer-finetuned | 0.460 | 34.506 |
 | TreeFormer-pretrained | 0.392 | 18.627 |
 
 ### TreePolygons
 
 | Model | MaskAccuracy | MaskRecall | AP50 |
 |---|---|---|---|
-| CanopyRS-DINO-SAM3-SelvaMask | 0.380 | 0.635 | 0.298 |
+| CanopyRS-DINO-SAM3-SelvaMask | 0.355 | 0.615 | 0.277 |
 | Detectree2 | 0.247 | 0.354 | 0.142 |
-| MaskRCNN-finetuned | 0.194 | 0.408 | 0.117 |
-| SAM3 | 0.165 | 0.214 | 0.131 |
+| MaskRCNN-finetuned | 0.197 | 0.282 | 0.219 |
+| SAM3 | 0.098 | 0.124 | 0.058 |
 

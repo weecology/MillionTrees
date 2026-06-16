@@ -57,6 +57,10 @@ def main() -> None:
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--split-scheme", type=str, default="random",
                         choices=["random", "zeroshot", "crossgeometry"])
+    parser.add_argument("--image-size", type=int, default=448,
+                        help="Resize images to image_size x image_size before eval. "
+                             "Must match the resolution other point models are scored at "
+                             "(keypoint_acc tolerance scales with image_size).")
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"])
     parser.add_argument("--text-prompt", type=str, default="tree")
     parser.add_argument("--score-threshold", type=float, default=0.5)
@@ -90,7 +94,8 @@ def main() -> None:
         raise SystemExit(f"Failed to load SAM3: {exc}") from exc
 
     dataset = get_dataset("TreePoints", root_dir=args.root_dir, download=args.download,
-                          mini=args.mini, split_scheme=args.split_scheme)
+                          mini=args.mini, split_scheme=args.split_scheme,
+                          image_size=args.image_size)
     test_subset = maybe_subsample(dataset, dataset.get_subset("test"), args)
     test_loader = get_eval_loader("standard", test_subset, batch_size=args.batch_size,
                                   num_workers=args.num_workers)
