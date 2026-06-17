@@ -12,6 +12,19 @@ DATASET_CLASSES = [
 ]
 
 
+def published_download_urls(versions_dict):
+    """Yield (version, url) for releases whose archives are on the data server.
+
+    Versions with ``compressed_size is None`` are registered in code before the
+    HPC packaging job uploads the zip; skip them in URL existence tests.
+    """
+    for version, info in versions_dict.items():
+        url = info.get('download_url') or ""
+        if not url or info.get('compressed_size') is None:
+            continue
+        yield version, url
+
+
 def _subset_default_download_url(dataset_class, subset_prefix):
     """Effective download_url after subset + default (supervised) URL swap in __init__."""
     obj = dataset_class.__new__(dataset_class)
@@ -62,10 +75,7 @@ def test_mini_and_small_mutually_exclusive():
 def test_dataset_url_exists(dataset_class, tmpdir):
     """Test that dataset URLs exist but don't actually download."""
     versions = dataset_class._versions_dict
-    for version in versions:
-        url = versions[version]['download_url']
-        if url == "":
-            continue
+    for version, url in published_download_urls(versions):
         try:
             with urllib.request.urlopen(url) as response:
                 assert response.status == 200

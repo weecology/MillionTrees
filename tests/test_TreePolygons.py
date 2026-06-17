@@ -14,6 +14,8 @@ import numpy as np
 from shapely import from_wkt
 import requests
 
+from tests.test_versions import published_download_urls
+
 # Test structure without real annotation data to ensure format is correct
 def test_TreePolygons_generic(dataset):
     ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
@@ -184,13 +186,8 @@ def test_TreePolygons_eval_stream_matches_legacy(dataset):
 
 def test_TreePolygons_download_url(dataset):
     ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
-    for version in ds._versions_dict.keys():
+    for version, url in published_download_urls(ds._versions_dict):
         print(version)
-        # Confirm url can be downloaded
-        url = ds._versions_dict[version]['download_url']
-        # If the url is not accessible, skip the test
-        if url == "":
-            continue
         response = requests.head(url, allow_redirects=True)
         assert response.status_code == 200, f"URL {url} is not accessible"
 
