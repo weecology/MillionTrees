@@ -1241,7 +1241,7 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.18"
+    version = "v0.19"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     mask_source_dir = "/orange/ewhite/DeepForest/tree_coverage_masks"
     debug = False
