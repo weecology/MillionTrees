@@ -26,7 +26,7 @@ def dataset():
     box_data = generate_box_dataset(image_dir)
     box_data["split"] = "train"
     box_data.loc[box_data.filename.isin(["image3.jpg","image4.jpg"]), "split"] = "test"
-    box_file = os.path.join(data_dir, "random.csv")
+    box_file = os.path.join(data_dir, "within-distribution.csv")
     box_data.to_csv(box_file)
 
     # Save a Release txt file
@@ -44,7 +44,7 @@ def dataset():
     polygon_data = generate_polygon_dataset(image_dir)
     polygon_data["split"] = "train"
     polygon_data.loc[2, "split"] = "test"
-    polygon_file = os.path.join(data_dir, "random.csv")
+    polygon_file = os.path.join(data_dir, "within-distribution.csv")
     polygon_data.to_csv(polygon_file)
 
     # Save a Release txt file
@@ -64,7 +64,7 @@ def dataset():
     # Assign each image to a train-test split, make a copy of the dataframe and a new split
     point_data['split'] = 'train'
     point_data.loc[2, 'split'] = 'test'
-    point_file = os.path.join(data_dir, "random.csv")
+    point_file = os.path.join(data_dir, "within-distribution.csv")
     point_data.to_csv(point_file)
 
     # Save a Release txt file
@@ -75,9 +75,9 @@ def dataset():
 
     for geometry in ("TreeBoxes", "TreePoints", "TreePolygons"):
         supervised_dir = os.path.join(tmp_dir, f"{geometry}_supervised_v0.0")
-        for split_csv in ("zeroshot.csv", "crossgeometry.csv"):
+        for split_csv in ("out-of-distribution.csv", "crossgeometry.csv"):
             shutil.copy(
-                os.path.join(supervised_dir, "random.csv"),
+                os.path.join(supervised_dir, "within-distribution.csv"),
                 os.path.join(supervised_dir, split_csv),
             )
 
@@ -86,9 +86,9 @@ def dataset():
             os.path.join(tmp_dir, f"{geometry}_supervised_v0.0"),
             os.path.join(tmp_dir, f"Small{geometry}_v0.0"),
         )
-        for split_csv in ("zeroshot.csv", "crossgeometry.csv"):
+        for split_csv in ("out-of-distribution.csv", "crossgeometry.csv"):
             shutil.copy(
-                os.path.join(tmp_dir, f"Small{geometry}_v0.0", "random.csv"),
+                os.path.join(tmp_dir, f"Small{geometry}_v0.0", "within-distribution.csv"),
                 os.path.join(tmp_dir, f"Small{geometry}_v0.0", split_csv),
             )
 

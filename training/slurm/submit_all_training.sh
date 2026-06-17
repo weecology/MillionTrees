@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Submit all fine-tuned training jobs (one array job per geometry, over
-# random + zeroshot splits). Results land in training/<geometry>/outputs/<split>/.
+# within-distribution + out-of-distribution splits). Results land in training/<geometry>/outputs/<split>/.
 set -euo pipefail
 
 cd /blue/ewhite/b.weinstein/src/MillionTrees

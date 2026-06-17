@@ -78,8 +78,8 @@ def main() -> None:
     parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument("--mini", action="store_true")
     parser.add_argument("--download", action="store_true")
-    parser.add_argument("--split-scheme", type=str, default="random",
-                        choices=["random", "zeroshot", "crossgeometry"])
+    parser.add_argument("--split-scheme", type=str, default="within-distribution",
+                        choices=["within-distribution", "out-of-distribution", "crossgeometry"])
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"])
     parser.add_argument("--score-threshold", type=float, default=0.5)
     parser.add_argument("--max-batches", type=int, default=None)

@@ -150,8 +150,8 @@ def main() -> None:
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--split-scheme",
                         type=str,
-                        default="random",
-                        choices=["random", "zeroshot", "crossgeometry"])
+                        default="within-distribution",
+                        choices=["within-distribution", "out-of-distribution", "crossgeometry"])
     parser.add_argument(
         "--mock",
         action="store_true",

@@ -167,7 +167,7 @@ def _parse_args() -> argparse.Namespace:
                         default=list(SUPPORTED_DATASETS))
     parser.add_argument("--version", type=str, default=None)
     parser.add_argument("--root-dir", type=str, default="data")
-    parser.add_argument("--split-scheme", type=str, default="random")
+    parser.add_argument("--split-scheme", type=str, default="within-distribution")
     parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument("--include-unsupervised", action="store_true")
     parser.add_argument("--download", action="store_true")

@@ -20,12 +20,12 @@ One of the great things about supplying data as dataloaders is easy access to di
 dataset = TreePointsDataset(download=True, root_dir=<directory to save data>, split_scheme="fine-tune") 
 ```
 
-This looks at the file fine-tune.csv and gets the 'split' column that designates which images are in train/test/val depending on the task.
+This looks at the file within-distribution.csv and gets the 'split' column that designates which images are in train/test/val depending on the task.
 
 The MillionTrees benchmark supports multiple dataset split schemes to accommodate various tasks:
 
-- **Random**: For each source, most images are used for training and a subset for testing (the same sources appear in both splits), matching a typical fine-tuning workflow.
-- **Zeroshot**: Entire sources are held out for testing, simulating a common applied example in which a user applies to model to new data outside of training distributions. 
+- **Within-distribution**: For each source, most images are used for training and a subset for testing (the same sources appear in both splits), matching a typical fine-tuning workflow.
+- **Out-of-distribution**: Entire sources are held out for testing, simulating a common applied example in which a user applies to model to new data outside of training distributions. 
 - **Crossgeometry**: Combines boxes and points annotations to predict Polygons.
 
 In addition to ``train`` and ``test``, packaged CSVs may include a ``validation`` split. Validation images are held out from both training and the benchmark test splits. They are intended for independent, post-hoc evaluation — for example TLS-derived crown labels — and must **not** be used for hyperparameter tuning or model selection. Access validation rows with ``dataset.get_subset("validation")``.
@@ -38,14 +38,14 @@ Three published archive sizes share the same layout and split CSVs:
 
 | Size | Folder prefix | Images per source | Split CSVs |
 |------|---------------|-------------------|------------|
-| **mini** | `MiniTree*` | 3 (highest annotation count) | `random.csv` only |
-| **small** | `SmallTree*` | Up to 50 | `random.csv`, `zeroshot.csv`, `crossgeometry.csv` |
+| **mini** | `MiniTree*` | 3 (highest annotation count) | `within-distribution.csv` only |
+| **small** | `SmallTree*` | Up to 50 | `within-distribution.csv`, `out-of-distribution.csv`, `crossgeometry.csv` |
 | **full** | `Tree*` | All packaged images | All split CSVs |
 
 Use `mini=True` or `small=True` when constructing a dataset (not both). Small is intended for faster iteration while still exercising every split scheme.
 
 ```python
-dataset = TreePointsDataset(download=True, small=True, split_scheme='zeroshot')
+dataset = TreePointsDataset(download=True, small=True, split_scheme='out-of-distribution')
 ```
 
 ### Packaged folders
@@ -54,7 +54,7 @@ Each packaged dataset directory contains:
 
 - `images/`: RGB image chips
 - `masks/`: precomputed tree coverage masks (binary PNG, one per image basename)
-- split CSV files (`fine-tune.csv`, `zeroshot.csv`, `crossgeometry.csv`)
+- split CSV files (`within-distribution.csv`, `out-of-distribution.csv`, `crossgeometry.csv`)
 
 ## Dataset Class
 

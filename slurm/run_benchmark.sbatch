@@ -49,7 +49,7 @@ TABLE_JID=$(sbatch --parsable \
   --mem=8G \
   --partition=hpg-turin \
   --dependency=afterany:"$ALL_DEPS" \
-  --wrap="cd $REPO && uv run python scripts/make_benchmark_table.py --splits random zeroshot")
+  --wrap="cd $REPO && uv run python scripts/make_benchmark_table.py --splits within-distribution out-of-distribution")
 echo "  make_benchmark_table: $TABLE_JID"
 
 echo ""

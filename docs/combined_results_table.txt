@@ -3,26 +3,26 @@ Table X. Combination of Tables 2-4
 Paste the block below into Google Docs / Word to create a table.
 
 Geometry	Model	Fine-tuned	Split	Tree Counting (mae)	Tree Detection (recall, precision)	Tree Segmentation (mAP)
-Points	TreeFormer	✗	Random	53.150	0.214, 0.830	N/A
-Points	SAM3	✗	Random	54.593	0.182, 0.711	N/A
-Points	TreeFormer	✓	Random	57.523	0.279, 0.782	N/A
-Points	TreeFormer	✗	Zero-shot	16.451	0.233, 0.789	N/A
-Points	SAM3	✗	Zero-shot	14.878	0.129, 0.759	N/A
-Points	TreeFormer	✓	Zero-shot	17.007	0.316, 0.872	N/A
-Boxes	DeepForest	✗	Random	24.069	0.407, 0.731	0.143
-Boxes	SAM3	✗	Random	37.868	0.190, 0.608	0.121
-Boxes	CanopyRS DINO Swin-L	✗	Random	55.338	0.688, 0.679	0.427
-Boxes	DeepForest	✓	Random	27.132	0.547, 0.592	0.336
-Boxes	DeepForest	✗	Zero-shot	28.741	0.432, 0.962	0.101
-Boxes	SAM3	✗	Zero-shot	62.323	0.209, 0.798	0.139
-Boxes	CanopyRS DINO Swin-L	✗	Zero-shot	83.351	0.885, 0.815	0.627
-Boxes	DeepForest	✓	Zero-shot	30.366	0.525, 0.947	0.255
-Polygons	SAM3	✗	Random	N/A	0.282, 0.619	0.064
-Polygons	detectree2	✗	Random	N/A	0.480, 0.891	0.167
-Polygons	Mask R-CNN	✓	Random	N/A	0.626, 0.900	0.304
-Polygons	SAM3	✗	Zero-shot	N/A	0.214, 0.663	0.131
-Polygons	detectree2	✗	Zero-shot	N/A	0.520, 0.945	0.366
-Polygons	Mask R-CNN	✓	Zero-shot	N/A	0.124, 0.814	N/A*
+Points	TreeFormer	✗	Within-distribution	53.150	0.214, 0.830	N/A
+Points	SAM3	✗	Within-distribution	54.593	0.182, 0.711	N/A
+Points	TreeFormer	✓	Within-distribution	57.523	0.279, 0.782	N/A
+Points	TreeFormer	✗	Out-of-distribution	16.451	0.233, 0.789	N/A
+Points	SAM3	✗	Out-of-distribution	14.878	0.129, 0.759	N/A
+Points	TreeFormer	✓	Out-of-distribution	17.007	0.316, 0.872	N/A
+Boxes	DeepForest	✗	Within-distribution	24.069	0.407, 0.731	0.143
+Boxes	SAM3	✗	Within-distribution	37.868	0.190, 0.608	0.121
+Boxes	CanopyRS DINO Swin-L	✗	Within-distribution	55.338	0.688, 0.679	0.427
+Boxes	DeepForest	✓	Within-distribution	27.132	0.547, 0.592	0.336
+Boxes	DeepForest	✗	Out-of-distribution	28.741	0.432, 0.962	0.101
+Boxes	SAM3	✗	Out-of-distribution	62.323	0.209, 0.798	0.139
+Boxes	CanopyRS DINO Swin-L	✗	Out-of-distribution	83.351	0.885, 0.815	0.627
+Boxes	DeepForest	✓	Out-of-distribution	30.366	0.525, 0.947	0.255
+Polygons	SAM3	✗	Within-distribution	N/A	0.282, 0.619	0.064
+Polygons	detectree2	✗	Within-distribution	N/A	0.480, 0.891	0.167
+Polygons	Mask R-CNN	✓	Within-distribution	N/A	0.626, 0.900	0.304
+Polygons	SAM3	✗	Out-of-distribution	N/A	0.214, 0.663	0.131
+Polygons	detectree2	✗	Out-of-distribution	N/A	0.520, 0.945	0.366
+Polygons	Mask R-CNN	✓	Out-of-distribution	N/A	0.124, 0.814	N/A*
 Polygons	SAM3	✗	Cross-geometry	N/A	0.214, 0.663	0.131
 Polygons	TreeFormer+SAM2	✗	Cross-geometry	N/A	0.377, 0.828	0.254
 
@@ -40,23 +40,23 @@ Notes / provenance:
   (map_50) as well, computed by the polygon evaluator after the 2026-06-08 fix
   (binarize GT masks + AP50/map_50; commit b2ff776). N/A for Points (centroid outputs).
 - Points fine-tuned = DeepForest TreeFormer stack (training/points/train.py,
-  --extra treeformer). Random from training/points/outputs/random (2026-06-11),
-  zeroshot from training/points/outputs/zeroshot (2026-06-10). No DeepForest point
+  --extra treeformer). Within-distribution from training/points/outputs/within-distribution (2026-06-11),
+  out-of-distribution from training/points/outputs/out-of-distribution (2026-06-10). No DeepForest point
   baseline in the current results set (only TreeFormer ✗ and SAM3 ✗).
 - Points TreeFormer ✗ (pretrained, not fine-tuned) = KCL TreeFormer HF checkpoint
   (J. Veitch-Michaelis, /home/veitchmichaelisj/code/DeepForest_jvm/kcl_hf_checkpoint),
-  evaluated 2026-06-10 with training/points/eval.py. Random from
-  training/points/outputs/random_kcl, zeroshot from training/points/outputs/zeroshot_kcl.
+  evaluated 2026-06-10 with training/points/eval.py. Within-distribution from
+  training/points/outputs/within-distribution_kcl, out-of-distribution from training/points/outputs/out-of-distribution_kcl.
   Replaces the prior weecology/deepforest-tree-point ✗ rows.
-- Boxes fine-tuned = DeepForest (training/boxes/outputs/{random,zeroshot}, 2026-06-10).
+- Boxes fine-tuned = DeepForest (training/boxes/outputs/{within-distribution,out-of-distribution}, 2026-06-10).
   Boxes counting_mae is gated on the complete flag.
 - Boxes CanopyRS DINO Swin-L (pretrained ✗) = CanopyRS DINO detector (SwinL backbone,
   SelvaBox-trained), evaluated 2026-06-11 from the relocated uv venv
-  (existing_models/canopyrs/outputs/{random,zeroshot}/results_boxes_*.txt). Best box
-  recall on both splits (0.688 random, 0.885 zeroshot) despite no MillionTrees training.
-- CanopyRS DINO + SAM3 (SelvaMask) polygon eval is omitted: the 2026-06-10 random run
+  (existing_models/canopyrs/outputs/{within-distribution,out-of-distribution}/results_boxes_*.txt). Best box
+  recall on both splits (0.688 within-distribution, 0.885 out-of-distribution) despite no MillionTrees training.
+- CanopyRS DINO + SAM3 (SelvaMask) polygon eval is omitted: the 2026-06-10 within-distribution run
   scored ~0 on every source except Khan_et_al._2026 (0.350; existing_models/canopyrs/
-  outputs/random/results_polygons_random.txt) and the zeroshot polygon run was not
+  outputs/within-distribution/results_polygons_within-distribution.txt) and the out-of-distribution polygon run was not
   produced. Cause is the score-threshold floor, not a geometry bug: the polygon
   evaluator filters every metric (recall/precision/AP50) at eval_score_threshold=0.5
   while TreeBoxes uses 0.1, and the CanopyRS DINO detector's confidences on the polygon
@@ -64,18 +64,18 @@ Notes / provenance:
   detector score distribution before publishing; do NOT lower the polygon threshold
   (detectree2/SAM3/Mask R-CNN are all scored at the same 0.5 floor).
 - Polygons fine-tuned = Mask R-CNN (torchvision maskrcnn_resnet50_fpn_v2).
-  Random from training/polygons/outputs/lr_sweep/random_lr1e-5 (2026-06-09, post-fix
-  evaluator with real AP50). Zeroshot from training/polygons/outputs/zeroshot
+  Within-distribution from training/polygons/outputs/lr_sweep/within-distribution_lr1e-5 (2026-06-09, post-fix
+  evaluator with real AP50). Out-of-distribution from training/polygons/outputs/out-of-distribution
   (2026-06-08) — pre-fix evaluator: AP50 not computed (sentinel -1) and the
   recall/precision were measured before GT-mask binarization, so this row is not
-  directly comparable to the post-fix random row. Marked N/A* in the segmentation
-  column; rerun the zeroshot polygon eval to refresh.
-- detectree2 added as a TreePolygons pretrained baseline (✗): random/zeroshot from
-  existing_models/detectree2/outputs/{random,zeroshot} (2026-06-08). Replaces the
+  directly comparable to the post-fix within-distribution row. Marked N/A* in the segmentation
+  column; rerun the out-of-distribution polygon eval to refresh.
+- detectree2 added as a TreePolygons pretrained baseline (✗): within-distribution/out-of-distribution from
+  existing_models/detectree2/outputs/{within-distribution,out-of-distribution} (2026-06-08). Replaces the
   prior degenerate DeepForest-✗-on-polygons rows (DeepForest emits boxes, not masks;
   the mask-aware precision collapsed there). No current DeepForest polygon eval exists.
 - TreeFormer cross-geometry (points-only) is vacuous (0 test images) and omitted.
-- SAM3 cross-geometry Polygons: same test sources as zero-shot for the polygon split;
+- SAM3 cross-geometry Polygons: same test sources as out-of-distribution for the polygon split;
   values are identical (0.214, 0.663 / 0.131).
 - TreeFormer+SAM2 cross-geometry retained from the prior table (0.377, 0.828 / 0.254);
   TreeFormer (weecology/deepforest-tree-point) predicts centroids on polygon-annotated
@@ -86,14 +86,14 @@ Notes / provenance:
 - Polygons counting_mae = N/A (no polygon sources carry the complete flag).
 
 Source files (latest runs):
-- Points (TreeFormer ✗):      training/points/outputs/{random,zeroshot}_kcl/results_*.txt (KCL HF checkpoint)
-- Points (SAM3 ✗):            existing_models/sam3/outputs/{random,zeroshot}/results_points_*.txt
-- Points (TreeFormer ✓):      training/points/outputs/{random,zeroshot}/results_*.txt
-- Boxes (DeepForest ✗):       existing_models/deepforest/outputs/{random,zeroshot}/results_boxes_*.txt
-- Boxes (SAM3 ✗):             existing_models/sam3/outputs/{random,zeroshot}/results_boxes_*.txt
-- Boxes (DeepForest ✓):       training/boxes/outputs/{random,zeroshot}/results_*.txt
-- Boxes (CanopyRS ✗):         existing_models/canopyrs/outputs/{random,zeroshot}/results_boxes_*.txt
-- Polygons (SAM3 ✗):          existing_models/sam3/outputs/{random,zeroshot}/results_polygons_*.txt
-- Polygons (detectree2 ✗):    existing_models/detectree2/outputs/{random,zeroshot}/results_polygons_*.txt
-- Polygons (Mask R-CNN ✓):    training/polygons/outputs/lr_sweep/random_lr1e-5/results_random.txt (random),
-                              training/polygons/outputs/zeroshot/results_zeroshot.txt (zeroshot, pre-fix)
+- Points (TreeFormer ✗):      training/points/outputs/{within-distribution,out-of-distribution}_kcl/results_*.txt (KCL HF checkpoint)
+- Points (SAM3 ✗):            existing_models/sam3/outputs/{within-distribution,out-of-distribution}/results_points_*.txt
+- Points (TreeFormer ✓):      training/points/outputs/{within-distribution,out-of-distribution}/results_*.txt
+- Boxes (DeepForest ✗):       existing_models/deepforest/outputs/{within-distribution,out-of-distribution}/results_boxes_*.txt
+- Boxes (SAM3 ✗):             existing_models/sam3/outputs/{within-distribution,out-of-distribution}/results_boxes_*.txt
+- Boxes (DeepForest ✓):       training/boxes/outputs/{within-distribution,out-of-distribution}/results_*.txt
+- Boxes (CanopyRS ✗):         existing_models/canopyrs/outputs/{within-distribution,out-of-distribution}/results_boxes_*.txt
+- Polygons (SAM3 ✗):          existing_models/sam3/outputs/{within-distribution,out-of-distribution}/results_polygons_*.txt
+- Polygons (detectree2 ✗):    existing_models/detectree2/outputs/{within-distribution,out-of-distribution}/results_polygons_*.txt
+- Polygons (Mask R-CNN ✓):    training/polygons/outputs/lr_sweep/within-distribution_lr1e-5/results_within-distribution.txt (within-distribution),
+                              training/polygons/outputs/out-of-distribution/results_out-of-distribution.txt (out-of-distribution, pre-fix)

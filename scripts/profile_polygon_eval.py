@@ -262,7 +262,7 @@ def main() -> None:
         root_dir=args.root_dir,
         mini=args.mini,
         download=False,
-        split_scheme="random",
+        split_scheme="within-distribution",
         verbose=True,
     )
     test_subset = dataset.get_subset("test")

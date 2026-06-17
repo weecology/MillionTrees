@@ -14,7 +14,7 @@ cd /blue/ewhite/b.weinstein/src/MillionTrees
 export PYTHONPATH=/blue/ewhite/b.weinstein/src/MillionTrees:${PYTHONPATH:-}
 
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
-SPLITS=(random zeroshot)
+SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 CKPT_DIR="training/polygons/outputs/${SPLIT}/checkpoints"

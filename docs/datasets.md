@@ -41,13 +41,13 @@ dataset = TreePointsDataset(exclude_sources=['*_unsupervised'])
 
 Each geometry dataset is published in three sizes:
 
-- **mini** (`mini=True`): up to 3 images per source; `random` split only — fastest smoke tests.
-- **small** (`small=True`): up to 50 images per source; all split schemes (`random`, `zeroshot`, `crossgeometry`).
+- **mini** (`mini=True`): up to 3 images per source; `within-distribution` split only — fastest smoke tests.
+- **small** (`small=True`): up to 50 images per source; all split schemes (`within-distribution`, `out-of-distribution`, `crossgeometry`).
 - **full** (default): complete packaged release.
 
 ```python
 dataset = TreePointsDataset(mini=True)
-dataset = TreeBoxesDataset(small=True, split_scheme="zeroshot")
+dataset = TreeBoxesDataset(small=True, split_scheme="out-of-distribution")
 ```
 
 Do not pass `mini=True` and `small=True` together.

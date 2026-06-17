@@ -13,7 +13,7 @@ set -euo pipefail
 cd /blue/ewhite/b.weinstein/src/MillionTrees
 export PYTHONPATH=/blue/ewhite/b.weinstein/src/MillionTrees:${PYTHONPATH:-}
 
-SPLITS=(random zeroshot)
+SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 OUT_DIR="training/weak_supervision/outputs/pretrain/$SPLIT"
 mkdir -p "$OUT_DIR"

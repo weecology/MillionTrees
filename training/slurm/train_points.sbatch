@@ -17,7 +17,7 @@ cd /blue/ewhite/b.weinstein/src/MillionTrees
 mkdir -p training/points/outputs
 
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
-SPLITS=(random zeroshot)
+SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 # TreeFormer point model lives on the DeepForest treeformer-training branch;

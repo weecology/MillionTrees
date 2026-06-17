@@ -19,10 +19,10 @@ except ImportError:  # when run as a script from inside data_prep/
     from packaging_utils import build_unique_name_map, collect_image_source_pairs
 import shapely.wkt
 
-# Zero-shot test sources shared between zero_shot_split and cross_geometry_split.
+# Out-of-distribution test sources shared between out_of_distribution_split and cross_geometry_split.
 # Cross-geometry uses the polygon test list as its evaluation set so the two
 # splits stay aligned.
-ZEROSHOT_TEST_SOURCES_POLYGONS = [
+OUT_OF_DISTRIBUTION_TEST_SOURCES_POLYGONS = [
     "Troles et al. 2024",
     "Bohlman et al. 2008",
     "Lefebvre et al. 2024",
@@ -30,14 +30,14 @@ ZEROSHOT_TEST_SOURCES_POLYGONS = [
     "Takeshige et al. 2025",
     "Alejandro_Miranda",
 ]
-ZEROSHOT_TEST_SOURCES_POINTS = [
+OUT_OF_DISTRIBUTION_TEST_SOURCES_POINTS = [
     "Amirkolaee et al. 2023",
     "NEON_points",
     "NEON MultiTemporal",
     "OSBS megaplot 2025",
     "OFO field 2025",
 ]
-ZEROSHOT_TEST_SOURCES_BOXES = [
+OUT_OF_DISTRIBUTION_TEST_SOURCES_BOXES = [
     "Radogoshi et al. 2021",
     "SelvaBox",
     "NEON_benchmark",
@@ -548,7 +548,7 @@ def create_mini_datasets(datasets, base_dir, dataset_type, version):
     mini_filenames = _top_filenames_per_source(datasets, MINI_IMAGES_PER_SOURCE)
     mini_annotations = _ensure_test_split(
         datasets[datasets["filename"].isin(mini_filenames)].copy())
-    mini_annotations.to_csv(f"{base_dir}Mini{dataset_type}_{version}/random.csv", index=False)
+    mini_annotations.to_csv(f"{base_dir}Mini{dataset_type}_{version}/within-distribution.csv", index=False)
     
     # Copy images for mini datasets
     for image in mini_filenames:
@@ -641,9 +641,9 @@ def process_splits_and_release(TreePolygons_datasets, TreePoints_datasets, TreeB
     TreePoints_datasets = keep_columns_if_exist(TreePoints_datasets, columns_to_keep)
     TreeBoxes_datasets = keep_columns_if_exist(TreeBoxes_datasets, columns_to_keep)
 
-    zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
+    out_of_distribution_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
                     base_dir, version, suffix, prefix)
-    random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
+    within_distribution_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
                  base_dir, version, suffix, prefix)
     cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
                          base_dir, version, suffix, prefix)
@@ -665,9 +665,9 @@ def zip_directory(folder_path, zip_path):
                 arcname = os.path.relpath(file_path, folder_path)
                 zipf.write(file_path, arcname)
 
-def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
+def within_distribution_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
                  base_dir, version, suffix="", prefix=""):
-    """Perform random split and save the results."""
+    """Perform within-distribution split and save the results."""
     
     def apply_split(df):
         df = apply_existing_splits(df)
@@ -736,17 +736,17 @@ def random_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
    
    # Save the splits to CSV
     TreePolygons_datasets.to_csv(
-        f"{base_dir}{prefix}TreePolygons{suffix}_{version}/random.csv", index=False)
+        f"{base_dir}{prefix}TreePolygons{suffix}_{version}/within-distribution.csv", index=False)
     TreePoints_datasets.to_csv(
-        f"{base_dir}{prefix}TreePoints{suffix}_{version}/random.csv", index=False)
+        f"{base_dir}{prefix}TreePoints{suffix}_{version}/within-distribution.csv", index=False)
     TreeBoxes_datasets.to_csv(
-        f"{base_dir}{prefix}TreeBoxes{suffix}_{version}/random.csv", index=False)
+        f"{base_dir}{prefix}TreeBoxes{suffix}_{version}/within-distribution.csv", index=False)
 
     label = f"{prefix}{suffix}".strip("_") or "full"
-    print(f"random splits saved ({label}):")
-    print(f"TreePolygons: {base_dir}{prefix}TreePolygons{suffix}_{version}/random.csv")
-    print(f"TreePoints: {base_dir}{prefix}TreePoints{suffix}_{version}/random.csv")
-    print(f"TreeBoxes: {base_dir}{prefix}TreeBoxes{suffix}_{version}/random.csv")
+    print(f"within-distribution splits saved ({label}):")
+    print(f"TreePolygons: {base_dir}{prefix}TreePolygons{suffix}_{version}/within-distribution.csv")
+    print(f"TreePoints: {base_dir}{prefix}TreePoints{suffix}_{version}/within-distribution.csv")
+    print(f"TreeBoxes: {base_dir}{prefix}TreeBoxes{suffix}_{version}/within-distribution.csv")
 
 def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
                          base_dir, version, suffix="", prefix=""):
@@ -758,7 +758,7 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
     TreePolygons_datasets.loc[
         TreePolygons_datasets["split"] != "validation", "split"] = "test"
     TreePolygons_datasets = TreePolygons_datasets[
-        TreePolygons_datasets.source.isin(ZEROSHOT_TEST_SOURCES_POLYGONS)
+        TreePolygons_datasets.source.isin(OUT_OF_DISTRIBUTION_TEST_SOURCES_POLYGONS)
         | (TreePolygons_datasets["split"] == "validation")
     ]
     TreePoints_datasets.loc[
@@ -799,10 +799,10 @@ def limit_test_images(df, test_sources, max_images=50, excess_mode="train"):
     in full and the cap is skipped.
 
     excess_mode controls what happens to test images beyond the cap:
-      - "train": demote excess to the train split. Use for random splits, where
+      - "train": demote excess to the train split. Use for within-distribution splits, where
         the held-out source already has rows in train by construction.
       - "drop":  drop excess rows entirely so they appear in neither split. Use
-        for zero-shot splits, where held-out sources must never leak into train.
+        for out-of-distribution splits, where held-out sources must never leak into train.
     """
     if excess_mode not in {"train", "drop"}:
         raise ValueError(f"excess_mode must be 'train' or 'drop', got {excess_mode!r}")
@@ -840,18 +840,18 @@ def limit_test_images(df, test_sources, max_images=50, excess_mode="train"):
 
     return df
         
-# Zero-shot split
-def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
+# Out-of-distribution split
+def out_of_distribution_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
                     base_dir, version, suffix="", prefix=""):
-    """Perform zero-shot split and save the results."""
+    """Perform out-of-distribution split and save the results."""
     # Define test and train sources
-    test_sources_polygons = ZEROSHOT_TEST_SOURCES_POLYGONS
+    test_sources_polygons = OUT_OF_DISTRIBUTION_TEST_SOURCES_POLYGONS
     train_sources_polygons = [x for x in TreePolygons_datasets.source.unique() if x not in test_sources_polygons]
 
-    test_sources_points = ZEROSHOT_TEST_SOURCES_POINTS
+    test_sources_points = OUT_OF_DISTRIBUTION_TEST_SOURCES_POINTS
     train_sources_points = [x for x in TreePoints_datasets.source.unique() if x not in test_sources_points]
 
-    test_sources_boxes = ZEROSHOT_TEST_SOURCES_BOXES
+    test_sources_boxes = OUT_OF_DISTRIBUTION_TEST_SOURCES_BOXES
 
     val_polygons = _validation_sources(TreePolygons_datasets)
     val_points = _validation_sources(TreePoints_datasets)
@@ -907,7 +907,7 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
         "split",
     ] = "test"
 
-    # Zero-shot: drop excess images instead of demoting to train so held-out
+    # Out-of-distribution: drop excess images instead of demoting to train so held-out
     # sources never leak into the train split.
     TreePolygons_datasets = limit_test_images(
         TreePolygons_datasets, test_sources_polygons, excess_mode="drop"
@@ -934,17 +934,17 @@ def zero_shot_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datase
     TreeBoxes_datasets = remove_feng_and_unsupervised_from_test(TreeBoxes_datasets)
 
     TreePolygons_datasets.to_csv(
-        f"{base_dir}{prefix}TreePolygons{suffix}_{version}/zeroshot.csv", index=False)
+        f"{base_dir}{prefix}TreePolygons{suffix}_{version}/out-of-distribution.csv", index=False)
     TreePoints_datasets.to_csv(
-        f"{base_dir}{prefix}TreePoints{suffix}_{version}/zeroshot.csv", index=False)
+        f"{base_dir}{prefix}TreePoints{suffix}_{version}/out-of-distribution.csv", index=False)
     TreeBoxes_datasets.to_csv(
-        f"{base_dir}{prefix}TreeBoxes{suffix}_{version}/zeroshot.csv", index=False)
+        f"{base_dir}{prefix}TreeBoxes{suffix}_{version}/out-of-distribution.csv", index=False)
 
     label = f"{prefix}{suffix}".strip("_") or "full"
-    print(f"Zero-shot splits saved ({label}):")
-    print(f"TreePolygons: {base_dir}{prefix}TreePolygons{suffix}_{version}/zeroshot.csv")
-    print(f"TreePoints: {base_dir}{prefix}TreePoints{suffix}_{version}/zeroshot.csv")
-    print(f"TreeBoxes: {base_dir}{prefix}TreeBoxes{suffix}_{version}/zeroshot.csv")
+    print(f"Out-of-distribution splits saved ({label}):")
+    print(f"TreePolygons: {base_dir}{prefix}TreePolygons{suffix}_{version}/out-of-distribution.csv")
+    print(f"TreePoints: {base_dir}{prefix}TreePoints{suffix}_{version}/out-of-distribution.csv")
+    print(f"TreeBoxes: {base_dir}{prefix}TreeBoxes{suffix}_{version}/out-of-distribution.csv")
 
 def filter_out_unsupervised(datasets):
     """Filter out datasets with 'unsupervised' or 'weak supervised' in the source name."""

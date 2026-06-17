@@ -32,7 +32,7 @@ def main():
     parser.add_argument("--checkpoint", type=str, required=True)
     parser.add_argument("--root-dir", type=str,
                         default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
-    parser.add_argument("--split-scheme", type=str, default="random")
+    parser.add_argument("--split-scheme", type=str, default="within-distribution")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--loss-threshold", type=float, default=None,

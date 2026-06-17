@@ -1,7 +1,7 @@
 """Generate benchmark comparison tables from training and existing-model evaluation results.
 
 Scans result .txt files written by training and existing_models eval scripts, parses
-metrics, and writes two markdown tables (random split, zeroshot split) to docs/leaderboard.md.
+metrics, and writes two markdown tables (within-distribution split, out-of-distribution split) to docs/leaderboard.md.
 
 Result file conventions:
   training/{boxes,points,polygons}/outputs/{split}/results_{split}.txt
@@ -183,7 +183,7 @@ def build_table(entries: List[Dict], split: str) -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="Generate benchmark comparison tables.")
-    parser.add_argument("--splits", nargs="+", default=["random", "zeroshot"],
+    parser.add_argument("--splits", nargs="+", default=["within-distribution", "out-of-distribution"],
                         help="Split schemes to include")
     parser.add_argument("--output", type=str,
                         default=os.path.join(ROOT, "docs", "leaderboard.md"),

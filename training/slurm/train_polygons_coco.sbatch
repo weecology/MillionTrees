@@ -13,7 +13,7 @@ set -euo pipefail
 cd /blue/ewhite/b.weinstein/src/MillionTrees
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-SPLITS=(random zeroshot)
+SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 OUT_DIR="training/weak_supervision/outputs/polygon_coco/$SPLIT"
 mkdir -p "$OUT_DIR"

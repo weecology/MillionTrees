@@ -14,7 +14,7 @@ runs. See docs/treeformer_hyperparameters.md.
 
 Example:
     uv run --group treeformer python existing_models/treeformer/visualize_density.py \
-        --checkpoint weecology/deepforest-tree-point --split-scheme random \
+        --checkpoint weecology/deepforest-tree-point --split-scheme within-distribution \
         --n-per-source 5 --score-integration-radius 2 --score-thresh 0.1 \
         --output-dir existing_models/treeformer/outputs/density_viz
 """
@@ -137,8 +137,8 @@ def main():
     p.add_argument("--revision", type=str, default="main")
     p.add_argument("--root-dir", type=str,
                    default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
-    p.add_argument("--split-scheme", type=str, default="random",
-                   choices=["random", "zeroshot", "crossgeometry"])
+    p.add_argument("--split-scheme", type=str, default="within-distribution",
+                   choices=["within-distribution", "out-of-distribution", "crossgeometry"])
     p.add_argument("--score-thresh", type=float, default=0.1)
     p.add_argument("--score-integration-radius", type=int, default=2)
     p.add_argument("--n-per-source", type=int, default=5)

@@ -27,9 +27,9 @@ class TreePointsDataset(MillionTreesDataset):
     """The TreePoints dataset is a collection of tree annotations annotated as x,y locations.
 
     Dataset Splits:
-        - random: For each source, a portion of images is in train and a portion in test.
+        - within-distribution: For each source, a portion of images is in train and a portion in test.
         - crossgeometry: Boxes and Points are used to predict polygons.
-        - zeroshot: Selected sources are entirely held out for testing.
+        - out-of-distribution: Selected sources are entirely held out for testing.
     Input (x):
         RGB aerial images
     Label (y):
@@ -97,7 +97,7 @@ class TreePointsDataset(MillionTreesDataset):
                  version=None,
                  root_dir='data',
                  download=False,
-                 split_scheme='random',
+                 split_scheme='within-distribution',
                  geometry_name='y',
                  remove_incomplete=False,
                  distance_threshold=0.02,
@@ -127,7 +127,9 @@ class TreePointsDataset(MillionTreesDataset):
         self.verbose = verbose
         self.include_unsupervised = include_unsupervised
 
-        if self._split_scheme not in ['random', 'crossgeometry', 'zeroshot']:
+        if self._split_scheme not in [
+                'within-distribution', 'crossgeometry', 'out-of-distribution'
+        ]:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
 

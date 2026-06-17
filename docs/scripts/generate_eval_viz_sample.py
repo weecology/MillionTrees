@@ -76,7 +76,7 @@ def main() -> None:
         root_dir=args.root_dir,
         download=args.download,
         mini=args.mini,
-        split_scheme="random",
+        split_scheme="within-distribution",
         include_unsupervised=True,
     )
     test_subset = dataset.get_subset("test")

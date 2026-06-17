@@ -4,7 +4,7 @@
 Run from the repo root:
     python data_prep/regenerate_doc_images.py
 
-Reads the existing MiniTree*_<version>/random.csv files and re-renders one
+Reads the existing MiniTree*_<version>/within-distribution.csv files and re-renders one
 image per source, fixing the bug where annotations from multiple images were
 overlaid on a single background.
 """
@@ -22,7 +22,7 @@ DATASET_TYPES = ["TreeBoxes", "TreePoints", "TreePolygons"]
 
 
 def regenerate_visualizations(base_dir, dataset_type, version, output_dir):
-    csv_path = f"{base_dir}Mini{dataset_type}_{version}/random.csv"
+    csv_path = f"{base_dir}Mini{dataset_type}_{version}/within-distribution.csv"
     images_dir = f"{base_dir}Mini{dataset_type}_{version}/images/"
 
     if not os.path.exists(csv_path):

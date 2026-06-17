@@ -32,11 +32,11 @@ fi
 nvidia-smi -L
 
 echo "=== SMOKE: eval_boxes (2 batches) ==="
-python eval_boxes.py --root-dir "$ROOT_DIR" --split-scheme random \
+python eval_boxes.py --root-dir "$ROOT_DIR" --split-scheme within-distribution \
   --device cuda --batch-size 2 --max-batches 2 --output-dir "$OUT_BASE"
 
 echo "=== SMOKE: eval_polygons (2 batches) ==="
-python eval_polygons.py --root-dir "$ROOT_DIR" --split-scheme random \
+python eval_polygons.py --root-dir "$ROOT_DIR" --split-scheme within-distribution \
   --device cuda --batch-size 2 --max-batches 2 --output-dir "$OUT_BASE"
 
 echo "=== SMOKE COMPLETE ==="

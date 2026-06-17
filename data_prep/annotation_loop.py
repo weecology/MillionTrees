@@ -112,9 +112,9 @@ def upload_eval_splits(version: str, base_dir: str = "/orange/ewhite/web/public/
     )
 
     #for dataset_type in ("TreeBoxes", "TreePoints"):
-       # for split_name in ("random", "zeroshot"):
+       # for split_name in ("within-distribution", "out-of-distribution"):
     for dataset_type in (["TreeBoxes"]):
-        for split_name in (["zeroshot"]):
+        for split_name in (["out-of-distribution"]):
             df = _load_test_records(base_dir, version, dataset_type, split_name)
             if df.empty:
                 print(f"No test records for {dataset_type} {split_name}, skipping.")
@@ -161,7 +161,7 @@ def download_eval_annotations(version: str, base_dir: str = "/orange/ewhite/web/
     )
 
     for dataset_type in ("TreeBoxes", "TreePoints"):
-        for split_name in ("random", "zeroshot"):
+        for split_name in ("within-distribution", "out-of-distribution"):
             project_name = f"MillionTrees-Eval-{dataset_type}-{split_name}"
             print(f"Checking for completed annotations: {project_name}")
             _ = check_for_new_annotations(

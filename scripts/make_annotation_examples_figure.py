@@ -101,7 +101,7 @@ def make_panel(ax, ds, source_csv, label, fname):
     ax.imshow(np.array(img))
     ax.set_axis_off()
 
-    df = pd.read_csv(os.path.join(BASE, f'{ds}_v0.12', 'random.csv'), low_memory=False)
+    df = pd.read_csv(os.path.join(BASE, f'{ds}_v0.12', 'within-distribution.csv'), low_memory=False)
     df_img = df[df['filename'] == fname]
 
     if ds == 'TreeBoxes':
@@ -127,7 +127,7 @@ def main():
     csv_cache = {}
     for ds in ['TreeBoxes', 'TreePoints', 'TreePolygons']:
         csv_cache[ds] = pd.read_csv(
-            os.path.join(BASE, f'{ds}_v0.12', 'random.csv'), low_memory=False)
+            os.path.join(BASE, f'{ds}_v0.12', 'within-distribution.csv'), low_memory=False)
 
     for idx, (ds, source_csv, label, fname) in enumerate(PANELS):
         row, col = divmod(idx, 3)

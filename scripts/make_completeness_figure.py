@@ -17,7 +17,7 @@ from PIL import Image
 DATA_DIR = '/orange/ewhite/web/public/MillionTrees/TreeBoxes_v0.12'
 IMG_DIR  = os.path.join(DATA_DIR, 'images')
 MASK_DIR = os.path.join(DATA_DIR, 'masks')
-CSV_PATH = os.path.join(DATA_DIR, 'random.csv')
+CSV_PATH = os.path.join(DATA_DIR, 'within-distribution.csv')
 OUT_SVG  = '/blue/ewhite/b.weinstein/src/MillionTrees/annotation_completeness_figure.svg'
 OUT_PNG  = '/blue/ewhite/b.weinstein/src/MillionTrees/annotation_completeness_figure.png'
 
