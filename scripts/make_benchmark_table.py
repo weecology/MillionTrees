@@ -24,16 +24,27 @@ METRIC_PATTERNS = {
     "CountingMAE": r"average counting_mae:\s*([\d.]+)",
     "DetectionAccuracy": r"average detection_accuracy:\s*([\d.]+)",
     "DetectionRecall": r"average detection_recall:\s*([\d.]+)",
+    "MaskAwarePrecision": r"average maskaware_precision:\s*([\d.]+)",
     "MaskAccuracy": r"average accuracy:\s*([\d.]+)",
     "MaskRecall": r"average recall:\s*([\d.]+)",
     "AP50": r"average ap50:\s*([\d.]+)",
 }
 
-# Map task names to which metrics are relevant
+# For each task, the (recall, precision) metrics used to compute the detection F1.
+# Recall is geometry-specific; precision is the mask-aware precision across all
+# geometries. F1 is the harmonic mean of the two.
+F1_INPUTS = {
+    "TreeBoxes": ("DetectionRecall", "MaskAwarePrecision"),
+    "TreePoints": ("KeypointAccuracy", "MaskAwarePrecision"),
+    "TreePolygons": ("MaskRecall", "MaskAwarePrecision"),
+}
+
+# Map task names to which metrics are relevant (recall, precision, F1 first so the
+# F1 sort key is easy to read against its inputs).
 TASK_METRICS = {
-    "TreeBoxes": ["DetectionAccuracy", "DetectionRecall", "CountingMAE"],
-    "TreePoints": ["KeypointAccuracy", "CountingMAE"],
-    "TreePolygons": ["MaskAccuracy", "MaskRecall", "AP50"],
+    "TreeBoxes": ["DetectionRecall", "MaskAwarePrecision", "F1", "DetectionAccuracy", "CountingMAE"],
+    "TreePoints": ["KeypointAccuracy", "MaskAwarePrecision", "F1", "CountingMAE"],
+    "TreePolygons": ["MaskRecall", "MaskAwarePrecision", "F1", "MaskAccuracy", "AP50"],
 }
 
 
@@ -45,6 +56,16 @@ def parse_metrics(text: str) -> Dict[str, float]:
         if m:
             metrics[name] = float(m.group(1))
     return metrics
+
+
+def add_f1(task: str, metrics: Dict[str, float]) -> None:
+    """Add the detection F1 (harmonic mean of recall and mask-aware precision)
+    to ``metrics`` in place, when both inputs are present and positive."""
+    recall_key, precision_key = F1_INPUTS.get(task, (None, None))
+    recall = metrics.get(recall_key)
+    precision = metrics.get(precision_key)
+    if recall is not None and precision is not None and (recall + precision) > 0:
+        metrics["F1"] = 2 * recall * precision / (recall + precision)
 
 
 def find_training_results(split: str) -> List[Dict]:
@@ -64,6 +85,7 @@ def find_training_results(split: str) -> List[Dict]:
                 text = f.read()
             metrics = parse_metrics(text)
             if metrics:
+                add_f1(task_name, metrics)
                 entries.append({
                     "model": model_name,
                     "task": task_name,
@@ -101,6 +123,7 @@ def find_existing_model_results(split: str) -> List[Dict]:
                     text = f.read()
                 metrics = parse_metrics(text)
                 if metrics:
+                    add_f1(task_name, metrics)
                     entries.append({
                         "model": model_name,
                         "task": task_name,
@@ -144,7 +167,12 @@ def build_table(entries: List[Dict], split: str) -> str:
         header = "| Model | " + " | ".join(present_metrics) + " |\n"
         sep = "|---" * (len(present_metrics) + 1) + "|\n"
         rows = []
-        for e in sorted(task_entries, key=lambda x: x["model"]):
+        # Sort by F1 descending (entries without an F1 fall to the bottom),
+        # breaking ties by model name for stable output.
+        def sort_key(x):
+            f1 = x["metrics"].get("F1")
+            return (f1 is None, -(f1 or 0.0), x["model"])
+        for e in sorted(task_entries, key=sort_key):
             vals = " | ".join(format_metric(e["metrics"].get(m)) for m in present_metrics)
             rows.append(f"| {e['model']} | {vals} |")
 

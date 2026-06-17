@@ -131,6 +131,14 @@ def main():
         help="Lightning accelerator (use 'cpu' for debugging).",
     )
     parser.add_argument("--early-stop-patience", type=int, default=10)
+    parser.add_argument("--no-early-stop", action="store_true",
+                        help="Disable EarlyStopping so training runs the full "
+                             "--max-epochs (use to inspect the complete loss curve).")
+    parser.add_argument("--lr-scheduler", action="store_true",
+                        help="Attach a ReduceLROnPlateau scheduler on val_loss "
+                             "(factor 0.5, patience 5). DeepForest normally drops "
+                             "the scheduler when validation.csv_file is None, so "
+                             "train.py re-attaches it via a configure_optimizers override.")
     parser.add_argument("--comet", action="store_true",
                         help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
     parser.add_argument("--comet-name", type=str, default=None,
@@ -211,6 +219,19 @@ def main():
         "accelerator": args.accelerator,
         "workers": args.num_workers,
     }
+    if args.lr_scheduler:
+        # ReduceLROnPlateau on val_loss. The scheduler is applied via the
+        # configure_optimizers override below (DeepForest's own attaches it only
+        # when validation.csv_file is set, which MillionTrees training never uses).
+        config_args["train"]["scheduler"] = {
+            "type": "ReduceLROnPlateau",
+            "params": {
+                "mode": "min", "factor": 0.5, "patience": 5,
+                "threshold": 1e-4, "threshold_mode": "rel",
+                "cooldown": 0, "min_lr": 0, "eps": 1e-8,
+            },
+        }
+        config_args["validation"]["lr_plateau_target"] = "val_loss"
     if args.gpus > 1:
         # TreeFormer has heads (box detection / cropmodel) that don't contribute
         # to the point loss, so DDP must be told to expect unused parameters.
@@ -240,6 +261,44 @@ def main():
     print(f"score_thresh: {model.model.score_thresh} "
           f"score_integration_radius: {model.model.score_integration_radius}")
 
+    if args.lr_scheduler:
+        # DeepForest.configure_optimizers only returns a scheduler when
+        # validation.csv_file is set; MillionTrees uses an in-memory val
+        # dataloader (csv_file=None), so the base method drops the scheduler and
+        # returns a bare optimizer. Re-attach ReduceLROnPlateau on val_loss,
+        # mirroring DeepForest's own construction (main.py configure_optimizers).
+        import types
+
+        def _configure_optimizers_with_plateau(self):
+            opt_cfg = self.config.train.optimizer
+            kwargs = dict(lr=self.config.train.lr,
+                          betas=tuple(opt_cfg.betas),
+                          weight_decay=opt_cfg.weight_decay)
+            if opt_cfg.type == "AdamW":
+                optimizer = torch.optim.AdamW(self.model.parameters(), **kwargs)
+            else:  # default point config uses Adam
+                optimizer = torch.optim.Adam(self.model.parameters(), **kwargs)
+            p = self.config.train.scheduler.params
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, mode=p["mode"], factor=p["factor"], patience=p["patience"],
+                threshold=p["threshold"], threshold_mode=p["threshold_mode"],
+                cooldown=p["cooldown"], min_lr=p["min_lr"], eps=p["eps"],
+            )
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "monitor": self.config.validation.lr_plateau_target,
+                    "interval": "epoch",
+                },
+            }
+
+        model.configure_optimizers = types.MethodType(
+            _configure_optimizers_with_plateau, model)
+        print("LR scheduler: ReduceLROnPlateau on "
+              f"{model.config.validation.lr_plateau_target} "
+              "(factor 0.5, patience 5)")
+
     init_label = "random-weights" if args.random_weights else "pretrained"
     print(f"Init: {init_label}  |  LR: {args.lr}  |  Split: {args.split_scheme}")
 
@@ -260,6 +319,9 @@ def main():
             print(f"Comet ML logging disabled: {e}")
 
     callbacks = []
+    if args.lr_scheduler:
+        # Surface the ReduceLROnPlateau drops on the Comet LR curve.
+        callbacks.append(pl.callbacks.LearningRateMonitor(logging_interval="epoch"))
     checkpoint_cb = None
     if has_val:
         # Monitor point_recall (mode=max) rather than val_loss: TreeFormer's
@@ -274,11 +336,12 @@ def main():
             save_last=True,
         )
         callbacks.append(checkpoint_cb)
-        callbacks.append(pl.callbacks.EarlyStopping(
-            monitor="point_recall",
-            patience=args.early_stop_patience,
-            mode="max",
-        ))
+        if not args.no_early_stop:
+            callbacks.append(pl.callbacks.EarlyStopping(
+                monitor="point_recall",
+                patience=args.early_stop_patience,
+                mode="max",
+            ))
 
     trainer_kwargs = {}
     if has_val:
