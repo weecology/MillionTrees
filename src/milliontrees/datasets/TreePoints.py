@@ -301,7 +301,10 @@ class TreePointsDataset(MillionTreesDataset):
                     score_threshold=self.eval_score_threshold,
                 ),
             "counting_mae":
-                CountingError(geometry_name=self.geometry_name,),
+                CountingError(
+                    geometry_name=self.geometry_name,
+                    score_threshold=self.eval_score_threshold,
+                ),
             "merge_commission":
                 KeypointMergeCommissionMetric(
                     distance_threshold=distance_threshold,
