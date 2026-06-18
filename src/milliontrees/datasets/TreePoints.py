@@ -51,6 +51,8 @@ class TreePointsDataset(MillionTreesDataset):
         'Bohlman et al. 2008': 0.30,
         'Chen & Shang (2022)': 0.12,
         'Dubrovin et al. 2024': 0.07,
+        'Gominski et al. 2025 Gaofen-2': 0.80,
+        'Gominski et al. 2025 PlanetScope': 3.00,
         'NEON MultiTemporal': 0.10,
         'NEON_points': 0.10,
         'OFO field 2025': 0.05,
@@ -90,6 +92,14 @@ class TreePointsDataset(MillionTreesDataset):
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.18.zip",
             'compressed_size':
                 191019517147
+        },
+        "0.19": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.19.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.19.zip",
+            'compressed_size':
+                None
         }
     }
 

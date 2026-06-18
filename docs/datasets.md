@@ -342,6 +342,18 @@ under the canopy cannot be observed from nadir drone imagery.
 
 Tree-top points at polygon centroids from TLS-derived crown footprints. All rows use the ``validation`` split.
 
+## Gominski et al. 2025 (tinytrees)
+
+### Source Names: "Gominski et al. 2025 PlanetScope", "Gominski et al. 2025 Gaofen-2"
+
+**Citation:** Gominski, D., Brandt, M., Tong, X., Liu, S., Mugabowindekwe, M., Li, S., Reiner, F., Davies, A., & Fensholt, R. *Trees as Gaussians: Large-Scale Individual Tree Mapping*. arXiv preprint [arXiv:2508.21437](https://arxiv.org/abs/2508.21437) (2025).
+
+**Location:** Global (stratified by biomes)
+
+**GSD:** 3.0 m (PlanetScope) and 0.8 m (Gaofen-2)
+
+Hand-drawn point labels made through photointerpretation of satellite imagery, with help from higher-resolution products overlaid (e.g. Google Earth). Trees on satellite imagery are tiny and difficult to distinguish from the background; this is a challenging dataset. Each sensor ships with point labels and *labeling rectangles* delimiting where annotation is exhaustive — MillionTrees crops the rasters to those rectangles so all trees within each tile are labeled. Two source names are used so the two sensors keep distinct ground sample distances for per-source evaluation thresholds. Rows enter the ``random`` train/test split; this source is **not** held out as a zero-shot test source for points.
+
 # Polygons
 
 ## Araujo et al. 2020
