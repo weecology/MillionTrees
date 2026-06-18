@@ -1,14 +1,17 @@
 import pandas as pd
+import numpy as np
 import os
 import shutil
 import geopandas as gpd
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from deepforest.visualize import plot_results
 from deepforest.utilities import read_file
 import cv2
 import rasterio
 import glob
 from pathlib import Path
+from shapely import from_wkt
 from shapely.geometry.base import BaseGeometry
 try:
     from data_prep.packaging_utils import (
@@ -17,7 +20,6 @@ try:
     )
 except ImportError:  # when run as a script from inside data_prep/
     from packaging_utils import build_unique_name_map, collect_image_source_pairs
-import shapely.wkt
 
 # Out-of-distribution test sources shared between out_of_distribution_split and cross_geometry_split.
 # Cross-geometry uses the polygon test list as its evaluation set so the two
@@ -67,6 +69,55 @@ UNSUPERVISED_SOURCE_ALIASES = {
 TRAIN_ONLY_SOURCES = {
     "Beery et al. 2022",
 }
+
+
+def _link_or_copy(src, dst):
+    """Materialize dst from src as cheaply as possible.
+
+    Hardlinks src->dst when both live on the same filesystem (near-instant, no
+    extra disk), falling back to a byte copy across filesystems (OSError/EXDEV).
+    Nothing in this pipeline mutates a packaged file in place after it is
+    written, so sharing inodes via hardlinks is safe. An already-present dst is
+    treated as success so the step stays idempotent.
+    """
+    if os.path.exists(dst):
+        return
+    try:
+        os.link(src, dst)
+    except FileExistsError:
+        return
+    except OSError:
+        shutil.copy(src, dst)
+
+
+def _link_or_copy_many(pairs, workers=16):
+    """Hardlink/copy an iterable of (src, dst) pairs in parallel.
+
+    Copying is I/O-bound and embarrassingly parallel; a thread pool saturates
+    the storage far better than a serial loop. Hardlinks (the common case here,
+    since most copies stay on one filesystem) make each call trivial regardless.
+    """
+    pairs = list(pairs)
+    if not pairs:
+        return
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        list(ex.map(lambda p: _link_or_copy(p[0], p[1]), pairs))
+
+
+def _parse_geometry_column(series):
+    """Vectorized WKT->geometry parse (shapely 2.x) preserving existing geoms.
+
+    Strings are parsed in C in a single call; values that are already shapely
+    geometries (e.g. rows that came through read_file) pass through unchanged.
+    Much faster than a per-row .apply for large polygon/point tables.
+    """
+    values = series.to_numpy()
+    is_str = np.fromiter((isinstance(v, str) for v in values), dtype=bool,
+                         count=len(values))
+    geoms = values.copy()
+    if is_str.any():
+        geoms[is_str] = from_wkt(list(values[is_str]))
+    return gpd.GeoSeries(geoms, index=series.index)
 
 
 def normalize_unsupervised_sources(datasets):
@@ -233,17 +284,10 @@ def process_geometry_columns(datasets, geom_type):
     if len(datasets) == 0:
         return datasets
     
-    # Build a GeoSeries from either WKT strings or shapely geometries
-    def convert_to_shapely(value):
-        if value is None:
-            return None
-        elif type(value) == str:
-            return shapely.wkt.loads(value)
-        elif isinstance(value, BaseGeometry):
-            return value
-        else:
-            raise ValueError(f"Invalid geometry type: {type(value)}")
-    shapely_geometries = gpd.GeoSeries(datasets["geometry"].apply(convert_to_shapely))
+    # Build a GeoSeries from either WKT strings or shapely geometries.
+    # None rows were filtered above; remaining values are WKT (from CSV) or
+    # already-parsed geometries (from read_file), handled vectorized.
+    shapely_geometries = _parse_geometry_column(datasets["geometry"])
     
     if geom_type == "box":
         bounds = shapely_geometries.bounds
@@ -292,15 +336,7 @@ def filter_degenerate_boxes(datasets):
 
 def filter_degenerate_polygons(datasets):
     """Filter out polygons that would create invalid bounding boxes (zero width or height)."""
-    def convert_to_shapely(value):
-        if type(value) == str:
-            return shapely.wkt.loads(value)
-        elif isinstance(value, BaseGeometry):
-            return value
-        else:
-            raise ValueError(f"Invalid geometry type: {type(value)}")
-    
-    shapely_geometries = gpd.GeoSeries(datasets["polygon"].apply(convert_to_shapely))
+    shapely_geometries = _parse_geometry_column(datasets["polygon"])
     bounds = shapely_geometries.bounds
     
     # Filter out polygons where xmin >= xmax or ymin >= ymax
@@ -389,10 +425,10 @@ def copy_images(datasets, base_dir, dataset_type):
     """Copy each source image to the package under its source-unique name."""
     destination = f"{base_dir}{dataset_type}_{version}/images/"
     pairs = datasets[["orig_path", "filename"]].drop_duplicates()
-    for orig_path, packaged_name in zip(pairs["orig_path"], pairs["filename"]):
-        dst = os.path.join(destination, packaged_name)
-        if not os.path.exists(dst):
-            shutil.copy(orig_path, dst)
+    _link_or_copy_many(
+        (orig_path, os.path.join(destination, packaged_name))
+        for orig_path, packaged_name in zip(pairs["orig_path"], pairs["filename"])
+    )
 
 
 def copy_masks(datasets, base_dir, dataset_type, mask_source_dir):
@@ -403,6 +439,7 @@ def copy_masks(datasets, base_dir, dataset_type, mask_source_dir):
     mask_source_dir = Path(mask_source_dir)
     destination = f"{base_dir}{dataset_type}_{version}/masks/"
     missing_images = set()
+    pairs = []
     for packaged_name in datasets["filename"].unique():
         mask_name = f"{Path(packaged_name).stem}.png"
         source_mask = mask_source_dir / mask_name
@@ -410,9 +447,8 @@ def copy_masks(datasets, base_dir, dataset_type, mask_source_dir):
             print(f"Warning: Missing tree coverage mask for {packaged_name}, removing from dataset.")
             missing_images.add(packaged_name)
             continue
-        destination_mask = os.path.join(destination, mask_name)
-        if not os.path.exists(destination_mask):
-            shutil.copy(source_mask, destination_mask)
+        pairs.append((str(source_mask), os.path.join(destination, mask_name)))
+    _link_or_copy_many(pairs)
     if missing_images:
         datasets = datasets[~datasets["filename"].isin(missing_images)].copy()
     return datasets
@@ -424,6 +460,7 @@ def copy_packaged_assets_from_full(base_dir, dataset_type, version, filenames,
     source_dir = Path(f"{base_dir}{dataset_type}_{version}/{subdir}")
     dest_dir = Path(f"{base_dir}{dataset_type}{suffix}_{version}/{subdir}")
     os.makedirs(dest_dir, exist_ok=True)
+    pairs = []
     for filename in set(filenames):
         if subdir == "images":
             src_name = filename
@@ -433,8 +470,8 @@ def copy_packaged_assets_from_full(base_dir, dataset_type, version, filenames,
         dst = dest_dir / src_name
         if not src.exists():
             raise FileNotFoundError(f"Missing packaged {subdir[:-1]} file: {src}")
-        if not dst.exists():
-            shutil.copy(src, dst)
+        pairs.append((str(src), str(dst)))
+    _link_or_copy_many(pairs)
 
 from milliontrees.common.release_sizes import MINI_IMAGES_PER_SOURCE, SMALL_IMAGES_PER_SOURCE
 
@@ -446,8 +483,7 @@ def _top_filenames_per_source(datasets, n_per_source):
     top_per_source = (
         filename_counts.sort_values("count", ascending=False)
         .groupby("source", group_keys=False)
-        .apply(lambda g: g.head(n_per_source))
-        .reset_index(drop=True)
+        .head(n_per_source)
     )
     return top_per_source["filename"].unique().tolist()
 
@@ -550,13 +586,17 @@ def create_mini_datasets(datasets, base_dir, dataset_type, version):
         datasets[datasets["filename"].isin(mini_filenames)].copy())
     mini_annotations.to_csv(f"{base_dir}Mini{dataset_type}_{version}/within-distribution.csv", index=False)
     
-    # Copy images for mini datasets
+    # Copy images and masks for mini datasets (hardlink within the same FS)
+    image_dir = f"{base_dir}{dataset_type}_{version}/images/"
+    mask_dir = f"{base_dir}{dataset_type}_{version}/masks/"
+    mini_image_dir = f"{base_dir}Mini{dataset_type}_{version}/images/"
+    mini_mask_dir = f"{base_dir}Mini{dataset_type}_{version}/masks/"
+    pairs = []
     for image in mini_filenames:
-        destination = f"{base_dir}Mini{dataset_type}_{version}/images/"
-        shutil.copy(f"{base_dir}{dataset_type}_{version}/images/" + image, destination)
         mask_name = f"{Path(image).stem}.png"
-        mini_mask_destination = f"{base_dir}Mini{dataset_type}_{version}/masks/"
-        shutil.copy(f"{base_dir}{dataset_type}_{version}/masks/" + mask_name, mini_mask_destination)
+        pairs.append((image_dir + image, mini_image_dir + image))
+        pairs.append((mask_dir + mask_name, mini_mask_dir + mask_name))
+    _link_or_copy_many(pairs)
 
     # Generate visualizations for each source (one image per source to avoid overlaying
     # annotations from multiple images onto a single background image)
@@ -583,14 +623,16 @@ def create_small_datasets(datasets, base_dir, dataset_type, version):
     small_annotations = _ensure_test_split(
         datasets[datasets["filename"].isin(small_filenames)].copy())
 
+    image_dir = f"{base_dir}{dataset_type}_{version}/images/"
+    mask_dir = f"{base_dir}{dataset_type}_{version}/masks/"
+    small_image_dir = f"{base_dir}Small{dataset_type}_{version}/images/"
+    small_mask_dir = f"{base_dir}Small{dataset_type}_{version}/masks/"
+    pairs = []
     for image in small_filenames:
-        destination = f"{base_dir}Small{dataset_type}_{version}/images/"
-        shutil.copy(f"{base_dir}{dataset_type}_{version}/images/" + image, destination)
         mask_name = f"{Path(image).stem}.png"
-        shutil.copy(
-            f"{base_dir}{dataset_type}_{version}/masks/" + mask_name,
-            f"{base_dir}Small{dataset_type}_{version}/masks/",
-        )
+        pairs.append((image_dir + image, small_image_dir + image))
+        pairs.append((mask_dir + mask_name, small_mask_dir + mask_name))
+    _link_or_copy_many(pairs)
 
     return small_annotations
 
@@ -974,17 +1016,16 @@ def check_for_updated_annotations(dataset, geometry):
         return dataset
         
     # Create mappings from basename to root_dir and source for each file
-    # This ensures we use the correct root_dir for each source
-    # We need to capture this BEFORE removing old annotations
-    basename_to_root_dir = {}
-    basename_to_source = {}
-    for _, row in dataset.iterrows():
-        basename = row["basename"]
-        if basename in matching_files:
-            if basename not in basename_to_root_dir:
-                basename_to_root_dir[basename] = os.path.dirname(row["filename"])
-            if basename not in basename_to_source:
-                basename_to_source[basename] = row["source"]
+    # This ensures we use the correct root_dir for each source. Capture this
+    # BEFORE removing old annotations; keep first occurrence per basename
+    # (matches the prior first-wins iterrows logic, vectorized).
+    firsts = (
+        dataset[dataset["basename"].isin(matching_files)]
+        .drop_duplicates("basename")
+    )
+    basename_to_root_dir = dict(
+        zip(firsts["basename"], firsts["filename"].map(os.path.dirname)))
+    basename_to_source = dict(zip(firsts["basename"], firsts["source"]))
     
     # Remove all old annotations at once
     dataset = dataset[~dataset["basename"].isin(matching_files)]
