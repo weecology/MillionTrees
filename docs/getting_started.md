@@ -18,7 +18,7 @@ Before working with the full datasets (which can be several GB), use a smaller r
 
 | Flag | Archive | Images per source | Split CSVs |
 |------|---------|-------------------|------------|
-| `mini=True` | `MiniTree*` | 3 | `random` only |
+| `mini=True` | `MiniTree*` | 3 | `within-distribution` only |
 | `small=True` | `SmallTree*` | Up to 50 | All split schemes |
 | (default) | `Tree*` | Full release | All split schemes |
 
@@ -28,8 +28,8 @@ from milliontrees import get_dataset
 # Fastest smoke tests
 dataset = get_dataset('TreeBoxes', download=True, mini=True)
 
-# Medium subset with zeroshot / crossgeometry support
-dataset = get_dataset('TreePoints', download=True, small=True, split_scheme='zeroshot')
+# Medium subset with out-of-distribution / crossgeometry support
+dataset = get_dataset('TreePoints', download=True, small=True, split_scheme='out-of-distribution')
 
 train_dataset = dataset.get_subset("train")
 print(f"Dataset size: {len(train_dataset)} images")

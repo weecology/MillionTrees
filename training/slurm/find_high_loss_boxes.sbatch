@@ -11,11 +11,11 @@
 set -euo pipefail
 cd /blue/ewhite/b.weinstein/src/MillionTrees
 
-CKPT=training/boxes/outputs/random/checkpoints/boxes-epoch=10-val_loss=0.5930.ckpt
+CKPT=training/boxes/outputs/within-distribution/checkpoints/boxes-epoch=10-val_loss=0.5930.ckpt
 
 uv run python training/boxes/find_high_loss_batches.py \
   --checkpoint "$CKPT" \
-  --split-scheme random \
+  --split-scheme within-distribution \
   --batch-size 1 \
   --loss-threshold 5.0 \
   --top-k 20 \

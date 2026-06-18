@@ -4,7 +4,7 @@
 #   2. pretrained existing_models/ on the test splits
 #
 # After all jobs finish, regenerate the leaderboard tables with:
-#   uv run python scripts/make_benchmark_table.py --splits random zeroshot
+#   uv run python scripts/make_benchmark_table.py --splits within-distribution out-of-distribution
 #
 # For a dependency-chained version that also auto-builds the table, use
 # slurm/run_benchmark.sbatch instead.

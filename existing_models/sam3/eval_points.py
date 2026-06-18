@@ -55,8 +55,8 @@ def main() -> None:
     parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument("--mini", action="store_true")
     parser.add_argument("--download", action="store_true")
-    parser.add_argument("--split-scheme", type=str, default="random",
-                        choices=["random", "zeroshot", "crossgeometry"])
+    parser.add_argument("--split-scheme", type=str, default="within-distribution",
+                        choices=["within-distribution", "out-of-distribution", "crossgeometry"])
     parser.add_argument("--image-size", type=int, default=448,
                         help="Resize images to image_size x image_size before eval. "
                              "Must match the resolution other point models are scored at "

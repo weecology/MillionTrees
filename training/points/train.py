@@ -1,7 +1,7 @@
 """Fine-tune DeepForest TreeFormer on MillionTrees TreePoints.
 
 Trains on the MillionTrees train split and evaluates on test. Use
-``--split-scheme random`` or ``--split-scheme zeroshot`` (zeroshot holds out
+``--split-scheme within-distribution`` or ``--split-scheme out-of-distribution`` (out-of-distribution holds out
 entire source datasets from train, but fine-tuning still runs on the remaining
 sources).
 
@@ -115,8 +115,8 @@ def main():
     )
     parser.add_argument("--root-dir", type=str,
                         default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
-    parser.add_argument("--split-scheme", type=str, default="random",
-                        choices=["random", "zeroshot", "crossgeometry"])
+    parser.add_argument("--split-scheme", type=str, default="within-distribution",
+                        choices=["within-distribution", "out-of-distribution", "crossgeometry"])
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--max-epochs", type=int, default=20)
     parser.add_argument("--lr", type=float, default=1e-5,

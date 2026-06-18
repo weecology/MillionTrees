@@ -51,8 +51,8 @@ def main():
     parser.add_argument(
         "--split-scheme",
         type=str,
-        default="random",
-        choices=["random", "zeroshot", "crossgeometry"],
+        default="within-distribution",
+        choices=["within-distribution", "out-of-distribution", "crossgeometry"],
     )
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--max-epochs", type=int, default=5)

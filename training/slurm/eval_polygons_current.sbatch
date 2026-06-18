@@ -13,18 +13,18 @@ set -euo pipefail
 cd /blue/ewhite/b.weinstein/src/MillionTrees
 export PYTHONPATH=/blue/ewhite/b.weinstein/src/MillionTrees:${PYTHONPATH:-}
 
-SPLITS=(random zeroshot)
+SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 # Best epoch=04 checkpoints from the current v0.13 run (cancelled after 4 epochs)
 declare -A BOX_CKPTS
-BOX_CKPTS[random]="training/weak_supervision/outputs/polygon_box_pretrained/random/checkpoints/polygons-epoch=04-val_loss=-7045186.0000.ckpt"
-BOX_CKPTS[zeroshot]="training/weak_supervision/outputs/polygon_box_pretrained/zeroshot/checkpoints/polygons-epoch=04-val_loss=-4772353.5000.ckpt"
+BOX_CKPTS[within-distribution]="training/weak_supervision/outputs/polygon_box_pretrained/within-distribution/checkpoints/polygons-epoch=04-val_loss=-7045186.0000.ckpt"
+BOX_CKPTS[out-of-distribution]="training/weak_supervision/outputs/polygon_box_pretrained/out-of-distribution/checkpoints/polygons-epoch=04-val_loss=-4772353.5000.ckpt"
 
 # Best epoch=39 COCO checkpoints from the completed v0.13 run
 declare -A COCO_CKPTS
-COCO_CKPTS[random]="training/weak_supervision/outputs/polygon_coco/random/checkpoints/polygons-epoch=39-val_loss=-465924.2500.ckpt"
-COCO_CKPTS[zeroshot]="training/weak_supervision/outputs/polygon_coco/zeroshot/checkpoints/polygons-epoch=39-val_loss=-459748.0312.ckpt"
+COCO_CKPTS[within-distribution]="training/weak_supervision/outputs/polygon_coco/within-distribution/checkpoints/polygons-epoch=39-val_loss=-465924.2500.ckpt"
+COCO_CKPTS[out-of-distribution]="training/weak_supervision/outputs/polygon_coco/out-of-distribution/checkpoints/polygons-epoch=39-val_loss=-459748.0312.ckpt"
 
 OUT_BOX="training/weak_supervision/outputs/eval_current/polygon_box_pretrained/$SPLIT"
 OUT_COCO="training/weak_supervision/outputs/eval_current/polygon_coco/$SPLIT"

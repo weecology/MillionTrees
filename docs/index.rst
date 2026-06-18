@@ -22,11 +22,11 @@ In total, the release contains 3,641,520 annotations across 73,211 images from 3
 
 There are 3 split_schemes available for the MillionTrees benchmark:
 
-* Random: For each source, 80% of the data is used for training and 20% for testing.
+* Within-distribution: For each source, 80% of the data is used for training and 20% for testing.
 
 * crossgeometry: Boxes and Points are used to predict polygons.
 
-* zeroshot: Selected sources are entirely held out for testing.
+* out-of-distribution: Selected sources are entirely held out for testing.
 
 Contact
 -------

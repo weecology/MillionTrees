@@ -21,8 +21,8 @@ def main():
                         help="HF revision/tag (ignored for .ckpt files and local dirs)")
     parser.add_argument("--root-dir", type=str,
                         default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
-    parser.add_argument("--split-scheme", type=str, default="zeroshot",
-                        choices=["random", "zeroshot", "crossgeometry"])
+    parser.add_argument("--split-scheme", type=str, default="out-of-distribution",
+                        choices=["within-distribution", "out-of-distribution", "crossgeometry"])
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")

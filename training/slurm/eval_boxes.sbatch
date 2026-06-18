@@ -18,7 +18,7 @@ export PYTHONPATH=/blue/ewhite/b.weinstein/src/MillionTrees:$PYTHONPATH
 cd /blue/ewhite/b.weinstein/src/MillionTrees
 
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
-SPLITS=(random zeroshot)
+SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 # Latest trained box checkpoint = most recently modified boxes-best*.ckpt.

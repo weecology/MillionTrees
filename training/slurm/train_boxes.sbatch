@@ -21,11 +21,11 @@ cd /blue/ewhite/b.weinstein/src/MillionTrees
 mkdir -p training/boxes/outputs
 
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
-SPLITS=(random zeroshot)
+SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
-# Zero-shot needs more time to find a good optimum.
-if [ "$SPLIT" = "zeroshot" ]; then
+# Out-of-distribution needs more time to find a good optimum.
+if [ "$SPLIT" = "out-of-distribution" ]; then
   EARLY_STOP_PATIENCE=15
 else
   EARLY_STOP_PATIENCE=10

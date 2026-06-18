@@ -10,12 +10,12 @@ merges to weecology main):
 uv sync --group treeformer
 ```
 
-Train on the **train** split and evaluate on **test** (`random` or `zeroshot`; zeroshot
+Train on the **train** split and evaluate on **test** (`within-distribution` or `out-of-distribution`; out-of-distribution
 holds out entire source datasets from train but still fine-tunes on the rest):
 
 ```bash
 uv run --group treeformer python training/points/train.py \
-  --split-scheme zeroshot \
+  --split-scheme out-of-distribution \
   --root-dir "$MT_ROOT"
 ```
 
@@ -23,8 +23,8 @@ Evaluate a saved Lightning checkpoint:
 
 ```bash
 uv run --group treeformer python training/points/eval.py \
-  --checkpoint training/points/outputs/zeroshot/checkpoints/treeformer-epoch=19-val_loss=0.1234.ckpt \
-  --split-scheme zeroshot
+  --checkpoint training/points/outputs/out-of-distribution/checkpoints/treeformer-epoch=19-val_loss=0.1234.ckpt \
+  --split-scheme out-of-distribution
 ```
 
 The pretrained (no fine-tuning) TreeFormer baseline lives in

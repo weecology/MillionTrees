@@ -1,6 +1,6 @@
 """Evaluate pretrained TreeFormer on MillionTrees TreePoints.
 
-Inference-only baseline (no training on MillionTrees). For zeroshot or random
+Inference-only baseline (no training on MillionTrees). For out-of-distribution or within-distribution
 splits, pass ``--split-scheme`` to select which held-out test sources to score.
 """
 
@@ -67,8 +67,8 @@ def main():
                              "filter on predicted-point scores). Default (None) "
                              "keeps the dataset default of 0.4. Ignored under --sweep.")
     parser.add_argument("--download", action="store_true")
-    parser.add_argument("--split-scheme", type=str, default="random",
-                        choices=["random", "zeroshot", "crossgeometry"])
+    parser.add_argument("--split-scheme", type=str, default="within-distribution",
+                        choices=["within-distribution", "out-of-distribution", "crossgeometry"])
     parser.add_argument("--max-batches", type=int, default=None)
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--viz-dir", type=str, default=None,

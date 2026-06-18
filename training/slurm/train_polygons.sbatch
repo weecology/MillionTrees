@@ -19,7 +19,7 @@ mkdir -p training/polygons/outputs
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
-SPLITS=(random zeroshot)
+SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 uv run python training/polygons/train.py \

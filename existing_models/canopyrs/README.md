@@ -51,11 +51,11 @@ SAM 3 (`facebook/sam3`) is gated: request access on the model page and
 ## Run
 
 ```bash
-python eval_boxes.py    --split-scheme random   --device cuda --output-dir outputs/random
-python eval_polygons.py --split-scheme random   --device cuda --output-dir outputs/random --hf-token "$HF_TOKEN"
+python eval_boxes.py    --split-scheme within-distribution   --device cuda --output-dir outputs/within-distribution
+python eval_polygons.py --split-scheme within-distribution   --device cuda --output-dir outputs/within-distribution --hf-token "$HF_TOKEN"
 ```
 
 Add `--viz-dir <dir>` for per-source prediction overlays, `--mini` for a smoke test, and
-`--split-scheme zeroshot` for the held-out-source task. Results are written to
+`--split-scheme out-of-distribution` for the held-out-source task. Results are written to
 `outputs/<split>/results_<geometry>_<split>.{txt,json}`, which
 `scripts/make_benchmark_table.py` reads to regenerate the leaderboard.

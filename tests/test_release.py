@@ -58,7 +58,7 @@ def _test_dataset_structure(dataset, targets_key="y", expected_shape_check=None)
     # Ensure at least one split has samples
     assert len(train_dataset) > 0 or len(test_dataset) > 0, "Both train and test subsets are empty"
 
-@pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
+@pytest.mark.parametrize("split_scheme", ['within-distribution', 'crossgeometry', 'out-of-distribution'])
 def test_TreePolygons_latest_release(dataset, split_scheme):
     root_dir = dataset
 
@@ -74,7 +74,7 @@ def test_TreePolygons_latest_release(dataset, split_scheme):
     
     _test_dataset_structure(dataset, expected_shape_check=check_polygon_shape)
 
-@pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
+@pytest.mark.parametrize("split_scheme", ['within-distribution', 'crossgeometry', 'out-of-distribution'])
 def test_TreePoints_latest_release(dataset, split_scheme):
     dataset = TreePointsDataset(
         download=False,
@@ -88,7 +88,7 @@ def test_TreePoints_latest_release(dataset, split_scheme):
     
     _test_dataset_structure(dataset, expected_shape_check=check_points_shape)
 
-@pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
+@pytest.mark.parametrize("split_scheme", ['within-distribution', 'crossgeometry', 'out-of-distribution'])
 def test_TreeBoxes_latest_release(dataset, split_scheme):
     dataset = TreeBoxesDataset(
         download=False,
@@ -103,7 +103,7 @@ def test_TreeBoxes_latest_release(dataset, split_scheme):
     _test_dataset_structure(dataset, expected_shape_check=check_boxes_shape)
 
 
-@pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
+@pytest.mark.parametrize("split_scheme", ['within-distribution', 'crossgeometry', 'out-of-distribution'])
 def test_TreePolygons_small_release(dataset, split_scheme):
     dataset = TreePolygonsDataset(
         download=False,
@@ -119,7 +119,7 @@ def test_TreePolygons_small_release(dataset, split_scheme):
     _test_dataset_structure(dataset, expected_shape_check=check_polygon_shape)
 
 
-@pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
+@pytest.mark.parametrize("split_scheme", ['within-distribution', 'crossgeometry', 'out-of-distribution'])
 def test_TreePoints_small_release(dataset, split_scheme):
     dataset = TreePointsDataset(
         download=False,
@@ -135,7 +135,7 @@ def test_TreePoints_small_release(dataset, split_scheme):
     _test_dataset_structure(dataset, expected_shape_check=check_points_shape)
 
 
-@pytest.mark.parametrize("split_scheme", ['random', 'crossgeometry', 'zeroshot'])
+@pytest.mark.parametrize("split_scheme", ['within-distribution', 'crossgeometry', 'out-of-distribution'])
 def test_TreeBoxes_small_release(dataset, split_scheme):
     dataset = TreeBoxesDataset(
         download=False,

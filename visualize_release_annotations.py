@@ -50,11 +50,11 @@ def find_local_release_csv(root_dir: Path, dataset_name: str, version: Optional[
     candidates: list[Path] = []
     if version:
         candidates.extend([
-            root_dir / f"{dataset_name}_v{version}" / "random.csv",
-            root_dir / f"{dataset_name}_supervised_v{version}" / "random.csv",
+            root_dir / f"{dataset_name}_v{version}" / "within-distribution.csv",
+            root_dir / f"{dataset_name}_supervised_v{version}" / "within-distribution.csv",
         ])
-    candidates.extend(root_dir.glob(f"{dataset_name}_supervised_v*/random.csv"))
-    candidates.extend(root_dir.glob(f"{dataset_name}_v*/random.csv"))
+    candidates.extend(root_dir.glob(f"{dataset_name}_supervised_v*/within-distribution.csv"))
+    candidates.extend(root_dir.glob(f"{dataset_name}_v*/within-distribution.csv"))
     for path in candidates:
         if path.exists():
             return path
@@ -96,7 +96,7 @@ def load_release_data(root_dir: Path) -> pd.DataFrame:
             if zip_path and zip_path.exists():
                 import zipfile, io, csv
                 with zipfile.ZipFile(zip_path, "r") as zf:
-                    names = [n for n in zf.namelist() if n.lower().endswith("random.csv")]
+                    names = [n for n in zf.namelist() if n.lower().endswith("within-distribution.csv")]
                     if not names:
                         continue
                     name = min(names, key=lambda s: s.count("/"))

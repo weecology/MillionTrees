@@ -33,9 +33,9 @@ class TreePolygonsDataset(MillionTreesDataset):
     The dataset is comprised of many sources from across the world.
 
     Dataset Splits:
-        - Random: For each source, 80% of the data is used for training and 20% for testing.
+        - Within-distribution: For each source, 80% of the data is used for training and 20% for testing.
         - crossgeometry: Boxes and Points are used to predict polygons.
-        - zeroshot: Selected sources are entirely held out for testing.
+        - out-of-distribution: Selected sources are entirely held out for testing.
 
     Input (x):
         RGB aerial images.
@@ -81,7 +81,7 @@ class TreePolygonsDataset(MillionTreesDataset):
                  version=None,
                  root_dir='data',
                  download=False,
-                 split_scheme='random',
+                 split_scheme='within-distribution',
                  geometry_name='y',
                  eval_score_threshold=0.5,
                  image_size=448,
@@ -109,7 +109,9 @@ class TreePolygonsDataset(MillionTreesDataset):
 
         self._collate = TreePolygonsDataset._collate_fn
 
-        if self._split_scheme not in ['random', 'crossgeometry', 'zeroshot']:
+        if self._split_scheme not in [
+                'within-distribution', 'crossgeometry', 'out-of-distribution'
+        ]:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
 

@@ -1,10 +1,11 @@
 import pandas as pd
 import numpy as np
 import os
-import requests
+import re
+import glob
 from tqdm import tqdm
 from PIL import Image
-import json
+from huggingface_hub import snapshot_download
 from deepforest.utilities import read_file
 
 def download_selvabox(force_download=False):
@@ -32,45 +33,46 @@ def download_selvabox(force_download=False):
     os.makedirs(cache_dir, exist_ok=True)
     
     print("Downloading SelvaBox dataset from HuggingFace...")
-    
-    # Get the parquet file URLs from the HuggingFace dataset viewer API
+
+    # IMPORTANT: download the canonical parquet shards from the dataset repo via
+    # huggingface_hub, NOT the datasets-server auto-conversion endpoint. The
+    # datasets-server `/parquet` API returns a *partial* export (flagged
+    # "partial":true, shards under partial-{train,test,validation}/) that only
+    # captures the leading shards of each split -- it gave us ~30% of tiles and
+    # only 7 of the 14 orthomosaics. The repo's data/ dir holds all 64 shards
+    # (24 test + 34 train + 6 validation = the full ~432k tiled boxes).
     dataset_name = "CanopyRS/SelvaBox"
-    api_url = f"https://datasets-server.huggingface.co/parquet?dataset={dataset_name}"
-    
-    response = requests.get(api_url)
-    if response.status_code != 200:
-        raise Exception(f"Failed to fetch dataset info: {response.status_code}")
-    
-    parquet_info = response.json()
-    
+    token = None
+    token_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".hf_token")
+    if os.path.exists(token_path):
+        token = open(token_path).read().strip()
+
+    snapshot_download(
+        repo_id=dataset_name,
+        repo_type="dataset",
+        allow_patterns=["data/*.parquet"],
+        local_dir=cache_dir,
+        token=token,
+        force_download=force_download,
+    )
+
+    # Canonical shards are named data/<split>-NNNNN-of-NNNNN.parquet
+    parquet_paths = sorted(glob.glob(os.path.join(cache_dir, "data", "*.parquet")))
+    if not parquet_paths:
+        raise RuntimeError(f"No parquet shards downloaded to {cache_dir}/data")
+    print(f"Found {len(parquet_paths)} parquet shards in {cache_dir}/data")
+
     # Process each split (train, validation, test)
     all_annotations = []
-    
-    for file_info in parquet_info['parquet_files']:
-        split = file_info['split'] 
-        parquet_url = file_info['url']
-        
-        # Cache parquet files locally
-        parquet_filename = os.path.basename(parquet_url.split('?')[0])  # Remove query params
-        cached_parquet_path = os.path.join(cache_dir, f"{split}_{parquet_filename}")
-        
-        # Download parquet file if not cached or if force_download is True
-        if force_download or not os.path.exists(cached_parquet_path):
-            print(f"Downloading {split} split parquet file...")
-            parquet_response = requests.get(parquet_url, stream=True)
-            parquet_response.raise_for_status()
-            
-            with open(cached_parquet_path, 'wb') as f:
-                for chunk in parquet_response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            print(f"Cached {split} split to {cached_parquet_path}")
-        else:
-            print(f"Using cached {split} split from {cached_parquet_path}")
-        
+
+    for cached_parquet_path in parquet_paths:
+        m = re.match(r"^([a-z]+)-\d+-of-\d+\.parquet$", os.path.basename(cached_parquet_path))
+        split = m.group(1) if m else "unknown"
+
         # Read from cached file
         df = pd.read_parquet(cached_parquet_path)
-        
-        print(f"Loaded {len(df)} rows from {split} split")
+
+        print(f"Loaded {len(df)} rows from {os.path.basename(cached_parquet_path)} ({split} split)")
         
         # Process each row
         for idx, row in tqdm(df.iterrows(), total=len(df), desc=f"Processing {split}"):
@@ -160,9 +162,9 @@ def download_selvabox(force_download=False):
     
     # Convert to DataFrame
     annotations_df = pd.DataFrame(all_annotations)
-    annotations_df = read_file(annotations_df)
-    # full path
-    annotations_df["image_path"] = annotations_df["image_path"].apply(lambda x: os.path.join(images_dir, x))
+    annotations_df = read_file(annotations_df, root_dir=images_dir)
+    # full path (read_file strips image_path to basename relative to root_dir)
+    annotations_df["image_path"] = annotations_df["image_path"].apply(lambda x: os.path.join(images_dir, os.path.basename(x)))
     
     # Infer existing split from filename patterns (e.g., train_*, val_*, validation_*, test_*)
     def infer_split_from_filename(p: str):

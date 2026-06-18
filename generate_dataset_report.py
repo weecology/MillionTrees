@@ -100,8 +100,8 @@ def get_on_disk_size_bytes(url: str, fallback_bytes: int) -> int:
     return fallback_bytes or 0
 
 
-def read_random_csv_counts_from_zip(url: str) -> Optional[dict]:
-    """Open the zip on disk (mapped from URL) and count images/annotations/sources from random.csv."""
+def read_within_distribution_csv_counts_from_zip(url: str) -> Optional[dict]:
+    """Open the zip on disk (mapped from URL) and count images/annotations/sources from within-distribution.csv."""
     import io
     import csv
     import zipfile
@@ -112,7 +112,7 @@ def read_random_csv_counts_from_zip(url: str) -> Optional[dict]:
     try:
         with zipfile.ZipFile(local_path, "r") as zf:
             names = zf.namelist()
-            candidates = [n for n in names if n.lower().endswith("random.csv")]
+            candidates = [n for n in names if n.lower().endswith("within-distribution.csv")]
             if not candidates:
                 return None
             # Prefer the shallowest path
@@ -244,7 +244,7 @@ def generate_dataset_report(output_path=None, include_test_results=False, test_e
                 size_bytes_meta = 0
             size_bytes_int = get_on_disk_size_bytes(url, size_bytes_meta)
             total_size += size_bytes_int
-            counts = read_random_csv_counts_from_zip(url) or dict(empty_counts)
+            counts = read_within_distribution_csv_counts_from_zip(url) or dict(empty_counts)
 
             # Handle missing URLs
             if not url or url.strip() == '':
@@ -324,18 +324,18 @@ def generate_dataset_report(output_path=None, include_test_results=False, test_e
             latest_version = sorted_versions[-1]
             latest_info = versions_dict[latest_version]
             latest_url = latest_info.get('download_url', '')
-            counts = read_random_csv_counts_from_zip(latest_url)
+            counts = read_within_distribution_csv_counts_from_zip(latest_url)
             if counts:
                 report_content.append('')
-                report_content.append('**Latest Version Dataset Stats (random split):**')
+                report_content.append('**Latest Version Dataset Stats (within-distribution split):**')
                 report_content.append('')
                 report_content.append(f"- Images: {counts['images']}")
                 report_content.append(f"- Annotations: {counts['annotations']}")
                 report_content.append(f"- Sources: {counts['sources']}")
 
-            # Add train/test split counts for random and zeroshot (images)
+            # Add train/test split counts for within-distribution and out-of-distribution (images)
             split_rows = []
-            for split_name in ("random", "zeroshot"):
+            for split_name in ("within-distribution", "out-of-distribution"):
                 split_counts = read_split_image_counts_from_zip(latest_url, split_name)
                 if split_counts:
                     split_rows.append((split_name, split_counts["train_images"], split_counts["test_images"]))

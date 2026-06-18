@@ -55,8 +55,8 @@ def main():
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
     parser.add_argument("--download", action="store_true")
-    parser.add_argument("--split-scheme", type=str, default="random",
-                        choices=["random", "zeroshot", "crossgeometry"])
+    parser.add_argument("--split-scheme", type=str, default="within-distribution",
+                        choices=["within-distribution", "out-of-distribution", "crossgeometry"])
     parser.add_argument("--max-batches", type=int, default=None)
     parser.add_argument("--score-threshold", type=float, default=None,
                         help="Override DeepForest's internal score_thresh "

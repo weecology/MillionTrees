@@ -2,14 +2,14 @@
 
 # Tasks
 
-## Zero-shot
+## Out-of-distribution
 
 The first task evaluates generalization across geography and acquisition conditions.
 Selected source datasets are held out from the train split; models are fine-tuned on
 the remaining sources and evaluated on the held-out test sources (no images from test
 localities appear in train).
 
-## Random
+## Within-distribution
 
 The second task is to create the best global detector for individual trees given a set of training and test data. Datasets are split randomly, reflecting information within localities. This is consistent with how most applied users engage with models, by fine-tuning backbone models with sample data from a desired locality.
 
@@ -31,7 +31,7 @@ All point sources are used to train and predict all box sources.
 
 # Results
 
-Fine-tuned panel figures (random + zeroshot splits, ground truth vs prediction) are
+Fine-tuned panel figures (within-distribution + out-of-distribution splits, ground truth vs prediction) are
 generated from training checkpoints via `scripts/create_finetuned_visualizations.py`
 (PNG + SVG under `docs/`). See [repository_structure.md](repository_structure.md).
 
@@ -46,25 +46,25 @@ The TreeFormer point model needs `uv sync --group treeformer` (DeepForest
 [`treeformer-training`](https://github.com/jveitchmichaelis/DeepForest/tree/treeformer-training)
 branch until merged to main).
 
-### Random
+### Within-distribution
 
 | Model | Fine-tuned | Counting MAE | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| TreeFormer | ✗ | 53.150 | 0.830 | <small>`uv run --group treeformer python training/points/eval.py --checkpoint $KCL_CHECKPOINT --split-scheme random`</small> |
-| SAM3 | ✗ | 54.593 | 0.711 | <small>`uv run python existing_models/sam3/eval_points.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
-| TreeFormer | ✓ | 57.523 | 0.782 | <small>`uv run --group treeformer python training/points/train.py --split-scheme random`</small> |
+| TreeFormer | ✗ | 53.150 | 0.830 | <small>`uv run --group treeformer python training/points/eval.py --checkpoint $KCL_CHECKPOINT --split-scheme within-distribution`</small> |
+| SAM3 | ✗ | 54.593 | 0.711 | <small>`uv run python existing_models/sam3/eval_points.py --device cuda --split-scheme within-distribution --hf-token $HF_TOKEN`</small> |
+| TreeFormer | ✓ | 57.523 | 0.782 | <small>`uv run --group treeformer python training/points/train.py --split-scheme within-distribution`</small> |
 
-### Zeroshot split
+### Out-of-distribution split
 
-Fine-tuned (✓) rows train on the zeroshot **train** split (non-held-out sources)
+Fine-tuned (✓) rows train on the out-of-distribution **train** split (non-held-out sources)
 and are scored on geographically held-out **test** sources. Pretrained (✗) rows use a
 released checkpoint with no MillionTrees training at all.
 
 | Model | Fine-tuned | Counting MAE | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| TreeFormer | ✗ | 16.451 | 0.789 | <small>`uv run --group treeformer python training/points/eval.py --checkpoint $KCL_CHECKPOINT --split-scheme zeroshot`</small> |
-| SAM3 | ✗ | 14.878 | 0.759 | <small>`uv run python existing_models/sam3/eval_points.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
-| TreeFormer | ✓ | 17.007 | 0.872 | <small>`uv run --group treeformer python training/points/train.py --split-scheme zeroshot`</small> |
+| TreeFormer | ✗ | 16.451 | 0.789 | <small>`uv run --group treeformer python training/points/eval.py --checkpoint $KCL_CHECKPOINT --split-scheme out-of-distribution`</small> |
+| SAM3 | ✗ | 14.878 | 0.759 | <small>`uv run python existing_models/sam3/eval_points.py --device cuda --split-scheme out-of-distribution --hf-token $HF_TOKEN`</small> |
+| TreeFormer | ✓ | 17.007 | 0.872 | <small>`uv run --group treeformer python training/points/train.py --split-scheme out-of-distribution`</small> |
 
 ### Cross-geometry
 
@@ -74,23 +74,23 @@ released checkpoint with no MillionTrees training at all.
 
 ## TreeBoxes
 
-### Random
+### Within-distribution
 
 | Model | Fine-tuned | Avg Recall | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| CanopyRS DINO Swin-L | ✗ | 0.688 | 0.679 | <small>`python existing_models/canopyrs/eval_boxes.py --device cuda --split-scheme random`</small> |
-| DeepForest | ✓ | 0.547 | 0.592 | <small>`uv run python training/boxes/train.py --split-scheme random`</small> |
-| DeepForest | ✗ | 0.407 | 0.731 | <small>`uv run python existing_models/deepforest/eval_boxes.py --split-scheme random`</small> |
-| SAM3 | ✗ | 0.190 | 0.608 | <small>`uv run python existing_models/sam3/eval_boxes.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| CanopyRS DINO Swin-L | ✗ | 0.688 | 0.679 | <small>`python existing_models/canopyrs/eval_boxes.py --device cuda --split-scheme within-distribution`</small> |
+| DeepForest | ✓ | 0.547 | 0.592 | <small>`uv run python training/boxes/train.py --split-scheme within-distribution`</small> |
+| DeepForest | ✗ | 0.407 | 0.731 | <small>`uv run python existing_models/deepforest/eval_boxes.py --split-scheme within-distribution`</small> |
+| SAM3 | ✗ | 0.190 | 0.608 | <small>`uv run python existing_models/sam3/eval_boxes.py --device cuda --split-scheme within-distribution --hf-token $HF_TOKEN`</small> |
 
-### Zero-shot
+### Out-of-distribution
 
 | Model | Fine-tuned | Avg Recall | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| CanopyRS DINO Swin-L | ✗ | 0.885 | 0.815 | <small>`python existing_models/canopyrs/eval_boxes.py --device cuda --split-scheme zeroshot`</small> |
-| DeepForest | ✓ | 0.525 | 0.947 | <small>`uv run python training/boxes/train.py --split-scheme zeroshot`</small> |
-| DeepForest | ✗ | 0.432 | 0.962 | <small>`uv run python existing_models/deepforest/eval_boxes.py --split-scheme zeroshot`</small> |
-| SAM3 | ✗ | 0.209 | 0.798 | <small>`uv run python existing_models/sam3/eval_boxes.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
+| CanopyRS DINO Swin-L | ✗ | 0.885 | 0.815 | <small>`python existing_models/canopyrs/eval_boxes.py --device cuda --split-scheme out-of-distribution`</small> |
+| DeepForest | ✓ | 0.525 | 0.947 | <small>`uv run python training/boxes/train.py --split-scheme out-of-distribution`</small> |
+| DeepForest | ✗ | 0.432 | 0.962 | <small>`uv run python existing_models/deepforest/eval_boxes.py --split-scheme out-of-distribution`</small> |
+| SAM3 | ✗ | 0.209 | 0.798 | <small>`uv run python existing_models/sam3/eval_boxes.py --device cuda --split-scheme out-of-distribution --hf-token $HF_TOKEN`</small> |
 
 ### Cross-geometry
 
@@ -108,27 +108,27 @@ released checkpoint with no MillionTrees training at all.
 Fine-tuned (✓) uses Mask R-CNN (`training/polygons/train.py`). Pretrained (✗) uses
 SAM3, detectree2, and CanopyRS DINO + SAM3 (SelvaMask).
 
-### Random
+### Within-distribution
 
 | Model | Fine-tuned | Avg Mask Accuracy | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| Mask R-CNN | ✓ | 0.416 | 0.900 | <small>`uv run python training/polygons/train.py --split-scheme random`</small> |
-| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.312 | 0.879 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
-| detectree2 | ✗ | 0.304 | 0.891 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme random`</small> |
-| SAM3 | ✗ | 0.186 | 0.619 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme random --hf-token $HF_TOKEN`</small> |
+| Mask R-CNN | ✓ | 0.416 | 0.900 | <small>`uv run python training/polygons/train.py --split-scheme within-distribution`</small> |
+| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.312 | 0.879 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme within-distribution --hf-token $HF_TOKEN`</small> |
+| detectree2 | ✗ | 0.304 | 0.891 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme within-distribution`</small> |
+| SAM3 | ✗ | 0.186 | 0.619 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme within-distribution --hf-token $HF_TOKEN`</small> |
 
-### Zero-shot
+### Out-of-distribution
 
 | Model | Fine-tuned | Avg Mask Accuracy | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| detectree2 | ✗ | 0.375 | 0.945 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme zeroshot`</small> |
-| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.355 | 0.912 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
-| SAM3 | ✗ | 0.165 | 0.663 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme zeroshot --hf-token $HF_TOKEN`</small> |
-| Mask R-CNN | ✓ | 0.064 | 0.814 | <small>`uv run python training/polygons/train.py --split-scheme zeroshot`</small> |
+| detectree2 | ✗ | 0.375 | 0.945 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme out-of-distribution`</small> |
+| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.355 | 0.912 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme out-of-distribution --hf-token $HF_TOKEN`</small> |
+| SAM3 | ✗ | 0.165 | 0.663 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme out-of-distribution --hf-token $HF_TOKEN`</small> |
+| Mask R-CNN | ✓ | 0.064 | 0.814 | <small>`uv run python training/polygons/train.py --split-scheme out-of-distribution`</small> |
 
-> **Note:** The Mask R-CNN ✓ zeroshot row is from the pre-fix polygon evaluator
+> **Note:** The Mask R-CNN ✓ out-of-distribution row is from the pre-fix polygon evaluator
 > (before GT-mask binarization / AP50; commit b2ff776) and is not directly comparable
-> to the post-fix random row above. Rerun to refresh.
+> to the post-fix within-distribution row above. Rerun to refresh.
 
 ### Cross-geometry
 
@@ -175,7 +175,7 @@ Once you have trained a model and evaluated its performance, you can submit your
 
 Comparison of fine-tuned models (trained on MillionTrees) vs. pretrained models evaluated zero-shot.
 
-### Split: random
+### Split: within-distribution
 
 ### TreeBoxes
 
@@ -203,7 +203,7 @@ Comparison of fine-tuned models (trained on MillionTrees) vs. pretrained models 
 | Detectree2 | 0.378 | 0.829 | 0.519 | 0.215 | 0.106 |
 | SAM3 | 0.235 | 0.635 | 0.343 | 0.154 | 0.045 |
 
-### Split: zeroshot
+### Split: out-of-distribution
 
 ### TreeBoxes
 

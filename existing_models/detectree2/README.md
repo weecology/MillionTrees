@@ -54,10 +54,10 @@ Other options live in the [model garden](https://github.com/PatBall1/detectree2/
 ```bash
 uv run --no-sync python eval_polygons.py \
   --root-dir "$MT_ROOT" \
-  --split-scheme random \
+  --split-scheme within-distribution \
   --model-path 250312_flexi.pth \
   --device cuda \
-  --output-dir outputs/random
+  --output-dir outputs/within-distribution
 ```
 
 Smoke test (a couple of batches, CPU):

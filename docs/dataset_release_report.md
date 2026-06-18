@@ -19,7 +19,7 @@
 | 0.0 | N/A | 0.10 GB |
 | 0.10 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.10.zip | 98.80 GB |
 
-**Latest Version Dataset Stats (random split):**
+**Latest Version Dataset Stats (within-distribution split):**
 
 - Images: 19948
 - Annotations: 805818
@@ -29,8 +29,8 @@
 
 | Split | Train | Test |
 |-------|-------|------|
-| random | 18801 | 1172 |
-| zeroshot | 17232 | 3775 |
+| within-distribution | 18801 | 1172 |
+| out-of-distribution | 17232 | 3775 |
 
 ### TreePoints
 
@@ -39,7 +39,7 @@
 | 0.0 | N/A | 0.15 GB |
 | 0.10 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.10.zip | 153.41 GB |
 
-**Latest Version Dataset Stats (random split):**
+**Latest Version Dataset Stats (within-distribution split):**
 
 - Images: 33369
 - Annotations: 1219904
@@ -49,8 +49,8 @@
 
 | Split | Train | Test |
 |-------|-------|------|
-| random | 30139 | 3238 |
-| zeroshot | 31639 | 1730 |
+| within-distribution | 30139 | 3238 |
+| out-of-distribution | 31639 | 1730 |
 
 ### TreeBoxes
 
@@ -59,7 +59,7 @@
 | 0.0 | N/A | 0.10 GB |
 | 0.10 | https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.10.zip | 39.97 GB |
 
-**Latest Version Dataset Stats (random split):**
+**Latest Version Dataset Stats (within-distribution split):**
 
 - Images: 19894
 - Annotations: 1615798
@@ -69,8 +69,8 @@
 
 | Split | Train | Test |
 |-------|-------|------|
-| random | 17484 | 3137 |
-| zeroshot | 16904 | 2990 |
+| within-distribution | 17484 | 3137 |
+| out-of-distribution | 16904 | 2990 |
 
 ## Test Results Summary
 

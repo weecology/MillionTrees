@@ -1,7 +1,7 @@
 """Panel figures for fine-tuned MillionTrees models (manuscript / leaderboard).
 
 One figure per geometry (TreePoints, TreeBoxes, TreePolygons). Each figure uses the
-test split for the random and zeroshot fine-tuning tasks: rows are splits, columns
+test split for the within-distribution and out-of-distribution fine-tuning tasks: rows are splits, columns
 are ground truth vs fine-tuned predictions on the same image.
 
 Loads checkpoints from ``training/<geometry>/outputs/<split>/checkpoints/``.
@@ -32,7 +32,7 @@ from milliontrees.common.data_loaders import get_eval_loader
 warnings.filterwarnings("ignore")
 
 ROOT = Path(__file__).resolve().parents[1]
-FINETUNE_SPLITS = ("random", "zeroshot")
+FINETUNE_SPLITS = ("within-distribution", "out-of-distribution")
 
 GEOMETRY_CONFIG = {
     "points": {

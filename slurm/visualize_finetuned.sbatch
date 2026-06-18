@@ -14,7 +14,7 @@ REPO=/blue/ewhite/b.weinstein/src/MillionTrees
 ROOT_DIR=${MT_ROOT:-/orange/ewhite/web/public/MillionTrees}
 cd "$REPO"
 
-echo "=== Fine-tuned panel figures (random + zeroshot) ==="
+echo "=== Fine-tuned panel figures (within-distribution + out-of-distribution) ==="
 
 # TreeFormer point checkpoints need the treeformer DeepForest group.
 uv run --group treeformer python scripts/create_finetuned_visualizations.py \

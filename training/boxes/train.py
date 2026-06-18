@@ -126,8 +126,8 @@ def main():
     parser = argparse.ArgumentParser(description="Train DeepForest on MillionTrees TreeBoxes")
     parser.add_argument("--root-dir", type=str,
                         default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
-    parser.add_argument("--split-scheme", type=str, default="random",
-                        choices=["random", "zeroshot", "crossgeometry"])
+    parser.add_argument("--split-scheme", type=str, default="within-distribution",
+                        choices=["within-distribution", "out-of-distribution", "crossgeometry"])
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--max-epochs", type=int, default=20)
     parser.add_argument("--lr", type=float, default=0.001,

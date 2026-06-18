@@ -12,7 +12,7 @@ import requests
 import os
 
 # Test structure without real annotation data to ensure format is correct
-@pytest.mark.parametrize("split_scheme", ["random", "zeroshot", "crossgeometry"])
+@pytest.mark.parametrize("split_scheme", ["within-distribution", "out-of-distribution", "crossgeometry"])
 def test_TreePoints_small(dataset, split_scheme):
     ds = TreePointsDataset(
         download=False,

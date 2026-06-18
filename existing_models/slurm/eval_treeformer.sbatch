@@ -13,7 +13,7 @@ set -euo pipefail
 
 REPO=/blue/ewhite/b.weinstein/src/MillionTrees
 ROOT_DIR=${MT_ROOT:-/orange/ewhite/web/public/MillionTrees}
-SPLITS=(random zeroshot)
+SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 OUT_BASE=$REPO/existing_models/treeformer/outputs/$SPLIT
 

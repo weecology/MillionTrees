@@ -22,10 +22,10 @@ One folder per geometry, each with the same two entry points:
 | `training/points/` | TreeFormer | `train.py` | `eval.py` |
 | `training/polygons/` | Mask R-CNN | `train.py` | `eval.py` |
 
-Common usage (works for `random` and `zeroshot` split schemes):
+Common usage (works for `within-distribution` and `out-of-distribution` split schemes):
 
 ```bash
-uv run python training/boxes/train.py --split-scheme random --root-dir "$MT_ROOT"
+uv run python training/boxes/train.py --split-scheme within-distribution --root-dir "$MT_ROOT"
 ```
 
 The point model needs the TreeFormer extra (DeepForest
@@ -34,7 +34,7 @@ branch until it merges to weecology main):
 
 ```bash
 uv sync --group treeformer
-uv run --group treeformer python training/points/train.py --split-scheme random
+uv run --group treeformer python training/points/train.py --split-scheme within-distribution
 ```
 
 Each run writes `training/<geometry>/outputs/<split>/results_<split>.txt` (+ `.json`),
@@ -54,7 +54,7 @@ dependencies stay isolated from the core package.
 | CanopyRS (DINO Swin-L / DINO+SAM3) | `existing_models/canopyrs/` | boxes, polygons |
 
 ```bash
-uv run python existing_models/deepforest/eval_boxes.py --split-scheme zeroshot --root-dir "$MT_ROOT"
+uv run python existing_models/deepforest/eval_boxes.py --split-scheme out-of-distribution --root-dir "$MT_ROOT"
 ```
 
 Results are written to `existing_models/<model>/outputs/<split>/results_<geometry>_<split>.txt`.
@@ -73,7 +73,7 @@ new dataset version:
 bash slurm/submit_all.sh
 
 # 2. once all jobs finish, regenerate the tables
-uv run python scripts/make_benchmark_table.py --splits random zeroshot
+uv run python scripts/make_benchmark_table.py --splits within-distribution out-of-distribution
 ```
 
 `slurm/submit_all.sh` simply calls the two per-folder launchers, which you can also run
@@ -97,7 +97,7 @@ after training completes:
 | TreeBoxes | DeepForest | `training/boxes/outputs/<split>/checkpoints/` |
 | TreePolygons | Mask R-CNN | `training/polygons/outputs/<split>/checkpoints/` |
 
-Each figure has two rows (**random**, **zeroshot** fine-tuning tasks) and two columns
+Each figure has two rows (**within-distribution**, **out-of-distribution** fine-tuning tasks) and two columns
 (ground truth vs fine-tuned prediction on the same test image).
 
 ```bash

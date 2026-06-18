@@ -33,9 +33,9 @@ class TreeBoxesDataset(MillionTreesDataset):
     Each tree is annotated with a 4-point bounding box (x_min, y_min, x_max, y_max).
 
     Dataset Splits:
-        - random: For each source, a portion of images is in train and a portion in test.
+        - within-distribution: For each source, a portion of images is in train and a portion in test.
         - crossgeometry: Boxes and Points are used to predict polygons.
-        - zeroshot: Selected sources are entirely held out for testing.
+        - out-of-distribution: Selected sources are entirely held out for testing.
 
     Data Format:
         Input (x): RGB aerial imagery
@@ -105,7 +105,7 @@ class TreeBoxesDataset(MillionTreesDataset):
                  version=None,
                  root_dir='data',
                  download=False,
-                 split_scheme='random',
+                 split_scheme='within-distribution',
                  geometry_name='y',
                  eval_score_threshold=0.1,
                  remove_incomplete=False,
@@ -131,7 +131,9 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.verbose = verbose
         self.include_unsupervised = include_unsupervised
 
-        if self._split_scheme not in ['random', 'crossgeometry', 'zeroshot']:
+        if self._split_scheme not in [
+                'within-distribution', 'crossgeometry', 'out-of-distribution'
+        ]:
             raise ValueError(
                 f'Split scheme {self._split_scheme} not recognized')
 
