@@ -254,3 +254,73 @@ def save_eval_visualizations(
         per_source_count[source_id] = k + 1
 
     return written
+
+
+def save_count_scatter(counting_summary, out_path, *, title=None):
+    """Write a predicted-vs-true count scatter for the points counting eval.
+
+    ``counting_summary`` is the dict produced by ``TreePoints.eval`` under the ``counting_summary``
+    key: per-image ``pairs`` (gt / pred / source_id) plus macro ``counting_{nmae,r2,slope}_avg_dom``
+    summary scalars. Each point is one complete-annotated image, coloured by source, on log-log axes
+    (counts span ~2 orders of magnitude). The 1:1 line marks perfect counting; points sagging below
+    it are systematic under-counting. Returns the written path, or None if there is nothing to plot
+    (e.g. no complete sources).
+    """
+    pairs = counting_summary.get("pairs", {})
+    gt = np.asarray(pairs.get("gt", []), dtype=float)
+    pred = np.asarray(pairs.get("pred", []), dtype=float)
+    if gt.size == 0:
+        return None
+
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    source_ids = np.asarray(pairs.get("source_id", []), dtype=int)
+    per_source = counting_summary.get("per_source", {})
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+    # log axes can't show zero counts; nudge to 0.5 so empty tiles stay visible.
+    gt_p = np.where(gt <= 0, 0.5, gt)
+    pred_p = np.where(pred <= 0, 0.5, pred)
+
+    for sid in sorted(set(source_ids.tolist())):
+        m = source_ids == sid
+        label = per_source.get(sid, {}).get("source", str(sid))
+        ax.scatter(gt_p[m],
+                   pred_p[m],
+                   s=14,
+                   alpha=0.5,
+                   label=label,
+                   edgecolors="none")
+
+    hi = max(gt_p.max(), pred_p.max()) * 1.2
+    lo = 0.4
+    ax.plot([lo, hi], [lo, hi], "k--", lw=1, label="1:1")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(lo, hi)
+    ax.set_ylim(lo, hi)
+    ax.set_xlabel("True count (per image)")
+    ax.set_ylabel("Predicted count (per image)")
+
+    nmae = counting_summary.get("counting_nmae_avg_dom", float("nan"))
+    r2 = counting_summary.get("counting_r2_avg_dom", float("nan"))
+    slope = counting_summary.get("counting_slope_avg_dom", float("nan"))
+    ax.set_title(title or "Predicted vs. true tree counts")
+    ax.text(0.04,
+            0.96, f"macro (per-source)\nnMAE = {nmae:.3f}\nR$^2$ = {r2:.3f}\n"
+            f"slope = {slope:.3f}",
+            transform=ax.transAxes,
+            va="top",
+            ha="left",
+            fontsize=9,
+            bbox=dict(boxstyle="round", fc="white", ec="0.7", alpha=0.85))
+    ax.legend(fontsize=7, loc="lower right", framealpha=0.85)
+    fig.tight_layout()
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+    return out_path
