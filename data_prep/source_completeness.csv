@@ -27,7 +27,7 @@ source,complete
 "World Resources Institute",False
 "Ball et al. 2023",False
 "Wagner et al. 2023",False
-"Ventura et al. 2022",False
+"Ventura et al. 2022",True
 "Zuniga-Gonzalez et al. 2023",False
 "Cloutier et al. 2023",True
 "Jansen et al. 2023",False
@@ -41,3 +41,4 @@ source,complete
 "OFO field 2025",False
 "Allen et al. 2025",True
 "SelvaMask",True
+"Chen & Shang (2022)",True

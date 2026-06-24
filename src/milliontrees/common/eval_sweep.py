@@ -173,6 +173,12 @@ def add_sweep_args(parser):
         help="Sweep eval score_threshold over a grid and append rows "
         "to <output-dir>/threshold_sweep.csv (drive the model's "
         "own --score-threshold to ~0 so the full range is seen).")
+    parser.add_argument(
+        "--sweep-thresholds",
+        type=str,
+        default=None,
+        help="Comma-separated eval score_thresholds to sweep "
+        "(e.g. '0.025,0.05,0.075,0.1'). Defaults to the built-in grid.")
 
 
 def maybe_subsample(dataset, test_subset, args):
@@ -188,6 +194,11 @@ def maybe_run_sweep(args, dataset, test_subset, y_pred, y_true, *, model, task):
         return False
     out_csv = os.path.join(
         getattr(args, "output_dir", None) or ".", "threshold_sweep.csv")
+    thresholds = DEFAULT_THRESHOLDS
+    sweep_thresholds = getattr(args, "sweep_thresholds", None)
+    if sweep_thresholds:
+        thresholds = tuple(
+            float(t) for t in sweep_thresholds.split(",") if t.strip())
     run_threshold_sweep(dataset,
                         y_pred,
                         y_true,
@@ -195,5 +206,6 @@ def maybe_run_sweep(args, dataset, test_subset, y_pred, y_true, *, model, task):
                         model=model,
                         task=task,
                         split=args.split_scheme,
-                        out_csv=out_csv)
+                        out_csv=out_csv,
+                        thresholds=thresholds)
     return True

@@ -1,4 +1,5 @@
 import glob
+import re
 import pandas as pd
 from preprocess_polygons import split_raster_with_polygons
 import geopandas as gpd
@@ -8,33 +9,29 @@ import os
 def Cloutier2023():
     # Zone 3 is test, Zone 1 and 2 is train. Intentionally vary window size.
 
-    drone_flights = glob.glob("/orange/ewhite/DeepForest/Cloutier2023/**/*.tif",recursive=True)
-    zone1 = "/orange/ewhite/DeepForest/Cloutier2023/quebec_trees_dataset_2021-06-17/Z1_polygons.gpkg"
-    zone2 = "/orange/ewhite/DeepForest/Cloutier2023/quebec_trees_dataset_2021-06-17/Z2_polygons.gpkg"
-    zone3 = "/orange/ewhite/DeepForest/Cloutier2023/quebec_trees_dataset_2021-06-17/Z3_polygons.gpkg"
-    
-    train = []
-    test = []
-    for flight in drone_flights:
-            train_zone1 = read_file(zone1,rgb=flight)
-            split_annotations_1 = split_raster_with_polygons(train_zone1, path_to_raster=flight, patch_overlap=0, patch_size=2000, allow_empty=False, base_dir="/orange/ewhite/DeepForest/Cloutier2023/images/")
-            train_zone2 = read_file(zone2,rgb=flight)
-            split_annotations_2 = split_raster_with_polygons(train_zone2, path_to_raster=flight, patch_overlap=0, patch_size=2000, allow_empty=False, base_dir="/orange/ewhite/DeepForest/Cloutier2023/images/")
-            test_zone3 = read_file(zone3,rgb=flight)
-            split_annotations_3 = split_raster_with_polygons(test_zone3, path_to_raster=flight, patch_overlap=0, patch_size=2000, allow_empty=False, base_dir="/orange/ewhite/DeepForest/Cloutier2023/images/")
-            train.append(split_annotations_1)
-            train.append(split_annotations_2)
-            test.append(split_annotations_3)
-    train = pd.concat(train)
-    test = pd.concat(test)
+    drone_flights = glob.glob("/orange/ewhite/DeepForest/Cloutier2023/**/*-rgb-cog.tif",recursive=True)
 
-    #combined
-    train["split"] = "train"
-    test["split"] = "test"
-    combined = pd.concat([train,test])
+    annotations = []
+    for flight in drone_flights:
+            # Each flight raster covers a single zone/date. Pair it with that
+            # zone's polygons from the same date folder. Applying every zone's
+            # polygons to every raster (the previous behaviour) projects e.g.
+            # Z1 polygons onto the Z3 raster, where they land in the nodata
+            # corner and produce all-black crops with overlaid annotations.
+            zone = int(re.search(r"-z(\d)-rgb", os.path.basename(flight)).group(1))
+            date_dir = os.path.dirname(os.path.dirname(os.path.dirname(flight)))
+            gpkg = os.path.join(date_dir, f"Z{zone}_polygons.gpkg")
+
+            zone_annotations = read_file(gpkg, rgb=flight)
+            split_annotations = split_raster_with_polygons(zone_annotations, path_to_raster=flight, patch_overlap=0, patch_size=2000, allow_empty=False, base_dir="/orange/ewhite/DeepForest/Cloutier2023/images/")
+            # Zone 3 is the held-out test zone; zones 1 and 2 are train.
+            split_annotations["split"] = "test" if zone == 3 else "train"
+            annotations.append(split_annotations)
+
+    combined = pd.concat(annotations)
     combined["source"] = "Cloutier et al. 2023"
 
-    
+
     # Make full path
     combined["image_path"] = "/orange/ewhite/DeepForest/Cloutier2023/images/" + combined["image_path"]
 

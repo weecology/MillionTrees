@@ -16,6 +16,8 @@
 export NCCL_IB_DISABLE=1
 export NCCL_NVLS_ENABLE=0
 export NCCL_DEBUG=INFO
+# Reclaim reserved-but-unallocated fragmentation; batch 32 is marginal on 22GiB L4.
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 cd /blue/ewhite/b.weinstein/src/MillionTrees
 mkdir -p training/boxes/outputs

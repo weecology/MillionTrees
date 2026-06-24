@@ -1,11 +1,24 @@
-"""Train a Mask R-CNN model on the MillionTrees TreePolygons dataset.
+"""Train a Mask R-CNN on MillionTrees TreePolygons via the DeepForest stack.
 
-Strategy: Fine-tune a torchvision Mask R-CNN (ResNet-50-FPN backbone) on
-TreePolygons. The MillionTrees polygon dataset provides per-instance binary
-masks and bounding boxes. Mask R-CNN is the natural fit since it jointly
-predicts boxes + instance masks.
+This driver wires the MillionTrees TreePolygons dataset into DeepForest's
+polygon training stack (the ``cursor/polygon-maskrcnn-workflow`` PR):
 
-DeepForest only produces boxes, not masks, so we use torchvision directly.
+  * Training uses DeepForest's ``PolygonDataset`` + ``MaskRCNN``. The dataset
+    emits *panoptic-encoded* targets (a single ``(H, W)`` uint16 instance map +
+    surviving id list) instead of a dense ``(N, H, W)`` mask stack, and the
+    model decodes them on-device. This is the memory optimization that lets
+    dense tiles train without materializing gigabytes of masks up front.
+  * The recipe (OAM-TCD Detectron2 alignment) lives in the self-contained
+    ``deepforest_polygon.yaml`` next to this file and is loaded via
+    ``deepforest.utilities.load_config`` with runtime overrides for the data
+    paths / epochs / lr. See that file for why it's vendored here.
+  * Evaluation stays on the MillionTrees side: the trained DeepForest model is
+    scored with the TreePolygons metrics (mask accuracy / recall / mask-aware
+    precision / AP50 / merge-commission) so the numbers remain leaderboard
+    comparable.
+
+The bridge from MillionTrees splits to DeepForest is a generated annotation CSV
+(``image_path``, ``geometry`` WKT, ``label``) pointed at the packaged images dir.
 """
 
 import argparse
@@ -13,159 +26,109 @@ import json
 import os
 from pathlib import Path
 
+import cv2
 import numpy as np
+import pandas as pd
 import pytorch_lightning as pl
 import torch
-import torchvision
-from torchvision.models.detection import maskrcnn_resnet50_fpn_v2, MaskRCNN_ResNet50_FPN_V2_Weights
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
+from PIL import Image
+
+from deepforest import utilities
+from deepforest.main import deepforest
 
 from milliontrees import get_dataset
-from milliontrees.common.data_loaders import get_train_loader, get_eval_loader
+from milliontrees.common.data_loaders import get_eval_loader
 from milliontrees.datasets.polygon_stream_eval import (
     TreePolygonsStreamingEvalState,
     merge_viz_samples,
 )
-from milliontrees.common.metrics.all_metrics import (
-    compute_polygon_mask_elementwise_batch,
-)
+
+# Default recipe: vendored flattened DeepForest polygon/oam config.
+DEFAULT_CONFIG = str(Path(__file__).with_name("deepforest_polygon.yaml"))
 
 
-def get_mask_rcnn(num_classes=2, init_mode="coco"):
-    """Build a Mask R-CNN with configurable initialization (2 classes: bg + tree)."""
-    model = maskrcnn_resnet50_fpn_v2(
-        weights=MaskRCNN_ResNet50_FPN_V2_Weights.DEFAULT
+# --------------------------------------------------------------------------- #
+# MillionTrees -> DeepForest annotation bridge
+# --------------------------------------------------------------------------- #
+def build_annotation_csvs(data_dir, split_scheme, output_dir, include_unsupervised):
+    """Write DeepForest-format train/val annotation CSVs from a MillionTrees split.
+
+    The MillionTrees ``<split_scheme>.csv`` carries one polygon per row with a
+    WKT ``polygon`` column, a ``filename`` (relative to ``<data_dir>/images``),
+    a ``source`` and a ``split`` (train/test). DeepForest's ``read_file`` wants
+    ``image_path`` + ``geometry`` (WKT) + ``label``, so we slim and rename.
+
+    Returns ``(train_csv, val_csv, images_dir)`` where ``val_csv`` is built from
+    the ``test`` rows (MillionTrees has no separate val split) or ``None`` if the
+    test split is empty for this configuration.
+    """
+    split_csv = Path(data_dir) / f"{split_scheme}.csv"
+    df = pd.read_csv(split_csv, low_memory=False)
+
+    # Mirror TreePolygonsDataset's default source filtering: drop unsupervised
+    # sources unless the caller opted in. (Other dataset filters use their
+    # defaults; expose more here if a run needs them.)
+    if not include_unsupervised:
+        is_unsup = df["source"].astype(str).str.contains("unsupervised", case=False)
+        df = df[~is_unsup]
+
+    df = df[df["polygon"].notna()].copy()
+    # Labels arrive mixed-case ("Tree"/"tree"); the config label_dict is {Tree: 0}.
+    df["label"] = "Tree"
+
+    images_dir = str(Path(data_dir) / "images")
+    os.makedirs(output_dir, exist_ok=True)
+
+    def _write(split_name, path):
+        rows = df[df["split"] == split_name]
+        if len(rows) == 0:
+            return None, 0
+        out = rows[["filename", "polygon", "label"]].rename(
+            columns={"filename": "image_path", "polygon": "geometry"}
+        )
+        out.to_csv(path, index=False)
+        return path, len(out)
+
+    train_csv, n_train = _write("train", os.path.join(output_dir, "deepforest_train.csv"))
+    val_csv, n_val = _write("test", os.path.join(output_dir, "deepforest_val.csv"))
+    print(
+        f"[bridge] wrote {n_train} train / {n_val} val polygon annotations "
+        f"from {split_csv} (images: {images_dir})"
     )
-    in_features = model.roi_heads.box_predictor.cls_score.in_features
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
-    in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
-    hidden_layer = 256
-    model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask, hidden_layer, num_classes)
-    return model
+    return train_csv, val_csv, images_dir
 
 
-class MaskRCNNPolygonTrainer(pl.LightningModule):
+def build_config(args, train_csv, val_csv, images_dir, log_root):
+    """Load the vendored DeepForest config and apply MillionTrees overrides."""
+    overrides = {
+        "workers": args.num_workers,
+        "batch_size": args.batch_size,
+        "devices": args.gpus,
+        "log_root": log_root,
+        "train": {
+            "csv_file": train_csv,
+            "root_dir": images_dir,
+            "lr": args.lr,
+            "epochs": args.max_epochs,
+        },
+        "validation": {
+            "csv_file": val_csv,
+            "root_dir": images_dir if val_csv else None,
+        },
+    }
+    if not args.augment:
+        # Keep the geometric/photometric pipeline off for sanity runs.
+        overrides["train"]["augmentations"] = []
 
-    def __init__(self, lr=1e-4, weight_decay=1e-5, init_mode="coco",
-                 eval_metrics=None):
-        super().__init__()
-        # eval_metrics holds live dataset metric objects (not serializable and
-        # only needed during training-time validation), so keep it off the
-        # saved hyperparameters / checkpoint.
-        self.save_hyperparameters(ignore=["eval_metrics"])
-        self.model = get_mask_rcnn(num_classes=2, init_mode=init_mode)
-        self._eval_metrics = eval_metrics
-        self._val_acc_sum = 0.0
-        self._val_acc_n = 0
-
-    def _prepare_targets(self, targets_list, device):
-        rt = []
-        for t in targets_list:
-            masks = t["y"]
-            if isinstance(masks, np.ndarray):
-                masks = torch.from_numpy(masks)
-            # GT masks are rasterized with foreground value 255 (see
-            # TreePolygons.create_polygon_mask). Mask R-CNN's mask loss is
-            # binary_cross_entropy_with_logits against these as targets, which
-            # requires {0, 1}; passing 255 makes the -x*target term explode and
-            # drives the loss arbitrarily negative. Binarize at this boundary.
-            masks = (masks.to(device) > 0).float()
-
-            if "bboxes" in t:
-                boxes = t["bboxes"]
-                if isinstance(boxes, np.ndarray):
-                    boxes = torch.from_numpy(boxes)
-                boxes = boxes.to(device).float()
-            else:
-                if len(masks) > 0:
-                    from torchvision.ops import masks_to_boxes
-                    boxes = masks_to_boxes(masks.byte())
-                else:
-                    boxes = torch.zeros((0, 4), dtype=torch.float32, device=device)
-
-            if len(boxes) == 0:
-                boxes = torch.zeros((0, 4), dtype=torch.float32, device=device)
-                masks = torch.zeros((0, 1, 1), dtype=torch.float32, device=device)
-
-            labels = torch.ones(len(boxes), dtype=torch.int64, device=device)
-            rt.append({"boxes": boxes, "labels": labels, "masks": masks})
-        return rt
-
-    def training_step(self, batch, batch_idx):
-        metadata, images, targets_list = batch
-        rt = self._prepare_targets(targets_list, images.device)
-        loss_dict = self.model(images, rt)
-        loss = sum(l for l in loss_dict.values())
-        self.log("train_loss", loss, prog_bar=True, batch_size=len(images))
-        # Break out the per-component losses so we can see whether the model is
-        # learning at all (a flat total can hide a classifier that learns while
-        # box/mask regression stalls, or vice versa).
-        for name, value in loss_dict.items():
-            self.log(f"train_{name}", value, batch_size=len(images))
-        self.log("lr", self.optimizers().param_groups[0]["lr"], prog_bar=True)
-        return loss
-
-    def on_validation_epoch_start(self):
-        self._val_acc_sum = 0.0
-        self._val_acc_n = 0
-
-    def validation_step(self, batch, batch_idx):
-        metadata, images, targets_list = batch
-        rt = self._prepare_targets(targets_list, images.device)
-        self.model.train()
-        loss_dict = self.model(images, rt)
-        self.model.eval()
-        loss = sum(l for l in loss_dict.values())
-        self.log("val_loss", loss, prog_bar=True, batch_size=len(images), sync_dist=True)
-        for name, value in loss_dict.items():
-            self.log(f"val_{name}", value, batch_size=len(images), sync_dist=True)
-
-        # Track the actual eval metric (mask_acc) so we can select checkpoints on
-        # it instead of the noisy summed val_loss surrogate. Requires an extra
-        # eval-mode forward pass to get scored predictions.
-        if self._eval_metrics is not None:
-            preds = format_predictions_for_eval(images, self, images.device)
-            # format_predictions_for_eval returns CPU preds; Lightning has moved
-            # the batch targets to GPU. The metric does masks_to_boxes on both, so
-            # they must share a device — mirror the CPU test-eval path.
-            targets_cpu = [
-                {k: (v.cpu() if isinstance(v, torch.Tensor) else v)
-                 for k, v in t.items()}
-                for t in targets_list
-            ]
-            ew = compute_polygon_mask_elementwise_batch(
-                preds,
-                targets_cpu,
-                accuracy_metric=self._eval_metrics["accuracy"],
-                recall_metric=self._eval_metrics["recall"],
-                maskaware_metric=self._eval_metrics["maskaware_precision"],
-                merge_metric=self._eval_metrics["merge_commission"],
-            )
-            acc = ew["accuracy"].float()
-            self._val_acc_sum += float(acc.sum().item())
-            self._val_acc_n += int(acc.numel())
-
-    def on_validation_epoch_end(self):
-        if self._eval_metrics is None:
-            return
-        mask_acc = (self._val_acc_sum / self._val_acc_n) if self._val_acc_n else 0.0
-        self.log("val_mask_acc", mask_acc, prog_bar=True, sync_dist=True)
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(
-            self.model.parameters(),
-            lr=self.hparams.lr,
-            weight_decay=self.hparams.weight_decay,
-        )
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=self.trainer.max_epochs, eta_min=1e-6
-        )
-        return [optimizer], [scheduler]
+    cfg = utilities.load_config(config_name=args.config, overrides=overrides)
+    return cfg
 
 
+# --------------------------------------------------------------------------- #
+# Box-pretrained backbone (weak-supervision ablation, Table 6)
+# --------------------------------------------------------------------------- #
 def _extract_box_pretrained_backbone(checkpoint_path):
-    """Load a DeepForest checkpoint; return backbone state_dict keys for Mask R-CNN."""
+    """Load a DeepForest box checkpoint; return backbone keys for the Mask R-CNN."""
     ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     state = ckpt.get("state_dict", ckpt)
     prefix = "model.backbone.body."
@@ -181,22 +144,28 @@ def _extract_box_pretrained_backbone(checkpoint_path):
     return mapped
 
 
-def apply_box_pretrained_backbone(lightning_model, checkpoint_path):
-    """Apply ResNet backbone weights from a box checkpoint to Mask R-CNN."""
+def apply_box_pretrained_backbone(deepforest_module, checkpoint_path):
+    """Overwrite the Mask R-CNN ResNet backbone with box-pretrained weights.
+
+    Leaves DeepForest's COCO-initialized FPN / RPN / heads in place and only
+    swaps ``backbone.body.*`` — the same surgery the previous torchvision-based
+    driver did, retargeted onto ``deepforest_module.model`` (the ``MaskRCNN``).
+    """
     backbone_state = _extract_box_pretrained_backbone(checkpoint_path)
-    missing, unexpected = lightning_model.model.load_state_dict(
-        backbone_state,
-        strict=False,
+    missing, unexpected = deepforest_module.model.load_state_dict(
+        backbone_state, strict=False
     )
     if unexpected:
         raise ValueError(f"Unexpected keys when loading box backbone: {unexpected}")
-    loaded_prefix = "backbone.body."
-    loaded_count = sum(1 for k in backbone_state if k.startswith(loaded_prefix))
-    if loaded_count == 0:
+    loaded = sum(1 for k in backbone_state if k.startswith("backbone.body."))
+    if loaded == 0:
         raise ValueError("No backbone.body keys loaded from box pretrained checkpoint.")
-    return {"missing": missing, "loaded_backbone_keys": loaded_count}
+    return {"missing": missing, "loaded_backbone_keys": loaded}
 
 
+# --------------------------------------------------------------------------- #
+# MillionTrees-side evaluation (unchanged metric path)
+# --------------------------------------------------------------------------- #
 def flatten_numeric_metrics(results):
     flat = {}
     for k, v in results.items():
@@ -212,34 +181,126 @@ def write_run_metadata(path, payload):
         json.dump(payload, f, indent=2)
 
 
-def format_predictions_for_eval(images, model, device, mask_threshold=0.5):
-    """Run Mask R-CNN inference, return predictions in MillionTrees eval format."""
-    model.model.eval()
-    model.model.to(device)
-    with torch.no_grad():
-        outputs = model.model(images.to(device))
+# --------------------------------------------------------------------------- #
+# Tiled native-resolution inference (matches the DeepForest training scale)
+# --------------------------------------------------------------------------- #
+# The model is trained on RandomResizedCrop 640 crops of *native-resolution*
+# imagery (see deepforest_polygon.yaml). Feeding the MillionTrees eval loader's
+# whole-image-resized-to-448 tensors put trees at a scale the model never saw
+# and produced oversized blob masks. Instead we run DeepForest's sliding-window
+# ``predict_tile`` at the training patch size over the native image, then project
+# the returned native-coordinate polygons into the 448 metric space (where the
+# ground-truth masks live) so the leaderboard numbers stay comparable.
+POLYGON_EVAL_PATCH_SIZE = 640        # == training RandomResizedCrop size
+POLYGON_EVAL_PATCH_OVERLAP = 0.1     # window overlap so edge trees aren't split
+POLYGON_EVAL_TILE_IOU = 0.15         # cross-window polygon NMS (predict_tile default)
+
+
+def ensure_predict_trainer(model):
+    """Give a (possibly freshly loaded) DeepForest model a single-device predict trainer.
+
+    ``predict_tile`` calls ``self.trainer.predict``; a checkpoint loaded via
+    ``deepforest.load_from_checkpoint`` has no trainer, and under multi-GPU
+    training the eval runs on rank 0 only — so force ``devices=1`` to keep the
+    per-image predict loop on a single device. We also drop the dataloader
+    workers to 0: each image yields only a handful of windows, so spawning the
+    training ``workers`` processes per image is pure overhead (and thrashes
+    low-core nodes).
+    """
+    model.config.workers = 0
+    model.create_trainer(
+        logger=False,
+        devices=1,
+        num_sanity_val_steps=0,
+        enable_progress_bar=False,
+    )
+
+
+def _resolve_native_path(dataset, filename_id):
+    """Map a loader ``filename_id`` back to the native (un-resized) image on disk."""
+    filename = dataset._filename_id_to_code[int(filename_id)]
+    return os.path.join(dataset._data_dir, "images", filename)
+
+
+def _rasterize_geoms_to_masks(geoms, scale_x, scale_y, target_size):
+    """Rasterize native-coordinate shapely polygons into a ``(N, S, S)`` uint8 stack.
+
+    Each polygon's vertices are scaled by ``(scale_x, scale_y)`` so a polygon
+    defined in native image pixels is drawn directly at the ``target_size`` metric
+    resolution, matching how the dataset rasterizes ground-truth masks.
+    """
+    masks = []
+    for geom in geoms:
+        mask = np.zeros((target_size, target_size), dtype=np.uint8)
+        if geom is not None and not geom.is_empty:
+            polys = geom.geoms if geom.geom_type == "MultiPolygon" else [geom]
+            for poly in polys:
+                if poly.is_empty:
+                    continue
+                coords = np.asarray(poly.exterior.coords, dtype=np.float64)
+                coords[:, 0] *= scale_x
+                coords[:, 1] *= scale_y
+                cv2.fillPoly(mask, [coords.astype(np.int32)], 1)
+        masks.append(mask)
+    if masks:
+        return np.stack(masks)
+    return np.zeros((0, target_size, target_size), dtype=np.uint8)
+
+
+def tiled_predict_for_eval(
+    model,
+    dataset,
+    metadata,
+    *,
+    patch_size=POLYGON_EVAL_PATCH_SIZE,
+    patch_overlap=POLYGON_EVAL_PATCH_OVERLAP,
+    iou_threshold=POLYGON_EVAL_TILE_IOU,
+):
+    """Tiled native-resolution inference for one batch, in MillionTrees eval format.
+
+    For each sample (identified by its ``filename_id`` in ``metadata``) the native
+    image is run through ``predict_tile`` and the resulting polygons are projected
+    into the dataset's ``image_size`` space and rasterized to per-instance masks.
+    Returns one ``{"y", "labels", "scores"}`` dict per sample, aligned with the
+    loader batch order.
+    """
+    target_size = dataset.image_size
+    if not isinstance(metadata, torch.Tensor):
+        metadata = torch.as_tensor(metadata)
 
     batch_y_pred = []
-    for output in outputs:
-        masks = output.get("masks", torch.zeros((0, 1, 1, 1)))
-        boxes = output.get("boxes", torch.zeros((0, 4)))
-        scores = output.get("scores", torch.zeros((0,)))
-        labels_out = output.get("labels", torch.zeros((0,), dtype=torch.int64))
+    for row in metadata:
+        path = _resolve_native_path(dataset, int(row[0]))
+        with Image.open(path) as im:
+            native_w, native_h = im.size
 
-        if len(masks) == 0:
-            y_pred = {
-                "y": torch.zeros((0, images.shape[2], images.shape[3]), dtype=torch.uint8),
+        gdf = model.predict_tile(
+            path=path,
+            patch_size=patch_size,
+            patch_overlap=patch_overlap,
+            iou_threshold=iou_threshold,
+        )
+
+        if gdf is None or len(gdf) == 0:
+            batch_y_pred.append({
+                "y": torch.zeros((0, target_size, target_size), dtype=torch.uint8),
                 "labels": torch.zeros((0,), dtype=torch.int64),
                 "scores": torch.zeros((0,), dtype=torch.float32),
-            }
-        else:
-            binary_masks = (masks[:, 0] > mask_threshold).byte().cpu()
-            y_pred = {
-                "y": binary_masks,
-                "labels": labels_out.cpu(),
-                "scores": scores.cpu(),
-            }
-        batch_y_pred.append(y_pred)
+            })
+            continue
+
+        masks = _rasterize_geoms_to_masks(
+            list(gdf.geometry),
+            target_size / native_w,
+            target_size / native_h,
+            target_size,
+        )
+        batch_y_pred.append({
+            "y": torch.from_numpy(masks),
+            # Single foreground class ("Tree" -> 0), matching the GT labels.
+            "labels": torch.zeros((len(masks),), dtype=torch.int64),
+            "scores": torch.as_tensor(gdf["score"].to_numpy(), dtype=torch.float32),
+        })
     return batch_y_pred
 
 
@@ -254,22 +315,21 @@ def evaluate(
     eval_mode="stream",
     viz_n_per_source=4,
 ):
-    """Run test-set evaluation.
+    """Run MillionTrees test-set evaluation on a trained DeepForest model.
 
     ``eval_mode``:
-        - ``stream`` (default): update metrics per batch; does not accumulate all
-          masks in Python lists (lower peak memory).
-        - ``legacy``: accumulate full ``y_pred`` / ``y_true`` lists then call
-          ``dataset.eval()`` once (previous behavior).
+        - ``stream`` (default): update metrics per batch (lower peak memory).
+        - ``legacy``: accumulate full pred/true lists then call ``dataset.eval``.
     """
     test_loader = get_eval_loader("standard", test_subset, batch_size=batch_size)
     model.eval()
+    ensure_predict_trainer(model)
 
     if eval_mode == "legacy":
         all_y_pred, all_y_true = [], []
         for batch in test_loader:
             metadata, images, targets = batch
-            preds = format_predictions_for_eval(images, model, device)
+            preds = tiled_predict_for_eval(model, dataset, metadata)
             for y_pred, image_targets in zip(preds, targets):
                 all_y_pred.append(y_pred)
                 all_y_true.append(image_targets)
@@ -289,7 +349,7 @@ def evaluate(
     viz_y_pred, viz_y_true, viz_rows = [], [], []
     for batch in test_loader:
         metadata, images, targets = batch
-        preds = format_predictions_for_eval(images, model, device)
+        preds = tiled_predict_for_eval(model, dataset, metadata)
         state.update(preds, targets, metadata)
         if viz_dir is not None:
             merge_viz_samples(
@@ -313,102 +373,125 @@ def evaluate(
     )
 
 
+# --------------------------------------------------------------------------- #
+# Training orchestration
+# --------------------------------------------------------------------------- #
+def build_trainer(model, args, log_root):
+    """Attach loggers + checkpointing and (re)build the DeepForest trainer."""
+    callbacks = []
+    checkpoint_cb = pl.callbacks.ModelCheckpoint(
+        dirpath=os.path.join(log_root, "checkpoints"),
+        filename="polygons-{epoch:02d}-{val_loss:.4f}",
+        monitor="val_loss",
+        mode="min",
+        save_top_k=1,
+        save_last=True,
+    )
+    callbacks.append(checkpoint_cb)
+    if args.early_stopping:
+        callbacks.append(
+            pl.callbacks.EarlyStopping(
+                monitor="val_loss", patience=args.patience, mode="min"
+            )
+        )
+
+    loggers = []
+    if args.comet:
+        try:
+            from pytorch_lightning.loggers import CometLogger
+
+            loggers.append(
+                CometLogger(
+                    project_name="milliontrees-polygons",
+                    experiment_name=args.comet_name,
+                    tags=[
+                        f"split-{args.split_scheme}",
+                        "geometry-polygons",
+                        "stack-deepforest",
+                        f"lr-{args.lr:g}",
+                        f"init-{args.init_mode}",
+                    ],
+                )
+            )
+        except Exception as e:  # noqa: BLE001
+            print(f"Comet ML logging disabled: {e}")
+
+    trainer_kwargs = {"callbacks": callbacks, "logger": loggers if loggers else True}
+    if args.limit_train_batches is not None:
+        trainer_kwargs["limit_train_batches"] = args.limit_train_batches
+    if args.limit_val_batches is not None:
+        trainer_kwargs["limit_val_batches"] = args.limit_val_batches
+    # Multi-GPU: DDP with unused-parameter detection. Mask R-CNN's RPN/ROI heads
+    # take data-dependent branches (e.g. zero-proposal images), so some params
+    # miss a backward each step and the default DDP reducer would error.
+    if args.gpus and args.gpus > 1:
+        trainer_kwargs["strategy"] = "ddp_find_unused_parameters_true"
+
+    model.create_trainer(**trainer_kwargs)
+    return checkpoint_cb
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Train Mask R-CNN on MillionTrees TreePolygons")
+    parser = argparse.ArgumentParser(
+        description="Train DeepForest Mask R-CNN on MillionTrees TreePolygons"
+    )
     parser.add_argument("--root-dir", type=str,
                         default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
     parser.add_argument("--split-scheme", type=str, default="within-distribution",
                         choices=["within-distribution", "out-of-distribution", "crossgeometry"])
+    parser.add_argument("--config", type=str, default=DEFAULT_CONFIG,
+                        help="Path to the DeepForest polygon config YAML (vendored recipe by default).")
     parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--max-epochs", type=int, default=20)
-    parser.add_argument("--lr", type=float, default=2e-4)
-    parser.add_argument("--num-workers", type=int, default=4)
+    parser.add_argument("--max-epochs", type=int, default=100)
+    parser.add_argument("--lr", type=float, default=0.005)
+    parser.add_argument("--num-workers", type=int, default=8)
     parser.add_argument("--mini", action="store_true")
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--output-dir", type=str, default="training/polygons/outputs")
     parser.add_argument("--gpus", type=int, default=1)
-    parser.add_argument("--image-size", type=int, default=448)
-    parser.add_argument("--comet", action="store_true", help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
-    parser.add_argument(
-        "--limit-train-batches",
-        type=int,
-        default=None,
-        help="Number of training batches per epoch (omit for full dataset)",
-    )
-    parser.add_argument(
-        "--limit-val-batches",
-        type=int,
-        default=None,
-        help="Number of validation batches per epoch (omit for full dataset)",
-    )
-    parser.add_argument(
-        "--eval-mode",
-        type=str,
-        default="stream",
-        choices=["stream", "legacy"],
-        help="Test eval: 'stream' avoids holding the full test set in memory; 'legacy' matches old behavior.",
-    )
-    parser.add_argument(
-        "--init-mode",
-        type=str,
-        default="coco",
-        choices=["coco", "box_pretrained"],
-        help="How to initialize Mask R-CNN before polygon training.",
-    )
-    parser.add_argument(
-        "--box-backbone-checkpoint",
-        type=str,
-        default=None,
-        help="Path to DeepForest/box checkpoint when --init-mode=box_pretrained.",
-    )
-    parser.add_argument(
-        "--include-unsupervised",
-        action="store_true",
-        help="Include unsupervised rows in TreePolygons (full zip URLs).",
-    )
-    parser.add_argument(
-        "--data-scope",
-        type=str,
-        default="subset",
-        choices=["subset", "full"],
-        help="Tag for experiment aggregation (subset vs full data pull).",
-    )
+    parser.add_argument("--image-size", type=int, default=448,
+                        help="Resolution of the MillionTrees eval loader (the DeepForest "
+                             "model itself runs at native/crop resolution).")
+    parser.add_argument("--comet", action="store_true",
+                        help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
+    parser.add_argument("--comet-name", type=str, default=None,
+                        help="Explicit Comet experiment name. Defaults to "
+                             "polygons-<split>-<init>-lr<lr>.")
+    parser.add_argument("--limit-train-batches", type=float, default=None)
+    parser.add_argument("--limit-val-batches", type=float, default=None)
+    parser.add_argument("--eval-mode", type=str, default="stream",
+                        choices=["stream", "legacy"])
+    parser.add_argument("--init-mode", type=str, default="coco",
+                        choices=["coco", "box_pretrained"],
+                        help="coco: DeepForest COCO-initialized Mask R-CNN. "
+                             "box_pretrained: overwrite the ResNet backbone with a box checkpoint.")
+    parser.add_argument("--box-backbone-checkpoint", type=str, default=None,
+                        help="DeepForest/box checkpoint when --init-mode=box_pretrained.")
+    parser.add_argument("--include-unsupervised", action="store_true",
+                        help="Include unsupervised sources in the training annotations.")
+    parser.add_argument("--data-scope", type=str, default="subset",
+                        choices=["subset", "full"],
+                        help="Tag for experiment aggregation (subset vs full data pull).")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument(
-        "--debug-overfit",
-        action="store_true",
-        help="Sanity check: make the val/eval set identical to the train set, "
-             "disable checkpointing + early stopping, and skip writing leaderboard "
-             "results. Answers 'is the model learning and is eval wired up?' — on "
-             "identical data, loss should fall and mask_acc/AP50 should climb high.",
-    )
-    parser.add_argument(
-        "--early-stopping",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Enable/disable EarlyStopping on val_loss. Use --no-early-stopping "
-             "to train the full --max-epochs (e.g. for LR sweeps).",
-    )
-    parser.add_argument(
-        "--patience",
-        type=int,
-        default=10,
-        help="EarlyStopping patience (val checks) when --early-stopping is set. "
-             "With once-per-epoch validation this equals epochs of no improvement.",
-    )
-    parser.add_argument(
-        "--augment",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Apply train-time augmentation (flips, 90-deg rotations, mild "
-             "brightness/contrast). Disabled automatically under --debug-overfit.",
-    )
+    parser.add_argument("--augment", action=argparse.BooleanOptionalAction, default=True,
+                        help="Apply the config's train augmentations. --no-augment strips them.")
+    parser.add_argument("--early-stopping", action=argparse.BooleanOptionalAction, default=False,
+                        help="EarlyStopping on val_loss (off by default; the OAM recipe trains full epochs).")
+    parser.add_argument("--patience", type=int, default=10)
+    parser.add_argument("--debug-overfit", action="store_true",
+                        help="Sanity check: validate/evaluate on the TRAIN annotations and "
+                             "skip writing leaderboard results.")
     args = parser.parse_args()
+
+    if args.comet_name is None:
+        args.comet_name = f"polygons-{args.split_scheme}-{args.init_mode}-lr{args.lr:g}"
 
     os.makedirs(args.output_dir, exist_ok=True)
     pl.seed_everything(args.seed, workers=True)
     torch.set_float32_matmul_precision("high")
 
+    # MillionTrees dataset: resolves the packaged data dir (download/version/mini)
+    # and provides the eval metrics + test subset.
     polygon_dataset = get_dataset(
         "TreePolygons",
         download=args.download,
@@ -418,47 +501,25 @@ def main():
         image_size=args.image_size,
         include_unsupervised=args.include_unsupervised,
     )
+    data_dir = polygon_dataset._data_dir
 
-    # Augmentation is train-only: build the train subset with the augmenting
-    # transform, leave test on the deterministic resize. Skip it under
-    # --debug-overfit so the train==val sanity check stays truly identical.
-    use_augment = args.augment and not args.debug_overfit
-    train_transform = polygon_dataset._train_transform_() if use_augment else None
-    train_subset = polygon_dataset.get_subset("train", transform=train_transform)
-    test_subset = polygon_dataset.get_subset("test")
-    print(f"[augment] train-time augmentation: {'on' if use_augment else 'off'}")
-
-    if len(train_subset) == 0:
-        print("No training samples for this split; skipping training.")
+    train_csv, val_csv, images_dir = build_annotation_csvs(
+        data_dir, args.split_scheme, args.output_dir, args.include_unsupervised
+    )
+    if train_csv is None:
+        print("No training annotations for this split; skipping training.")
         return
 
     if args.debug_overfit:
-        # Sanity check: train and evaluate on the *same* rows. The only loader
-        # difference is shuffle (transforms are a deterministic resize), so this
-        # removes any generalization gap. A healthy model + eval pipeline must
-        # drive loss down and push mask_acc/AP50 high on this set.
-        print(
-            "[debug-overfit] val/eval set := train set "
-            f"({len(train_subset)} rows); checkpointing + early stopping disabled; "
-            "leaderboard results will NOT be written."
-        )
-        test_subset = train_subset
+        print("[debug-overfit] validation := train annotations; "
+              "leaderboard results will NOT be written.")
+        val_csv = train_csv
 
-    train_loader = get_train_loader(
-        "standard", train_subset, batch_size=args.batch_size, num_workers=args.num_workers,
-        pin_memory=True, persistent_workers=args.num_workers > 0,
-        prefetch_factor=4 if args.num_workers > 0 else None,
-    )
-    val_loader = get_eval_loader(
-        "standard", test_subset, batch_size=args.batch_size, num_workers=args.num_workers,
-        pin_memory=True, persistent_workers=args.num_workers > 0,
-        prefetch_factor=4 if args.num_workers > 0 else None,
-    )
+    log_root = os.path.join(args.output_dir, "logs")
+    cfg = build_config(args, train_csv, val_csv, images_dir, log_root)
 
-    model = MaskRCNNPolygonTrainer(
-        lr=args.lr, init_mode=args.init_mode, eval_metrics=polygon_dataset.metrics
-    )
-    init_details = {"init_mode": args.init_mode}
+    model = deepforest(config=cfg)
+    init_details = {"init_mode": args.init_mode, "stack": "deepforest-maskrcnn"}
     if args.init_mode == "box_pretrained":
         if args.box_backbone_checkpoint is None:
             raise ValueError(
@@ -470,75 +531,24 @@ def main():
             "loaded_backbone_keys": details["loaded_backbone_keys"],
         })
 
-    has_val = len(val_loader) > 0
+    checkpoint_cb = build_trainer(model, args, log_root)
+    model.trainer.fit(model)
 
-    # Select + early-stop on the actual eval metric (mask_acc), not the noisy
-    # summed val_loss surrogate, which rises from classifier overfitting while
-    # detection quality is still flat/improving.
-    checkpoint_cb = pl.callbacks.ModelCheckpoint(
-        dirpath=os.path.join(args.output_dir, "checkpoints"),
-        filename="polygons-{epoch:02d}-{val_mask_acc:.4f}",
-        monitor="val_mask_acc",
-        mode="max",
-        save_top_k=3,
-    )
-    early_stop_cb = pl.callbacks.EarlyStopping(
-        monitor="val_mask_acc", patience=args.patience, mode="max"
-    )
+    # Under DDP all ranks return from fit(); only rank 0 runs the final
+    # MillionTrees eval and writes results (avoids redundant work / file races).
+    if not model.trainer.is_global_zero:
+        return
 
-    loggers = []
-    if args.comet:
-        try:
-            from pytorch_lightning.loggers import CometLogger
-            loggers.append(CometLogger(
-                project_name="milliontrees-polygons",
-                tags=[
-                    f"split-{args.split_scheme}",
-                    "geometry-polygons",
-                    f"lr-{args.lr:g}",
-                    f"init-{args.init_mode}",
-                ] + (["debug-overfit"] if args.debug_overfit else []),
-            ))
-        except Exception as e:
-            print(f"Comet ML logging disabled: {e}")
-
-    enable_ckpt = has_val and not args.debug_overfit
-    callbacks = []
-    if enable_ckpt:
-        callbacks.append(checkpoint_cb)
-        if args.early_stopping:
-            callbacks.append(early_stop_cb)
-
-    trainer = pl.Trainer(
-        max_epochs=args.max_epochs,
-        accelerator="auto",
-        devices=args.gpus,
-        callbacks=callbacks,
-        default_root_dir=args.output_dir,
-        log_every_n_steps=10,
-        val_check_interval=1.0,
-        logger=loggers if loggers else True,
-        enable_checkpointing=enable_ckpt,
-        limit_train_batches=args.limit_train_batches if args.limit_train_batches is not None else 1.0,
-        limit_val_batches=(args.limit_val_batches if args.limit_val_batches is not None else 1.0) if has_val else 0,
-    )
-
-    trainer.fit(model, train_loader, val_loader)
-
-    if args.debug_overfit:
-        print("\\n=== [debug-overfit] Evaluating final model on the TRAIN set ===")
-        best_path = None
+    # Score the best checkpoint with the MillionTrees metrics.
+    best_path = checkpoint_cb.best_model_path or None
+    if best_path and os.path.exists(best_path):
+        print(f"\n=== Loading best checkpoint: {best_path} ===")
+        model = deepforest.load_from_checkpoint(best_path)
     else:
-        print("\\n=== Evaluating best checkpoint ===")
-        best_path = checkpoint_cb.best_model_path if enable_ckpt else None
-        if best_path:
-            print(f"Loading best checkpoint: {best_path}")
-            model = MaskRCNNPolygonTrainer.load_from_checkpoint(
-                best_path,
-                weights_only=False,
-            )
+        print("\n=== No checkpoint saved; evaluating the in-memory model ===")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    test_subset = train_subset_or_test(polygon_dataset, args.debug_overfit)
     results, results_str = evaluate(
         model,
         polygon_dataset,
@@ -551,8 +561,6 @@ def main():
     print(results_str)
 
     if args.debug_overfit:
-        # Sanity run: print metrics (and Comet has the curves) but do not emit the
-        # leaderboard-shaped JSON/results files.
         print("[debug-overfit] skipping leaderboard results/JSON writes.")
         return
 
@@ -573,12 +581,17 @@ def main():
             "data_scope": args.data_scope,
             "include_unsupervised": args.include_unsupervised,
             "eval_mode": args.eval_mode,
-            "best_checkpoint_path": best_path if best_path else None,
+            "best_checkpoint_path": best_path,
             **init_details,
         },
     }
     write_run_metadata(json_path, payload)
     print(f"JSON results saved to {json_path}")
+
+
+def train_subset_or_test(polygon_dataset, debug_overfit):
+    """Pick the MillionTrees subset to evaluate on (train under --debug-overfit)."""
+    return polygon_dataset.get_subset("train" if debug_overfit else "test")
 
 
 if __name__ == "__main__":

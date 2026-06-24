@@ -105,13 +105,26 @@ treeformer = [
     "geopandas",
     "comet-ml>=3.44.4",
 ]
+# Polygon Mask R-CNN training (DeepForest polygon-maskrcnn-workflow branch until merged).
+# NOTE: this branch and treeformer-training are distinct branches of the same
+# package, so only one DeepForest can be installed in a venv at a time. The
+# [tool.uv.sources] entry below selects which one `uv sync` installs; it is set
+# to the polygon branch for this workflow.
+polygon = [
+    "deepforest @ git+https://github.com/jveitchmichaelis/DeepForest.git@cursor/polygon-maskrcnn-workflow",
+    "geopandas",
+    "comet-ml>=3.44.4",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages.find = {where = ["src"], include = ["milliontrees*"]}
 
 [tool.uv.sources]
-deepforest = { git = "https://github.com/jveitchmichaelis/DeepForest.git", branch = "treeformer-training" }
+# Polygon Mask R-CNN work pins the polygon-maskrcnn-workflow branch. Switch this
+# back to "treeformer-training" when running the point workflow (the two branches
+# cannot be installed simultaneously).
+deepforest = { git = "https://github.com/jveitchmichaelis/DeepForest.git", branch = "cursor/polygon-maskrcnn-workflow" }
 torch = [
     { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
 ]

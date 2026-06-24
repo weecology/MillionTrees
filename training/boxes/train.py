@@ -101,7 +101,13 @@ def predict_batch(model, images):
 # Evaluation (DeepForest's evaluate() is CSV-based; use MillionTrees API)
 # ---------------------------------------------------------------------------
 
-def evaluate(model, dataset, test_subset, batch_size=12, viz_dir=None, max_batches=None):
+def collect_predictions(model, test_subset, batch_size=12, max_batches=None):
+    """Run inference over test_subset, returning (all_y_pred, all_y_true).
+
+    Factored out of evaluate() so a threshold sweep can reuse a single inference
+    pass (eval_sweep.run_threshold_sweep) instead of re-running the model per
+    threshold.
+    """
     test_loader = get_eval_loader("standard", test_subset, batch_size=batch_size)
     all_y_pred, all_y_true = [], []
     for i, batch in enumerate(test_loader):
@@ -111,6 +117,12 @@ def evaluate(model, dataset, test_subset, batch_size=12, viz_dir=None, max_batch
         preds = predict_batch(model, images)
         all_y_pred.extend(preds)
         all_y_true.extend(targets)
+    return all_y_pred, all_y_true
+
+
+def evaluate(model, dataset, test_subset, batch_size=12, viz_dir=None, max_batches=None):
+    all_y_pred, all_y_true = collect_predictions(
+        model, test_subset, batch_size=batch_size, max_batches=max_batches)
     results, results_str = dataset.eval(
         all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)],
         viz_dir=viz_dir,

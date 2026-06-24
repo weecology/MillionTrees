@@ -74,6 +74,16 @@ class TreePolygonsDataset(MillionTreesDataset):
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.18.zip",
             'compressed_size':
                 120747553994
+        },
+        "0.19": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.19.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.19.zip",
+            # TODO: refresh with the real zip size once v0.19 zips are built;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                120747553994
         }
     }
 
@@ -260,37 +270,7 @@ class TreePolygonsDataset(MillionTreesDataset):
             self._source_id_complete = {}
 
         # eval grouper
-        self.metrics = {
-            "accuracy":
-                MaskAccuracy(geometry_name=self.geometry_name,
-                             score_threshold=self.eval_score_threshold,
-                             metric="accuracy"),
-            "recall":
-                MaskAccuracy(geometry_name=self.geometry_name,
-                             score_threshold=self.eval_score_threshold,
-                             metric="recall"),
-            "maskaware_precision":
-                MaskAwareMaskPrecision(
-                    geometry_name=self.geometry_name,
-                    score_threshold=self.eval_score_threshold),
-            "AP50":
-                DetectionMAP(geometry_name=self.geometry_name,
-                             score_threshold=self.eval_score_threshold,
-                             iou_type="segm",
-                             iou_thresholds=[0.5],
-                             max_detection_thresholds=[1, 10, 1000]),
-            "merge_commission":
-                MergeCommissionMetric(
-                    geometry_name=self.geometry_name,
-                    score_threshold=self.eval_score_threshold,
-                    modality="mask",
-                ),
-            "counting_mae":
-                CountingError(
-                    score_threshold=self.eval_score_threshold,
-                    geometry_name=self.geometry_name,
-                ),
-        }
+        self.metrics = self.build_metrics(self.eval_score_threshold)
         self._eval_grouper = CombinatorialGrouper(dataset=self,
                                                   groupby_fields=(['source_id'
                                                                   ]))
@@ -452,6 +432,44 @@ class TreePolygonsDataset(MillionTreesDataset):
             pts = pts.astype(np.int32)
         cv2.fillPoly(mask_img, [pts], 255)
         return mask_img
+
+    def build_metrics(self, score_threshold):
+        """Construct the evaluation metric objects at a given score threshold.
+
+        Each metric filters predictions by ``scores >= score_threshold``, so the threshold is baked
+        in at construction. Factored out so callers (e.g. a threshold sweep) can build independent
+        metric sets per threshold without reconstructing the whole dataset.
+        """
+        return {
+            "accuracy":
+                MaskAccuracy(geometry_name=self.geometry_name,
+                             score_threshold=score_threshold,
+                             metric="accuracy"),
+            "recall":
+                MaskAccuracy(geometry_name=self.geometry_name,
+                             score_threshold=score_threshold,
+                             metric="recall"),
+            "maskaware_precision":
+                MaskAwareMaskPrecision(geometry_name=self.geometry_name,
+                                       score_threshold=score_threshold),
+            "AP50":
+                DetectionMAP(geometry_name=self.geometry_name,
+                             score_threshold=score_threshold,
+                             iou_type="segm",
+                             iou_thresholds=[0.5],
+                             max_detection_thresholds=[1, 10, 1000]),
+            "merge_commission":
+                MergeCommissionMetric(
+                    geometry_name=self.geometry_name,
+                    score_threshold=score_threshold,
+                    modality="mask",
+                ),
+            "counting_mae":
+                CountingError(
+                    score_threshold=score_threshold,
+                    geometry_name=self.geometry_name,
+                ),
+        }
 
     def eval(self,
              y_pred,

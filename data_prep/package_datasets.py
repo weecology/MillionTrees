@@ -43,7 +43,28 @@ OUT_OF_DISTRIBUTION_TEST_SOURCES_BOXES = [
     "Radogoshi et al. 2021",
     "SelvaBox",
     "NEON_benchmark",
+    "Zamboni et al. 2021",  # urban tree crowns (individual_urban_tree_crown_detection)
 ]
+
+# Sources that must never seed an out-of-distribution test set and belong entirely
+# in train. OAM-TCD's MillionTrees download is incomplete, so its upstream
+# ``test_`` tiles (pinned to existing_split=="test" by
+# assign_canopyrs_aligned_existing_split for the within-distribution CanopyRS
+# comparison) are not a trustworthy held-out evaluation set. Force it to train in
+# the out-of-distribution split.
+OUT_OF_DISTRIBUTION_TRAIN_ONLY_SOURCES = [
+    "OAM-TCD",
+]
+
+# The MillionTrees ``validation`` split is reserved for these held-out sources only
+# (Allen et al. 2025: TLS-validated crowns kept for one final manuscript-end eval).
+# Some upstream datasets ship their own train/val/test split (e.g. Amirkolaee et al.
+# 2023 carries existing_split=="validation" rows); apply_existing_splits redirects
+# any such non-allowlisted "validation" rows to test so they never enter the
+# reserved validation set.
+VALIDATION_SOURCES = {
+    "Allen et al. 2025",
+}
 
 # Canonical token that marks a source as unsupervised/weakly-labeled. The data
 # loader excludes these by default via exclude_sources=['*unsupervised*'].
@@ -116,7 +137,13 @@ def _parse_geometry_column(series):
                          count=len(values))
     geoms = values.copy()
     if is_str.any():
-        geoms[is_str] = from_wkt(list(values[is_str]))
+        # Pass the object-dtype array straight to from_wkt. Wrapping it in a
+        # Python list makes numpy infer a fixed-width '<U' dtype sized to the
+        # longest WKT, which for a column with one huge polygon (e.g. Allen2025
+        # crowns at ~86k chars) tries to allocate terabytes. Object arrays are
+        # not padded, so parsing stays proportional to the real data.
+        str_values = np.asarray(values[is_str], dtype=object)
+        geoms[is_str] = from_wkt(str_values)
     return gpd.GeoSeries(geoms, index=series.index)
 
 
@@ -489,13 +516,22 @@ def _top_filenames_per_source(datasets, n_per_source):
 
 
 def apply_existing_splits(df):
-    """Honor pre-assigned train, test, or validation splits from existing_split."""
+    """Honor pre-assigned train, test, or validation splits from existing_split.
+
+    The ``validation`` split is reserved for VALIDATION_SOURCES (Allen et al. 2025).
+    Any other source that ships an upstream ``existing_split == "validation"`` (e.g.
+    Amirkolaee et al. 2023, which has its own train/val/test split) is redirected to
+    ``test`` so it never enters the reserved validation set.
+    """
     df = df.copy()
     if "existing_split" not in df.columns:
         return df
     for split_name in ("train", "test", "validation"):
         mask = df["existing_split"] == split_name
         df.loc[mask, "split"] = split_name
+    if "source" in df.columns:
+        stray_val = (df["split"] == "validation") & (~df["source"].isin(VALIDATION_SOURCES))
+        df.loc[stray_val, "split"] = "test"
     return df
 
 
@@ -550,11 +586,17 @@ def assign_canopyrs_aligned_existing_split(df):
 
 
 def _validation_sources(df):
-    """Return sources whose rows are pinned to the validation split."""
+    """Return sources whose rows are pinned to the reserved validation split.
+
+    Restricted to VALIDATION_SOURCES: a source like Amirkolaee et al. 2023 may carry
+    upstream existing_split=="validation" rows, but those are redirected to test by
+    apply_existing_splits, so it must not be treated as a validation source here.
+    """
     if "existing_split" not in df.columns:
         return set()
-    return set(
+    pinned = set(
         df.loc[df["existing_split"] == "validation", "source"].dropna().unique())
+    return pinned & VALIDATION_SOURCES
 
 
 def _rows_needing_auto_split(df):
@@ -948,6 +990,12 @@ def out_of_distribution_split(TreePolygons_datasets, TreePoints_datasets, TreeBo
         & _rows_needing_auto_split(TreeBoxes_datasets),
         "split",
     ] = "test"
+
+    # Force train-only sources entirely into train, overriding any existing_split
+    # pin (e.g. OAM-TCD's incomplete upstream test tiles), so they never enter the
+    # out-of-distribution test set.
+    for df in (TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets):
+        df.loc[df.source.isin(OUT_OF_DISTRIBUTION_TRAIN_ONLY_SOURCES), "split"] = "train"
 
     # Out-of-distribution: drop excess images instead of demoting to train so held-out
     # sources never leak into the train split.

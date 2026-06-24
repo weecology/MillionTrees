@@ -4,31 +4,47 @@
 #SBATCH --error=/home/b.weinstein/logs/%x_%A_%a.err
 #SBATCH --array=0-1
 #SBATCH --time=48:00:00
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=200G
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=2
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=240G
 #SBATCH --partition=hpg-b200
-#SBATCH --gpus=1
+#SBATCH --gpus=b200:2
+
+# 2-GPU bump (2026-06-24): single-GPU batch-24 arms (35540849) crashed on
+# read-during-write during packaging AND left the B200 data-starved. Aligned to
+# the same 2x B200 DDP recipe as the main DeepForest train (batch 16/GPU =
+# effective 32, lr 0.02, workers 16/rank). Box-pretrained and coco arms share
+# this recipe so the Table 6 comparison stays apples-to-apples.
+export NCCL_IB_DISABLE=1
+export NCCL_NVLS_ENABLE=0
+export NCCL_DEBUG=INFO
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 set -euo pipefail
 cd /blue/ewhite/b.weinstein/src/MillionTrees
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
-OUT_DIR="training/weak_supervision/outputs/polygon_box_pretrained/$SPLIT"
+# DeepForest polygon stack (PolygonDataset panoptic + deepforest.models.maskrcnn).
+# Outputs go to a *_deepforest dir so the old torchvision-stack Table 6 results
+# are preserved for comparison.
+OUT_DIR="training/weak_supervision/outputs/polygon_box_pretrained_deepforest/$SPLIT"
 BACKBONE="training/weak_supervision/outputs/pretrain/$SPLIT/box_backbone_${SPLIT}.pt"
 mkdir -p "$OUT_DIR"
 
-uv run python training/polygons/train.py \
+srun uv run python training/polygons/train.py \
   --root-dir /orange/ewhite/web/public/MillionTrees \
   --split-scheme "$SPLIT" \
-  --batch-size 24 \
-  --max-epochs 40 \
-  --lr 1e-4 \
-  --num-workers 8 \
+  --gpus 2 \
+  --batch-size 16 \
+  --max-epochs 100 \
+  --lr 0.02 \
+  --num-workers 16 \
   --image-size 448 \
   --init-mode box_pretrained \
   --box-backbone-checkpoint "$BACKBONE" \
   --data-scope subset \
   --output-dir "$OUT_DIR" \
-  --comet
+  --comet \
+  --comet-name "polygons-${SPLIT}-box_pretrained-lr0.02-deepforest-2gpu"

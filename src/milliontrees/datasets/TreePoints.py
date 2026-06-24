@@ -95,6 +95,16 @@ class TreePointsDataset(MillionTreesDataset):
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.18.zip",
             'compressed_size':
                 191019517147
+        },
+        "0.19": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.19.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.19.zip",
+            # TODO: refresh with the real zip size once v0.19 zips are built;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                191019517147
         }
     }
 
@@ -114,7 +124,7 @@ class TreePointsDataset(MillionTreesDataset):
                  verbose=True,
                  include_unsupervised=False,
                  eval_score_threshold=0.4,
-                 real_world_threshold_m=3.0):
+                 real_world_threshold_m=4.0):
 
         if mini and small:
             raise ValueError(
