@@ -407,6 +407,64 @@ def drop_duplicate_annotations(datasets, label=""):
     return datasets
 
 
+def drop_near_duplicate_annotations(datasets, label="", iou_threshold=0.9):
+    """Collapse near-duplicate annotations within an image+source via IoU.
+
+    ``drop_duplicate_annotations`` only removes *exact* geometry matches. Some
+    sources ship the same object twice at slightly different coordinates -- e.g.
+    the NEON hand annotations exist both in native crop pixels and rescaled to a
+    400px canvas, so the same tree appears as two boxes a pixel or two apart.
+    Those survive the exact-match dedup and show up as doubled ground truth in
+    eval overlays. This greedy pass keeps the largest representative of each
+    cluster of mutually-overlapping geometries (IoU > ``iou_threshold``) within
+    each ``(filename, source)`` group; points (zero-area) are left untouched.
+    """
+    if "geometry" not in datasets.columns or len(datasets) == 0:
+        return datasets
+    from shapely import STRtree
+    group_keys = [c for c in ("filename", "source") if c in datasets.columns]
+    if not group_keys:
+        return datasets
+
+    keep_index = []
+    for _, group in datasets.groupby(group_keys, sort=False):
+        idx = group.index.to_numpy()
+        if len(idx) == 1:
+            keep_index.append(idx[0])
+            continue
+        geoms = from_wkt(group["geometry"].to_numpy())
+        areas = np.array([g.area for g in geoms])
+        # Keep larger geometries first so each cluster is represented by its
+        # largest member; smaller near-identical copies are dropped against it.
+        order = np.argsort(-areas)
+        tree = STRtree(geoms)
+        kept_mask = np.zeros(len(idx), dtype=bool)
+        for i in order:
+            gi = geoms[i]
+            is_dup = False
+            for j in tree.query(gi):
+                if j == i or not kept_mask[j]:
+                    continue
+                inter = gi.intersection(geoms[j]).area
+                if inter <= 0:
+                    continue
+                union = areas[i] + areas[j] - inter
+                if union > 0 and inter / union > iou_threshold:
+                    is_dup = True
+                    break
+            if not is_dup:
+                kept_mask[i] = True
+                keep_index.append(idx[i])
+
+    n_before = len(datasets)
+    datasets = datasets.loc[keep_index].copy()
+    n_dropped = n_before - len(datasets)
+    if n_dropped > 0:
+        print(f"{label}: dropped {n_dropped} near-duplicate annotations "
+              f"(IoU > {iou_threshold}) ({n_before} -> {len(datasets)})")
+    return datasets
+
+
 def create_directories(base_dir, dataset_type):
     """Create directories for the dataset."""
     os.makedirs(f"{base_dir}{dataset_type}_{version}/images", exist_ok=True)
@@ -1041,11 +1099,29 @@ def filter_out_unsupervised(datasets):
     return datasets[~datasets['source'].str.contains('unsupervised|weak supervised', case=False, na=False)]
 
 def check_for_updated_annotations(dataset, geometry):
-    updated_annotations = [pd.read_csv(x) for x in glob.glob(f"data_prep/annotations/*{geometry}*.csv")]
-    if not updated_annotations:
+    # These are dated re-annotation snapshots (…_YYYYMMDD_HHMMSS.csv). The same
+    # image often appears in several successive passes; blindly concatenating them
+    # merges every pass and duplicates each box at slightly different coordinates
+    # (the doubled NEON ground truth seen in eval overlays). Sort by name so the
+    # timestamp orders chronologically, tag each file's order, and keep only each
+    # image's latest snapshot so re-annotations *replace* rather than stack.
+    frames = []
+    for order, path in enumerate(sorted(glob.glob(f"data_prep/annotations/*{geometry}*.csv"))):
+        d = pd.read_csv(path, low_memory=False)
+        if "image_path" not in d.columns:
+            # Not an annotation export (e.g. a *_low_tree_coverage_* report that
+            # happens to match the glob) — skip it.
+            print(f"check_for_updated_annotations: skipping {path} (no image_path column)")
+            continue
+        d["_update_order"] = order
+        frames.append(d)
+    if not frames:
         return dataset
-        
-    updated_annotations = pd.concat(updated_annotations)
+
+    updated_annotations = pd.concat(frames, ignore_index=True)
+    latest = updated_annotations.groupby("image_path")["_update_order"].transform("max")
+    updated_annotations = updated_annotations[updated_annotations["_update_order"] == latest].drop(
+        columns="_update_order")
     dataset["basename"] = dataset["filename"].str.split('/').str[-1]
 
     # Remove images marked for removal (vectorized)
@@ -1225,6 +1301,14 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     TreePoints_datasets = drop_duplicate_annotations(TreePoints_datasets, "TreePoints")
     TreePolygons_datasets = drop_duplicate_annotations(TreePolygons_datasets, "TreePolygons")
 
+    # Second guard: collapse *near*-duplicate boxes/polygons (same object at a
+    # slightly different scale, e.g. NEON hand annotations carried in both native
+    # crop pixels and a 400px-rescaled copy). These pass the exact-match dedup
+    # above because their WKT differs by a pixel or two. IoU is undefined for
+    # zero-area points, so TreePoints is left to the exact-match guard only.
+    TreeBoxes_datasets = drop_near_duplicate_annotations(TreeBoxes_datasets, "TreeBoxes")
+    TreePolygons_datasets = drop_near_duplicate_annotations(TreePolygons_datasets, "TreePolygons")
+
     # Assign source-unique packaged filenames (<stem>_<source><ext>) so basenames
     # don't collide across sources; keeps the original path in 'orig_path' for copy.
     TreeBoxes_datasets = assign_packaged_filenames(TreeBoxes_datasets, packaged_name_map)
@@ -1330,7 +1414,7 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.19"
+    version = "v0.20"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     mask_source_dir = "/orange/ewhite/DeepForest/tree_coverage_masks"
     debug = False
