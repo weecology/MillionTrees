@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=mt_polygons_coco
+#SBATCH --job-name=mt_poly_deepforest
 #SBATCH --output=/home/b.weinstein/logs/%x_%A_%a.out
 #SBATCH --error=/home/b.weinstein/logs/%x_%A_%a.err
 #SBATCH --array=0-1
@@ -11,14 +11,16 @@
 #SBATCH --partition=hpg-b200
 #SBATCH --gpus=b200:1
 
-# Single-GPU (2026-06-25): the 2x B200 DDP version (35646623) died on the NCCL
-# ALLGATHER/ALLREDUCE watchdog timeout (/orange-contention straggler hang), like
-# the box-pretrained arm. Single GPU sidesteps it. Keep batch 16, linear-scale
-# lr to 0.01 (effective batch 16 = 2x validated base 8 -> 2x base 0.005),
-# workers 16. Box-pretrained and coco arms share this identical single-GPU
-# recipe so the Table 6 comparison stays apples-to-apples. Runs BOTH splits: the
-# Table 6 coco rows must live under weak_supervision/outputs/
-# polygon_coco_deepforest/, which the main DeepForest train does NOT populate.
+# Polygon Mask R-CNN trained through the DeepForest polygon stack
+# (PolygonDataset panoptic targets + deepforest.models.maskrcnn). Recipe lives
+# in training/polygons/deepforest_polygon.yaml (OAM-TCD alignment).
+#
+# Single-GPU (2026-06-25): the 2x B200 DDP version (35722209) kept dying on the
+# NCCL ALLREDUCE watchdog timeout (/orange-contention straggler hang, see
+# project_nccl_hang_orange_contention), as did both Table 6 arms. Single GPU
+# sidesteps it. Keep batch 16/GPU (already proven to fit) and linear-scale lr to
+# 0.01 for the now-effective batch 16 (2x validated base 8 -> 2x base 0.005);
+# workers 16 keep the input pipeline ahead of the GPU.
 export NCCL_IB_DISABLE=1
 export NCCL_NVLS_ENABLE=0
 export NCCL_DEBUG=INFO
@@ -29,9 +31,7 @@ cd /blue/ewhite/b.weinstein/src/MillionTrees
 
 SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
-# DeepForest polygon stack. Outputs to a *_deepforest dir to preserve the old
-# torchvision-stack Table 6 results.
-OUT_DIR="training/weak_supervision/outputs/polygon_coco_deepforest/$SPLIT"
+OUT_DIR="training/polygons/outputs/deepforest/$SPLIT"
 mkdir -p "$OUT_DIR"
 
 srun uv run python training/polygons/train.py \
@@ -39,8 +39,8 @@ srun uv run python training/polygons/train.py \
   --split-scheme "$SPLIT" \
   --gpus 1 \
   --batch-size 16 \
-  --max-epochs 100 \
   --lr 0.01 \
+  --max-epochs 100 \
   --num-workers 16 \
   --image-size 448 \
   --init-mode coco \

@@ -5,17 +5,18 @@
 #SBATCH --array=0-1
 #SBATCH --time=48:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=2
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=240G
 #SBATCH --partition=hpg-b200
-#SBATCH --gpus=b200:2
+#SBATCH --gpus=b200:1
 
-# 2-GPU bump (2026-06-24): single-GPU batch-24 arms (35540849) crashed on
-# read-during-write during packaging AND left the B200 data-starved. Aligned to
-# the same 2x B200 DDP recipe as the main DeepForest train (batch 16/GPU =
-# effective 32, lr 0.02, workers 16/rank). Box-pretrained and coco arms share
-# this recipe so the Table 6 comparison stays apples-to-apples.
+# Single-GPU (2026-06-25): the 2x B200 DDP version (35646622) died on the NCCL
+# ALLGATHER/ALLREDUCE watchdog timeout (/orange-contention straggler hang).
+# Single GPU sidesteps it. Keep batch 16, linear-scale lr to 0.01 (effective
+# batch 16 = 2x validated base 8 -> 2x base 0.005), workers 16. Box-pretrained
+# and coco arms share this identical single-GPU recipe so the Table 6
+# comparison stays apples-to-apples.
 export NCCL_IB_DISABLE=1
 export NCCL_NVLS_ENABLE=0
 export NCCL_DEBUG=INFO
@@ -36,10 +37,10 @@ mkdir -p "$OUT_DIR"
 srun uv run python training/polygons/train.py \
   --root-dir /orange/ewhite/web/public/MillionTrees \
   --split-scheme "$SPLIT" \
-  --gpus 2 \
+  --gpus 1 \
   --batch-size 16 \
   --max-epochs 100 \
-  --lr 0.02 \
+  --lr 0.01 \
   --num-workers 16 \
   --image-size 448 \
   --init-mode box_pretrained \
@@ -47,4 +48,4 @@ srun uv run python training/polygons/train.py \
   --data-scope subset \
   --output-dir "$OUT_DIR" \
   --comet \
-  --comet-name "polygons-${SPLIT}-box_pretrained-lr0.02-deepforest-2gpu"
+  --comet-name "polygons-${SPLIT}-box_pretrained-lr0.01-deepforest-1gpu"
