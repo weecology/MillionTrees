@@ -421,7 +421,8 @@ def drop_near_duplicate_annotations(datasets, label="", iou_threshold=0.9):
     """
     if "geometry" not in datasets.columns or len(datasets) == 0:
         return datasets
-    from shapely import STRtree
+    from shapely import STRtree, make_valid
+    from shapely.errors import GEOSException
     group_keys = [c for c in ("filename", "source") if c in datasets.columns]
     if not group_keys:
         return datasets
@@ -433,6 +434,12 @@ def drop_near_duplicate_annotations(datasets, label="", iou_threshold=0.9):
             keep_index.append(idx[0])
             continue
         geoms = from_wkt(group["geometry"].to_numpy())
+        # Sources occasionally ship self-intersecting/invalid polygons. GEOS
+        # raises TopologyException on intersection() of an invalid geometry, so
+        # repair them up front; make_valid only touches broken inputs and keeps
+        # area/intersection well-defined for the IoU test below.
+        geoms = np.array(
+            [g if g.is_valid else make_valid(g) for g in geoms], dtype=object)
         areas = np.array([g.area for g in geoms])
         # Keep larger geometries first so each cluster is represented by its
         # largest member; smaller near-identical copies are dropped against it.
@@ -445,7 +452,13 @@ def drop_near_duplicate_annotations(datasets, label="", iou_threshold=0.9):
             for j in tree.query(gi):
                 if j == i or not kept_mask[j]:
                     continue
-                inter = gi.intersection(geoms[j]).area
+                try:
+                    inter = gi.intersection(geoms[j]).area
+                except GEOSException:
+                    # Belt-and-suspenders: if a repaired geometry still trips
+                    # GEOS, treat the pair as non-overlapping rather than crash
+                    # the whole packaging run.
+                    continue
                 if inter <= 0:
                     continue
                 union = areas[i] + areas[j] - inter
