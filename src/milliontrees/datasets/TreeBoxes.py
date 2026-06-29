@@ -49,7 +49,9 @@ class TreeBoxesDataset(MillionTreesDataset):
         split_scheme (str): The split scheme to use.
         geometry_name (str): The name of the geometry to use.
         eval_score_threshold (float): The threshold for the evaluation score.
-        remove_incomplete (bool): Whether to remove incomplete data.
+        remove_incomplete (bool): Drop incomplete (not exhaustively annotated)
+            sources from the TRAIN split only. Validation/test are never
+            filtered, so the evaluation set matches a full-train run.
         image_size (int): The size of the image to use.
         include_sources (list): The sources to include.
         exclude_sources (list): The sources to exclude.
@@ -108,6 +110,14 @@ class TreeBoxesDataset(MillionTreesDataset):
             # unused for local download=False training/eval runs.
             'compressed_size':
                 67700616443
+        },
+        "0.20": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.20.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.20.zip",
+            'compressed_size':
+                79939201324
         }
     }
 
@@ -187,9 +197,22 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.sources = df['source'].unique()
         available_source_count = len(self.sources)
 
-        # Remove incomplete data based on flag
+        # Normalize the per-row `complete` flag to a real boolean. The packaged
+        # CSV stores it as strings ('True'/'False') and occasionally carries
+        # stray free-text or NaN; only an exact (case-insensitive) 'true' counts
+        # as complete. Without this, `complete == True` matches nothing and
+        # `bool('False')` is truthy, so downstream gating is wrong.
+        df['complete'] = (
+            df['complete'].astype(str).str.strip().str.lower() == 'true')
+
+        # Remove incomplete data based on flag. This filters the TRAIN split
+        # only: incomplete sources are dropped from training, while
+        # validation/test are left untouched so the evaluation set is identical
+        # to a full-train run. (We never want a training-data flag to change the
+        # test set.)
         if remove_incomplete:
-            df = df[df['complete'] == True]
+            df = df[df['complete'] |
+                    (df['split'] != 'train')].reset_index(drop=True)
 
         # Filter by include/exclude source names with wildcard support
         # Default: exclude sources containing 'unsupervised' unless include_unsupervised=True

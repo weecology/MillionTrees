@@ -84,6 +84,14 @@ class TreePolygonsDataset(MillionTreesDataset):
             # unused for local download=False training/eval runs.
             'compressed_size':
                 120747553994
+        },
+        "0.20": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.20.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.20.zip",
+            'compressed_size':
+                109263962653
         }
     }
 
@@ -159,9 +167,18 @@ class TreePolygonsDataset(MillionTreesDataset):
         self.sources = df['source'].unique()
         available_source_count = len(self.sources)
 
-        # Remove incomplete data based on flag
+        # Normalize the per-row `complete` flag to a real boolean (the packaged
+        # CSV stores it as strings, with occasional free-text/NaN). Only an
+        # exact (case-insensitive) 'true' counts as complete.
+        df['complete'] = (
+            df['complete'].astype(str).str.strip().str.lower() == 'true')
+
+        # Remove incomplete data based on flag. Filters the TRAIN split only;
+        # validation/test are never filtered so the evaluation set is identical
+        # to a full-train run.
         if remove_incomplete:
-            df = df[df['complete'] == True]
+            df = df[df['complete'] |
+                    (df['split'] != 'train')].reset_index(drop=True)
 
         # Filter by include/exclude source names with wildcard support
         # Default: exclude sources containing 'unsupervised' unless include_unsupervised=True

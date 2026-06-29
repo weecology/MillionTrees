@@ -182,7 +182,7 @@ Comparison of fine-tuned models (trained on MillionTrees) vs. pretrained models 
 | Model | DetectionRecall | MaskAwarePrecision | F1 | DetectionAccuracy | CountingMAE |
 |---|---|---|---|---|---|
 | CanopyRS-DINO-SwinL | 0.822 | 0.574 | 0.676 | 0.211 | 166.348 |
-| DeepForest-finetuned | 0.545 | 0.808 | 0.651 | 0.338 | 37.574 |
+| DeepForest-finetuned | 0.546 | 0.783 | 0.643 | 0.317 | 41.002 |
 | SAM3 | 0.569 | 0.630 | 0.598 | 0.237 | 57.188 |
 | DeepForest-pretrained | 0.370 | 0.812 | 0.508 | 0.257 | 44.197 |
 
@@ -211,7 +211,7 @@ Comparison of fine-tuned models (trained on MillionTrees) vs. pretrained models 
 |---|---|---|---|---|---|
 | CanopyRS-DINO-SwinL | 0.876 | 0.678 | 0.764 | 0.229 | 191.039 |
 | SAM3 | 0.647 | 0.733 | 0.687 | 0.332 | 51.740 |
-| DeepForest-finetuned | 0.524 | 0.880 | 0.657 | 0.355 | 35.601 |
+| DeepForest-finetuned | 0.517 | 0.891 | 0.654 | 0.349 | 32.287 |
 | DeepForest-pretrained | 0.377 | 0.912 | 0.533 | 0.270 | 40.310 |
 
 ### TreePoints

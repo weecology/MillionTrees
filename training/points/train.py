@@ -11,7 +11,9 @@ Install with ``uv sync --group treeformer`` until this lands on weecology/DeepFo
 """
 
 import argparse
+import glob
 import json
+import math
 import os
 import warnings
 
@@ -232,10 +234,6 @@ def main():
             },
         }
         config_args["validation"]["lr_plateau_target"] = "val_loss"
-    if args.gpus > 1:
-        # TreeFormer has heads (box detection / cropmodel) that don't contribute
-        # to the point loss, so DDP must be told to expect unused parameters.
-        config_args["strategy"] = "ddp_find_unused_parameters_true"
 
     model = df_main.deepforest(
         config_args=config_args,
@@ -344,6 +342,13 @@ def main():
             ))
 
     trainer_kwargs = {}
+    if args.gpus > 1:
+        # TreeFormer has heads (box detection / cropmodel) that don't contribute
+        # to the point loss, so DDP must be told to expect unused parameters.
+        # Must be passed as a create_trainer() kwarg: deepforest's create_trainer
+        # builds the Trainer directly from config fields and ignores config.strategy,
+        # so setting it in config_args is silently dropped (only logged to Comet).
+        trainer_kwargs["strategy"] = "ddp_find_unused_parameters_true"
     if has_val:
         trainer_kwargs["limit_val_batches"] = 1.0
         trainer_kwargs["num_sanity_val_steps"] = 2
@@ -375,13 +380,23 @@ def main():
                   f"score_integration_radius: {model.model.score_integration_radius}")
 
     eval_max_batches = 2 if args.smoke_test else None
+    viz_dir = os.path.join(args.output_dir, "viz")
     results, results_str = evaluate(
         model, point_dataset, test_subset,
         batch_size=args.batch_size,
-        viz_dir=os.path.join(args.output_dir, "viz"),
+        viz_dir=viz_dir,
         max_batches=eval_max_batches,
     )
     print(results_str)
+
+    if loggers:
+        exp = loggers[0].experiment
+        safe = {k: float(v.item() if hasattr(v, "item") else v)
+                for k, v in results.items()
+                if isinstance(v, (int, float)) or (hasattr(v, "ndim") and v.ndim == 0)}
+        exp.log_metrics({k: v for k, v in safe.items() if math.isfinite(v)})
+        for img_path in sorted(glob.glob(os.path.join(viz_dir, "**", "*.png"), recursive=True)):
+            exp.log_image(img_path, name=os.path.relpath(img_path, viz_dir))
 
     results_path = os.path.join(args.output_dir, f"results_{args.split_scheme}.txt")
     with open(results_path, "w", encoding="utf-8") as f:

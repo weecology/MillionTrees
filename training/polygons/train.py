@@ -22,7 +22,9 @@ The bridge from MillionTrees splits to DeepForest is a generated annotation CSV
 """
 
 import argparse
+import glob
 import json
+import math
 import os
 from pathlib import Path
 
@@ -119,6 +121,53 @@ def build_config(args, train_csv, val_csv, images_dir, log_root):
     if not args.augment:
         # Keep the geometric/photometric pipeline off for sanity runs.
         overrides["train"]["augmentations"] = []
+
+    if args.train_aug == "resize":
+        # Whole-image resize instead of RandomResizedCrop: scale each image (and
+        # its annotations) to a fixed ``image_size`` square so the model sees the
+        # entire scene rather than a 640 crop of native-resolution imagery.
+        # ``Resize`` (Kornia LongestMaxSize) preserves aspect ratio; ``PadIfNeeded``
+        # squares it off so the batch stays stackable. Validation uses the same
+        # scale. Pair with ``--eval-inference resize`` so train and eval run at one
+        # consistent scale (the GT masks are rasterized at ``image_size`` too).
+        resize_aug = [
+            {"Resize": {"max_size": args.image_size}},
+            {"PadIfNeeded": {"size": [args.image_size, args.image_size]}},
+        ]
+        if args.augment:
+            overrides["train"]["augmentations"] = [
+                {"HorizontalFlip": {"p": 0.5}},
+                {"VerticalFlip": {"p": 0.5}},
+                *resize_aug,
+            ]
+        else:
+            overrides["train"]["augmentations"] = list(resize_aug)
+        overrides["validation"]["augmentations"] = list(resize_aug)
+
+    if args.train_aug == "nativecrop":
+        # True native-resolution 640 window. The config's default ``crop`` recipe
+        # uses ``RandomResizedCrop scale=[0.64,1.0]``, whose ``scale`` is an *area*
+        # fraction -- on the median 2000px MillionTrees tile that keeps 64-100% of
+        # the image and downsamples ~3x to 640, i.e. a whole-image resize in
+        # disguise (small trees shrink to ~7px) that also mismatches the native
+        # ``predict_tile`` eval scale. A plain ``RandomCrop`` instead carves a real
+        # 640px window at native GSD: small trees keep their pixels and the train
+        # scale matches ``--eval-inference tiled``. ``pad_if_needed`` covers the
+        # ~12% of tiles smaller than 640 on a side. NOTE: with incomplete sources
+        # (only ~25% of train images fully annotated) some windows are blank or
+        # contain unlabeled trees scored as background -- an accepted trade-off for
+        # this arm (see the crop-vs-resize comparison).
+        crop_aug = [{"RandomCrop": {"size": [640, 640], "pad_if_needed": True, "p": 1.0}}]
+        if args.augment:
+            overrides["train"]["augmentations"] = [
+                {"HorizontalFlip": {"p": 0.5}},
+                {"VerticalFlip": {"p": 0.5}},
+                *crop_aug,
+            ]
+        else:
+            overrides["train"]["augmentations"] = list(crop_aug)
+        # Validation keeps the config default (whole-image Resize); the leaderboard
+        # eval runs tiled predict_tile, not this transform.
 
     cfg = utilities.load_config(config_name=args.config, overrides=overrides)
     return cfg
@@ -304,6 +353,51 @@ def tiled_predict_for_eval(
     return batch_y_pred
 
 
+def resized_predict_for_eval(model, dataset, metadata, *, device):
+    """Whole-image-resize inference for one batch, in MillionTrees eval format.
+
+    The scale-matched counterpart to ``tiled_predict_for_eval`` for models trained
+    with ``--train-aug resize``. Each native image is stretched to the dataset's
+    ``image_size`` square -- the exact space the GT masks are rasterized in (see
+    ``TreePolygons`` ``cv2.resize``/``A.Resize`` to ``image_size``) -- run through
+    the Mask R-CNN once, and the predicted instance masks are vectorised to
+    polygons that already live in the metric space (scale 1, no projection).
+    """
+    target_size = dataset.image_size
+    if not isinstance(metadata, torch.Tensor):
+        metadata = torch.as_tensor(metadata)
+
+    batch_y_pred = []
+    for row in metadata:
+        path = _resolve_native_path(dataset, int(row[0]))
+        with Image.open(path) as im:
+            arr = np.asarray(
+                im.convert("RGB").resize((target_size, target_size), Image.BILINEAR)
+            ).astype("float32")
+        img_t = torch.from_numpy(arr).permute(2, 0, 1).unsqueeze(0).to(device) / 255.0
+        with torch.no_grad():
+            pred = model.model(img_t)[0]
+
+        gdf = utilities.format_geometry(
+            pred, geom_type=utilities.determine_geometry_type(pred)
+        )
+        if gdf is None or len(gdf) == 0:
+            batch_y_pred.append({
+                "y": torch.zeros((0, target_size, target_size), dtype=torch.uint8),
+                "labels": torch.zeros((0,), dtype=torch.int64),
+                "scores": torch.zeros((0,), dtype=torch.float32),
+            })
+            continue
+
+        masks = _rasterize_geoms_to_masks(list(gdf.geometry), 1.0, 1.0, target_size)
+        batch_y_pred.append({
+            "y": torch.from_numpy(masks),
+            "labels": torch.zeros((len(masks),), dtype=torch.int64),
+            "scores": torch.as_tensor(gdf["score"].to_numpy(), dtype=torch.float32),
+        })
+    return batch_y_pred
+
+
 def evaluate(
     model,
     dataset,
@@ -313,6 +407,7 @@ def evaluate(
     viz_dir=None,
     *,
     eval_mode="stream",
+    eval_inference="tiled",
     viz_n_per_source=4,
 ):
     """Run MillionTrees test-set evaluation on a trained DeepForest model.
@@ -320,16 +415,37 @@ def evaluate(
     ``eval_mode``:
         - ``stream`` (default): update metrics per batch (lower peak memory).
         - ``legacy``: accumulate full pred/true lists then call ``dataset.eval``.
+
+    ``eval_inference``:
+        - ``tiled`` (default): native-resolution ``predict_tile`` at the training
+          patch size (matches ``--train-aug crop``).
+        - ``resize``: whole-image resize to ``image_size`` (matches
+          ``--train-aug resize``). Train/eval scale must match.
     """
     test_loader = get_eval_loader("standard", test_subset, batch_size=batch_size)
     model.eval()
-    ensure_predict_trainer(model)
+    if eval_inference == "resize":
+        # Whole-image predict runs the Mask R-CNN forward directly (no trainer);
+        # move the loaded model onto the eval device once.
+        model.to(device)
+
+        def predict_batch(meta):
+            return resized_predict_for_eval(model, dataset, meta, device=device)
+    elif eval_inference == "tiled":
+        ensure_predict_trainer(model)
+
+        def predict_batch(meta):
+            return tiled_predict_for_eval(model, dataset, meta)
+    else:
+        raise ValueError(
+            f"Unknown eval_inference: {eval_inference!r}; use 'tiled' or 'resize'."
+        )
 
     if eval_mode == "legacy":
         all_y_pred, all_y_true = [], []
         for batch in test_loader:
             metadata, images, targets = batch
-            preds = tiled_predict_for_eval(model, dataset, metadata)
+            preds = predict_batch(metadata)
             for y_pred, image_targets in zip(preds, targets):
                 all_y_pred.append(y_pred)
                 all_y_true.append(image_targets)
@@ -349,7 +465,7 @@ def evaluate(
     viz_y_pred, viz_y_true, viz_rows = [], [], []
     for batch in test_loader:
         metadata, images, targets = batch
-        preds = tiled_predict_for_eval(model, dataset, metadata)
+        preds = predict_batch(metadata)
         state.update(preds, targets, metadata)
         if viz_dir is not None:
             merge_viz_samples(
@@ -437,6 +553,10 @@ def main():
     )
     parser.add_argument("--root-dir", type=str,
                         default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
+    parser.add_argument("--version", type=str, default=None,
+                        help="MillionTrees dataset version (e.g. 0.19). Defaults to the "
+                             "latest key in the loader's _versions_dict. Pin an older "
+                             "version to isolate data changes from recipe changes.")
     parser.add_argument("--split-scheme", type=str, default="within-distribution",
                         choices=["within-distribution", "out-of-distribution", "crossgeometry"])
     parser.add_argument("--config", type=str, default=DEFAULT_CONFIG,
@@ -461,6 +581,18 @@ def main():
     parser.add_argument("--limit-val-batches", type=float, default=None)
     parser.add_argument("--eval-mode", type=str, default="stream",
                         choices=["stream", "legacy"])
+    parser.add_argument("--eval-inference", type=str, default="tiled",
+                        choices=["tiled", "resize"],
+                        help="tiled: native-resolution predict_tile at the training patch "
+                             "size (matches --train-aug crop). resize: whole-image resize to "
+                             "--image-size (matches --train-aug resize). Scale must match training.")
+    parser.add_argument("--train-aug", type=str, default="crop",
+                        choices=["crop", "resize", "nativecrop"],
+                        help="crop: RandomResizedCrop 640 (area scale 0.64-1.0; on big tiles a "
+                             "downsample-resize in disguise). resize: whole-image Resize+Pad to "
+                             "--image-size, no cropping (use with --eval-inference resize). "
+                             "nativecrop: true 640px RandomCrop at native GSD (use with "
+                             "--eval-inference tiled).")
     parser.add_argument("--init-mode", type=str, default="coco",
                         choices=["coco", "box_pretrained"],
                         help="coco: DeepForest COCO-initialized Mask R-CNN. "
@@ -494,6 +626,7 @@ def main():
     # and provides the eval metrics + test subset.
     polygon_dataset = get_dataset(
         "TreePolygons",
+        version=args.version,
         download=args.download,
         mini=args.mini,
         root_dir=args.root_dir,
@@ -539,6 +672,9 @@ def main():
     if not model.trainer.is_global_zero:
         return
 
+    # Capture loggers before checkpoint reload replaces the model object.
+    train_loggers = model.trainer.loggers if model.trainer else []
+
     # Score the best checkpoint with the MillionTrees metrics.
     best_path = checkpoint_cb.best_model_path or None
     if best_path and os.path.exists(best_path):
@@ -549,16 +685,27 @@ def main():
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     test_subset = train_subset_or_test(polygon_dataset, args.debug_overfit)
+    viz_dir = os.path.join(args.output_dir, "viz")
     results, results_str = evaluate(
         model,
         polygon_dataset,
         test_subset,
         batch_size=args.batch_size,
         device=device,
-        viz_dir=os.path.join(args.output_dir, "viz"),
+        viz_dir=viz_dir,
         eval_mode=args.eval_mode,
+        eval_inference=args.eval_inference,
     )
     print(results_str)
+
+    if train_loggers:
+        exp = train_loggers[0].experiment
+        safe = {k: float(v.item() if hasattr(v, "item") else v)
+                for k, v in results.items()
+                if isinstance(v, (int, float)) or (hasattr(v, "ndim") and v.ndim == 0)}
+        exp.log_metrics({k: v for k, v in safe.items() if math.isfinite(v)})
+        for img_path in sorted(glob.glob(os.path.join(viz_dir, "**", "*.png"), recursive=True)):
+            exp.log_image(img_path, name=os.path.relpath(img_path, viz_dir))
 
     if args.debug_overfit:
         print("[debug-overfit] skipping leaderboard results/JSON writes.")

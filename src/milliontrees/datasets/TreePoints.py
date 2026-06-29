@@ -105,6 +105,14 @@ class TreePointsDataset(MillionTreesDataset):
             # unused for local download=False training/eval runs.
             'compressed_size':
                 191019517147
+        },
+        "0.20": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.20.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.20.zip",
+            'compressed_size':
+                190971944620
         }
     }
 
@@ -191,8 +199,19 @@ class TreePointsDataset(MillionTreesDataset):
         self.sources = self.df['source'].unique()
         available_source_count = len(self.sources)
 
+        # Normalize the per-row `complete` flag to a real boolean (the packaged
+        # CSV stores it as strings, with occasional free-text/NaN). Only an
+        # exact (case-insensitive) 'true' counts as complete.
+        self.df['complete'] = (
+            self.df['complete'].astype(str).str.strip().str.lower() == 'true')
+
+        # Remove incomplete data based on flag. Filters the TRAIN split only;
+        # validation/test are never filtered so the evaluation set is identical
+        # to a full-train run.
         if remove_incomplete:
-            self.df = self.df[self.df['complete'] == True]
+            self.df = self.df[self.df['complete'] |
+                              (self.df['split'] != 'train')].reset_index(
+                                  drop=True)
 
         # Filter by include/exclude source names with wildcard support
         # Default: exclude sources containing 'unsupervised' unless include_unsupervised=True

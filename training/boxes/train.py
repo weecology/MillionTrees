@@ -9,6 +9,8 @@ Custom code here is limited to two things that DeepForest doesn't cover:
 """
 
 import argparse
+import glob
+import math
 import os
 import warnings
 
@@ -151,6 +153,13 @@ def main():
         action="store_true",
         help="Use TreeBoxes_v* layout with full-zip URLs.",
     )
+    parser.add_argument(
+        "--remove-incomplete",
+        action="store_true",
+        help="Train only on complete=True (exhaustively annotated) sources. "
+             "Filters the TRAIN split only; the test set is always left "
+             "unchanged so results are comparable to the full-train baseline.",
+    )
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--output-dir", type=str, default="training/boxes/outputs")
     parser.add_argument("--gpus", type=int, default=1)
@@ -181,6 +190,7 @@ def main():
         root_dir=args.root_dir,
         split_scheme=args.split_scheme,
         include_unsupervised=args.include_unsupervised,
+        remove_incomplete=args.remove_incomplete,
     )
 
     train_subset = box_dataset.get_subset("train")
@@ -328,10 +338,20 @@ def main():
             model = df_main.deepforest.load_from_checkpoint(best_path, weights_only=False)
 
     eval_max_batches = 2 if args.smoke_test else None
+    viz_dir = os.path.join(args.output_dir, "viz")
     results, results_str = evaluate(model, box_dataset, test_subset, batch_size=args.batch_size,
-                                    viz_dir=os.path.join(args.output_dir, "viz"),
+                                    viz_dir=viz_dir,
                                     max_batches=eval_max_batches)
     print(results_str)
+
+    if loggers:
+        exp = loggers[0].experiment
+        safe = {k: float(v.item() if hasattr(v, "item") else v)
+                for k, v in results.items()
+                if isinstance(v, (int, float)) or (hasattr(v, "ndim") and v.ndim == 0)}
+        exp.log_metrics({k: v for k, v in safe.items() if math.isfinite(v)})
+        for img_path in sorted(glob.glob(os.path.join(viz_dir, "**", "*.png"), recursive=True)):
+            exp.log_image(img_path, name=os.path.relpath(img_path, viz_dir))
 
     results_path = os.path.join(args.output_dir, f"results_{args.split_scheme}.txt")
     with open(results_path, "w") as f:
