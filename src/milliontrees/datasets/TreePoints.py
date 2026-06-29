@@ -202,8 +202,12 @@ class TreePointsDataset(MillionTreesDataset):
         # Normalize the per-row `complete` flag to a real boolean (the packaged
         # CSV stores it as strings, with occasional free-text/NaN). Only an
         # exact (case-insensitive) 'true' counts as complete.
-        self.df['complete'] = (
-            self.df['complete'].astype(str).str.strip().str.lower() == 'true')
+        # Older CSVs (and test fixtures) omit this column; default to True.
+        if 'complete' not in self.df.columns:
+            self.df['complete'] = True
+        else:
+            self.df['complete'] = (self.df['complete'].astype(
+                str).str.strip().str.lower() == 'true')
 
         # Remove incomplete data based on flag. Filters the TRAIN split only;
         # validation/test are never filtered so the evaluation set is identical

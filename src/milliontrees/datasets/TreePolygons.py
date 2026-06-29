@@ -170,8 +170,12 @@ class TreePolygonsDataset(MillionTreesDataset):
         # Normalize the per-row `complete` flag to a real boolean (the packaged
         # CSV stores it as strings, with occasional free-text/NaN). Only an
         # exact (case-insensitive) 'true' counts as complete.
-        df['complete'] = (
-            df['complete'].astype(str).str.strip().str.lower() == 'true')
+        # Older CSVs (and test fixtures) omit this column; default to True.
+        if 'complete' not in df.columns:
+            df['complete'] = True
+        else:
+            df['complete'] = (
+                df['complete'].astype(str).str.strip().str.lower() == 'true')
 
         # Remove incomplete data based on flag. Filters the TRAIN split only;
         # validation/test are never filtered so the evaluation set is identical
@@ -511,14 +515,9 @@ class TreePolygonsDataset(MillionTreesDataset):
             results[metric] = result
             results_str += result_str
 
-        detection_accs = []
-        for k, v in results["accuracy"].items():
-            if k.startswith('detection_acc_source:'):
-                d = k.split(':')[1]
-                count = results["accuracy"][f'source:{d}']
-                if count > 0:
-                    detection_accs.append(v)
-        detection_acc_avg_dom = np.array(detection_accs).mean()
+        # Macro-average already computed by standard_group_eval; read it back.
+        detection_acc_avg_dom = results["accuracy"][
+            self.metrics["accuracy"].agg_metric_field]
         results['detection_acc_avg_dom'] = detection_acc_avg_dom
         results_str = f'Average detection_acc across source: {detection_acc_avg_dom:.3f}\n' + results_str
 
