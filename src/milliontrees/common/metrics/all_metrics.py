@@ -1587,12 +1587,7 @@ def detection_count_pair(target_pred,
                          gt_true,
                          score_threshold,
                          geometry_name="y"):
-    """Return ``(gt_count, pred_count)`` for one image.
-
-    ``pred_count`` is the number of predicted detections whose score exceeds ``score_threshold`` —
-    the same filter :class:`CountingError` applies — and ``gt_count`` is the number of ground-truth
-    geometries.
-    """
+    """Return (gt_count, pred_count) for one image using the same score filter as CountingError."""
     scores = target_pred["scores"]
     mask = scores > score_threshold
     pred_count = int(mask.sum().item()) if isinstance(mask, torch.Tensor) \
@@ -1602,23 +1597,7 @@ def detection_count_pair(target_pred,
 
 
 def counting_regression_stats(gt_counts, pred_counts):
-    """Summarise predicted-vs-true counts for one group of images.
-
-    Returns a dict with the count-error metrics the points eval reports:
-
-    - ``mae``   — mean absolute count error (native tree units).
-    - ``nmae``  — ``mae`` normalised by the mean true count (source-comparable,
-      scale-free). Aggregate normalisation, *not* per-image ``|err|/gt``, which
-      blows up for sparse tiles and is undefined at ``gt == 0``.
-    - ``r2``    — coefficient of determination (sklearn ``1 - SS_res/SS_tot``,
-      which *penalises* affine bias — unlike squared Pearson r).
-    - ``slope`` / ``intercept`` — least-squares fit of pred on true; slope < 1
-      flags systematic under-counting that ``r2`` alone hides.
-    - ``n``     — number of images contributing.
-
-    ``r2`` and ``slope`` need at least two images with non-zero variance in the
-    true counts; otherwise they are returned as ``nan``.
-    """
+    """Return mae/nmae/r2/slope/intercept/n dict for a group of images."""
     gt = np.asarray(gt_counts, dtype=float)
     pred = np.asarray(pred_counts, dtype=float)
     n = int(gt.size)

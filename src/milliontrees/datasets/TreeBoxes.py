@@ -1,6 +1,5 @@
 from pathlib import Path
 import os
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -21,7 +20,6 @@ from milliontrees.common.metrics.all_metrics import (
     MergeCommissionMetric,
 )
 from milliontrees.common.onboarding import print_dataset_summary
-from PIL import Image
 
 from albumentations.pytorch import ToTensorV2
 
