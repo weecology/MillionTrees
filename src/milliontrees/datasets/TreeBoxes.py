@@ -125,7 +125,7 @@ class TreeBoxesDataset(MillionTreesDataset):
                  download=False,
                  split_scheme='within-distribution',
                  geometry_name='y',
-                 eval_score_threshold=0.1,
+                 eval_score_threshold=0.0,
                  remove_incomplete=False,
                  image_size=448,
                  include_sources=None,

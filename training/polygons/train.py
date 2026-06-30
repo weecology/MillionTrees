@@ -169,6 +169,33 @@ def build_config(args, train_csv, val_csv, images_dir, log_root):
         # Validation keeps the config default (whole-image Resize); the leaderboard
         # eval runs tiled predict_tile, not this transform.
 
+    if args.train_aug == "annotationsafecrop":
+        # Annotation-safe 640 crop: RandomSizedBBoxSafeCrop guarantees every crop
+        # window contains at least one annotated polygon (by centering the crop on
+        # the union of bounding boxes of all polygons in the image, with random
+        # context padding). This fixes the blank-crop problem from ``nativecrop``
+        # where only ~25% of images are fully annotated. The crop is resized to
+        # 640 so eval with ``--eval-inference tiled`` (predict_tile at patch 640)
+        # is the correct paired inference mode. Requires DeepForest's
+        # ``bbox_augmentation_context`` (PR bw4sz/DeepForest#2) in the venv.
+        crop_aug = [{
+            "RandomSizedBBoxSafeCrop": {
+                "size": [640, 640],
+                "context_scale_range": [1.0, 2.0],
+                "erosion_rate": 0.0,
+                "p": 1.0,
+            }
+        }]
+        if args.augment:
+            overrides["train"]["augmentations"] = [
+                {"HorizontalFlip": {"p": 0.5}},
+                {"VerticalFlip": {"p": 0.5}},
+                *crop_aug,
+            ]
+        else:
+            overrides["train"]["augmentations"] = list(crop_aug)
+        # Validation keeps the config default; leaderboard eval uses predict_tile.
+
     cfg = utilities.load_config(config_name=args.config, overrides=overrides)
     return cfg
 
@@ -587,11 +614,13 @@ def main():
                              "size (matches --train-aug crop). resize: whole-image resize to "
                              "--image-size (matches --train-aug resize). Scale must match training.")
     parser.add_argument("--train-aug", type=str, default="crop",
-                        choices=["crop", "resize", "nativecrop"],
+                        choices=["crop", "resize", "nativecrop", "annotationsafecrop"],
                         help="crop: RandomResizedCrop 640 (area scale 0.64-1.0; on big tiles a "
                              "downsample-resize in disguise). resize: whole-image Resize+Pad to "
                              "--image-size, no cropping (use with --eval-inference resize). "
                              "nativecrop: true 640px RandomCrop at native GSD (use with "
+                             "--eval-inference tiled). annotationsafecrop: RandomSizedBBoxSafeCrop "
+                             "that guarantees each crop contains at least one annotation (use with "
                              "--eval-inference tiled).")
     parser.add_argument("--init-mode", type=str, default="coco",
                         choices=["coco", "box_pretrained"],

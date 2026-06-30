@@ -18,12 +18,10 @@ SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 CKPT_DIR="training/polygons/outputs/${SPLIT}/checkpoints"
-# Most-negative val_loss among converged checkpoints (epoch >= 1 guards against
-# runaway first-epoch outliers in the -500M range that skew the sort).
-CKPT=$(ls -1 "$CKPT_DIR"/polygons-epoch=*.ckpt \
-  | awk -F'epoch=' '{split($2,a,"-"); if (a[1]+0 > 0) print}' \
-  | awk -F'val_loss=' '{print $2"\t"$0}' \
-  | sort -g \
+# Checkpoints are named polygons-epoch=NN-val_mask_acc=*.ckpt; pick the highest accuracy.
+CKPT=$(ls -1 "$CKPT_DIR"/polygons-epoch=*-val_mask_acc=*.ckpt \
+  | awk -F'val_mask_acc=' '{print $2"\t"$0}' \
+  | sort -rg \
   | head -1 \
   | cut -f2-)
 

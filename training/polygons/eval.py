@@ -6,9 +6,14 @@ import json
 import os
 import re
 
+from pathlib import Path
+
 import torch
 
+from deepforest import utilities as df_utilities
 from deepforest.main import deepforest
+
+_POLYGON_CONFIG = str(Path(__file__).with_name("deepforest_polygon.yaml"))
 
 from training.polygons.train import (
     ensure_predict_trainer,
@@ -145,7 +150,10 @@ def main():
         sweep_thresholds = [float(t) for t in args.sweep_eval_thresholds.split(",") if t.strip()]
 
     print(f"Loading checkpoint: {args.checkpoint}")
-    model = deepforest.load_from_checkpoint(args.checkpoint)
+    _poly_cfg = df_utilities.load_config(config_name=_POLYGON_CONFIG, overrides={})
+    model = deepforest(config=_poly_cfg)
+    _ckpt = torch.load(args.checkpoint, map_location="cpu")
+    model.load_state_dict(_ckpt["state_dict"])
     # For a sweep we need the full score distribution down to the lowest swept
     # threshold, so drop the model's roi_heads gate (unless explicitly overridden).
     if args.score_threshold is not None:

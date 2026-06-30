@@ -101,7 +101,7 @@ class TreePolygonsDataset(MillionTreesDataset):
                  download=False,
                  split_scheme='within-distribution',
                  geometry_name='y',
-                 eval_score_threshold=0.5,
+                 eval_score_threshold=0.0,
                  image_size=448,
                  remove_incomplete=False,
                  include_sources=None,

@@ -45,8 +45,13 @@ def _load_model(checkpoint_path):
         # (devices=2 from multi-GPU training) and crash on a single-GPU eval node.
         cfg = ckpt.get("hyper_parameters", {}).get("config", None)
         if isinstance(cfg, dict):
-            cfg = {**cfg, "devices": 1}
-            model = df_main.deepforest(config=cfg)
+            try:
+                cfg = {**cfg, "devices": 1}
+                model = df_main.deepforest(config=cfg)
+            except Exception:
+                # Checkpoint config may have stale keys (e.g. warmup_epochs removed
+                # from the schema); fall back to defaults and just load weights.
+                model = df_main.deepforest()
         else:
             model = df_main.deepforest()
         model.load_state_dict(state)

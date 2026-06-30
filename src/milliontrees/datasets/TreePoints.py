@@ -131,7 +131,7 @@ class TreePointsDataset(MillionTreesDataset):
                  image_size=448,
                  verbose=True,
                  include_unsupervised=False,
-                 eval_score_threshold=0.4,
+                 eval_score_threshold=0.0,
                  real_world_threshold_m=4.0):
 
         if mini and small:

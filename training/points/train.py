@@ -205,6 +205,18 @@ def main():
     train_adapted = MillionTreesPointBatchAdapter(train_loader, filename_id_to_path)
     val_adapted = MillionTreesPointBatchAdapter(val_loader, filename_id_to_path) if has_val else None
 
+    # DeepForest's RecallPrecision uses a single fixed distance_threshold for
+    # all sources. MillionTrees uses GSD-normalized per-source thresholds
+    # (real_world_m / (gsd * native_px) * image_size) that reach 15–90 px
+    # depending on sensor resolution. There is no DeepForest API to pass a
+    # per-image threshold today; open a PR against weecology/DeepForest to
+    # add metadata-aware thresholds to RecallPrecision. In the meantime, set
+    # 30 px (~0.067 normalized at 448 px) — a rough midpoint between NEON
+    # (~45 px) and the fallback default (~9 px) — so that the Comet
+    # point_recall/point_precision curves at least track training progress in
+    # the right direction rather than being dominated by the tight 10 px hard
+    # cut that misses most NEON predictions.
+    _df_point_distance_threshold = int(round(0.067 * args.image_size))
     config_args = {
         "architecture": "treeformer",
         "train": {"epochs": args.max_epochs, "lr": args.lr},
@@ -216,6 +228,7 @@ def main():
             # These metrics come from the val dataloader, not a csv_file.
             "val_accuracy_interval": 1,
         },
+        "point": {"distance_threshold": _df_point_distance_threshold},
         "batch_size": args.batch_size,
         "devices": args.gpus,
         "accelerator": args.accelerator,

@@ -101,7 +101,7 @@ dev = [
 ]
 # TreeFormer point training (DeepForest treeformer-training branch until merged to main).
 treeformer = [
-    "deepforest @ git+https://github.com/jveitchmichaelis/DeepForest.git@treeformer-training",
+    "deepforest @ git+https://github.com/weecology/DeepForest.git@main",
     "geopandas",
     "comet-ml>=3.44.4",
 ]
@@ -123,10 +123,10 @@ packages.find = {where = ["src"], include = ["milliontrees*"]}
 [tool.uv.sources]
 # The two DeepForest forks (treeformer-training for points, polygon-maskrcnn-workflow
 # for polygons) are the same package, so only one can be installed in .venv at a time
-# and this pin selects which. Currently set to treeformer-training for the POINT
+# and this pin selects which. Currently set to weecology/main for the POINT
 # workflow. Switch back to "cursor/polygon-maskrcnn-workflow" before running polygon
 # jobs off the shared .venv (uv sync after flipping).
-deepforest = { git = "https://github.com/jveitchmichaelis/DeepForest.git", branch = "treeformer-training" }
+deepforest = { git = "https://github.com/bw4sz/DeepForest.git", branch = "cursor/polygon-maskrcnn-jv-with-safecrop" }
 torch = [
     { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
 ]

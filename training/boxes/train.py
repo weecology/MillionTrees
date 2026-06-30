@@ -133,6 +133,44 @@ def evaluate(model, dataset, test_subset, batch_size=12, viz_dir=None, max_batch
 
 
 # ---------------------------------------------------------------------------
+# Box-pretrained backbone (weak-supervision ablation)
+# ---------------------------------------------------------------------------
+
+def _extract_box_pretrained_backbone(checkpoint_path):
+    """Load a DeepForest box checkpoint; return backbone keys for the RetinaNet."""
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    state = ckpt.get("state_dict", ckpt)
+    prefix = "model.backbone.body."
+    mapped = {}
+    for key, value in state.items():
+        if key.startswith(prefix):
+            mapped[f"backbone.body.{key[len(prefix):]}"] = value
+    if not mapped:
+        raise ValueError(
+            f"No DeepForest backbone keys found in {checkpoint_path}. "
+            "Expected prefix 'model.backbone.body.'."
+        )
+    return mapped
+
+
+def apply_box_pretrained_backbone(model, checkpoint_path):
+    """Overwrite the RetinaNet ResNet backbone with box-pretrained weights.
+
+    Leaves DeepForest's COCO-initialized FPN and detection heads in place;
+    only swaps backbone.body.* — same surgery as the polygon ablation.
+    """
+    backbone_state = _extract_box_pretrained_backbone(checkpoint_path)
+    missing, unexpected = model.model.load_state_dict(backbone_state, strict=False)
+    if unexpected:
+        raise ValueError(f"Unexpected keys when loading box backbone: {unexpected}")
+    loaded = sum(1 for k in backbone_state if k.startswith("backbone.body."))
+    if loaded == 0:
+        raise ValueError("No backbone.body keys loaded from box pretrained checkpoint.")
+    print(f"Loaded {loaded} backbone keys; {len(missing)} head keys left at COCO init.")
+    return {"missing": len(missing), "loaded_backbone_keys": loaded}
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -172,9 +210,27 @@ def main():
                         help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
     parser.add_argument("--comet-name", type=str, default=None,
                         help="Comet experiment name. Defaults to "
-                             "boxes-<split>-lr<lr> (see CLAUDE.md naming scheme).")
+                             "boxes-<split>-<init>-lr<lr> (see CLAUDE.md naming scheme).")
     parser.add_argument("--smoke-test", action="store_true",
                         help="Limit to 2 train/val batches and 1 epoch for local testing")
+    parser.add_argument(
+        "--init-mode",
+        type=str,
+        default="deepforest",
+        choices=["deepforest", "coco", "box_pretrained"],
+        help="Backbone initialization: "
+             "deepforest = load weecology/deepforest-tree (NEON-pretrained, not a clean baseline); "
+             "coco = torchvision COCO RetinaNet only (clean baseline, no NEON exposure); "
+             "box_pretrained = COCO RetinaNet with backbone swapped from --box-backbone-checkpoint "
+             "(clean comparison: COCO heads + NEON-pretrained backbone).",
+    )
+    parser.add_argument(
+        "--box-backbone-checkpoint",
+        type=str,
+        default=None,
+        help="Path to a .pt backbone export from pretrain_backbone_for_polygons.py "
+             "(required when --init-mode box_pretrained).",
+    )
     args = parser.parse_args()
 
     if args.smoke_test:
@@ -250,7 +306,18 @@ def main():
         existing_train_dataloader=train_adapted,
         existing_val_dataloader=val_adapted,
     )
-    model.load_model("weecology/deepforest-tree")
+
+    # deepforest = load weecology/deepforest-tree (NEON-exposed; not a clean ablation baseline).
+    # coco = torchvision COCO RetinaNet only (clean COCO baseline, no NEON exposure).
+    # box_pretrained = COCO RetinaNet with backbone replaced by NEON-pretrained weights
+    #   (COCO heads + NEON backbone — clean pair for comparing against coco init).
+    if args.init_mode == "deepforest":
+        model.load_model("weecology/deepforest-tree")
+    elif args.init_mode == "box_pretrained":
+        if not args.box_backbone_checkpoint:
+            raise ValueError("--box-backbone-checkpoint is required with --init-mode box_pretrained")
+        apply_box_pretrained_backbone(model, args.box_backbone_checkpoint)
+    # coco: no load_model call — torchvision COCO weights stay as-is
 
     # Loggers
     loggers = []
@@ -279,7 +346,7 @@ def main():
                             safe[k] = type(v).__name__
                     super().log_hyperparams(safe)
 
-            comet_name = args.comet_name or f"boxes-{args.split_scheme}-lr{args.lr:g}"
+            comet_name = args.comet_name or f"boxes-{args.split_scheme}-{args.init_mode}-lr{args.lr:g}"
             loggers.append(_SafeCometLogger(
                 project_name="milliontrees-boxes",
                 name=comet_name,
