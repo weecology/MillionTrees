@@ -76,6 +76,9 @@ def main():
     parser.add_argument("--eval-max-batches", type=int, default=None)
     parser.add_argument("--comet", action="store_true",
                         help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
+    parser.add_argument("--comet-name", type=str, default=None,
+                        help="Explicit Comet experiment name. If omitted, defaults to "
+                             "boxes-<split>-pretrain-lr<lr> following the CLAUDE.md scheme.")
     args = parser.parse_args()
 
     pl.seed_everything(args.seed, workers=True)
@@ -153,8 +156,10 @@ def main():
                             safe[k] = type(v).__name__
                     super().log_hyperparams(safe)
 
+            comet_name = args.comet_name or f"boxes-{args.split_scheme}-pretrain-lr{args.lr}"
             loggers.append(_SafeCometLogger(
                 project_name="milliontrees-pretrain",
+                experiment_name=comet_name,
                 tags=[f"split-{args.split_scheme}", "geometry-boxes", "backbone-pretrain"],
             ))
         except Exception as e:
