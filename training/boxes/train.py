@@ -9,6 +9,8 @@ Custom code here is limited to two things that DeepForest doesn't cover:
 """
 
 import argparse
+import glob
+import math
 import os
 import warnings
 
@@ -101,7 +103,13 @@ def predict_batch(model, images):
 # Evaluation (DeepForest's evaluate() is CSV-based; use MillionTrees API)
 # ---------------------------------------------------------------------------
 
-def evaluate(model, dataset, test_subset, batch_size=12, viz_dir=None, max_batches=None):
+def collect_predictions(model, test_subset, batch_size=12, max_batches=None):
+    """Run inference over test_subset, returning (all_y_pred, all_y_true).
+
+    Factored out of evaluate() so a threshold sweep can reuse a single inference
+    pass (eval_sweep.run_threshold_sweep) instead of re-running the model per
+    threshold.
+    """
     test_loader = get_eval_loader("standard", test_subset, batch_size=batch_size)
     all_y_pred, all_y_true = [], []
     for i, batch in enumerate(test_loader):
@@ -111,11 +119,55 @@ def evaluate(model, dataset, test_subset, batch_size=12, viz_dir=None, max_batch
         preds = predict_batch(model, images)
         all_y_pred.extend(preds)
         all_y_true.extend(targets)
+    return all_y_pred, all_y_true
+
+
+def evaluate(model, dataset, test_subset, batch_size=12, viz_dir=None, max_batches=None):
+    all_y_pred, all_y_true = collect_predictions(
+        model, test_subset, batch_size=batch_size, max_batches=max_batches)
     results, results_str = dataset.eval(
         all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)],
         viz_dir=viz_dir,
     )
     return results, results_str
+
+
+# ---------------------------------------------------------------------------
+# Box-pretrained backbone (weak-supervision ablation)
+# ---------------------------------------------------------------------------
+
+def _extract_box_pretrained_backbone(checkpoint_path):
+    """Load a DeepForest box checkpoint; return backbone keys for the RetinaNet."""
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    state = ckpt.get("state_dict", ckpt)
+    prefix = "model.backbone.body."
+    mapped = {}
+    for key, value in state.items():
+        if key.startswith(prefix):
+            mapped[f"backbone.body.{key[len(prefix):]}"] = value
+    if not mapped:
+        raise ValueError(
+            f"No DeepForest backbone keys found in {checkpoint_path}. "
+            "Expected prefix 'model.backbone.body.'."
+        )
+    return mapped
+
+
+def apply_box_pretrained_backbone(model, checkpoint_path):
+    """Overwrite the RetinaNet ResNet backbone with box-pretrained weights.
+
+    Leaves DeepForest's COCO-initialized FPN and detection heads in place;
+    only swaps backbone.body.* — same surgery as the polygon ablation.
+    """
+    backbone_state = _extract_box_pretrained_backbone(checkpoint_path)
+    missing, unexpected = model.model.load_state_dict(backbone_state, strict=False)
+    if unexpected:
+        raise ValueError(f"Unexpected keys when loading box backbone: {unexpected}")
+    loaded = sum(1 for k in backbone_state if k.startswith("backbone.body."))
+    if loaded == 0:
+        raise ValueError("No backbone.body keys loaded from box pretrained checkpoint.")
+    print(f"Loaded {loaded} backbone keys; {len(missing)} head keys left at COCO init.")
+    return {"missing": len(missing), "loaded_backbone_keys": loaded}
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +191,13 @@ def main():
         action="store_true",
         help="Use TreeBoxes_v* layout with full-zip URLs.",
     )
+    parser.add_argument(
+        "--remove-incomplete",
+        action="store_true",
+        help="Train only on complete=True (exhaustively annotated) sources. "
+             "Filters the TRAIN split only; the test set is always left "
+             "unchanged so results are comparable to the full-train baseline.",
+    )
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--output-dir", type=str, default="training/boxes/outputs")
     parser.add_argument("--gpus", type=int, default=1)
@@ -151,9 +210,27 @@ def main():
                         help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
     parser.add_argument("--comet-name", type=str, default=None,
                         help="Comet experiment name. Defaults to "
-                             "boxes-<split>-lr<lr> (see CLAUDE.md naming scheme).")
+                             "boxes-<split>-<init>-lr<lr> (see CLAUDE.md naming scheme).")
     parser.add_argument("--smoke-test", action="store_true",
                         help="Limit to 2 train/val batches and 1 epoch for local testing")
+    parser.add_argument(
+        "--init-mode",
+        type=str,
+        default="deepforest",
+        choices=["deepforest", "coco", "box_pretrained"],
+        help="Backbone initialization: "
+             "deepforest = load weecology/deepforest-tree (NEON-pretrained, not a clean baseline); "
+             "coco = torchvision COCO RetinaNet only (clean baseline, no NEON exposure); "
+             "box_pretrained = COCO RetinaNet with backbone swapped from --box-backbone-checkpoint "
+             "(clean comparison: COCO heads + NEON-pretrained backbone).",
+    )
+    parser.add_argument(
+        "--box-backbone-checkpoint",
+        type=str,
+        default=None,
+        help="Path to a .pt backbone export from pretrain_backbone_for_polygons.py "
+             "(required when --init-mode box_pretrained).",
+    )
     args = parser.parse_args()
 
     if args.smoke_test:
@@ -169,6 +246,7 @@ def main():
         root_dir=args.root_dir,
         split_scheme=args.split_scheme,
         include_unsupervised=args.include_unsupervised,
+        remove_incomplete=args.remove_incomplete,
     )
 
     train_subset = box_dataset.get_subset("train")
@@ -228,7 +306,18 @@ def main():
         existing_train_dataloader=train_adapted,
         existing_val_dataloader=val_adapted,
     )
-    model.load_model("weecology/deepforest-tree")
+
+    # deepforest = load weecology/deepforest-tree (NEON-exposed; not a clean ablation baseline).
+    # coco = torchvision COCO RetinaNet only (clean COCO baseline, no NEON exposure).
+    # box_pretrained = COCO RetinaNet with backbone replaced by NEON-pretrained weights
+    #   (COCO heads + NEON backbone — clean pair for comparing against coco init).
+    if args.init_mode == "deepforest":
+        model.load_model("weecology/deepforest-tree")
+    elif args.init_mode == "box_pretrained":
+        if not args.box_backbone_checkpoint:
+            raise ValueError("--box-backbone-checkpoint is required with --init-mode box_pretrained")
+        apply_box_pretrained_backbone(model, args.box_backbone_checkpoint)
+    # coco: no load_model call — torchvision COCO weights stay as-is
 
     # Loggers
     loggers = []
@@ -257,7 +346,7 @@ def main():
                             safe[k] = type(v).__name__
                     super().log_hyperparams(safe)
 
-            comet_name = args.comet_name or f"boxes-{args.split_scheme}-lr{args.lr:g}"
+            comet_name = args.comet_name or f"boxes-{args.split_scheme}-{args.init_mode}-lr{args.lr:g}"
             loggers.append(_SafeCometLogger(
                 project_name="milliontrees-boxes",
                 name=comet_name,
@@ -316,10 +405,20 @@ def main():
             model = df_main.deepforest.load_from_checkpoint(best_path, weights_only=False)
 
     eval_max_batches = 2 if args.smoke_test else None
+    viz_dir = os.path.join(args.output_dir, "viz")
     results, results_str = evaluate(model, box_dataset, test_subset, batch_size=args.batch_size,
-                                    viz_dir=os.path.join(args.output_dir, "viz"),
+                                    viz_dir=viz_dir,
                                     max_batches=eval_max_batches)
     print(results_str)
+
+    if loggers:
+        exp = loggers[0].experiment
+        safe = {k: float(v.item() if hasattr(v, "item") else v)
+                for k, v in results.items()
+                if isinstance(v, (int, float)) or (hasattr(v, "ndim") and v.ndim == 0)}
+        exp.log_metrics({k: v for k, v in safe.items() if math.isfinite(v)})
+        for img_path in sorted(glob.glob(os.path.join(viz_dir, "**", "*.png"), recursive=True)):
+            exp.log_image(img_path, name=os.path.relpath(img_path, viz_dir))
 
     results_path = os.path.join(args.output_dir, f"results_{args.split_scheme}.txt")
     with open(results_path, "w") as f:

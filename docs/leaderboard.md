@@ -105,30 +105,28 @@ released checkpoint with no MillionTrees training at all.
 
 ## TreePolygons
 
-Fine-tuned (✓) uses Mask R-CNN (`training/polygons/train.py`). Pretrained (✗) uses
-SAM3, detectree2, and CanopyRS DINO + SAM3 (SelvaMask).
+Fine-tuned (✓) uses a native Detectron2 Mask R-CNN (`training/polygons/train_detectron2.py`);
+this replaces the earlier DeepForest/torchvision Mask R-CNN (`training/polygons/train.py`),
+which more than halved AP50 on identical data/metric/eval-scale (an implementation gap, not a
+data gap). Pretrained (✗) uses SAM3, detectree2, and CanopyRS DINO + SAM3 (SelvaMask).
 
 ### Within-distribution
 
-| Model | Fine-tuned | Avg Mask Accuracy | Mask-Aware Precision | Script |
-|---|:---:|---|---|---|
-| Mask R-CNN | ✓ | 0.416 | 0.900 | <small>`uv run python training/polygons/train.py --split-scheme within-distribution`</small> |
-| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.312 | 0.879 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme within-distribution --hf-token $HF_TOKEN`</small> |
-| detectree2 | ✗ | 0.304 | 0.891 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme within-distribution`</small> |
-| SAM3 | ✗ | 0.186 | 0.619 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme within-distribution --hf-token $HF_TOKEN`</small> |
+| Model | Fine-tuned | Mask Recall | Mask-Aware Precision | F1 | Mask Accuracy | AP50 | Script |
+|---|:---:|---|---|---|---|---|---|
+| Mask R-CNN (Detectron2) | ✓ | 0.652 | 0.921 | 0.764 | 0.368 | 0.389 | <small>`python training/polygons/train_detectron2.py --split-scheme within-distribution`</small> |
+| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.842 | 0.541 | 0.659 | 0.135 | 0.326 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme within-distribution --hf-token $HF_TOKEN`</small> |
+| SAM3 | ✗ | 0.576 | 0.621 | 0.598 | 0.176 | 0.249 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme within-distribution --hf-token $HF_TOKEN`</small> |
+| detectree2 | ✗ | 0.530 | 0.604 | 0.565 | 0.137 | 0.186 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme within-distribution`</small> |
 
 ### Out-of-distribution
 
-| Model | Fine-tuned | Avg Mask Accuracy | Mask-Aware Precision | Script |
-|---|:---:|---|---|---|
-| detectree2 | ✗ | 0.375 | 0.945 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme out-of-distribution`</small> |
-| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.355 | 0.912 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme out-of-distribution --hf-token $HF_TOKEN`</small> |
-| SAM3 | ✗ | 0.165 | 0.663 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme out-of-distribution --hf-token $HF_TOKEN`</small> |
-| Mask R-CNN | ✓ | 0.064 | 0.814 | <small>`uv run python training/polygons/train.py --split-scheme out-of-distribution`</small> |
-
-> **Note:** The Mask R-CNN ✓ out-of-distribution row is from the pre-fix polygon evaluator
-> (before GT-mask binarization / AP50; commit b2ff776) and is not directly comparable
-> to the post-fix within-distribution row above. Rerun to refresh.
+| Model | Fine-tuned | Mask Recall | Mask-Aware Precision | F1 | Mask Accuracy | AP50 | Script |
+|---|:---:|---|---|---|---|---|---|
+| Mask R-CNN (Detectron2) | ✓ | 0.555 | 0.904 | 0.688 | 0.331 | 0.347 | <small>`python training/polygons/train_detectron2.py --split-scheme out-of-distribution`</small> |
+| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.893 | 0.510 | 0.649 | 0.111 | 0.375 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme out-of-distribution --hf-token $HF_TOKEN`</small> |
+| detectree2 | ✗ | 0.504 | 0.633 | 0.561 | 0.170 | 0.211 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme out-of-distribution`</small> |
+| SAM3 | ✗ | 0.465 | 0.668 | 0.548 | 0.171 | 0.208 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme out-of-distribution --hf-token $HF_TOKEN`</small> |
 
 ### Cross-geometry
 
@@ -181,27 +179,27 @@ Comparison of fine-tuned models (trained on MillionTrees) vs. pretrained models 
 
 | Model | DetectionRecall | MaskAwarePrecision | F1 | DetectionAccuracy | CountingMAE |
 |---|---|---|---|---|---|
-| DeepForest-finetuned | 0.591 | 0.725 | 0.651 | 0.327 | 32.844 |
-| CanopyRS-DINO-SwinL | 0.841 | 0.526 | 0.647 | 0.177 | 169.941 |
-| SAM3 | 0.635 | 0.572 | 0.602 | 0.239 | 53.283 |
-| DeepForest-pretrained | 0.399 | 0.745 | 0.520 | 0.261 | 28.399 |
+| DeepForest-finetuned | 0.654 | 0.650 | 0.652 | 0.348 | 11.724 |
+| CanopyRS-DINO-SwinL | 0.786 | 0.380 | 0.512 | 0.151 | 137.730 |
+| SAM3 | 0.561 | 0.434 | 0.489 | 0.183 | 39.094 |
+| DeepForest-pretrained | 0.358 | 0.584 | 0.444 | 0.214 | 10.575 |
 
 ### TreePoints
 
 | Model | KeypointAccuracy | MaskAwarePrecision | F1 | CountingMAE |
 |---|---|---|---|---|
-| TreeFormer-finetuned | 0.411 | 0.832 | 0.550 | 65.230 |
-| TreeFormer-pretrained | 0.318 | 0.846 | 0.462 | 52.938 |
-| SAM3 | 0.218 | 0.698 | 0.332 | 38.336 |
+| TreeFormer-finetuned | 0.537 | 0.814 | 0.647 | 54.284 |
+| SAM3 | 0.650 | 0.625 | 0.637 | 43.447 |
+| TreeFormer-pretrained | 0.460 | 0.859 | 0.599 | 57.951 |
 
 ### TreePolygons
 
 | Model | MaskRecall | MaskAwarePrecision | F1 | MaskAccuracy | AP50 |
 |---|---|---|---|---|---|
-| MaskRCNN-finetuned | 0.604 | 0.858 | 0.709 | 0.375 | 0.284 |
-| CanopyRS-DINO-SAM3-SelvaMask | 0.565 | 0.879 | 0.688 | 0.312 | 0.220 |
-| Detectree2 | 0.378 | 0.829 | 0.519 | 0.215 | 0.106 |
-| SAM3 | 0.235 | 0.635 | 0.343 | 0.154 | 0.045 |
+| MaskRCNN-Detectron2-finetuned | 0.652 | 0.921 | 0.764 | 0.368 | 0.389 |
+| CanopyRS-DINO-SAM3-SelvaMask | 0.842 | 0.541 | 0.659 | 0.135 | 0.326 |
+| SAM3 | 0.576 | 0.621 | 0.598 | 0.176 | 0.249 |
+| Detectree2 | 0.530 | 0.604 | 0.565 | 0.137 | 0.186 |
 
 ### Split: out-of-distribution
 
@@ -209,25 +207,25 @@ Comparison of fine-tuned models (trained on MillionTrees) vs. pretrained models 
 
 | Model | DetectionRecall | MaskAwarePrecision | F1 | DetectionAccuracy | CountingMAE |
 |---|---|---|---|---|---|
-| CanopyRS-DINO-SwinL | 0.901 | 0.676 | 0.772 | 0.214 | 199.248 |
-| SAM3 | 0.706 | 0.725 | 0.715 | 0.357 | 48.121 |
-| DeepForest-finetuned | 0.534 | 0.819 | 0.646 | 0.341 | 34.757 |
-| DeepForest-pretrained | 0.397 | 0.897 | 0.550 | 0.277 | 29.918 |
+| DeepForest-finetuned | 0.616 | 0.727 | 0.667 | 0.335 | 20.844 |
+| CanopyRS-DINO-SwinL | 0.924 | 0.506 | 0.654 | 0.196 | 153.618 |
+| SAM3 | 0.725 | 0.581 | 0.645 | 0.295 | 40.154 |
+| DeepForest-pretrained | 0.465 | 0.781 | 0.583 | 0.304 | 13.104 |
 
 ### TreePoints
 
 | Model | KeypointAccuracy | MaskAwarePrecision | F1 | CountingMAE |
 |---|---|---|---|---|
-| TreeFormer-finetuned | 0.460 | 0.816 | 0.588 | 34.506 |
-| TreeFormer-pretrained | 0.392 | 0.857 | 0.538 | 18.627 |
-| SAM3 | 0.243 | 0.772 | 0.370 | 52.164 |
+| TreeFormer-pretrained | 0.543 | 0.811 | 0.650 | 67.838 |
+| SAM3 | 0.681 | 0.621 | 0.650 | 35.838 |
+| TreeFormer-finetuned | 0.586 | 0.685 | 0.632 | 59.899 |
 
 ### TreePolygons
 
 | Model | MaskRecall | MaskAwarePrecision | F1 | MaskAccuracy | AP50 |
 |---|---|---|---|---|---|
-| CanopyRS-DINO-SAM3-SelvaMask | 0.615 | 0.912 | 0.735 | 0.355 | 0.277 |
-| Detectree2 | 0.354 | 0.860 | 0.502 | 0.247 | 0.142 |
-| MaskRCNN-finetuned | 0.282 | 0.774 | 0.413 | 0.197 | 0.219 |
-| SAM3 | 0.124 | 0.536 | 0.201 | 0.098 | 0.058 |
+| MaskRCNN-Detectron2-finetuned | 0.555 | 0.904 | 0.688 | 0.331 | 0.347 |
+| CanopyRS-DINO-SAM3-SelvaMask | 0.893 | 0.510 | 0.649 | 0.111 | 0.375 |
+| Detectree2 | 0.504 | 0.633 | 0.561 | 0.170 | 0.211 |
+| SAM3 | 0.465 | 0.668 | 0.548 | 0.171 | 0.208 |
 

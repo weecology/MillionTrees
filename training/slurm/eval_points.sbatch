@@ -18,11 +18,10 @@ SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 
 CKPT_DIR="training/points/outputs/${SPLIT}/checkpoints"
-# TreeFormer checkpoints are named treeformer-epoch=NN-val_loss=*.ckpt. Restrict to the
-# val_loss-monitored files (skip the point_recall ones) and pick the lowest val_loss.
-CKPT=$(ls -1 "$CKPT_DIR"/treeformer-epoch=*-val_loss=*.ckpt \
-  | awk -F'val_loss=' '{print $2"\t"$0}' \
-  | sort -g \
+# Checkpoints are named treeformer-epoch=NN-point_recall=*.ckpt; pick the highest recall.
+CKPT=$(ls -1 "$CKPT_DIR"/treeformer-epoch=*-point_recall=*.ckpt \
+  | awk -F'point_recall=' '{print $2"\t"$0}' \
+  | sort -rg \
   | head -1 \
   | cut -f2-)
 

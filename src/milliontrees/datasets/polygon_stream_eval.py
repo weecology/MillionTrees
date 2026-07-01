@@ -237,15 +237,10 @@ class TreePolygonsStreamingEvalState:
         results[self._MAP_KEY] = r
         results_str += s
 
-        # Match ``TreePolygonsDataset.eval`` / ``TreeBoxesDataset.eval`` (same key prefixes).
-        detection_accs: list[float] = []
-        for k, v in results["accuracy"].items():
-            if k.startswith("detection_acc_source:"):
-                d = k.split(":")[1]
-                count = results["accuracy"].get(f"source:{d}")
-                if count and count > 0:
-                    detection_accs.append(float(v))
-        detection_acc_avg_dom = float(np.array(detection_accs).mean())
+        # Mirror ``TreePolygonsDataset.eval``: read the already-computed macro
+        # average directly from the accuracy results dict.
+        agg_field = self._dataset.metrics["accuracy"].agg_metric_field
+        detection_acc_avg_dom = float(results["accuracy"][agg_field])
         results["detection_acc_avg_dom"] = detection_acc_avg_dom
         results_str = (
             f"Average detection_acc across source: {detection_acc_avg_dom:.3f}\n"

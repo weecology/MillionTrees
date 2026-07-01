@@ -23,6 +23,11 @@ def main():
                         default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
     parser.add_argument("--split-scheme", type=str, default="out-of-distribution",
                         choices=["within-distribution", "out-of-distribution", "crossgeometry"])
+    parser.add_argument("--eval-split", type=str, default="test",
+                        choices=["train", "validation", "test"],
+                        help="Which subset to evaluate. 'validation' holds the Allen "
+                             "et al. 2025 TLS set (plus Amirkolaee et al. 2023); the "
+                             "per-source breakdown in the results separates them.")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
@@ -99,21 +104,24 @@ def main():
     if args.eval_score_threshold is not None:
         dataset_kwargs["eval_score_threshold"] = args.eval_score_threshold
     dataset = get_dataset("TreePoints", **dataset_kwargs)
-    test_subset = dataset.get_subset("test")
+    eval_subset = dataset.get_subset(args.eval_split)
 
     results, results_str = evaluate(
-        model, dataset, test_subset,
+        model, dataset, eval_subset,
         batch_size=args.batch_size,
         viz_dir=args.viz_dir,
     )
     print(results_str)
 
+    # Keep the canonical test results filename for backward compat; suffix any
+    # non-test eval (e.g. validation) so it never clobbers leaderboard outputs.
+    tag = args.split_scheme if args.eval_split == "test" else f"{args.split_scheme}_{args.eval_split}"
     if args.output_dir:
         os.makedirs(args.output_dir, exist_ok=True)
-        out_path = os.path.join(args.output_dir, f"results_{args.split_scheme}.txt")
+        out_path = os.path.join(args.output_dir, f"results_{tag}.txt")
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(results_str)
-        json_path = os.path.join(args.output_dir, f"results_{args.split_scheme}.json")
+        json_path = os.path.join(args.output_dir, f"results_{tag}.json")
         flat = {
             k: float(v) if hasattr(v, "item") else v
             for k, v in results.items()
@@ -124,6 +132,7 @@ def main():
                 "model": "TreeFormer-finetuned",
                 "task": "TreePoints",
                 "split": args.split_scheme,
+                "eval_split": args.eval_split,
                 "metrics": flat,
             }, f, indent=2)
         print(f"Results saved to {out_path}")

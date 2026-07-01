@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "milliontrees"
-version = "0.11.0"
+version = "0.12.0"
 description = "Benchmark dataset for Airborne Tree Machine Learning"
 readme = "README.md"
 license = { text = "MIT" }
@@ -101,7 +101,17 @@ dev = [
 ]
 # TreeFormer point training (DeepForest treeformer-training branch until merged to main).
 treeformer = [
-    "deepforest @ git+https://github.com/jveitchmichaelis/DeepForest.git@treeformer-training",
+    "deepforest @ git+https://github.com/weecology/DeepForest.git@main",
+    "geopandas",
+    "comet-ml>=3.44.4",
+]
+# Polygon Mask R-CNN training (DeepForest polygon-maskrcnn-workflow branch until merged).
+# NOTE: this branch and treeformer-training are distinct branches of the same
+# package, so only one DeepForest can be installed in a venv at a time. The
+# [tool.uv.sources] entry below selects which one `uv sync` installs; it is set
+# to the polygon branch for this workflow.
+polygon = [
+    "deepforest @ git+https://github.com/jveitchmichaelis/DeepForest.git@cursor/polygon-maskrcnn-workflow",
     "geopandas",
     "comet-ml>=3.44.4",
 ]
@@ -111,7 +121,12 @@ package-dir = {"" = "src"}
 packages.find = {where = ["src"], include = ["milliontrees*"]}
 
 [tool.uv.sources]
-deepforest = { git = "https://github.com/jveitchmichaelis/DeepForest.git", branch = "treeformer-training" }
+# The two DeepForest forks (treeformer-training for points, polygon-maskrcnn-workflow
+# for polygons) are the same package, so only one can be installed in .venv at a time
+# and this pin selects which. Currently set to weecology/main for the POINT
+# workflow. Switch back to "cursor/polygon-maskrcnn-workflow" before running polygon
+# jobs off the shared .venv (uv sync after flipping).
+deepforest = { git = "https://github.com/bw4sz/DeepForest.git", branch = "cursor/polygon-maskrcnn-jv-with-safecrop" }
 torch = [
     { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
 ]

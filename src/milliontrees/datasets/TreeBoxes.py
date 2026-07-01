@@ -1,6 +1,5 @@
 from pathlib import Path
 import os
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -21,7 +20,6 @@ from milliontrees.common.metrics.all_metrics import (
     MergeCommissionMetric,
 )
 from milliontrees.common.onboarding import print_dataset_summary
-from PIL import Image
 
 from albumentations.pytorch import ToTensorV2
 
@@ -49,7 +47,9 @@ class TreeBoxesDataset(MillionTreesDataset):
         split_scheme (str): The split scheme to use.
         geometry_name (str): The name of the geometry to use.
         eval_score_threshold (float): The threshold for the evaluation score.
-        remove_incomplete (bool): Whether to remove incomplete data.
+        remove_incomplete (bool): Drop incomplete (not exhaustively annotated)
+            sources from the TRAIN split only. Validation/test are never
+            filtered, so the evaluation set matches a full-train run.
         image_size (int): The size of the image to use.
         include_sources (list): The sources to include.
         exclude_sources (list): The sources to exclude.
@@ -98,6 +98,24 @@ class TreeBoxesDataset(MillionTreesDataset):
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.18.zip",
             'compressed_size':
                 67700616443
+        },
+        "0.19": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.19.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.19.zip",
+            # TODO: refresh with the real zip size once v0.19 zips are built;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                67700616443
+        },
+        "0.20": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.20.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.20.zip",
+            'compressed_size':
+                79939201324
         }
     }
 
@@ -107,7 +125,7 @@ class TreeBoxesDataset(MillionTreesDataset):
                  download=False,
                  split_scheme='within-distribution',
                  geometry_name='y',
-                 eval_score_threshold=0.1,
+                 eval_score_threshold=0.0,
                  remove_incomplete=False,
                  image_size=448,
                  include_sources=None,
@@ -177,9 +195,26 @@ class TreeBoxesDataset(MillionTreesDataset):
         self.sources = df['source'].unique()
         available_source_count = len(self.sources)
 
-        # Remove incomplete data based on flag
+        # Normalize the per-row `complete` flag to a real boolean. The packaged
+        # CSV stores it as strings ('True'/'False') and occasionally carries
+        # stray free-text or NaN; only an exact (case-insensitive) 'true' counts
+        # as complete. Without this, `complete == True` matches nothing and
+        # `bool('False')` is truthy, so downstream gating is wrong.
+        # Older CSVs (and test fixtures) omit this column; default to True.
+        if 'complete' not in df.columns:
+            df['complete'] = True
+        else:
+            df['complete'] = (
+                df['complete'].astype(str).str.strip().str.lower() == 'true')
+
+        # Remove incomplete data based on flag. This filters the TRAIN split
+        # only: incomplete sources are dropped from training, while
+        # validation/test are left untouched so the evaluation set is identical
+        # to a full-train run. (We never want a training-data flag to change the
+        # test set.)
         if remove_incomplete:
-            df = df[df['complete'] == True]
+            df = df[df['complete'] |
+                    (df['split'] != 'train')].reset_index(drop=True)
 
         # Filter by include/exclude source names with wildcard support
         # Default: exclude sources containing 'unsupervised' unless include_unsupervised=True
@@ -378,14 +413,9 @@ class TreeBoxesDataset(MillionTreesDataset):
             results[metric] = result
             results_str += result_str
 
-        detection_accs = []
-        for k, v in results["accuracy"].items():
-            if k.startswith('detection_acc_source:'):
-                d = k.split(':')[1]
-                count = results["accuracy"][f'source:{d}']
-                if count > 0:
-                    detection_accs.append(v)
-        detection_acc_avg_dom = np.array(detection_accs).mean()
+        # Macro-average already computed by standard_group_eval; read it back.
+        detection_acc_avg_dom = results["accuracy"][
+            self.metrics["accuracy"].agg_metric_field]
         results['detection_acc_avg_dom'] = detection_acc_avg_dom
         results_str = f'Average detection_acc across source: {detection_acc_avg_dom:.3f}\n' + results_str
 

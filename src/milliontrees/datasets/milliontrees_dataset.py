@@ -493,12 +493,24 @@ class MillionTreesDataset:
             - results_str (str): Pretty print version of the results
         """
         results, results_str = {}, ''
-        if aggregate:
-            results.update(metric.compute(y_pred, y_true))
-            results_str += f"Average {metric.name}: {results[metric.agg_metric_field]:.3f}\n"
         g = grouper.metadata_to_group(metadata)
         group_results = metric.compute_group_wise(y_pred, y_true, g,
                                                   grouper.n_groups)
+        if aggregate:
+            # Headline "Average" is a macro (source-balanced) mean: the simple
+            # unweighted average over sources with >=1 sample. This stops large
+            # sources (e.g. SelvaBox, which is ~57% of the box test set) from
+            # dominating the pooled/sample-weighted aggregate that
+            # metric.compute() returns. Matches the source-balanced intent of
+            # detection_acc_avg_dom and keeps every dataset weighted equally.
+            macro_vals = [
+                group_results[metric.group_metric_field(gi)]
+                for gi in range(grouper.n_groups)
+                if group_results[metric.group_count_field(gi)] > 0
+            ]
+            macro = float(np.mean(macro_vals)) if macro_vals else float('nan')
+            results[metric.agg_metric_field] = macro
+            results_str += f"Average {metric.name}: {macro:.3f}\n"
         for group_idx in range(grouper.n_groups):
             group_str = grouper.group_field_str(group_idx)
             group_metric = group_results[metric.group_metric_field(group_idx)]

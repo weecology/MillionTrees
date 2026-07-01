@@ -1,4 +1,3 @@
-import glob
 import os
 import pandas as pd
 from deepforest.utilities import read_file
@@ -6,20 +5,20 @@ from deepforest.utilities import read_file
 # Define the base path
 BASE_PATH = "/orange/ewhite/b.weinstein/NeonTreeEvaluation/hand_annotations/crops"
 
-# Load all CSV files in the specified directory
-csv_files = glob.glob(os.path.join(BASE_PATH, "*.csv"))
-csv_list = []
+# hand_annotations.csv is the master annotation file: it already aggregates every
+# per-site crop CSV in this directory (verified: all per-site rows are a subset of
+# it, and it carries additional rows the per-site files lack). Globbing *.csv and
+# concatenating therefore counted each annotation twice -- once from the per-site
+# file and once from the master -- inflating the published Weecology ground truth
+# with exact-duplicate boxes. Read only the master to avoid the double-count.
+MASTER_CSV = os.path.join(BASE_PATH, "hand_annotations.csv")
 
-for csv_file in csv_files:
-    print(csv_file)
-    df = read_file(csv_file)
-    df["image_path"] = df["image_path"].apply(lambda x: os.path.join(BASE_PATH, x))
-    df["source"] = "Weecology_University_Florida"
-    df["label"] = "Tree"
-    csv_list.append(df)
-
-# Concatenate all CSV dataframes
-annotations = pd.concat(csv_list, ignore_index=True)
+print(MASTER_CSV)
+annotations = read_file(MASTER_CSV)
+annotations["image_path"] = annotations["image_path"].apply(
+    lambda x: os.path.join(BASE_PATH, x))
+annotations["source"] = "Weecology_University_Florida"
+annotations["label"] = "Tree"
 
 # Save the combined annotations to a CSV file
 output_path = "/orange/ewhite/DeepForest/NEON_benchmark/University_of_Florida.csv"

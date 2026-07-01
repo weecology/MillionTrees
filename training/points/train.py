@@ -11,7 +11,9 @@ Install with ``uv sync --group treeformer`` until this lands on weecology/DeepFo
 """
 
 import argparse
+import glob
 import json
+import math
 import os
 import warnings
 
@@ -203,6 +205,18 @@ def main():
     train_adapted = MillionTreesPointBatchAdapter(train_loader, filename_id_to_path)
     val_adapted = MillionTreesPointBatchAdapter(val_loader, filename_id_to_path) if has_val else None
 
+    # DeepForest's RecallPrecision uses a single fixed distance_threshold for
+    # all sources. MillionTrees uses GSD-normalized per-source thresholds
+    # (real_world_m / (gsd * native_px) * image_size) that reach 15–90 px
+    # depending on sensor resolution. There is no DeepForest API to pass a
+    # per-image threshold today; open a PR against weecology/DeepForest to
+    # add metadata-aware thresholds to RecallPrecision. In the meantime, set
+    # 30 px (~0.067 normalized at 448 px) — a rough midpoint between NEON
+    # (~45 px) and the fallback default (~9 px) — so that the Comet
+    # point_recall/point_precision curves at least track training progress in
+    # the right direction rather than being dominated by the tight 10 px hard
+    # cut that misses most NEON predictions.
+    _df_point_distance_threshold = int(round(0.067 * args.image_size))
     config_args = {
         "architecture": "treeformer",
         "train": {"epochs": args.max_epochs, "lr": args.lr},
@@ -214,6 +228,7 @@ def main():
             # These metrics come from the val dataloader, not a csv_file.
             "val_accuracy_interval": 1,
         },
+        "point": {"distance_threshold": _df_point_distance_threshold},
         "batch_size": args.batch_size,
         "devices": args.gpus,
         "accelerator": args.accelerator,
@@ -232,10 +247,6 @@ def main():
             },
         }
         config_args["validation"]["lr_plateau_target"] = "val_loss"
-    if args.gpus > 1:
-        # TreeFormer has heads (box detection / cropmodel) that don't contribute
-        # to the point loss, so DDP must be told to expect unused parameters.
-        config_args["strategy"] = "ddp_find_unused_parameters_true"
 
     model = df_main.deepforest(
         config_args=config_args,
@@ -344,6 +355,13 @@ def main():
             ))
 
     trainer_kwargs = {}
+    if args.gpus > 1:
+        # TreeFormer has heads (box detection / cropmodel) that don't contribute
+        # to the point loss, so DDP must be told to expect unused parameters.
+        # Must be passed as a create_trainer() kwarg: deepforest's create_trainer
+        # builds the Trainer directly from config fields and ignores config.strategy,
+        # so setting it in config_args is silently dropped (only logged to Comet).
+        trainer_kwargs["strategy"] = "ddp_find_unused_parameters_true"
     if has_val:
         trainer_kwargs["limit_val_batches"] = 1.0
         trainer_kwargs["num_sanity_val_steps"] = 2
@@ -375,13 +393,23 @@ def main():
                   f"score_integration_radius: {model.model.score_integration_radius}")
 
     eval_max_batches = 2 if args.smoke_test else None
+    viz_dir = os.path.join(args.output_dir, "viz")
     results, results_str = evaluate(
         model, point_dataset, test_subset,
         batch_size=args.batch_size,
-        viz_dir=os.path.join(args.output_dir, "viz"),
+        viz_dir=viz_dir,
         max_batches=eval_max_batches,
     )
     print(results_str)
+
+    if loggers:
+        exp = loggers[0].experiment
+        safe = {k: float(v.item() if hasattr(v, "item") else v)
+                for k, v in results.items()
+                if isinstance(v, (int, float)) or (hasattr(v, "ndim") and v.ndim == 0)}
+        exp.log_metrics({k: v for k, v in safe.items() if math.isfinite(v)})
+        for img_path in sorted(glob.glob(os.path.join(viz_dir, "**", "*.png"), recursive=True)):
+            exp.log_image(img_path, name=os.path.relpath(img_path, viz_dir))
 
     results_path = os.path.join(args.output_dir, f"results_{args.split_scheme}.txt")
     with open(results_path, "w", encoding="utf-8") as f:

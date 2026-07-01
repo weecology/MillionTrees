@@ -6,13 +6,18 @@ import numpy as np
 import torch
 
 from milliontrees.datasets.milliontrees_dataset import MillionTreesDataset
-from milliontrees.common.eval_visualization import save_eval_visualizations
+from milliontrees.common.eval_visualization import (
+    save_eval_visualizations,
+    save_count_scatter,
+)
 from milliontrees.common.grouper import CombinatorialGrouper
 from milliontrees.common.metrics.all_metrics import (
     KeypointAccuracy,
     CountingError,
     MaskAwareKeypointPrecision,
     KeypointMergeCommissionMetric,
+    detection_count_pair,
+    counting_regression_stats,
 )
 from milliontrees.common.utils import format_eval_results
 from milliontrees.common.onboarding import print_dataset_summary
@@ -90,6 +95,24 @@ class TreePointsDataset(MillionTreesDataset):
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.18.zip",
             'compressed_size':
                 191019517147
+        },
+        "0.19": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.19.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.19.zip",
+            # TODO: refresh with the real zip size once v0.19 zips are built;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                191019517147
+        },
+        "0.20": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.20.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.20.zip",
+            'compressed_size':
+                190971944620
         }
     }
 
@@ -108,8 +131,8 @@ class TreePointsDataset(MillionTreesDataset):
                  image_size=448,
                  verbose=True,
                  include_unsupervised=False,
-                 eval_score_threshold=0.4,
-                 real_world_threshold_m=3.0):
+                 eval_score_threshold=0.0,
+                 real_world_threshold_m=4.0):
 
         if mini and small:
             raise ValueError(
@@ -176,8 +199,23 @@ class TreePointsDataset(MillionTreesDataset):
         self.sources = self.df['source'].unique()
         available_source_count = len(self.sources)
 
+        # Normalize the per-row `complete` flag to a real boolean (the packaged
+        # CSV stores it as strings, with occasional free-text/NaN). Only an
+        # exact (case-insensitive) 'true' counts as complete.
+        # Older CSVs (and test fixtures) omit this column; default to True.
+        if 'complete' not in self.df.columns:
+            self.df['complete'] = True
+        else:
+            self.df['complete'] = (self.df['complete'].astype(
+                str).str.strip().str.lower() == 'true')
+
+        # Remove incomplete data based on flag. Filters the TRAIN split only;
+        # validation/test are never filtered so the evaluation set is identical
+        # to a full-train run.
         if remove_incomplete:
-            self.df = self.df[self.df['complete'] == True]
+            self.df = self.df[self.df['complete'] |
+                              (self.df['split'] != 'train')].reset_index(
+                                  drop=True)
 
         # Filter by include/exclude source names with wildcard support
         # Default: exclude sources containing 'unsupervised' unless include_unsupervised=True
@@ -452,9 +490,75 @@ class TreePointsDataset(MillionTreesDataset):
             results[metric_name] = result
             results_str += result_str
 
-        # Format results with tables
+        # --- Counting regression summary (nMAE / R2 / slope, macro across sources) ---
+        # Only exhaustively-annotated (complete=True) images carry a meaningful
+        # count, matching the CountingError gating. We collect per-image
+        # (gt_count, pred_count) pairs per source, compute count-error stats per
+        # source, then macro-average so dense sources don't dominate.
+        counting = {
+            "per_source": {},
+            "pairs": {
+                "gt": [],
+                "pred": [],
+                "source_id": []
+            }
+        }
+        per_source_stats = []
+        for source_id in range(self._n_groups):
+            indices = (g == source_id).nonzero(as_tuple=True)[0].tolist()
+            gt_counts, pred_counts = [], []
+            for i in indices:
+                if not bool(y_true[i].get('complete', False)):
+                    continue
+                gt_c, pred_c = detection_count_pair(
+                    y_pred[i],
+                    y_true[i],
+                    self.eval_score_threshold,
+                    geometry_name=self.geometry_name)
+                gt_counts.append(gt_c)
+                pred_counts.append(pred_c)
+                counting["pairs"]["gt"].append(gt_c)
+                counting["pairs"]["pred"].append(pred_c)
+                counting["pairs"]["source_id"].append(source_id)
+            if not gt_counts:
+                continue
+            stats = counting_regression_stats(gt_counts, pred_counts)
+            stats["source"] = self._source_id_to_code[source_id]
+            counting["per_source"][source_id] = stats
+            per_source_stats.append(stats)
+
+        if per_source_stats:
+
+            def _macro(key):
+                vals = [
+                    s[key] for s in per_source_stats if not np.isnan(s[key])
+                ]
+                return float(np.mean(vals)) if vals else float("nan")
+
+            counting["counting_nmae_avg_dom"] = _macro("nmae")
+            counting["counting_r2_avg_dom"] = _macro("r2")
+            counting["counting_slope_avg_dom"] = _macro("slope")
+            results['counting_nmae_avg_dom'] = counting["counting_nmae_avg_dom"]
+            results['counting_r2_avg_dom'] = counting["counting_r2_avg_dom"]
+            results['counting_slope_avg_dom'] = counting[
+                "counting_slope_avg_dom"]
+            results_str += (
+                f"Counting (complete sources, macro across source): "
+                f"nMAE = {counting['counting_nmae_avg_dom']:.3f}  "
+                f"R2 = {counting['counting_r2_avg_dom']:.3f}  "
+                f"slope = {counting['counting_slope_avg_dom']:.3f}\n")
+            for s in per_source_stats:
+                results_str += (
+                    f"  [{s['source']}]  [n = {s['n']:6d}]:  "
+                    f"MAE = {s['mae']:.2f}  nMAE = {s['nmae']:.3f}  "
+                    f"R2 = {s['r2']:.3f}  slope = {s['slope']:.3f}\n")
+
+        # Format results with tables. ``counting`` is attached to ``results``
+        # only afterwards: it is a nested dict (pairs/per_source) that
+        # ``format_eval_results`` would misparse as a per-source metric table.
         formatted_results = format_eval_results(results, self)
         results_str = formatted_results + '\n' + results_str
+        results['counting_summary'] = counting
 
         if viz_dir is not None:
             paths = save_eval_visualizations(
@@ -467,6 +571,12 @@ class TreePointsDataset(MillionTreesDataset):
                 score_threshold=self.eval_score_threshold,
             )
             results["eval_visualization_paths"] = [str(p) for p in paths]
+
+            scatter_path = save_count_scatter(
+                results['counting_summary'],
+                Path(viz_dir) / "count_scatter.png")
+            if scatter_path is not None:
+                results["count_scatter_path"] = str(scatter_path)
 
         return results, results_str
 

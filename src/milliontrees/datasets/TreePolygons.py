@@ -74,6 +74,24 @@ class TreePolygonsDataset(MillionTreesDataset):
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.18.zip",
             'compressed_size':
                 120747553994
+        },
+        "0.19": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.19.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.19.zip",
+            # TODO: refresh with the real zip size once v0.19 zips are built;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                120747553994
+        },
+        "0.20": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.20.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.20.zip",
+            'compressed_size':
+                109263962653
         }
     }
 
@@ -83,7 +101,7 @@ class TreePolygonsDataset(MillionTreesDataset):
                  download=False,
                  split_scheme='within-distribution',
                  geometry_name='y',
-                 eval_score_threshold=0.5,
+                 eval_score_threshold=0.0,
                  image_size=448,
                  remove_incomplete=False,
                  include_sources=None,
@@ -149,9 +167,22 @@ class TreePolygonsDataset(MillionTreesDataset):
         self.sources = df['source'].unique()
         available_source_count = len(self.sources)
 
-        # Remove incomplete data based on flag
+        # Normalize the per-row `complete` flag to a real boolean (the packaged
+        # CSV stores it as strings, with occasional free-text/NaN). Only an
+        # exact (case-insensitive) 'true' counts as complete.
+        # Older CSVs (and test fixtures) omit this column; default to True.
+        if 'complete' not in df.columns:
+            df['complete'] = True
+        else:
+            df['complete'] = (
+                df['complete'].astype(str).str.strip().str.lower() == 'true')
+
+        # Remove incomplete data based on flag. Filters the TRAIN split only;
+        # validation/test are never filtered so the evaluation set is identical
+        # to a full-train run.
         if remove_incomplete:
-            df = df[df['complete'] == True]
+            df = df[df['complete'] |
+                    (df['split'] != 'train')].reset_index(drop=True)
 
         # Filter by include/exclude source names with wildcard support
         # Default: exclude sources containing 'unsupervised' unless include_unsupervised=True
@@ -260,37 +291,7 @@ class TreePolygonsDataset(MillionTreesDataset):
             self._source_id_complete = {}
 
         # eval grouper
-        self.metrics = {
-            "accuracy":
-                MaskAccuracy(geometry_name=self.geometry_name,
-                             score_threshold=self.eval_score_threshold,
-                             metric="accuracy"),
-            "recall":
-                MaskAccuracy(geometry_name=self.geometry_name,
-                             score_threshold=self.eval_score_threshold,
-                             metric="recall"),
-            "maskaware_precision":
-                MaskAwareMaskPrecision(
-                    geometry_name=self.geometry_name,
-                    score_threshold=self.eval_score_threshold),
-            "AP50":
-                DetectionMAP(geometry_name=self.geometry_name,
-                             score_threshold=self.eval_score_threshold,
-                             iou_type="segm",
-                             iou_thresholds=[0.5],
-                             max_detection_thresholds=[1, 10, 1000]),
-            "merge_commission":
-                MergeCommissionMetric(
-                    geometry_name=self.geometry_name,
-                    score_threshold=self.eval_score_threshold,
-                    modality="mask",
-                ),
-            "counting_mae":
-                CountingError(
-                    score_threshold=self.eval_score_threshold,
-                    geometry_name=self.geometry_name,
-                ),
-        }
+        self.metrics = self.build_metrics(self.eval_score_threshold)
         self._eval_grouper = CombinatorialGrouper(dataset=self,
                                                   groupby_fields=(['source_id'
                                                                   ]))
@@ -453,6 +454,44 @@ class TreePolygonsDataset(MillionTreesDataset):
         cv2.fillPoly(mask_img, [pts], 255)
         return mask_img
 
+    def build_metrics(self, score_threshold):
+        """Construct the evaluation metric objects at a given score threshold.
+
+        Each metric filters predictions by ``scores >= score_threshold``, so the threshold is baked
+        in at construction. Factored out so callers (e.g. a threshold sweep) can build independent
+        metric sets per threshold without reconstructing the whole dataset.
+        """
+        return {
+            "accuracy":
+                MaskAccuracy(geometry_name=self.geometry_name,
+                             score_threshold=score_threshold,
+                             metric="accuracy"),
+            "recall":
+                MaskAccuracy(geometry_name=self.geometry_name,
+                             score_threshold=score_threshold,
+                             metric="recall"),
+            "maskaware_precision":
+                MaskAwareMaskPrecision(geometry_name=self.geometry_name,
+                                       score_threshold=score_threshold),
+            "AP50":
+                DetectionMAP(geometry_name=self.geometry_name,
+                             score_threshold=score_threshold,
+                             iou_type="segm",
+                             iou_thresholds=[0.5],
+                             max_detection_thresholds=[1, 10, 1000]),
+            "merge_commission":
+                MergeCommissionMetric(
+                    geometry_name=self.geometry_name,
+                    score_threshold=score_threshold,
+                    modality="mask",
+                ),
+            "counting_mae":
+                CountingError(
+                    score_threshold=score_threshold,
+                    geometry_name=self.geometry_name,
+                ),
+        }
+
     def eval(self,
              y_pred,
              y_true,
@@ -476,14 +515,9 @@ class TreePolygonsDataset(MillionTreesDataset):
             results[metric] = result
             results_str += result_str
 
-        detection_accs = []
-        for k, v in results["accuracy"].items():
-            if k.startswith('detection_acc_source:'):
-                d = k.split(':')[1]
-                count = results["accuracy"][f'source:{d}']
-                if count > 0:
-                    detection_accs.append(v)
-        detection_acc_avg_dom = np.array(detection_accs).mean()
+        # Macro-average already computed by standard_group_eval; read it back.
+        detection_acc_avg_dom = results["accuracy"][
+            self.metrics["accuracy"].agg_metric_field]
         results['detection_acc_avg_dom'] = detection_acc_avg_dom
         results_str = f'Average detection_acc across source: {detection_acc_avg_dom:.3f}\n' + results_str
 

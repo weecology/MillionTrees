@@ -1,14 +1,17 @@
 import pandas as pd
+import numpy as np
 import os
 import shutil
 import geopandas as gpd
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from deepforest.visualize import plot_results
 from deepforest.utilities import read_file
 import cv2
 import rasterio
 import glob
 from pathlib import Path
+from shapely import from_wkt
 from shapely.geometry.base import BaseGeometry
 try:
     from data_prep.packaging_utils import (
@@ -17,7 +20,6 @@ try:
     )
 except ImportError:  # when run as a script from inside data_prep/
     from packaging_utils import build_unique_name_map, collect_image_source_pairs
-import shapely.wkt
 
 # Out-of-distribution test sources shared between out_of_distribution_split and cross_geometry_split.
 # Cross-geometry uses the polygon test list as its evaluation set so the two
@@ -41,7 +43,28 @@ OUT_OF_DISTRIBUTION_TEST_SOURCES_BOXES = [
     "Radogoshi et al. 2021",
     "SelvaBox",
     "NEON_benchmark",
+    "Zamboni et al. 2021",  # urban tree crowns (individual_urban_tree_crown_detection)
 ]
+
+# Sources that must never seed an out-of-distribution test set and belong entirely
+# in train. OAM-TCD's MillionTrees download is incomplete, so its upstream
+# ``test_`` tiles (pinned to existing_split=="test" by
+# assign_canopyrs_aligned_existing_split for the within-distribution CanopyRS
+# comparison) are not a trustworthy held-out evaluation set. Force it to train in
+# the out-of-distribution split.
+OUT_OF_DISTRIBUTION_TRAIN_ONLY_SOURCES = [
+    "OAM-TCD",
+]
+
+# The MillionTrees ``validation`` split is reserved for these held-out sources only
+# (Allen et al. 2025: TLS-validated crowns kept for one final manuscript-end eval).
+# Some upstream datasets ship their own train/val/test split (e.g. Amirkolaee et al.
+# 2023 carries existing_split=="validation" rows); apply_existing_splits redirects
+# any such non-allowlisted "validation" rows to test so they never enter the
+# reserved validation set.
+VALIDATION_SOURCES = {
+    "Allen et al. 2025",
+}
 
 # Canonical token that marks a source as unsupervised/weakly-labeled. The data
 # loader excludes these by default via exclude_sources=['*unsupervised*'].
@@ -67,6 +90,61 @@ UNSUPERVISED_SOURCE_ALIASES = {
 TRAIN_ONLY_SOURCES = {
     "Beery et al. 2022",
 }
+
+
+def _link_or_copy(src, dst):
+    """Materialize dst from src as cheaply as possible.
+
+    Hardlinks src->dst when both live on the same filesystem (near-instant, no
+    extra disk), falling back to a byte copy across filesystems (OSError/EXDEV).
+    Nothing in this pipeline mutates a packaged file in place after it is
+    written, so sharing inodes via hardlinks is safe. An already-present dst is
+    treated as success so the step stays idempotent.
+    """
+    if os.path.exists(dst):
+        return
+    try:
+        os.link(src, dst)
+    except FileExistsError:
+        return
+    except OSError:
+        shutil.copy(src, dst)
+
+
+def _link_or_copy_many(pairs, workers=16):
+    """Hardlink/copy an iterable of (src, dst) pairs in parallel.
+
+    Copying is I/O-bound and embarrassingly parallel; a thread pool saturates
+    the storage far better than a serial loop. Hardlinks (the common case here,
+    since most copies stay on one filesystem) make each call trivial regardless.
+    """
+    pairs = list(pairs)
+    if not pairs:
+        return
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        list(ex.map(lambda p: _link_or_copy(p[0], p[1]), pairs))
+
+
+def _parse_geometry_column(series):
+    """Vectorized WKT->geometry parse (shapely 2.x) preserving existing geoms.
+
+    Strings are parsed in C in a single call; values that are already shapely
+    geometries (e.g. rows that came through read_file) pass through unchanged.
+    Much faster than a per-row .apply for large polygon/point tables.
+    """
+    values = series.to_numpy()
+    is_str = np.fromiter((isinstance(v, str) for v in values), dtype=bool,
+                         count=len(values))
+    geoms = values.copy()
+    if is_str.any():
+        # Pass the object-dtype array straight to from_wkt. Wrapping it in a
+        # Python list makes numpy infer a fixed-width '<U' dtype sized to the
+        # longest WKT, which for a column with one huge polygon (e.g. Allen2025
+        # crowns at ~86k chars) tries to allocate terabytes. Object arrays are
+        # not padded, so parsing stays proportional to the real data.
+        str_values = np.asarray(values[is_str], dtype=object)
+        geoms[is_str] = from_wkt(str_values)
+    return gpd.GeoSeries(geoms, index=series.index)
 
 
 def normalize_unsupervised_sources(datasets):
@@ -233,17 +311,10 @@ def process_geometry_columns(datasets, geom_type):
     if len(datasets) == 0:
         return datasets
     
-    # Build a GeoSeries from either WKT strings or shapely geometries
-    def convert_to_shapely(value):
-        if value is None:
-            return None
-        elif type(value) == str:
-            return shapely.wkt.loads(value)
-        elif isinstance(value, BaseGeometry):
-            return value
-        else:
-            raise ValueError(f"Invalid geometry type: {type(value)}")
-    shapely_geometries = gpd.GeoSeries(datasets["geometry"].apply(convert_to_shapely))
+    # Build a GeoSeries from either WKT strings or shapely geometries.
+    # None rows were filtered above; remaining values are WKT (from CSV) or
+    # already-parsed geometries (from read_file), handled vectorized.
+    shapely_geometries = _parse_geometry_column(datasets["geometry"])
     
     if geom_type == "box":
         bounds = shapely_geometries.bounds
@@ -292,15 +363,7 @@ def filter_degenerate_boxes(datasets):
 
 def filter_degenerate_polygons(datasets):
     """Filter out polygons that would create invalid bounding boxes (zero width or height)."""
-    def convert_to_shapely(value):
-        if type(value) == str:
-            return shapely.wkt.loads(value)
-        elif isinstance(value, BaseGeometry):
-            return value
-        else:
-            raise ValueError(f"Invalid geometry type: {type(value)}")
-    
-    shapely_geometries = gpd.GeoSeries(datasets["polygon"].apply(convert_to_shapely))
+    shapely_geometries = _parse_geometry_column(datasets["polygon"])
     bounds = shapely_geometries.bounds
     
     # Filter out polygons where xmin >= xmax or ymin >= ymax
@@ -341,6 +404,77 @@ def drop_duplicate_annotations(datasets, label=""):
     if n_dropped > 0:
         print(f"{label}: dropped {n_dropped} duplicate annotations "
               f"({n_before} -> {len(datasets)})")
+    return datasets
+
+
+def drop_near_duplicate_annotations(datasets, label="", iou_threshold=0.9):
+    """Collapse near-duplicate annotations within an image+source via IoU.
+
+    ``drop_duplicate_annotations`` only removes *exact* geometry matches. Some
+    sources ship the same object twice at slightly different coordinates -- e.g.
+    the NEON hand annotations exist both in native crop pixels and rescaled to a
+    400px canvas, so the same tree appears as two boxes a pixel or two apart.
+    Those survive the exact-match dedup and show up as doubled ground truth in
+    eval overlays. This greedy pass keeps the largest representative of each
+    cluster of mutually-overlapping geometries (IoU > ``iou_threshold``) within
+    each ``(filename, source)`` group; points (zero-area) are left untouched.
+    """
+    if "geometry" not in datasets.columns or len(datasets) == 0:
+        return datasets
+    from shapely import STRtree, make_valid
+    from shapely.errors import GEOSException
+    group_keys = [c for c in ("filename", "source") if c in datasets.columns]
+    if not group_keys:
+        return datasets
+
+    keep_index = []
+    for _, group in datasets.groupby(group_keys, sort=False):
+        idx = group.index.to_numpy()
+        if len(idx) == 1:
+            keep_index.append(idx[0])
+            continue
+        geoms = from_wkt(group["geometry"].to_numpy())
+        # Sources occasionally ship self-intersecting/invalid polygons. GEOS
+        # raises TopologyException on intersection() of an invalid geometry, so
+        # repair them up front; make_valid only touches broken inputs and keeps
+        # area/intersection well-defined for the IoU test below.
+        geoms = np.array(
+            [g if g.is_valid else make_valid(g) for g in geoms], dtype=object)
+        areas = np.array([g.area for g in geoms])
+        # Keep larger geometries first so each cluster is represented by its
+        # largest member; smaller near-identical copies are dropped against it.
+        order = np.argsort(-areas)
+        tree = STRtree(geoms)
+        kept_mask = np.zeros(len(idx), dtype=bool)
+        for i in order:
+            gi = geoms[i]
+            is_dup = False
+            for j in tree.query(gi):
+                if j == i or not kept_mask[j]:
+                    continue
+                try:
+                    inter = gi.intersection(geoms[j]).area
+                except GEOSException:
+                    # Belt-and-suspenders: if a repaired geometry still trips
+                    # GEOS, treat the pair as non-overlapping rather than crash
+                    # the whole packaging run.
+                    continue
+                if inter <= 0:
+                    continue
+                union = areas[i] + areas[j] - inter
+                if union > 0 and inter / union > iou_threshold:
+                    is_dup = True
+                    break
+            if not is_dup:
+                kept_mask[i] = True
+                keep_index.append(idx[i])
+
+    n_before = len(datasets)
+    datasets = datasets.loc[keep_index].copy()
+    n_dropped = n_before - len(datasets)
+    if n_dropped > 0:
+        print(f"{label}: dropped {n_dropped} near-duplicate annotations "
+              f"(IoU > {iou_threshold}) ({n_before} -> {len(datasets)})")
     return datasets
 
 
@@ -389,10 +523,10 @@ def copy_images(datasets, base_dir, dataset_type):
     """Copy each source image to the package under its source-unique name."""
     destination = f"{base_dir}{dataset_type}_{version}/images/"
     pairs = datasets[["orig_path", "filename"]].drop_duplicates()
-    for orig_path, packaged_name in zip(pairs["orig_path"], pairs["filename"]):
-        dst = os.path.join(destination, packaged_name)
-        if not os.path.exists(dst):
-            shutil.copy(orig_path, dst)
+    _link_or_copy_many(
+        (orig_path, os.path.join(destination, packaged_name))
+        for orig_path, packaged_name in zip(pairs["orig_path"], pairs["filename"])
+    )
 
 
 def copy_masks(datasets, base_dir, dataset_type, mask_source_dir):
@@ -403,6 +537,7 @@ def copy_masks(datasets, base_dir, dataset_type, mask_source_dir):
     mask_source_dir = Path(mask_source_dir)
     destination = f"{base_dir}{dataset_type}_{version}/masks/"
     missing_images = set()
+    pairs = []
     for packaged_name in datasets["filename"].unique():
         mask_name = f"{Path(packaged_name).stem}.png"
         source_mask = mask_source_dir / mask_name
@@ -410,9 +545,8 @@ def copy_masks(datasets, base_dir, dataset_type, mask_source_dir):
             print(f"Warning: Missing tree coverage mask for {packaged_name}, removing from dataset.")
             missing_images.add(packaged_name)
             continue
-        destination_mask = os.path.join(destination, mask_name)
-        if not os.path.exists(destination_mask):
-            shutil.copy(source_mask, destination_mask)
+        pairs.append((str(source_mask), os.path.join(destination, mask_name)))
+    _link_or_copy_many(pairs)
     if missing_images:
         datasets = datasets[~datasets["filename"].isin(missing_images)].copy()
     return datasets
@@ -424,6 +558,7 @@ def copy_packaged_assets_from_full(base_dir, dataset_type, version, filenames,
     source_dir = Path(f"{base_dir}{dataset_type}_{version}/{subdir}")
     dest_dir = Path(f"{base_dir}{dataset_type}{suffix}_{version}/{subdir}")
     os.makedirs(dest_dir, exist_ok=True)
+    pairs = []
     for filename in set(filenames):
         if subdir == "images":
             src_name = filename
@@ -433,8 +568,8 @@ def copy_packaged_assets_from_full(base_dir, dataset_type, version, filenames,
         dst = dest_dir / src_name
         if not src.exists():
             raise FileNotFoundError(f"Missing packaged {subdir[:-1]} file: {src}")
-        if not dst.exists():
-            shutil.copy(src, dst)
+        pairs.append((str(src), str(dst)))
+    _link_or_copy_many(pairs)
 
 from milliontrees.common.release_sizes import MINI_IMAGES_PER_SOURCE, SMALL_IMAGES_PER_SOURCE
 
@@ -446,20 +581,28 @@ def _top_filenames_per_source(datasets, n_per_source):
     top_per_source = (
         filename_counts.sort_values("count", ascending=False)
         .groupby("source", group_keys=False)
-        .apply(lambda g: g.head(n_per_source))
-        .reset_index(drop=True)
+        .head(n_per_source)
     )
     return top_per_source["filename"].unique().tolist()
 
 
 def apply_existing_splits(df):
-    """Honor pre-assigned train, test, or validation splits from existing_split."""
+    """Honor pre-assigned train, test, or validation splits from existing_split.
+
+    The ``validation`` split is reserved for VALIDATION_SOURCES (Allen et al. 2025).
+    Any other source that ships an upstream ``existing_split == "validation"`` (e.g.
+    Amirkolaee et al. 2023, which has its own train/val/test split) is redirected to
+    ``test`` so it never enters the reserved validation set.
+    """
     df = df.copy()
     if "existing_split" not in df.columns:
         return df
     for split_name in ("train", "test", "validation"):
         mask = df["existing_split"] == split_name
         df.loc[mask, "split"] = split_name
+    if "source" in df.columns:
+        stray_val = (df["split"] == "validation") & (~df["source"].isin(VALIDATION_SOURCES))
+        df.loc[stray_val, "split"] = "test"
     return df
 
 
@@ -514,11 +657,17 @@ def assign_canopyrs_aligned_existing_split(df):
 
 
 def _validation_sources(df):
-    """Return sources whose rows are pinned to the validation split."""
+    """Return sources whose rows are pinned to the reserved validation split.
+
+    Restricted to VALIDATION_SOURCES: a source like Amirkolaee et al. 2023 may carry
+    upstream existing_split=="validation" rows, but those are redirected to test by
+    apply_existing_splits, so it must not be treated as a validation source here.
+    """
     if "existing_split" not in df.columns:
         return set()
-    return set(
+    pinned = set(
         df.loc[df["existing_split"] == "validation", "source"].dropna().unique())
+    return pinned & VALIDATION_SOURCES
 
 
 def _rows_needing_auto_split(df):
@@ -550,13 +699,17 @@ def create_mini_datasets(datasets, base_dir, dataset_type, version):
         datasets[datasets["filename"].isin(mini_filenames)].copy())
     mini_annotations.to_csv(f"{base_dir}Mini{dataset_type}_{version}/within-distribution.csv", index=False)
     
-    # Copy images for mini datasets
+    # Copy images and masks for mini datasets (hardlink within the same FS)
+    image_dir = f"{base_dir}{dataset_type}_{version}/images/"
+    mask_dir = f"{base_dir}{dataset_type}_{version}/masks/"
+    mini_image_dir = f"{base_dir}Mini{dataset_type}_{version}/images/"
+    mini_mask_dir = f"{base_dir}Mini{dataset_type}_{version}/masks/"
+    pairs = []
     for image in mini_filenames:
-        destination = f"{base_dir}Mini{dataset_type}_{version}/images/"
-        shutil.copy(f"{base_dir}{dataset_type}_{version}/images/" + image, destination)
         mask_name = f"{Path(image).stem}.png"
-        mini_mask_destination = f"{base_dir}Mini{dataset_type}_{version}/masks/"
-        shutil.copy(f"{base_dir}{dataset_type}_{version}/masks/" + mask_name, mini_mask_destination)
+        pairs.append((image_dir + image, mini_image_dir + image))
+        pairs.append((mask_dir + mask_name, mini_mask_dir + mask_name))
+    _link_or_copy_many(pairs)
 
     # Generate visualizations for each source (one image per source to avoid overlaying
     # annotations from multiple images onto a single background image)
@@ -583,14 +736,16 @@ def create_small_datasets(datasets, base_dir, dataset_type, version):
     small_annotations = _ensure_test_split(
         datasets[datasets["filename"].isin(small_filenames)].copy())
 
+    image_dir = f"{base_dir}{dataset_type}_{version}/images/"
+    mask_dir = f"{base_dir}{dataset_type}_{version}/masks/"
+    small_image_dir = f"{base_dir}Small{dataset_type}_{version}/images/"
+    small_mask_dir = f"{base_dir}Small{dataset_type}_{version}/masks/"
+    pairs = []
     for image in small_filenames:
-        destination = f"{base_dir}Small{dataset_type}_{version}/images/"
-        shutil.copy(f"{base_dir}{dataset_type}_{version}/images/" + image, destination)
         mask_name = f"{Path(image).stem}.png"
-        shutil.copy(
-            f"{base_dir}{dataset_type}_{version}/masks/" + mask_name,
-            f"{base_dir}Small{dataset_type}_{version}/masks/",
-        )
+        pairs.append((image_dir + image, small_image_dir + image))
+        pairs.append((mask_dir + mask_name, small_mask_dir + mask_name))
+    _link_or_copy_many(pairs)
 
     return small_annotations
 
@@ -907,6 +1062,12 @@ def out_of_distribution_split(TreePolygons_datasets, TreePoints_datasets, TreeBo
         "split",
     ] = "test"
 
+    # Force train-only sources entirely into train, overriding any existing_split
+    # pin (e.g. OAM-TCD's incomplete upstream test tiles), so they never enter the
+    # out-of-distribution test set.
+    for df in (TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets):
+        df.loc[df.source.isin(OUT_OF_DISTRIBUTION_TRAIN_ONLY_SOURCES), "split"] = "train"
+
     # Out-of-distribution: drop excess images instead of demoting to train so held-out
     # sources never leak into the train split.
     TreePolygons_datasets = limit_test_images(
@@ -951,11 +1112,29 @@ def filter_out_unsupervised(datasets):
     return datasets[~datasets['source'].str.contains('unsupervised|weak supervised', case=False, na=False)]
 
 def check_for_updated_annotations(dataset, geometry):
-    updated_annotations = [pd.read_csv(x) for x in glob.glob(f"data_prep/annotations/*{geometry}*.csv")]
-    if not updated_annotations:
+    # These are dated re-annotation snapshots (…_YYYYMMDD_HHMMSS.csv). The same
+    # image often appears in several successive passes; blindly concatenating them
+    # merges every pass and duplicates each box at slightly different coordinates
+    # (the doubled NEON ground truth seen in eval overlays). Sort by name so the
+    # timestamp orders chronologically, tag each file's order, and keep only each
+    # image's latest snapshot so re-annotations *replace* rather than stack.
+    frames = []
+    for order, path in enumerate(sorted(glob.glob(f"data_prep/annotations/*{geometry}*.csv"))):
+        d = pd.read_csv(path, low_memory=False)
+        if "image_path" not in d.columns:
+            # Not an annotation export (e.g. a *_low_tree_coverage_* report that
+            # happens to match the glob) — skip it.
+            print(f"check_for_updated_annotations: skipping {path} (no image_path column)")
+            continue
+        d["_update_order"] = order
+        frames.append(d)
+    if not frames:
         return dataset
-        
-    updated_annotations = pd.concat(updated_annotations)
+
+    updated_annotations = pd.concat(frames, ignore_index=True)
+    latest = updated_annotations.groupby("image_path")["_update_order"].transform("max")
+    updated_annotations = updated_annotations[updated_annotations["_update_order"] == latest].drop(
+        columns="_update_order")
     dataset["basename"] = dataset["filename"].str.split('/').str[-1]
 
     # Remove images marked for removal (vectorized)
@@ -974,17 +1153,16 @@ def check_for_updated_annotations(dataset, geometry):
         return dataset
         
     # Create mappings from basename to root_dir and source for each file
-    # This ensures we use the correct root_dir for each source
-    # We need to capture this BEFORE removing old annotations
-    basename_to_root_dir = {}
-    basename_to_source = {}
-    for _, row in dataset.iterrows():
-        basename = row["basename"]
-        if basename in matching_files:
-            if basename not in basename_to_root_dir:
-                basename_to_root_dir[basename] = os.path.dirname(row["filename"])
-            if basename not in basename_to_source:
-                basename_to_source[basename] = row["source"]
+    # This ensures we use the correct root_dir for each source. Capture this
+    # BEFORE removing old annotations; keep first occurrence per basename
+    # (matches the prior first-wins iterrows logic, vectorized).
+    firsts = (
+        dataset[dataset["basename"].isin(matching_files)]
+        .drop_duplicates("basename")
+    )
+    basename_to_root_dir = dict(
+        zip(firsts["basename"], firsts["filename"].map(os.path.dirname)))
+    basename_to_source = dict(zip(firsts["basename"], firsts["source"]))
     
     # Remove all old annotations at once
     dataset = dataset[~dataset["basename"].isin(matching_files)]
@@ -1136,6 +1314,14 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     TreePoints_datasets = drop_duplicate_annotations(TreePoints_datasets, "TreePoints")
     TreePolygons_datasets = drop_duplicate_annotations(TreePolygons_datasets, "TreePolygons")
 
+    # Second guard: collapse *near*-duplicate boxes/polygons (same object at a
+    # slightly different scale, e.g. NEON hand annotations carried in both native
+    # crop pixels and a 400px-rescaled copy). These pass the exact-match dedup
+    # above because their WKT differs by a pixel or two. IoU is undefined for
+    # zero-area points, so TreePoints is left to the exact-match guard only.
+    TreeBoxes_datasets = drop_near_duplicate_annotations(TreeBoxes_datasets, "TreeBoxes")
+    TreePolygons_datasets = drop_near_duplicate_annotations(TreePolygons_datasets, "TreePolygons")
+
     # Assign source-unique packaged filenames (<stem>_<source><ext>) so basenames
     # don't collide across sources; keeps the original path in 'orig_path' for copy.
     TreeBoxes_datasets = assign_packaged_filenames(TreeBoxes_datasets, packaged_name_map)
@@ -1241,7 +1427,7 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.18"
+    version = "v0.20"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     mask_source_dir = "/orange/ewhite/DeepForest/tree_coverage_masks"
     debug = False

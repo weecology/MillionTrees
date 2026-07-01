@@ -6,8 +6,10 @@ import os
 import sys
 import torch
 from deepforest import main as df_main
-from training.boxes.train import _AdaptCollate, evaluate
+from training.boxes.train import _AdaptCollate, evaluate, collect_predictions
 from milliontrees import get_dataset
+from milliontrees.common.eval_sweep import (add_sweep_args, maybe_run_sweep,
+                                            maybe_subsample)
 
 # The checkpoint was saved when train.py ran as __main__, so pickle stored the
 # batch adapter under __main__.  Inject it here so deserialization can resolve
@@ -43,8 +45,13 @@ def _load_model(checkpoint_path):
         # (devices=2 from multi-GPU training) and crash on a single-GPU eval node.
         cfg = ckpt.get("hyper_parameters", {}).get("config", None)
         if isinstance(cfg, dict):
-            cfg = {**cfg, "devices": 1}
-            model = df_main.deepforest(config=cfg)
+            try:
+                cfg = {**cfg, "devices": 1}
+                model = df_main.deepforest(config=cfg)
+            except Exception:
+                # Checkpoint config may have stale keys (e.g. warmup_epochs removed
+                # from the schema); fall back to defaults and just load weights.
+                model = df_main.deepforest()
         else:
             model = df_main.deepforest()
         model.load_state_dict(state)
@@ -59,6 +66,10 @@ def main():
                         default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
     parser.add_argument("--split-scheme", type=str, default="out-of-distribution",
                         choices=["within-distribution", "out-of-distribution", "crossgeometry"])
+    parser.add_argument("--eval-split", type=str, default="test",
+                        choices=["train", "validation", "test"],
+                        help="Which subset to evaluate. 'validation' is the held-out "
+                             "Allen et al. 2025 TLS set (same rows in every split-scheme).")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
@@ -69,6 +80,7 @@ def main():
     parser.add_argument("--viz-dir", type=str, default=None,
                         help="Directory for per-source prediction overlay PNGs "
                              "(default: <output-dir>/viz, else ./eval_viz; pass '' to disable)")
+    add_sweep_args(parser)
     args = parser.parse_args()
 
     # Visualization on by default: 10 overlays per source (dataset.eval viz_n_per_source=10).
@@ -93,15 +105,27 @@ def main():
         mini=args.mini,
         split_scheme=args.split_scheme,
     )
-    test_subset = dataset.get_subset("test")
+    eval_subset = maybe_subsample(dataset, dataset.get_subset(args.eval_split), args)
 
-    results, results_str = evaluate(model, dataset, test_subset, batch_size=args.batch_size,
+    # Threshold sweep: run inference once (model score_thresh driven low via
+    # --score-threshold) and re-score the metrics across --sweep-thresholds.
+    if getattr(args, "sweep", False):
+        y_pred, y_true = collect_predictions(
+            model, eval_subset, batch_size=args.batch_size)
+        maybe_run_sweep(args, dataset, eval_subset, y_pred, y_true,
+                        model="DeepForest-finetuned", task="TreeBoxes")
+        return
+
+    results, results_str = evaluate(model, dataset, eval_subset, batch_size=args.batch_size,
                                     viz_dir=args.viz_dir)
     print(results_str)
 
+    # Keep the canonical test results filename for backward compat; suffix any
+    # non-test eval (e.g. validation) so it never clobbers leaderboard outputs.
+    tag = args.split_scheme if args.eval_split == "test" else f"{args.split_scheme}_{args.eval_split}"
     if args.output_dir:
         os.makedirs(args.output_dir, exist_ok=True)
-        out_path = os.path.join(args.output_dir, f"results_{args.split_scheme}.txt")
+        out_path = os.path.join(args.output_dir, f"results_{tag}.txt")
         with open(out_path, "w") as f:
             f.write(results_str)
         print(f"Results saved to {out_path}")

@@ -1581,3 +1581,45 @@ class CountingError(ElementwiseMetric):
         if isinstance(metrics, torch.Tensor) and metrics.numel() == 0:
             return torch.tensor(float("nan"))
         return maximum(metrics)
+
+
+def detection_count_pair(target_pred,
+                         gt_true,
+                         score_threshold,
+                         geometry_name="y"):
+    """Return (gt_count, pred_count) for one image using the same score filter as CountingError."""
+    scores = target_pred["scores"]
+    mask = scores > score_threshold
+    pred_count = (int(mask.sum().item())
+                  if isinstance(mask, torch.Tensor) else int(sum(mask)))
+    gt_count = len(gt_true[geometry_name])
+    return gt_count, pred_count
+
+
+def counting_regression_stats(gt_counts, pred_counts):
+    """Return mae/nmae/r2/slope/intercept/n dict for a group of images."""
+    gt = np.asarray(gt_counts, dtype=float)
+    pred = np.asarray(pred_counts, dtype=float)
+    n = int(gt.size)
+    stats = {
+        "mae": float("nan"),
+        "nmae": float("nan"),
+        "r2": float("nan"),
+        "slope": float("nan"),
+        "intercept": float("nan"),
+        "n": n
+    }
+    if n == 0:
+        return stats
+
+    mae = float(np.mean(np.abs(gt - pred)))
+    gt_mean = float(np.mean(gt))
+    stats["mae"] = mae
+    stats["nmae"] = mae / gt_mean if gt_mean > 0 else float("nan")
+
+    if n >= 2 and np.ptp(gt) > 0:
+        stats["r2"] = float(sklearn.metrics.r2_score(gt, pred))
+        slope, intercept = np.polyfit(gt, pred, 1)
+        stats["slope"] = float(slope)
+        stats["intercept"] = float(intercept)
+    return stats

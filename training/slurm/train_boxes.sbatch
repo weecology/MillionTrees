@@ -7,15 +7,17 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=80GB
 #SBATCH --partition=hpg-turin
-#SBATCH --gpus=3
+#SBATCH --gpus=l4:2
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=3
+#SBATCH --ntasks-per-node=2
 
 # Dataset is loaded from ROOT_DIR/TreeBoxes_v{version} (version from TreeBoxes._versions_dict, e.g. 0.11).
 # To use the latest packaged data, re-run data_prep/package_datasets.py first.
 export NCCL_IB_DISABLE=1
 export NCCL_NVLS_ENABLE=0
 export NCCL_DEBUG=INFO
+# Reclaim reserved-but-unallocated fragmentation; batch 32 is marginal on 22GiB L4.
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 cd /blue/ewhite/b.weinstein/src/MillionTrees
 mkdir -p training/boxes/outputs
@@ -38,7 +40,7 @@ srun uv run python training/boxes/train.py \
   --max-epochs 200 \
   --lr 0.01 \
   --num-workers 8 \
-  --gpus 3 \
+  --gpus 2 \
   --early-stop-patience "$EARLY_STOP_PATIENCE" \
   --output-dir "training/boxes/outputs/$SPLIT" \
   --comet
