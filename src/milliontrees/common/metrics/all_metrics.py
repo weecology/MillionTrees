@@ -1590,8 +1590,8 @@ def detection_count_pair(target_pred,
     """Return (gt_count, pred_count) for one image using the same score filter as CountingError."""
     scores = target_pred["scores"]
     mask = scores > score_threshold
-    pred_count = int(mask.sum().item()) if isinstance(mask, torch.Tensor) \
-        else int(sum(mask))
+    pred_count = (int(mask.sum().item())
+                  if isinstance(mask, torch.Tensor) else int(sum(mask)))
     gt_count = len(gt_true[geometry_name])
     return gt_count, pred_count
 
