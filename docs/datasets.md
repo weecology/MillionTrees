@@ -221,6 +221,16 @@ UAV, aerial, and terrestrial 3D point clouds from a treeline ecotone with tree-l
 
 Axis-aligned bounding boxes derived from TLS crown footprints projected into drone orthomosaics. All rows are assigned to the ``validation`` split — held out for independent post-hoc evaluation, not hyperparameter tuning.
 
+## Frey et al. 2026
+
+### Source Name: "Frey et al. 2026"
+
+![sample_image](public/Frey_et_al._2026.png)
+
+**Location:** Central Europe (EcoSense project closed-canopy forest plot, UTM zone 32N)
+
+Axis-aligned bounding boxes computed as the envelope of TLS-derived crown polygons (segmented from co-located terrestrial LiDAR and projected into a ~1.5 cm drone orthomosaic). Like Allen et al. 2025 this is a reserved **validation-only** source: all rows use the ``validation`` split and it never appears in train or test.
+
 # Points
 
 ## Amirkolaee et al. 2023
@@ -341,6 +351,16 @@ under the canopy cannot be observed from nadir drone imagery.
 **Location:** Joensuu, Finland (boreal) and Alto Tajo, Spain (Mediterranean)
 
 Tree-top points at polygon centroids from TLS-derived crown footprints. All rows use the ``validation`` split.
+
+## Frey et al. 2026
+
+### Source Name: "Frey et al. 2026"
+
+![sample_image](public/Frey_et_al._2026.png)
+
+**Location:** Central Europe (EcoSense project closed-canopy forest plot, UTM zone 32N)
+
+Tree points at the centroids of TLS-derived crown polygons over a ~1.5 cm drone orthomosaic (EcoSense plot ``ortho_3919``). Reserved **validation-only** source: all rows use the ``validation`` split and never appear in train or test.
 
 # Polygons
 
@@ -533,6 +553,16 @@ There is also a training-only portion of this that was used in conjuction with a
 **Location:** Joensuu, Finland (boreal) and Alto Tajo, Spain (Mediterranean)
 
 Crown polygons delineated from co-located terrestrial LiDAR (TLS) following the pipeline in Allen et al. (2025). Orthomosaics are tiled for MillionTrees packaging. This source is **validation-only**: use after training and standard test evaluation for independent TLS ground-truth assessment. Do not use for hyperparameter tuning.
+
+## Frey et al. 2026
+
+### Source Name: "Frey et al. 2026"
+
+![sample_image](public/Frey_et_al._2026.png)
+
+**Location:** Central Europe (EcoSense project closed-canopy forest plot, UTM zone 32N)
+
+Individual-tree crown polygons segmented from co-located terrestrial LiDAR (TLS) over an EcoSense forest plot (``ortho_3919``), draped on a ~1.5 cm drone orthomosaic and tiled into 2000 px crops with no overlap for MillionTrees packaging. A second reserved **validation-only** TLS ground-truth source alongside Allen et al. 2025: all rows use the ``validation`` split and it must never appear in train or test. Points (centroids) and boxes (envelopes) are derived from these same crowns.
 
 ## Khan et al. 2026
 

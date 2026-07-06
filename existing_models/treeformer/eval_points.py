@@ -135,7 +135,7 @@ def main():
     if args.eval_score_threshold is not None:
         dataset_kwargs["eval_score_threshold"] = args.eval_score_threshold
     dataset = get_dataset("TreePoints", **dataset_kwargs)
-    test_subset = maybe_subsample(dataset, dataset.get_subset("test"), args)
+    test_subset = maybe_subsample(dataset, dataset.get_subset(args.eval_split), args)
     test_loader = get_eval_loader(
         "standard", test_subset,
         batch_size=args.batch_size,
