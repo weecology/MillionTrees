@@ -16,8 +16,11 @@ Supported layouts under ``base_dir``:
        ...
 
    JSON files follow COCO instance-segmentation conventions with polygon
-   coordinates already in image pixel space. Images are plot-level clips and
-   are copied to ``crops/`` without further tiling.
+   coordinates already in image pixel space. Allen's released clips extend
+   ~500 px beyond the TLS-annotated crowns on every side, so each clip is
+   cropped to the buffered bounding box of its annotations (``--envelope-buffer``,
+   default 50 px) before being written to ``crops/``. This drops the ring of
+   unannotated trees that would otherwise score as false positives at eval.
 
 2. **Vector + orthomosaic** (optional fallback)::
 
@@ -41,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import shutil
 from pathlib import Path
@@ -51,6 +55,8 @@ import rasterio
 import shapely.wkt
 from deepforest.preprocess import split_raster
 from deepforest.utilities import read_file
+from rasterio.windows import Window
+from shapely.affinity import translate
 from shapely.geometry import Polygon
 
 SOURCE_NAME = "Allen et al. 2025"
@@ -126,21 +132,77 @@ def _to_2d_polygon(geom) -> Polygon | None:
     return geom
 
 
+def _crop_image_to_envelope(
+    plot_id: str,
+    src_tif: Path,
+    polys: list[Polygon],
+    output_dir: Path,
+    buffer_px: int,
+) -> list[dict]:
+    """Crop ``src_tif`` to the buffered envelope of ``polys`` and shift coords.
+
+    Allen's released clips extend well beyond the TLS-annotated crowns on every
+    side, leaving a ring of visible-but-unannotated trees. Cropping to the
+    annotation bounding box (plus ``buffer_px``) removes that margin so those
+    trees no longer count as false positives at eval. Polygon coordinates are
+    translated into the cropped raster's pixel frame.
+    """
+    minx = min(p.bounds[0] for p in polys)
+    miny = min(p.bounds[1] for p in polys)
+    maxx = max(p.bounds[2] for p in polys)
+    maxy = max(p.bounds[3] for p in polys)
+
+    with rasterio.open(src_tif) as src:
+        width, height = src.width, src.height
+        x0 = max(0, int(math.floor(minx - buffer_px)))
+        y0 = max(0, int(math.floor(miny - buffer_px)))
+        x1 = min(width, int(math.ceil(maxx + buffer_px)))
+        y1 = min(height, int(math.ceil(maxy + buffer_px)))
+        window = Window(x0, y0, x1 - x0, y1 - y0)
+        data = src.read(window=window)
+        profile = src.profile.copy()
+        profile.update(
+            width=x1 - x0,
+            height=y1 - y0,
+            transform=src.window_transform(window),
+        )
+
+    dest_tif = output_dir / src_tif.name
+    with rasterio.open(dest_tif, "w", **profile) as dst:
+        dst.write(data)
+
+    print(
+        f"  {plot_id}: cropped {width}x{height} -> {x1 - x0}x{y1 - y0} "
+        f"(envelope + {buffer_px}px), {len(polys)} crowns")
+
+    rows = []
+    for poly in polys:
+        shifted = translate(poly, xoff=-x0, yoff=-y0)
+        rows.append({
+            "image_path": str(dest_tif),
+            "geometry": shifted.wkt,
+            "label": "tree",
+            "plot_id": plot_id,
+        })
+    return rows
+
+
 def _coco_plot_to_rows(
     plot_id: str,
     tif_path: Path,
     json_path: Path,
     output_dir: Path,
+    buffer_px: int = 50,
 ) -> list[dict]:
-    dest_tif = output_dir / tif_path.name
-    if not dest_tif.exists():
-        shutil.copy(tif_path, dest_tif)
-
     with open(json_path) as f:
         coco = json.load(f)
 
-    image_names = {img["id"]: img["file_name"] for img in coco["images"]}
-    rows = []
+    images = {img["id"]: img for img in coco["images"]}
+
+    # Group polygons by their source image so each clip is cropped to its own
+    # annotation envelope (released clips carry a single image, but grouping
+    # keeps the multi-image case correct).
+    polys_by_image: dict[int, list[Polygon]] = {}
     for ann in coco["annotations"]:
         seg = ann.get("segmentation")
         if not seg or not seg[0]:
@@ -148,13 +210,17 @@ def _coco_plot_to_rows(
         poly = _segmentation_to_polygon(seg[0])
         if poly is None:
             continue
-        image_name = image_names.get(ann["image_id"], tif_path.name)
-        rows.append({
-            "image_path": str(dest_tif if image_name == tif_path.name else output_dir / image_name),
-            "geometry": poly.wkt,
-            "label": "tree",
-            "plot_id": plot_id,
-        })
+        polys_by_image.setdefault(ann["image_id"], []).append(poly)
+
+    rows = []
+    for image_id, polys in polys_by_image.items():
+        file_name = images.get(image_id, {}).get("file_name", tif_path.name)
+        src_tif = tif_path if file_name == tif_path.name else tif_path.parent / file_name
+        if not src_tif.exists():
+            print(f"  WARNING: source raster {src_tif} missing; skipping")
+            continue
+        rows.extend(
+            _crop_image_to_envelope(plot_id, src_tif, polys, output_dir, buffer_px))
     return rows
 
 
@@ -225,6 +291,7 @@ def _write_geometry_csv(df: pd.DataFrame, path: Path, geom_kind: str) -> None:
 def build_annotations(
     base_dir: Path,
     patch_size: int = 4000,
+    envelope_buffer: int = 50,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     output_dir = base_dir / "crops"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -235,7 +302,8 @@ def build_annotations(
         print(f"Found {len(coco_pairs)} COCO clipped plot pairs")
         for plot_id, (tif_path, json_path) in sorted(coco_pairs.items()):
             print(f"Processing {plot_id}: {tif_path.name} + {json_path.name}")
-            rows = _coco_plot_to_rows(plot_id, tif_path, json_path, output_dir)
+            rows = _coco_plot_to_rows(
+                plot_id, tif_path, json_path, output_dir, envelope_buffer)
             if rows:
                 parts.append(pd.DataFrame(rows))
     else:
@@ -313,8 +381,19 @@ def main() -> None:
         default=4000,
         help="Tile size for large vector+ortho inputs only (default: 4000)",
     )
+    parser.add_argument(
+        "--envelope-buffer",
+        type=int,
+        default=50,
+        help="Pixels to buffer the annotation bounding box before cropping each "
+        "COCO clip (default: 50)",
+    )
     args = parser.parse_args()
-    build_annotations(Path(args.base_dir), patch_size=args.patch_size)
+    build_annotations(
+        Path(args.base_dir),
+        patch_size=args.patch_size,
+        envelope_buffer=args.envelope_buffer,
+    )
 
 
 if __name__ == "__main__":
