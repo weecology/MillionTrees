@@ -79,7 +79,7 @@ released checkpoint with no MillionTrees training at all.
 > the best-F1 operating point from a full-test-set score-threshold sweep (recall/precision
 > tied at 0.1: 0.69/0.68 within-dist, 0.89/0.82 OOD — badly recall-heavy). This is a
 > per-model tuned exception, not a re-standardization of the table; see
-> [canopyrs_threshold_sweep.md](canopyrs_threshold_sweep.md) for the full curve.
+> `docs/canopyrs_threshold_sweep.md` (internal notes, not published) for the full curve.
 
 ### Within-distribution
 
@@ -122,7 +122,7 @@ data gap). Pretrained (✗) uses SAM3, detectree2, and CanopyRS DINO + SAM3 (Sel
 > `score_threshold=0.30` (full-test-set confirmed), the same per-model tuned exception
 > applied to CanopyRS boxes above — at 0.1 this row was the most recall-heavy in the whole
 > table (recall/precision 0.84/0.54 within-dist, 0.89/0.51 OOD); F1 rises to 0.81/0.84 and
-> mask accuracy roughly doubles. See [canopyrs_threshold_sweep.md](canopyrs_threshold_sweep.md).
+> mask accuracy roughly doubles. See `docs/canopyrs_threshold_sweep.md` (internal notes, not published).
 
 ### Within-distribution
 
