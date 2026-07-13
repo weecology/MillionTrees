@@ -71,7 +71,7 @@ def main() -> None:
 
     dataset = get_dataset("TreeBoxes", root_dir=args.root_dir, download=args.download,
                           mini=args.mini, split_scheme=args.split_scheme)
-    test_subset = maybe_subsample(dataset, dataset.get_subset("test"), args)
+    test_subset = maybe_subsample(dataset, dataset.get_subset(args.eval_split), args)
     test_loader = get_eval_loader("standard", test_subset, batch_size=args.batch_size,
                                   num_workers=args.num_workers)
 

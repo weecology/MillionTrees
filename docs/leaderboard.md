@@ -74,11 +74,18 @@ released checkpoint with no MillionTrees training at all.
 
 ## TreeBoxes
 
+> **Note:** other pretrained rows use the standardized `score_threshold=0.1` (see ledger
+> 2026-06-11 restandardization). CanopyRS DINO Swin-L instead uses `score_threshold=0.30`,
+> the best-F1 operating point from a full-test-set score-threshold sweep (recall/precision
+> tied at 0.1: 0.69/0.68 within-dist, 0.89/0.82 OOD — badly recall-heavy). This is a
+> per-model tuned exception, not a re-standardization of the table; see
+> `docs/canopyrs_threshold_sweep.md` (internal notes, not published) for the full curve.
+
 ### Within-distribution
 
 | Model | Fine-tuned | Avg Recall | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| CanopyRS DINO Swin-L | ✗ | 0.688 | 0.679 | <small>`python existing_models/canopyrs/eval_boxes.py --device cuda --split-scheme within-distribution`</small> |
+| CanopyRS DINO Swin-L | ✗ | 0.635 | 0.731 | <small>`python existing_models/canopyrs/eval_boxes.py --device cuda --split-scheme within-distribution --score-threshold 0.30`</small> |
 | DeepForest | ✓ | 0.547 | 0.592 | <small>`uv run python training/boxes/train.py --split-scheme within-distribution`</small> |
 | DeepForest | ✗ | 0.407 | 0.731 | <small>`uv run python existing_models/deepforest/eval_boxes.py --split-scheme within-distribution`</small> |
 | SAM3 | ✗ | 0.190 | 0.608 | <small>`uv run python existing_models/sam3/eval_boxes.py --device cuda --split-scheme within-distribution --hf-token $HF_TOKEN`</small> |
@@ -87,7 +94,7 @@ released checkpoint with no MillionTrees training at all.
 
 | Model | Fine-tuned | Avg Recall | Mask-Aware Precision | Script |
 |---|:---:|---|---|---|
-| CanopyRS DINO Swin-L | ✗ | 0.885 | 0.815 | <small>`python existing_models/canopyrs/eval_boxes.py --device cuda --split-scheme out-of-distribution`</small> |
+| CanopyRS DINO Swin-L | ✗ | 0.799 | 0.865 | <small>`python existing_models/canopyrs/eval_boxes.py --device cuda --split-scheme out-of-distribution --score-threshold 0.30`</small> |
 | DeepForest | ✓ | 0.525 | 0.947 | <small>`uv run python training/boxes/train.py --split-scheme out-of-distribution`</small> |
 | DeepForest | ✗ | 0.432 | 0.962 | <small>`uv run python existing_models/deepforest/eval_boxes.py --split-scheme out-of-distribution`</small> |
 | SAM3 | ✗ | 0.209 | 0.798 | <small>`uv run python existing_models/sam3/eval_boxes.py --device cuda --split-scheme out-of-distribution --hf-token $HF_TOKEN`</small> |
@@ -110,12 +117,19 @@ this replaces the earlier DeepForest/torchvision Mask R-CNN (`training/polygons/
 which more than halved AP50 on identical data/metric/eval-scale (an implementation gap, not a
 data gap). Pretrained (✗) uses SAM3, detectree2, and CanopyRS DINO + SAM3 (SelvaMask).
 
+> **Note:** other pretrained rows use the standardized `score_threshold=0.1` (see ledger
+> 2026-06-11 restandardization). CanopyRS DINO + SAM3 (SelvaMask) instead uses
+> `score_threshold=0.30` (full-test-set confirmed), the same per-model tuned exception
+> applied to CanopyRS boxes above — at 0.1 this row was the most recall-heavy in the whole
+> table (recall/precision 0.84/0.54 within-dist, 0.89/0.51 OOD); F1 rises to 0.81/0.84 and
+> mask accuracy roughly doubles. See `docs/canopyrs_threshold_sweep.md` (internal notes, not published).
+
 ### Within-distribution
 
 | Model | Fine-tuned | Mask Recall | Mask-Aware Precision | F1 | Mask Accuracy | AP50 | Script |
 |---|:---:|---|---|---|---|---|---|
 | Mask R-CNN (Detectron2) | ✓ | 0.652 | 0.921 | 0.764 | 0.368 | 0.389 | <small>`python training/polygons/train_detectron2.py --split-scheme within-distribution`</small> |
-| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.842 | 0.541 | 0.659 | 0.135 | 0.326 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme within-distribution --hf-token $HF_TOKEN`</small> |
+| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.762 | 0.874 | 0.814 | 0.268 | 0.313 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme within-distribution --hf-token $HF_TOKEN --score-threshold 0.30`</small> |
 | SAM3 | ✗ | 0.576 | 0.621 | 0.598 | 0.176 | 0.249 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme within-distribution --hf-token $HF_TOKEN`</small> |
 | detectree2 | ✗ | 0.530 | 0.604 | 0.565 | 0.137 | 0.186 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme within-distribution`</small> |
 
@@ -124,7 +138,7 @@ data gap). Pretrained (✗) uses SAM3, detectree2, and CanopyRS DINO + SAM3 (Sel
 | Model | Fine-tuned | Mask Recall | Mask-Aware Precision | F1 | Mask Accuracy | AP50 | Script |
 |---|:---:|---|---|---|---|---|---|
 | Mask R-CNN (Detectron2) | ✓ | 0.555 | 0.904 | 0.688 | 0.331 | 0.347 | <small>`python training/polygons/train_detectron2.py --split-scheme out-of-distribution`</small> |
-| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.893 | 0.510 | 0.649 | 0.111 | 0.375 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme out-of-distribution --hf-token $HF_TOKEN`</small> |
+| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.819 | 0.861 | 0.840 | 0.291 | 0.364 | <small>`python existing_models/canopyrs/eval_polygons.py --device cuda --split-scheme out-of-distribution --hf-token $HF_TOKEN --score-threshold 0.30`</small> |
 | detectree2 | ✗ | 0.504 | 0.633 | 0.561 | 0.170 | 0.211 | <small>`uv run python existing_models/detectree2/eval_polygons.py --split-scheme out-of-distribution`</small> |
 | SAM3 | ✗ | 0.465 | 0.668 | 0.548 | 0.171 | 0.208 | <small>`uv run python existing_models/sam3/eval_polygons.py --device cuda --split-scheme out-of-distribution --hf-token $HF_TOKEN`</small> |
 

@@ -213,3 +213,6 @@ existing_models/*/outputs/
 /neon_training_annotations.zip
 # IDE
 /.vscode/
+
+# HuggingFace token (secret, never commit)
+.hf_token

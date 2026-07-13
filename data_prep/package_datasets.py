@@ -57,13 +57,14 @@ OUT_OF_DISTRIBUTION_TRAIN_ONLY_SOURCES = [
 ]
 
 # The MillionTrees ``validation`` split is reserved for these held-out sources only
-# (Allen et al. 2025: TLS-validated crowns kept for one final manuscript-end eval).
-# Some upstream datasets ship their own train/val/test split (e.g. Amirkolaee et al.
-# 2023 carries existing_split=="validation" rows); apply_existing_splits redirects
-# any such non-allowlisted "validation" rows to test so they never enter the
-# reserved validation set.
+# (Allen et al. 2025 and Frey et al. 2026: TLS-validated crowns kept for one final
+# manuscript-end eval). Some upstream datasets ship their own train/val/test split
+# (e.g. Amirkolaee et al. 2023 carries existing_split=="validation" rows);
+# apply_existing_splits redirects any such non-allowlisted "validation" rows to
+# test so they never enter the reserved validation set.
 VALIDATION_SOURCES = {
     "Allen et al. 2025",
+    "Frey et al. 2026",
 }
 
 # Canonical token that marks a source as unsupervised/weakly-labeled. The data
@@ -1427,7 +1428,7 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.20"
+    version = "v0.21"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     mask_source_dir = "/orange/ewhite/DeepForest/tree_coverage_masks"
     debug = False

@@ -160,7 +160,14 @@ def run_threshold_sweep(dataset,
 
 
 def add_sweep_args(parser):
-    """Add --per-source / --sweep to an eval script's argument parser."""
+    """Add --per-source / --sweep / --eval-split to an eval script's parser."""
+    parser.add_argument(
+        "--eval-split",
+        type=str,
+        default="test",
+        choices=["train", "validation", "test"],
+        help="Dataset subset to evaluate (default test). 'validation' = the "
+        "held-out Allen et al. 2025 + Frey et al. 2026 TLS reference set.")
     parser.add_argument(
         "--per-source",
         type=int,
@@ -182,9 +189,10 @@ def add_sweep_args(parser):
 
 
 def maybe_subsample(dataset, test_subset, args):
-    """Return a per-source-subsampled test subset when --per-source is set."""
+    """Return a per-source-subsampled subset when --per-source is set."""
     if getattr(args, "per_source", 0):
-        return subsample_per_source(dataset, "test", args.per_source)
+        return subsample_per_source(dataset, getattr(args, "eval_split",
+                                                     "test"), args.per_source)
     return test_subset
 
 
