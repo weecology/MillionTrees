@@ -40,10 +40,16 @@ class TreePolygonsStreamingEvalState:
     _EW_KEYS = ("accuracy", "recall", "maskaware_precision", "merge_commission")
     _MAP_KEY = "AP50"
 
-    def __init__(self, dataset: Any) -> None:
+    def __init__(self, dataset: Any, *, compute_map: bool = True) -> None:
         self._dataset = dataset
         self._grouper = dataset._eval_grouper
         self._n_groups = int(self._grouper.n_groups)
+
+        # AP50 is only meaningful on exhaustively-annotated data. When
+        # ``compute_map`` is False (e.g. the incompletely-annotated test split),
+        # skip building/updating/finalizing the torchmetrics MAP accumulators
+        # entirely -- this is a real compute saving, not just a dropped column.
+        self._compute_map = compute_map
 
         self._ew: dict[str, dict[str, Any]] = {}
         for key in self._EW_KEYS:
@@ -53,6 +59,12 @@ class TreePolygonsStreamingEvalState:
                 "g_sum": torch.zeros(self._n_groups, dtype=torch.float64),
                 "g_cnt": torch.zeros(self._n_groups, dtype=torch.float64),
             }
+
+        if not self._compute_map:
+            self._map_metric = None
+            self._map_global = None
+            self._map_per_group = []
+            return
 
         self._map_metric: DetectionMAP = dataset.metrics[self._MAP_KEY]
         map_kwargs = dict(
@@ -100,6 +112,9 @@ class TreePolygonsStreamingEvalState:
                 if mask.any():
                     st["g_sum"][gi] += float(v[mask].sum().item())
                     st["g_cnt"][gi] += float(mask.sum().item())
+
+        if not self._compute_map:
+            return
 
         preds, targets = self._map_metric._format(y_pred, y_true)
         self._map_global.update(preds, targets)
@@ -232,10 +247,11 @@ class TreePolygonsStreamingEvalState:
             results[key] = r
             results_str += s
 
-        map_metric: DetectionMAP = self._dataset.metrics[self._MAP_KEY]
-        r, s = self._finalize_map(map_metric)
-        results[self._MAP_KEY] = r
-        results_str += s
+        if self._compute_map:
+            map_metric: DetectionMAP = self._dataset.metrics[self._MAP_KEY]
+            r, s = self._finalize_map(map_metric)
+            results[self._MAP_KEY] = r
+            results_str += s
 
         # Mirror ``TreePolygonsDataset.eval``: read the already-computed macro
         # average directly from the accuracy results dict.

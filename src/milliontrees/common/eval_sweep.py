@@ -102,15 +102,25 @@ def run_threshold_sweep(dataset,
                         task,
                         split,
                         out_csv,
-                        thresholds=DEFAULT_THRESHOLDS):
+                        thresholds=DEFAULT_THRESHOLDS,
+                        eval_split=None):
     """Re-score predictions across ``thresholds``; print and append rows to ``out_csv``.
 
     Returns the list of row dicts. The best row (max F1) is printed at the end.
+
+    ``split`` here is the *split scheme* (within-/out-of-distribution) used for labeling rows.
+    ``eval_split`` is the train/validation/test subset name that is forwarded to ``dataset.eval`` so
+    AP50 is skipped on the incompletely- annotated ``"test"`` split. ``eval_split=None`` (default)
+    keeps the previous behavior of always computing AP50.
     """
     rows = []
     for t in thresholds:
         _set_threshold(dataset, t)
-        results, _ = dataset.eval(y_pred, y_true, metadata, viz_dir=None)
+        results, _ = dataset.eval(y_pred,
+                                  y_true,
+                                  metadata,
+                                  viz_dir=None,
+                                  split=eval_split)
         recall = _recall_avg(results, dataset)
         precision = _metric_avg(results, dataset, "maskaware_precision")
         ap50 = _metric_avg(results, dataset, "AP50")
@@ -215,5 +225,6 @@ def maybe_run_sweep(args, dataset, test_subset, y_pred, y_true, *, model, task):
                         task=task,
                         split=args.split_scheme,
                         out_csv=out_csv,
-                        thresholds=thresholds)
+                        thresholds=thresholds,
+                        eval_split=getattr(args, "eval_split", None))
     return True

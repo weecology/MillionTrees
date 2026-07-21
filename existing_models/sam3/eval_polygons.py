@@ -122,6 +122,7 @@ def main() -> None:
     results, results_str = dataset.eval(
         all_y_pred, all_y_true, metadata=test_subset.metadata_array[:len(all_y_true)],
         viz_dir=args.viz_dir,
+        split=args.eval_split,
     )
     print(results_str)
 

@@ -500,17 +500,28 @@ class TreePolygonsDataset(MillionTreesDataset):
              metadata,
              *,
              viz_dir=None,
-             viz_n_per_source=10):
+             viz_n_per_source=10,
+             split=None):
         """The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
         detection accuracies of each domain.
 
         Optional ``viz_dir`` / ``viz_n_per_source`` write qualitative overlays (purple = GT masks,
         orange = predicted masks above the eval score threshold).
+
+        ``split`` names the evaluation split (e.g. ``"train"``, ``"validation"``,
+        ``"test"``). AP50 penalizes every unmatched prediction as a false positive
+        with no tolerance for incomplete annotation, so it is only meaningful on
+        exhaustively-annotated data. The test split is not exhaustively annotated,
+        so when ``split == "test"`` the ``"AP50"`` metric is skipped and never
+        enters ``results``/``results_str``. ``split=None`` (the default) preserves
+        the previous behavior of always computing AP50.
         """
 
         results = {}
         results_str = ''
         for metric in self.metrics:
+            if metric == "AP50" and split == "test":
+                continue
             result, result_str = self.standard_group_eval(
                 self.metrics[metric], self._eval_grouper, y_pred, y_true,
                 metadata)

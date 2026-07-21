@@ -432,7 +432,8 @@ class TreePointsDataset(MillionTreesDataset):
              metadata,
              *,
              viz_dir=None,
-             viz_n_per_source=10):
+             viz_n_per_source=10,
+             split=None):
         """Evaluate predictions.
 
         KeypointAccuracy (recall) uses a per-source distance threshold derived from each source's
@@ -440,7 +441,12 @@ class TreePointsDataset(MillionTreesDataset):
         image resolution. All other metrics use the dataset-level ``distance_threshold``.
 
         Optional ``viz_dir`` / ``viz_n_per_source`` write qualitative overlays.
+
+        ``split`` is accepted for interface parity with ``TreeBoxes.eval`` /
+        ``TreePolygons.eval`` (which use it to skip AP50 on the test split) but
+        has no effect here: TreePoints has no AP50 metric.
         """
+        del split  # no AP50 metric to gate; accepted for interface parity
         results = {}
         results_str = ''
 

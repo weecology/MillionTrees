@@ -117,7 +117,7 @@ def main():
         return
 
     results, results_str = evaluate(model, dataset, eval_subset, batch_size=args.batch_size,
-                                    viz_dir=args.viz_dir)
+                                    viz_dir=args.viz_dir, split=args.eval_split)
     print(results_str)
 
     # Keep the canonical test results filename for backward compat; suffix any

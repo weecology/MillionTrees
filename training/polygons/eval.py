@@ -57,13 +57,17 @@ def _parse_avg(results_str, name):
 
 
 def run_threshold_sweep(model, dataset, eval_subset, thresholds, *,
-                        batch_size, device):
+                        batch_size, device, compute_map=True):
     """Single inference pass scored at several eval score thresholds.
 
     Returns a list of dicts (one per threshold) with the headline metrics.
+
+    ``compute_map`` gates the (expensive) AP50 accumulation; pass ``False`` on
+    the incompletely-annotated test split where AP50 is not meaningful.
     """
     loader = get_eval_loader("standard", eval_subset, batch_size=batch_size)
-    states = {t: TreePolygonsStreamingEvalState(_ThresholdView(dataset, t))
+    states = {t: TreePolygonsStreamingEvalState(_ThresholdView(dataset, t),
+                                                compute_map=compute_map)
               for t in thresholds}
 
     model.eval()
@@ -182,6 +186,7 @@ def main():
         rows = run_threshold_sweep(
             model, dataset, eval_subset, sweep_thresholds,
             batch_size=args.batch_size, device=device,
+            compute_map=(args.eval_split != "test"),
         )
         header = ["eval_score_threshold", "recall", "maskaware_precision", "f1", "ap50", "accuracy"]
         print("\nEval score-threshold sweep ({} split, {}):".format(
@@ -213,6 +218,7 @@ def main():
         device=device,
         viz_dir=args.viz_dir,
         eval_mode=args.eval_mode,
+        split=args.eval_split,
     )
     print(results_str)
 

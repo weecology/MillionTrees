@@ -209,8 +209,10 @@ def main() -> None:
             break
 
     used_metadata = test_subset.metadata_array[:len(all_y_true)]
+    # This adapter always evaluates the (incompletely-annotated) test split, so
+    # AP50 is not meaningful here -- pass split="test" to skip it.
     results, results_str = dataset.eval(all_y_pred, all_y_true, metadata=used_metadata,
-                                        viz_dir=args.viz_dir)
+                                        viz_dir=args.viz_dir, split="test")
     print(results_str)
 
     if args.verbose:

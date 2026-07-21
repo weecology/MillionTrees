@@ -395,7 +395,8 @@ class TreeBoxesDataset(MillionTreesDataset):
              metadata,
              *,
              viz_dir=None,
-             viz_n_per_source=10):
+             viz_n_per_source=10,
+             split=None):
         """Performs evaluation on the given predictions.
 
         The main evaluation metric, detection_acc_avg_dom, measures the simple average of the
@@ -404,11 +405,21 @@ class TreeBoxesDataset(MillionTreesDataset):
         If ``viz_dir`` is set, writes overlay PNGs (purple = ground truth, orange = predictions above
         the eval score threshold), up to ``viz_n_per_source`` images per source, in subfolders
         named by source.
+
+        ``split`` names the evaluation split (e.g. ``"train"``, ``"validation"``,
+        ``"test"``). AP50 penalizes every unmatched prediction as a false positive
+        with no tolerance for incomplete annotation, so it is only meaningful on
+        exhaustively-annotated data. The test split is not exhaustively annotated,
+        so when ``split == "test"`` the ``"AP50"`` metric is skipped and never
+        enters ``results``/``results_str``. ``split=None`` (the default) preserves
+        the previous behavior of always computing AP50.
         """
 
         results = {}
         results_str = ''
         for metric in self.metrics:
+            if metric == "AP50" and split == "test":
+                continue
             result, result_str = self.standard_group_eval(
                 self.metrics[metric], self._eval_grouper, y_pred, y_true,
                 metadata)

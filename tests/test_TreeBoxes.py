@@ -154,6 +154,36 @@ def test_TreeBoxes_eval(dataset, pred_tensor):
     assert "maskaware_precision" in eval_results.keys()
     assert "merge_commission" in eval_results.keys()
 
+def test_TreeBoxes_eval_split_gates_AP50(dataset):
+    """AP50 is skipped for split="test" but kept for validation/default."""
+    ds = TreeBoxesDataset(download=False, root_dir=dataset, version="0.0")
+    test_dataset = ds.get_subset("test")
+    test_loader = get_eval_loader("standard", test_dataset, batch_size=2)
+
+    pred_tensor = [[134, 156, 313, 336]]
+    all_y_pred, all_y_true = [], []
+    for metadata, x, y_true in test_loader:
+        labels = torch.zeros(x.shape[0])
+        scores = torch.stack([torch.tensor(0.54) for _ in range(len(pred_tensor))])
+        y_pred = [{"y": torch.tensor(pred_tensor), "label": labels, "scores": scores}
+                  for _ in range(x.shape[0])]
+        all_y_true.extend(y_true)
+        all_y_pred.extend(y_pred)
+
+    meta = test_dataset.metadata_array
+
+    test_results, test_str = ds.eval(all_y_pred, all_y_true, meta, split="test")
+    assert "AP50" not in test_results
+    assert "AP50" not in test_str
+    for name in ("accuracy", "recall", "maskaware_precision", "merge_commission"):
+        assert name in test_results
+
+    val_results, _ = ds.eval(all_y_pred, all_y_true, meta, split="validation")
+    assert "AP50" in val_results
+
+    default_results, _ = ds.eval(all_y_pred, all_y_true, meta)
+    assert "AP50" in default_results
+
 def test_TreeBoxes_eval_visualization(dataset, tmp_path):
     ds = TreeBoxesDataset(download=False, root_dir=dataset, version="0.0")
     test_dataset = ds.get_subset("test")

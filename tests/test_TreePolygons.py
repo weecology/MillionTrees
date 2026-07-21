@@ -182,6 +182,77 @@ def test_TreePolygons_eval_stream_matches_legacy(dataset):
         assert sr_dom == pytest.approx(lr_dom, rel=1e-5, abs=1e-5)
 
 
+def _polygon_selfmatch_preds(ds):
+    """One perfect-IoU prediction per test image (pred := image's own GT masks)."""
+    test_dataset = ds.get_subset("test")
+    test_loader = get_eval_loader("standard", test_dataset, batch_size=2)
+
+    _, _, ref_tgt = test_dataset[0]
+    ref_masks = torch.as_tensor(ref_tgt["y"]).clone()
+    ref_boxes = torch.as_tensor(ref_tgt["bboxes"]).clone()
+    ref_labels = torch.as_tensor(ref_tgt["labels"]).clone()
+
+    all_y_pred, all_y_true, all_meta = [], [], []
+    for metadata, x, y_true in test_loader:
+        all_y_pred.append({
+            "y": ref_masks,
+            "bboxes": ref_boxes,
+            "labels": ref_labels,
+            "scores": torch.tensor([0.54] * len(ref_labels)),
+        })
+        all_y_true.extend(y_true)
+        all_meta.append(metadata)
+    return test_dataset, all_y_pred, all_y_true
+
+
+def test_TreePolygons_eval_split_gates_AP50(dataset):
+    """AP50 is skipped for split="test" but kept for validation/default."""
+    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
+    test_dataset, all_y_pred, all_y_true = _polygon_selfmatch_preds(ds)
+    meta = test_dataset.metadata_array
+
+    test_results, _ = ds.eval(all_y_pred, all_y_true, meta, split="test")
+    assert "AP50" not in test_results
+    # The completeness-tolerant metrics are still present.
+    for name in ("accuracy", "recall", "maskaware_precision", "merge_commission"):
+        assert name in test_results
+
+    val_results, _ = ds.eval(all_y_pred, all_y_true, meta, split="validation")
+    assert "AP50" in val_results
+
+    default_results, _ = ds.eval(all_y_pred, all_y_true, meta)
+    assert "AP50" in default_results
+
+
+def test_TreePolygons_stream_compute_map_false_skips_AP50(dataset):
+    """compute_map=False drops AP50 while matching legacy on the other metrics."""
+    ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
+    test_dataset = ds.get_subset("test")
+    test_loader = get_eval_loader("standard", test_dataset, batch_size=2)
+
+    _, _, ref_tgt = test_dataset[0]
+    ref_masks = torch.as_tensor(ref_tgt["y"]).clone()
+    ref_boxes = torch.as_tensor(ref_tgt["bboxes"]).clone()
+    ref_labels = torch.as_tensor(ref_tgt["labels"]).clone()
+
+    state = TreePolygonsStreamingEvalState(ds, compute_map=False)
+    for metadata, x, y_true in test_loader:
+        batch = [{
+            "y": ref_masks,
+            "bboxes": ref_boxes,
+            "labels": ref_labels,
+            "scores": torch.tensor([0.54] * len(ref_labels)),
+        }]
+        state.update(batch, y_true, metadata)
+
+    stream_results, stream_str = state.finalize()
+    assert "AP50" not in stream_results
+    assert "AP50" not in stream_str
+    # Other metrics still computed.
+    for name in ("accuracy", "recall", "maskaware_precision", "merge_commission"):
+        assert name in stream_results
+
+
 def test_TreePolygons_download_url(dataset):
     ds = TreePolygonsDataset(download=False, root_dir=dataset, version="0.0")
     for version in ds._versions_dict.keys():

@@ -216,11 +216,11 @@ def tile_mission(
     points_tiled['source'] = 'OFO field 2025'
 
     if 'withhold_from_training' in points_tiled.columns:
-        points_tiled['split'] = np.where(
+        points_tiled['existing_split'] = np.where(
             points_tiled['withhold_from_training'].astype(bool), 'test',
             'train')
     else:
-        points_tiled['split'] = 'train'
+        points_tiled['existing_split'] = 'train'
 
     return points_tiled
 
@@ -244,8 +244,8 @@ def write_sample_overlays(images_dir: str,
         img = np.array(Image.open(os.path.join(images_dir, basename)))
         fig, ax = plt.subplots(figsize=(8, 8))
         ax.imshow(img)
-        train = sub[sub['split'] == 'train']
-        test = sub[sub['split'] == 'test']
+        train = sub[sub['existing_split'] == 'train']
+        test = sub[sub['existing_split'] == 'test']
         if not train.empty:
             ax.scatter(train['x'], train['y'], c='cyan', s=80, marker='+',
                        linewidths=2.0, label='train')

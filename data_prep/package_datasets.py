@@ -1069,6 +1069,20 @@ def out_of_distribution_split(TreePolygons_datasets, TreePoints_datasets, TreeBo
     for df in (TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets):
         df.loc[df.source.isin(OUT_OF_DISTRIBUTION_TRAIN_ONLY_SOURCES), "split"] = "train"
 
+    # A source designated as an out-of-distribution test source must never also
+    # contribute rows to train, or it stops being held-out. Drop any of its rows
+    # that resolved to "train" (e.g. via an upstream existing_split pin, as with
+    # Troles et al. 2024 or OFO field 2025) instead of folding them into train.
+    TreePolygons_datasets = TreePolygons_datasets[
+        ~(TreePolygons_datasets.source.isin(test_sources_polygons) & (TreePolygons_datasets["split"] == "train"))
+    ]
+    TreePoints_datasets = TreePoints_datasets[
+        ~(TreePoints_datasets.source.isin(test_sources_points) & (TreePoints_datasets["split"] == "train"))
+    ]
+    TreeBoxes_datasets = TreeBoxes_datasets[
+        ~(TreeBoxes_datasets.source.isin(test_sources_boxes) & (TreeBoxes_datasets["split"] == "train"))
+    ]
+
     # Out-of-distribution: drop excess images instead of demoting to train so held-out
     # sources never leak into the train split.
     TreePolygons_datasets = limit_test_images(
@@ -1428,7 +1442,7 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.21"
+    version = "v0.22"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     mask_source_dir = "/orange/ewhite/DeepForest/tree_coverage_masks"
     debug = False

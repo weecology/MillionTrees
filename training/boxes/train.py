@@ -122,12 +122,14 @@ def collect_predictions(model, test_subset, batch_size=12, max_batches=None):
     return all_y_pred, all_y_true
 
 
-def evaluate(model, dataset, test_subset, batch_size=12, viz_dir=None, max_batches=None):
+def evaluate(model, dataset, test_subset, batch_size=12, viz_dir=None,
+             max_batches=None, split=None):
     all_y_pred, all_y_true = collect_predictions(
         model, test_subset, batch_size=batch_size, max_batches=max_batches)
     results, results_str = dataset.eval(
         all_y_pred, all_y_true, test_subset.metadata_array[:len(all_y_true)],
         viz_dir=viz_dir,
+        split=split,
     )
     return results, results_str
 
@@ -408,7 +410,8 @@ def main():
     viz_dir = os.path.join(args.output_dir, "viz")
     results, results_str = evaluate(model, box_dataset, test_subset, batch_size=args.batch_size,
                                     viz_dir=viz_dir,
-                                    max_batches=eval_max_batches)
+                                    max_batches=eval_max_batches,
+                                    split="test")
     print(results_str)
 
     if loggers:

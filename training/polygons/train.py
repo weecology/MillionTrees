@@ -436,8 +436,14 @@ def evaluate(
     eval_mode="stream",
     eval_inference="tiled",
     viz_n_per_source=4,
+    split=None,
 ):
     """Run MillionTrees test-set evaluation on a trained DeepForest model.
+
+    ``split`` names the evaluation split (e.g. ``"train"``, ``"validation"``,
+    ``"test"``). It is passed through to ``dataset.eval`` / the streaming eval
+    state so AP50 is skipped on the incompletely-annotated ``"test"`` split and
+    computed on the exhaustively-annotated ``"validation"`` split.
 
     ``eval_mode``:
         - ``stream`` (default): update metrics per batch (lower peak memory).
@@ -482,12 +488,14 @@ def evaluate(
             test_subset.metadata_array[: len(all_y_true)],
             viz_dir=viz_dir,
             viz_n_per_source=viz_n_per_source,
+            split=split,
         )
 
     if eval_mode != "stream":
         raise ValueError(f"Unknown eval_mode: {eval_mode!r}; use 'stream' or 'legacy'.")
 
-    state = TreePolygonsStreamingEvalState(dataset)
+    state = TreePolygonsStreamingEvalState(
+        dataset, compute_map=(split != "test"))
     viz_cap: dict[int, int] = {}
     viz_y_pred, viz_y_true, viz_rows = [], [], []
     for batch in test_loader:
@@ -724,6 +732,7 @@ def main():
         viz_dir=viz_dir,
         eval_mode=args.eval_mode,
         eval_inference=args.eval_inference,
+        split="train" if args.debug_overfit else "test",
     )
     print(results_str)
 

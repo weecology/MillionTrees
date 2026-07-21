@@ -129,7 +129,8 @@ def main() -> None:
     # streams metrics batch-by-batch so peak RAM is one batch of masks, not the whole
     # test set (~270 GiB of dense 1024x1024 masks otherwise).
     sweep_mode = getattr(args, "sweep", False)
-    stream_eval = None if sweep_mode else TreePolygonsStreamingEvalState(dataset)
+    stream_eval = None if sweep_mode else TreePolygonsStreamingEvalState(
+        dataset, compute_map=(args.eval_split != "test"))
     all_y_pred, all_y_true = [], []  # only populated in sweep mode
 
     # Capped per-source subset kept for visualization in streaming mode.
@@ -193,6 +194,7 @@ def main() -> None:
             all_y_pred, all_y_true,
             metadata=test_subset.metadata_array[:len(all_y_true)],
             viz_dir=args.viz_dir,
+            split=args.eval_split,
         )
     else:
         results, results_str = stream_eval.finalize(
