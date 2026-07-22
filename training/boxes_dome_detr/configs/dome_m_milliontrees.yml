@@ -1,0 +1,74 @@
+# Dome-DETR (M-size) fine-tuned on MillionTrees TreeBoxes
+# This is a template; key values ({batch_size}, {lr}, {epochs}, etc.) are replaced at runtime
+
+path_re: True
+norm_cfg: dict(type='SyncBN', momentum=0.03, eps=0.001)
+
+model:
+  type: DINO
+  backbone:
+    type: HGNetv2
+    use_layer_norm: False
+    backbone_type: m
+  neck:
+    type: HybridEncoder
+    in_channels: [128, 256, 512]
+    feat_strides: [8, 16, 32]
+    hidden_dim: 256
+    use_encoder: True
+    depth: 3
+    depth_mult: 1.0
+    activation: relu
+  head:
+    type: DINOHead
+    num_classes: 1
+    feat_channels: 256
+    num_levels: 3
+    num_styles: 1
+    num_queries: 900
+    use_dino_decoder: True
+    transformer:
+      type: DomeTransformer
+      decoder_type: DomeDecoderLayer
+      num_layers: 6
+      layer_cfg:
+        self_attn_cfg: dict(type='MultiScaleDeformableAttention', embed_dim=256, dropout=0.0)
+        ffn_cfg: dict(type: 'FFN', embed_dim=256, feedforward_dim=1024, ffn_drop=0.0)
+        norm_cfg: dict(type='LayerNorm')
+      init_cfg: null
+      query_dim: 256
+      query_scale_type: cond_proj
+      modulated_attn_cfg: dict(type: 'MultiScaleDeformableAttention')
+    loss_cls: dict(type: 'FocalLoss', use_sigmoid=True, gamma=2.0, alpha=0.25, reduction='sum')
+    loss_bbox: dict(type: 'GIoULoss', reduction='sum')
+    loss_iou: dict(type: 'GIoULoss', reduction='sum')
+
+data:
+  batch_size: {batch_size}
+  workers: {num_workers}
+
+optimizer:
+  type: AdamW
+  lr: {lr}
+  weight_decay: 0.0005
+  ema: false
+  ema_momentum: 0.9999
+  ema_gamma: 2000
+
+lr_scheduler:
+  name: CosineAnnealingLR
+  T_max: {epochs}
+  eta_min: 0.0
+
+train_cfg:
+  max_epochs: {epochs}
+  log_interval: 50
+  save_interval: 10
+  enable_amp: true
+  amp_level: O1
+
+val_cfg:
+  interval: 1
+
+__include__:
+  - milliontrees_dataset.yml

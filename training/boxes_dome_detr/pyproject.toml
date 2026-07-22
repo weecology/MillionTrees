@@ -1,0 +1,29 @@
+[project]
+name = "milliontrees-dome-detr"
+version = "0.1.0"
+description = "Dome-DETR (tiny object detection transformer) fine-tuned on MillionTrees TreeBoxes"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "milliontrees",
+    "comet-ml>=3.44.4",
+    "pyyaml",
+    "tensorboard",
+    "scipy",
+    "scikit-image",
+    "matplotlib",
+    "pycocotools>=2.0.0",
+    "faster-coco-eval>=1.6.5",
+]
+
+[tool.uv.sources]
+milliontrees = { path = "../..", editable = true }
+
+[tool.setuptools]
+packages = []
+
+# NOTE: torch, torchvision, and Dome-DETR itself (including the compiled
+# MultiScaleDeformableAttention CUDA op) are built from source outside this
+# pyproject.toml (uv/pip cannot resolve them cleanly). The build script
+# (build_env.sh) handles torch/CUDA pinning and CUDA extension compilation.
+# Run build_env.sh first, then `uv pip install -e .` to add milliontrees + comet.
+# This is a metadata-only package, not a code package.

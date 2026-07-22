@@ -1,0 +1,8 @@
+# Dataset config for MillionTrees TreeBoxes in Dome-DETR COCO format
+# Used with __include__ in the main config
+dataset:
+  type: CocoDetection
+  img_folder: {img_folder}
+  ann_file: {ann_file}
+
+num_classes: 1
