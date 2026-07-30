@@ -115,6 +115,19 @@ class TreePointsDataset(MillionTreesDataset):
             # unused for local download=False training/eval runs.
             'compressed_size':
                 190971944620
+        },
+        # v0.22 re-tiles the sources so every packaged image matches its tree-coverage
+        # mask; in v0.21 the regenerated masks no longer match the v0.21 Allen imagery
+        # and the loader raises on the validation split.
+        "0.22": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.22.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.22.zip",
+            # TODO: refresh with the real zip size once v0.22 zips finish building;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                190971944620
         }
     }
 
@@ -125,6 +138,7 @@ class TreePointsDataset(MillionTreesDataset):
                  split_scheme='within-distribution',
                  geometry_name='y',
                  remove_incomplete=False,
+                 complete_tiles_only=False,
                  distance_threshold=0.02,
                  include_sources=None,
                  exclude_sources=None,
@@ -248,6 +262,14 @@ class TreePointsDataset(MillionTreesDataset):
             self.df = self.df[~mask_exclude]
         selected_source_count = self.df['source'].nunique()
         self.df = self.df.reset_index(drop=True)
+
+        # Drop eval tiles that are not annotated wall to wall (edge tiles of a TLS plot
+        # footprint), so AP is not charged for detecting trees nobody labelled.
+        if complete_tiles_only is not False and complete_tiles_only is not None:
+            self.df = self._drop_incomplete_tiles(self.df,
+                                                  complete_tiles_only,
+                                                  self._data_dir,
+                                                  verbose=self.verbose)
 
         # Splits
         self._split_dict = {

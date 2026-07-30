@@ -17,6 +17,8 @@ from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
 from milliontrees.common.eval_sweep import (add_sweep_args, maybe_run_sweep,
                                             maybe_subsample)
+from milliontrees.common.prediction_dump import (add_dump_args,
+                                                  maybe_save_predictions)
 
 
 def predict_batch(
@@ -66,6 +68,7 @@ def main():
                         help="Directory for per-source prediction overlay PNGs "
                              "(default: <output-dir>/viz, else ./eval_viz; pass '' to disable)")
     add_sweep_args(parser)
+    add_dump_args(parser)
     args = parser.parse_args()
 
     # Visualization on by default: 10 overlays per source (dataset.eval viz_n_per_source=10).
@@ -83,7 +86,8 @@ def main():
     model.eval()
 
     dataset = get_dataset("TreeBoxes", root_dir=args.root_dir, download=args.download,
-                          mini=args.mini, split_scheme=args.split_scheme)
+                          mini=args.mini, split_scheme=args.split_scheme,
+                          complete_tiles_only=args.complete_tiles_only)
     test_subset = maybe_subsample(dataset, dataset.get_subset(args.eval_split), args)
     test_loader = get_eval_loader("standard", test_subset, batch_size=args.batch_size,
                                   num_workers=args.num_workers)
@@ -98,6 +102,9 @@ def main():
             all_y_true.append(target)
         if args.max_batches is not None and (b_idx + 1) >= args.max_batches:
             break
+
+    maybe_save_predictions(args, dataset, test_subset, all_y_pred, all_y_true,
+                           model="DeepForest-pretrained", task="TreeBoxes")
 
     if maybe_run_sweep(args, dataset, test_subset, all_y_pred, all_y_true,
                        model="DeepForest-pretrained", task="TreeBoxes"):

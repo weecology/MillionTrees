@@ -160,7 +160,7 @@ def run_threshold_sweep(dataset,
 
 
 def add_sweep_args(parser):
-    """Add --per-source / --sweep / --eval-split to an eval script's parser."""
+    """Add --per-source / --sweep / --eval-split / --complete-tiles-only to a parser."""
     parser.add_argument(
         "--eval-split",
         type=str,
@@ -168,6 +168,13 @@ def add_sweep_args(parser):
         choices=["train", "validation", "test"],
         help="Dataset subset to evaluate (default test). 'validation' = the "
         "held-out Allen et al. 2025 + Frey et al. 2026 TLS reference set.")
+    parser.add_argument(
+        "--complete-tiles-only",
+        action="store_true",
+        help=
+        "Drop eval tiles that are not annotated wall to wall (edge tiles of a "
+        "TLS plot footprint). AP charges detections in the unlabelled part of such a "
+        "tile as false positives; see docs/validation_ap_completeness.md.")
     parser.add_argument(
         "--per-source",
         type=int,

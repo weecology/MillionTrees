@@ -27,9 +27,11 @@ def _read_map(result: dict, iou_thresholds: Any) -> torch.Tensor:
     torchmetrics >=1.x returns ``map = -1`` when a single IoU threshold is
     combined with a custom ``max_detection_thresholds``; the AP@0.5 value lives
     in ``map_50`` instead. The AP50 metric is configured with
-    ``iou_thresholds=[0.5]``, so read ``map_50`` in that case.
+    ``iou_thresholds=[0.5]``, so read ``map_50`` in that case. For any other
+    single threshold (AP40) ``map_50`` is -1 and ``map`` -- averaged over the
+    configured thresholds, i.e. that one threshold -- is the value.
     """
-    if list(iou_thresholds) == [0.5]:
+    if list(iou_thresholds or []) == [0.5]:
         return result["map_50"]
     return result["map"]
 
@@ -38,7 +40,10 @@ class TreePolygonsStreamingEvalState:
     """Accumulates metrics batch-wise; results match ``standard_group_eval`` semantics."""
 
     _EW_KEYS = ("accuracy", "recall", "maskaware_precision", "merge_commission")
-    _MAP_KEY = "AP50"
+    # Every AP metric on the dataset that is present gets streamed. AP50 is the
+    # leaderboard metric; AP40 matches the IoU used by recall / mask-aware
+    # precision, so the two AP numbers are directly comparable to F1.
+    _MAP_KEYS = ("AP50", "AP40")
 
     def __init__(self, dataset: Any) -> None:
         self._dataset = dataset
@@ -54,21 +59,28 @@ class TreePolygonsStreamingEvalState:
                 "g_cnt": torch.zeros(self._n_groups, dtype=torch.float64),
             }
 
-        self._map_metric: DetectionMAP = dataset.metrics[self._MAP_KEY]
-        map_kwargs = dict(
-            iou_type=self._map_metric.iou_type,
-            iou_thresholds=self._map_metric.iou_thresholds,
-            max_detection_thresholds=self._map_metric.max_detection_thresholds,
-            class_metrics=False,
-        )
-        self._map_global = make_mean_average_precision(**map_kwargs)
-        _disable_torchmetric_sync(self._map_global)
-        self._map_per_group = [
-            make_mean_average_precision(**map_kwargs)
-            for _ in range(self._n_groups)
-        ]
-        for m in self._map_per_group:
-            _disable_torchmetric_sync(m)
+        self._map_keys = tuple(
+            k for k in self._MAP_KEYS if k in dataset.metrics)
+        self._map_metrics: dict[str, DetectionMAP] = {
+            k: dataset.metrics[k] for k in self._map_keys
+        }
+        self._map_global: dict[str, Any] = {}
+        self._map_per_group: dict[str, list] = {}
+        for key, map_metric in self._map_metrics.items():
+            map_kwargs = dict(
+                iou_type=map_metric.iou_type,
+                iou_thresholds=map_metric.iou_thresholds,
+                max_detection_thresholds=map_metric.max_detection_thresholds,
+                class_metrics=False,
+            )
+            self._map_global[key] = make_mean_average_precision(**map_kwargs)
+            _disable_torchmetric_sync(self._map_global[key])
+            self._map_per_group[key] = [
+                make_mean_average_precision(**map_kwargs)
+                for _ in range(self._n_groups)
+            ]
+            for m in self._map_per_group[key]:
+                _disable_torchmetric_sync(m)
 
     def update(
         self,
@@ -101,8 +113,15 @@ class TreePolygonsStreamingEvalState:
                     st["g_sum"][gi] += float(v[mask].sum().item())
                     st["g_cnt"][gi] += float(mask.sum().item())
 
-        preds, targets = self._map_metric._format(y_pred, y_true)
-        self._map_global.update(preds, targets)
+        if not self._map_keys:
+            return
+
+        # The AP metrics differ only in iou_thresholds, so the (expensive) mask
+        # formatting is done once and shared across them.
+        formatter = self._map_metrics[self._map_keys[0]]
+        preds, targets = formatter._format(y_pred, y_true)
+        for key in self._map_keys:
+            self._map_global[key].update(preds, targets)
 
         for gi in range(self._n_groups):
             mask = g == gi
@@ -111,8 +130,9 @@ class TreePolygonsStreamingEvalState:
             idx = mask.nonzero(as_tuple=True)[0].tolist()
             gp = [y_pred[i] for i in idx]
             gt = [y_true[i] for i in idx]
-            p2, t2 = self._map_metric._format(gp, gt)
-            self._map_per_group[gi].update(p2, t2)
+            p2, t2 = formatter._format(gp, gt)
+            for key in self._map_keys:
+                self._map_per_group[key][gi].update(p2, t2)
 
     def _finalize_elementwise(self, key: str, metric: Any) -> tuple[dict, str]:
         st = self._ew[key]
@@ -164,7 +184,7 @@ class TreePolygonsStreamingEvalState:
         )
         return results, results_str
 
-    def _finalize_map(self, metric: DetectionMAP) -> tuple[dict, str]:
+    def _finalize_map(self, key: str, metric: DetectionMAP) -> tuple[dict, str]:
         results: dict[str, Any] = {}
         results_str = ""
 
@@ -180,10 +200,10 @@ class TreePolygonsStreamingEvalState:
             results_str += f"Worst-group {metric.name}: 0.000\n"
             return results, results_str
 
-        _disable_torchmetric_sync(self._map_global)
+        _disable_torchmetric_sync(self._map_global[key])
         agg_map = float(
-            _read_map(self._map_global.compute(),
-                      self._map_metric.iou_thresholds).item())
+            _read_map(self._map_global[key].compute(),
+                      metric.iou_thresholds).item())
         results[metric.agg_metric_field] = agg_map
         results_str += f"Average {metric.name}: {agg_map:.3f}\n"
 
@@ -194,9 +214,9 @@ class TreePolygonsStreamingEvalState:
             if gcnt[group_idx] <= 0:
                 gv = torch.tensor(0.0)
             else:
-                _disable_torchmetric_sync(self._map_per_group[group_idx])
-                gv = _read_map(self._map_per_group[group_idx].compute(),
-                               self._map_metric.iou_thresholds)
+                _disable_torchmetric_sync(self._map_per_group[key][group_idx])
+                gv = _read_map(self._map_per_group[key][group_idx].compute(),
+                               metric.iou_thresholds)
             group_metrics_list.append(gv)
             results[f"{metric.name}_{group_str}"] = float(gv.item())
             results[f"count_{group_str}"] = float(gcnt[group_idx].item())
@@ -232,10 +252,10 @@ class TreePolygonsStreamingEvalState:
             results[key] = r
             results_str += s
 
-        map_metric: DetectionMAP = self._dataset.metrics[self._MAP_KEY]
-        r, s = self._finalize_map(map_metric)
-        results[self._MAP_KEY] = r
-        results_str += s
+        for key in self._map_keys:
+            r, s = self._finalize_map(key, self._map_metrics[key])
+            results[key] = r
+            results_str += s
 
         # Mirror ``TreePolygonsDataset.eval``: read the already-computed macro
         # average directly from the accuracy results dict.

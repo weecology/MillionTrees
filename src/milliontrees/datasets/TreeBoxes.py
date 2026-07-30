@@ -47,6 +47,12 @@ class TreeBoxesDataset(MillionTreesDataset):
         split_scheme (str): The split scheme to use.
         geometry_name (str): The name of the geometry to use.
         eval_score_threshold (float): The threshold for the evaluation score.
+        complete_tiles_only (bool | list): Drop eval tiles that are not annotated wall
+            to wall -- the TLS validation sources mix interior tiles with edge tiles
+            where the plot footprint clips a corner and the rest is unlabelled forest,
+            which AP charges as false positives. True filters the validation split;
+            pass a list of split names to filter others. See
+            ``milliontrees.common.tile_completeness``.
         remove_incomplete (bool): Drop incomplete (not exhaustively annotated)
             sources from the TRAIN split only. Validation/test are never
             filtered, so the evaluation set matches a full-train run.
@@ -118,6 +124,19 @@ class TreeBoxesDataset(MillionTreesDataset):
             # unused for local download=False training/eval runs.
             'compressed_size':
                 79939201324
+        },
+        # v0.22 re-tiles the sources so every packaged image matches its tree-coverage
+        # mask; in v0.21 the regenerated masks no longer match the v0.21 Allen imagery
+        # and the loader raises on the validation split.
+        "0.22": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.22.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.22.zip",
+            # TODO: refresh with the real zip size once v0.22 zips finish building;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                79939201324
         }
     }
 
@@ -129,6 +148,7 @@ class TreeBoxesDataset(MillionTreesDataset):
                  geometry_name='y',
                  eval_score_threshold=0.0,
                  remove_incomplete=False,
+                 complete_tiles_only=False,
                  image_size=448,
                  include_sources=None,
                  exclude_sources=None,
@@ -248,6 +268,14 @@ class TreeBoxesDataset(MillionTreesDataset):
         selected_source_count = df['source'].nunique()
         df = df.reset_index(drop=True)
 
+        # Drop eval tiles that are not annotated wall to wall (edge tiles of a TLS plot
+        # footprint), so AP is not charged for detecting trees nobody labelled.
+        if complete_tiles_only is not False and complete_tiles_only is not None:
+            df = self._drop_incomplete_tiles(df,
+                                             complete_tiles_only,
+                                             self._data_dir,
+                                             verbose=self.verbose)
+
         # Splits
         self._split_dict = {
             'train': 0,
@@ -347,6 +375,14 @@ class TreeBoxesDataset(MillionTreesDataset):
                              score_threshold=self.eval_score_threshold,
                              iou_type="bbox",
                              iou_thresholds=[0.5]),
+            # AP40 uses the same IoU (0.4) as the recall / mask-aware precision
+            # metrics above, so AP and F1 agree on what counts as a match. Kept
+            # alongside AP50 so both are scored on identical predictions.
+            "AP40":
+                DetectionMAP(geometry_name=self.geometry_name,
+                             score_threshold=self.eval_score_threshold,
+                             iou_type="bbox",
+                             iou_thresholds=[0.4]),
             "merge_commission":
                 MergeCommissionMetric(
                     geometry_name=self.geometry_name,
