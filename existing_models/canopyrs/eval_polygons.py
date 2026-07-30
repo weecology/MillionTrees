@@ -25,6 +25,7 @@ from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
 from milliontrees.common.eval_sweep import (add_sweep_args, maybe_run_sweep,
                                             maybe_subsample)
+from milliontrees.common.prediction_dump import add_dump_args, make_dumper
 from milliontrees.datasets.polygon_stream_eval import (
     TreePolygonsStreamingEvalState, merge_viz_samples)
 
@@ -110,6 +111,7 @@ def main() -> None:
     parser.add_argument("--viz-n-per-source", type=int, default=10,
                         help="Number of overlay PNGs to write per source.")
     add_sweep_args(parser)
+    add_dump_args(parser)
     args = parser.parse_args()
 
     device = select_device(args.device)
@@ -118,7 +120,8 @@ def main() -> None:
 
     dataset = get_dataset("TreePolygons", root_dir=args.root_dir, download=args.download,
                           mini=args.mini, split_scheme=args.split_scheme,
-                          image_size=args.image_size)
+                          image_size=args.image_size,
+                          complete_tiles_only=args.complete_tiles_only)
     test_subset = maybe_subsample(dataset, dataset.get_subset(args.eval_split), args)
     test_loader = get_eval_loader("standard", test_subset, batch_size=args.batch_size,
                                   num_workers=args.num_workers)
@@ -131,6 +134,9 @@ def main() -> None:
     sweep_mode = getattr(args, "sweep", False)
     stream_eval = None if sweep_mode else TreePolygonsStreamingEvalState(dataset)
     all_y_pred, all_y_true = [], []  # only populated in sweep mode
+
+    # Streaming eval never holds predictions, so dump them as each batch is encoded.
+    dumper = make_dumper(args, dataset, model=MODEL_NAME, task="TreePolygons")
 
     # Capped per-source subset kept for visualization in streaming mode.
     viz_cap: dict = {}
@@ -172,6 +178,8 @@ def main() -> None:
             batch_y_true.append(target)
 
         batch_meta = metadata[:len(batch_y_pred)]
+        if dumper is not None:
+            dumper.update(batch_y_pred, batch_y_true, batch_meta)
         if sweep_mode:
             all_y_pred.extend(batch_y_pred)
             all_y_true.extend(batch_y_true)
@@ -184,6 +192,9 @@ def main() -> None:
 
         if args.max_batches is not None and (b_idx + 1) >= args.max_batches:
             break
+
+    if dumper is not None:
+        dumper.close()
 
     if sweep_mode:
         if maybe_run_sweep(args, dataset, test_subset, all_y_pred, all_y_true,

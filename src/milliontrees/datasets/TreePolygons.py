@@ -94,6 +94,19 @@ class TreePolygonsDataset(MillionTreesDataset):
             # unused for local download=False training/eval runs.
             'compressed_size':
                 109263962653
+        },
+        # v0.22 re-tiles the sources so every packaged image matches its tree-coverage
+        # mask; in v0.21 the regenerated masks no longer match the v0.21 Allen imagery
+        # and the loader raises on the validation split.
+        "0.22": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.22.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.22.zip",
+            # TODO: refresh with the real zip size once v0.22 zips finish building;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                109263962653
         }
     }
 
@@ -106,6 +119,7 @@ class TreePolygonsDataset(MillionTreesDataset):
                  eval_score_threshold=0.0,
                  image_size=448,
                  remove_incomplete=False,
+                 complete_tiles_only=False,
                  include_sources=None,
                  exclude_sources=None,
                  mini=False,
@@ -215,6 +229,14 @@ class TreePolygonsDataset(MillionTreesDataset):
             df = df[~mask_exclude]
         selected_source_count = df['source'].nunique()
         df = df.reset_index(drop=True)
+
+        # Drop eval tiles that are not annotated wall to wall (edge tiles of a TLS plot
+        # footprint), so AP is not charged for detecting trees nobody labelled.
+        if complete_tiles_only is not False and complete_tiles_only is not None:
+            df = self._drop_incomplete_tiles(df,
+                                             complete_tiles_only,
+                                             self._data_dir,
+                                             verbose=self.verbose)
 
         # Splits
         self._split_dict = {
@@ -480,6 +502,16 @@ class TreePolygonsDataset(MillionTreesDataset):
                              score_threshold=score_threshold,
                              iou_type="segm",
                              iou_thresholds=[0.5],
+                             max_detection_thresholds=[1, 10, 1000]),
+            # AP40 uses the same IoU (0.4) as the mask recall / mask-aware
+            # precision metrics above, so AP and F1 agree on what counts as a
+            # match. Kept alongside AP50 so both are scored on identical
+            # predictions.
+            "AP40":
+                DetectionMAP(geometry_name=self.geometry_name,
+                             score_threshold=score_threshold,
+                             iou_type="segm",
+                             iou_thresholds=[0.4],
                              max_detection_thresholds=[1, 10, 1000]),
             "merge_commission":
                 MergeCommissionMetric(

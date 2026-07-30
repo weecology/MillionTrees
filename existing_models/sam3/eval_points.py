@@ -95,7 +95,8 @@ def main() -> None:
 
     dataset = get_dataset("TreePoints", root_dir=args.root_dir, download=args.download,
                           mini=args.mini, split_scheme=args.split_scheme,
-                          image_size=args.image_size)
+                          image_size=args.image_size,
+                          complete_tiles_only=args.complete_tiles_only)
     test_subset = maybe_subsample(dataset, dataset.get_subset(args.eval_split), args)
     test_loader = get_eval_loader("standard", test_subset, batch_size=args.batch_size,
                                   num_workers=args.num_workers)

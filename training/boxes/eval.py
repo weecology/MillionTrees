@@ -8,6 +8,8 @@ import torch
 from deepforest import main as df_main
 from training.boxes.train import _AdaptCollate, evaluate, collect_predictions
 from milliontrees import get_dataset
+from milliontrees.common.prediction_dump import (add_dump_args,
+                                                  maybe_save_predictions)
 from milliontrees.common.eval_sweep import (add_sweep_args, maybe_run_sweep,
                                             maybe_subsample)
 
@@ -66,10 +68,8 @@ def main():
                         default=os.environ.get("MT_ROOT", "/orange/ewhite/web/public/MillionTrees"))
     parser.add_argument("--split-scheme", type=str, default="out-of-distribution",
                         choices=["within-distribution", "out-of-distribution", "crossgeometry"])
-    parser.add_argument("--eval-split", type=str, default="test",
-                        choices=["train", "validation", "test"],
-                        help="Which subset to evaluate. 'validation' is the held-out "
-                             "Allen et al. 2025 TLS set (same rows in every split-scheme).")
+    # --eval-split comes from add_sweep_args() below; declaring it here too raises
+    # argparse.ArgumentError on import.
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--mini", action="store_true")
@@ -81,6 +81,7 @@ def main():
                         help="Directory for per-source prediction overlay PNGs "
                              "(default: <output-dir>/viz, else ./eval_viz; pass '' to disable)")
     add_sweep_args(parser)
+    add_dump_args(parser)
     args = parser.parse_args()
 
     # Visualization on by default: 10 overlays per source (dataset.eval viz_n_per_source=10).
@@ -104,6 +105,7 @@ def main():
         root_dir=args.root_dir,
         mini=args.mini,
         split_scheme=args.split_scheme,
+        complete_tiles_only=args.complete_tiles_only,
     )
     eval_subset = maybe_subsample(dataset, dataset.get_subset(args.eval_split), args)
 
@@ -116,8 +118,17 @@ def main():
                         model="DeepForest-finetuned", task="TreeBoxes")
         return
 
-    results, results_str = evaluate(model, dataset, eval_subset, batch_size=args.batch_size,
-                                    viz_dir=args.viz_dir)
+    if args.save_predictions:
+        # Dump first so the same predictions can be re-scored offline (other IoUs,
+        # tile subsets) without another inference pass.
+        y_pred, y_true = collect_predictions(model, eval_subset, batch_size=args.batch_size)
+        maybe_save_predictions(args, dataset, eval_subset, y_pred, y_true,
+                               model="DeepForest-finetuned", task="TreeBoxes")
+        results, results_str = dataset.eval(
+            y_pred, y_true, eval_subset.metadata_array[:len(y_true)], viz_dir=args.viz_dir)
+    else:
+        results, results_str = evaluate(model, dataset, eval_subset, batch_size=args.batch_size,
+                                        viz_dir=args.viz_dir)
     print(results_str)
 
     # Keep the canonical test results filename for backward compat; suffix any

@@ -13,6 +13,11 @@ import glob
 from pathlib import Path
 from shapely import from_wkt
 from shapely.geometry.base import BaseGeometry
+
+from milliontrees.common.tile_completeness import (DEFAULT_MAX_MARGIN,
+                                                   DEFAULT_MIN_CANOPY_ANNOTATED,
+                                                   MANIFEST_COLUMNS, MANIFEST_PATH,
+                                                   is_complete_tile, score_tiles)
 try:
     from data_prep.packaging_utils import (
         build_unique_name_map,
@@ -518,6 +523,111 @@ def assign_packaged_filenames(datasets, name_map):
             f"source image, e.g. {collisions.index[:5].tolist()}."
         )
     return datasets
+
+
+def _pinned_validation_rows(datasets):
+    """Boolean mask of rows destined for the reserved validation split.
+
+    The per-scheme ``split`` column is not assigned yet at this point in the pipeline, but
+    validation membership is already fixed: it comes from ``existing_split`` restricted to
+    VALIDATION_SOURCES (see apply_existing_splits / _validation_sources).
+    """
+    if "existing_split" not in datasets.columns:
+        return pd.Series(False, index=datasets.index)
+    return ((datasets["existing_split"] == "validation")
+            & datasets["source"].isin(VALIDATION_SOURCES))
+
+
+def drop_incomplete_validation_tiles(geometry_datasets, mask_source_dir, version,
+                                     max_margin_tol=DEFAULT_MAX_MARGIN,
+                                     min_canopy_annotated=DEFAULT_MIN_CANOPY_ANNOTATED,
+                                     manifest_path=MANIFEST_PATH):
+    """Remove edge tiles from the reserved validation split before anything is shipped.
+
+    The TLS validation sources are tiled on a grid that does not follow the plot footprint, so
+    they carry two kinds of tile: interior tiles annotated wall to wall, and **edge tiles**
+    where the footprint clips a corner and the rest of the tile is unlabelled forest. An edge
+    tile is not usable as reference data -- AP charges every correct detection in the unlabelled
+    part as a false positive -- so the release should not contain them at all
+    (``docs/validation_ap_completeness.md``).
+
+    Runs before ``copy_images``/``copy_masks`` so dropped tiles are never written into the
+    package. The verdict is computed once from a geometry with *extent* (boxes, else polygons)
+    and applied to all three geometries by filename: a stem point sits half a crown inside the
+    tile edge and covers no canopy pixels, so points cannot be judged on their own and must
+    inherit the decision to stay comparable.
+
+    ``geometry_datasets`` maps geometry name -> DataFrame (already carrying packaged
+    ``filename`` and source ``orig_path``). Returns the same mapping, filtered.
+    """
+    # Score each tile from exactly one geometry -- boxes first, polygons only for tiles boxes
+    # does not cover. Concatenating the two would mix geometry columns inside a filename group
+    # and score the tile against whichever column set happened to win.
+    stats_parts, judged = [], set()
+    for name in ("TreeBoxes", "TreePolygons"):
+        df = geometry_datasets.get(name)
+        if df is None:
+            continue
+        rows = df[_pinned_validation_rows(df) & ~df["filename"].isin(judged)]
+        if rows.empty:
+            continue
+        print(f"Scoring {rows['filename'].nunique()} validation tiles from {name} geometry")
+        part = score_tiles(rows, image_path_col="orig_path",
+                           mask_dir=mask_source_dir, progress=True)
+        part["scored_from"] = name
+        stats_parts.append(part)
+        judged |= set(part["filename"])
+
+    if not stats_parts:
+        print("No pinned validation rows with extent; skipping tile-completeness filter.")
+        return geometry_datasets
+
+    stats = pd.concat(stats_parts, ignore_index=True)
+    stats["complete"] = stats.apply(
+        lambda r: is_complete_tile(r, max_margin_tol, min_canopy_annotated), axis=1)
+    complete = set(stats.loc[stats["complete"], "filename"])
+
+    print("\n=== Validation tile completeness ===")
+    print(f"{'source':<24}{'tiles':>7}{'kept':>7}{'dropped':>9}")
+    for source, group in stats.groupby("source"):
+        n_keep = int(group["complete"].sum())
+        print(f"{source:<24}{len(group):>7}{n_keep:>7}{len(group) - n_keep:>9}")
+    print(f"{'TOTAL':<24}{len(stats):>7}{len(complete):>7}{len(stats) - len(complete):>9}")
+
+    filtered = {}
+    for name, df in geometry_datasets.items():
+        is_val = _pinned_validation_rows(df)
+        # Tiles no extent-bearing geometry could judge are kept rather than silently
+        # dropped; they would otherwise vanish from the release with no record why.
+        unjudged = is_val & ~df["filename"].isin(judged)
+        if unjudged.any():
+            print(f"  {name}: {df.loc[unjudged, 'filename'].nunique()} validation tile(s) "
+                  "had no box/polygon geometry to score; kept.")
+        drop = is_val & df["filename"].isin(judged) & ~df["filename"].isin(complete)
+        if drop.any():
+            print(f"  {name}: dropped {df.loc[drop, 'filename'].nunique()} edge tiles "
+                  f"({int(drop.sum())} annotations)")
+        filtered[name] = df[~drop].reset_index(drop=True)
+
+    # Record what shipped, so the tile set behind a release is reviewable in git and the
+    # loaders can reproduce the same subset for older versions.
+    stats["version"] = str(version).lstrip("v")
+    stats["split"] = "validation"
+    _update_tile_manifest(stats[MANIFEST_COLUMNS], version, manifest_path)
+    return filtered
+
+
+def _update_tile_manifest(rows, version, manifest_path):
+    """Append/replace this version's rows in data_prep/tile_completeness.csv."""
+    manifest_path = Path(manifest_path)
+    existing = None
+    if manifest_path.exists():
+        existing = pd.read_csv(manifest_path, dtype={"version": str})
+        existing = existing[existing["version"] != str(version).lstrip("v")]
+    out = pd.concat([existing, rows], ignore_index=True) if existing is not None else rows
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    out.sort_values(["version", "split", "source", "filename"]).to_csv(manifest_path, index=False)
+    print(f"Wrote {manifest_path}")
 
 
 def copy_images(datasets, base_dir, dataset_type):
@@ -1329,6 +1439,17 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     TreePoints_datasets = assign_packaged_filenames(TreePoints_datasets, packaged_name_map)
     TreePolygons_datasets = assign_packaged_filenames(TreePolygons_datasets, packaged_name_map)
 
+    # Drop reserved-validation edge tiles before anything is written to the package, so an
+    # incomplete validation tile is never shipped (see drop_incomplete_validation_tiles).
+    _filtered = drop_incomplete_validation_tiles(
+        {"TreeBoxes": TreeBoxes_datasets,
+         "TreePoints": TreePoints_datasets,
+         "TreePolygons": TreePolygons_datasets},
+        mask_source_dir, version)
+    TreeBoxes_datasets = _filtered["TreeBoxes"]
+    TreePoints_datasets = _filtered["TreePoints"]
+    TreePolygons_datasets = _filtered["TreePolygons"]
+
     # Copy images
     copy_images(TreeBoxes_datasets, base_dir, "TreeBoxes")
     copy_images(TreePoints_datasets, base_dir, "TreePoints")
@@ -1428,7 +1549,7 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.21"
+    version = "v0.23"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     mask_source_dir = "/orange/ewhite/DeepForest/tree_coverage_masks"
     debug = False

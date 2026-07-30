@@ -145,14 +145,17 @@ def _run_stream_eval(dataset, y_pred, y_true, metadata, timings: dict[str, float
             lambda k=key: state._finalize_elementwise(k, dataset.metrics[k]),
             timings,
         )
-    _timed("stream_finalize_map_global", state._map_global.compute, timings)
+    # Profile the leaderboard AP metric; the state streams one per IoU threshold.
+    map_key = "AP50"
+    _timed("stream_finalize_map_global", state._map_global[map_key].compute,
+           timings)
     gcnt = state._ew["accuracy"]["g_cnt"]
     for gi in range(state._n_groups):
         if gcnt[gi] <= 0:
             continue
         _timed(
             f"stream_finalize_map_group_{gi}",
-            lambda g=gi: state._map_per_group[g].compute(),
+            lambda g=gi: state._map_per_group[map_key][g].compute(),
             timings,
         )
     return state.finalize()

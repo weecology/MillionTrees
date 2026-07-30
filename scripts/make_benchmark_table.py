@@ -28,6 +28,10 @@ METRIC_PATTERNS = {
     "MaskAccuracy": r"average accuracy:\s*([\d.]+)",
     "MaskRecall": r"average recall:\s*([\d.]+)",
     "AP50": r"average ap50:\s*([\d.]+)",
+    # AP at IoU 0.4, the same match threshold used by recall / mask-aware
+    # precision (and therefore F1). Only present in runs made after the AP40
+    # metric was added.
+    "AP40": r"average ap40:\s*([\d.]+)",
 }
 
 # For each task, the (recall, precision) metrics used to compute the detection F1.
@@ -96,8 +100,14 @@ def find_training_results(split: str) -> List[Dict]:
     return entries
 
 
-def find_existing_model_results(split: str) -> List[Dict]:
-    """Discover existing-model result files for a given split."""
+def find_existing_model_results(split: str,
+                                outputs_dirname: str = "outputs") -> List[Dict]:
+    """Discover existing-model result files for a given split.
+
+    ``outputs_dirname`` selects which results tree under each model directory to
+    read, so side experiments (e.g. the AP50-vs-AP40 runs in
+    ``outputs_ap_iou/``) can be tabulated without touching the leaderboard runs.
+    """
     entries = []
     task_map = {
         "boxes": "TreeBoxes",
@@ -116,8 +126,8 @@ def find_existing_model_results(split: str) -> List[Dict]:
     for (model_dir, model_name), task_keys in model_tasks.items():
         for task_key in task_keys:
             task_name = task_map[task_key]
-            path = os.path.join(ROOT, "existing_models", model_dir, "outputs", split,
-                                f"results_{task_key}_{split}.txt")
+            path = os.path.join(ROOT, "existing_models", model_dir, outputs_dirname,
+                                split, f"results_{task_key}_{split}.txt")
             if os.path.isfile(path):
                 with open(path) as f:
                     text = f.read()
