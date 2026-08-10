@@ -89,42 +89,10 @@ class TreeBoxesDataset(MillionTreesDataset):
             'supervised_download_url': '',
             'compressed_size': 105525592
         },
-        "0.18": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.18.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.18.zip",
-            'compressed_size':
-                67700616443
-        },
-        "0.19": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.19.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.19.zip",
-            # TODO: refresh with the real zip size once v0.19 zips are built;
-            # unused for local download=False training/eval runs.
-            'compressed_size':
-                67700616443
-        },
-        "0.20": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.20.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.20.zip",
-            'compressed_size':
-                79939201324
-        },
-        "0.21": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.21.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.21.zip",
-            # TODO: refresh with the real zip size once v0.21 zips finish building;
-            # unused for local download=False training/eval runs.
-            'compressed_size':
-                79939201324
-        },
+        # Only versions whose archives are still on the server belong here: the
+        # host keeps the two most recent releases and deletes the rest, so a
+        # version left in this dict after its zips are removed turns every
+        # download=True call into a 404. v0.18-v0.21 were pruned for that reason.
         # v0.22 re-tiles the sources so every packaged image matches its tree-coverage
         # mask; in v0.21 the regenerated masks no longer match the v0.21 Allen imagery
         # and the loader raises on the validation split.
