@@ -1,0 +1,31 @@
+# Detectron2 build pins — kept OUT of pyproject.toml on purpose.
+#
+# Detectron2 has no PyPI release and must be compiled against the *exact* torch
+# build, so it can't live in the resolver-managed pyproject.toml. This file
+# records the pinned, reproducible build environment used for the MillionTrees
+# Detectree2 baseline. Drive it with the commands at the bottom.
+#
+# Hardware target: UF HiPerGator `hpg-turin` partition = NVIDIA L4 (Ada, sm_89).
+
+[build]
+python = "3.11"
+cuda-module = "cuda/12.4.1"          # provides nvcc matching the cu124 torch wheels
+torch = "2.5.1+cu124"
+torchvision = "0.20.1+cu124"
+torch-index = "https://download.pytorch.org/whl/cu124"
+detectron2 = "git+https://github.com/facebookresearch/detectron2.git"
+
+[build.env]
+TORCH_CUDA_ARCH_LIST = "8.9"         # L4 = sm_89
+MAX_JOBS = "4"
+
+# Reproduce:
+#   uv venv --python 3.11 && source .venv/bin/activate
+#   uv pip install torch==2.5.1 torchvision==0.20.1 \
+#       --index-url https://download.pytorch.org/whl/cu124
+#   module load cuda/12.4.1
+#   export CUDA_HOME=$(dirname $(dirname $(which nvcc)))
+#   export TORCH_CUDA_ARCH_LIST=8.9 MAX_JOBS=4
+#   uv pip install --no-build-isolation \
+#       'git+https://github.com/facebookresearch/detectron2.git'
+#   uv pip install detectree2 && uv pip install -e ../..
