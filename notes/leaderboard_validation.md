@@ -38,12 +38,29 @@ border on every v0.21 Allen tile (removed in v0.22). v0.21 can no longer load th
 | DeepForest | ✓ (OOD) | 0.328 | 0.818 | 0.468 | 0.150 |
 | DeepForest | ✗ | 0.287 | 0.967 | 0.443 | 0.121 |
 
-### TreePoints  *(no crown segmentation / AP)* — **v0.22**
+### TreePoints  *(no crown segmentation / AP)* — **v0.22**, except the countfix row (**v0.23**)
 | Model | Fine-tuned | Keypoint Accuracy | Detection Precision | F1 | CountingMAE |
 |---|:--:|--:|--:|--:|--:|
+| SAM3 | ✗ | 0.387 | 0.795 | 0.521 | 59.0 |
 | TreeFormer (img 896) | ✓ (OOD) | 0.378 | 0.846 | 0.522 | 91.4 |
 | TreeFormer (img 896) | ✗ | 0.348 | 0.940 | 0.508 | 46.9 |
-| SAM3 | ✗ | 0.387 | 0.795 | 0.521 | 59.0 |
+| TreeFormer countfix (img 896) — **v0.23** | ✓ (OOD) | 0.265 | 0.658 | 0.378 | 136.5 |
+
+**The fine-tuned point rows are the generalization result, not a broken run.** The countfix
+model (job 39014685) is the best fine-tuned point model MillionTrees has: on the
+within-distribution test split it beats the pretrained checkpoint on both detection
+(F1 0.782 vs 0.726) and counting (nMAE 0.214 vs 1.611), and it is the first run where the
+count loss produces a gradient at all. It is nevertheless the *worst* row in this table. Its
+Allen counting slope is **−0.309** — per-image predicted counts are anti-correlated with
+truth — against the pretrained checkpoint's 46.9 MAE on the identical images.
+
+Read across the three evaluations, fine-tuning TreeFormer helps in proportion to how closely
+the evaluation resembles its training sources (within-distribution: large gain;
+out-of-distribution: loses detection, keeps a counting gain; held-out TLS: loses badly). The
+parameters adapt to specific sources rather than learning transferable tree density. Fixing
+the dead count path (39014685) removed one confound — the count-blind fine-tune scored an even
+worse Allen MAE of 302.2 / nMAE 4.508 here — but it did not change the direction of the
+finding, which is why both fine-tuned rows are shown.
 
 Re-run on **v0.22** on 2026-08-04 (jobs 38691232 / 38691233 / 38691234), same configs as the
 v0.21 rows they replace, so the deltas are dataset-version only. v0.21 values for reference:
@@ -81,9 +98,13 @@ in every row (0.294 / 0.270 / 0.337) — those tiles were not re-tiled, a useful
 | TreeFormer (896) | ✓ | 0.462 | 0.760 | 0.294 | 0.931 |
 | TreeFormer (896) | ✗ | 0.426 | 0.886 | 0.270 | 0.994 |
 | SAM3 | ✗ | 0.437 | 0.751 | 0.337 | 0.839 |
+| TreeFormer countfix (896) — **v0.23** | ✓ | 0.349 | 0.535 | 0.180 | 0.782 |
 
-All rows are **v0.22**. v0.21 points per-source, for reference: ✓ 0.541 / 0.762, ✗ 0.505 / 0.907,
-SAM3 0.438 / 0.756 (Allen K / Allen P; Frey identical to the v0.22 values shown).
+All rows are **v0.22** except the countfix row (**v0.23**, job 39081455). v0.21 points
+per-source, for reference: ✓ 0.541 / 0.762, ✗ 0.505 / 0.907, SAM3 0.438 / 0.756
+(Allen K / Allen P; Frey identical to the v0.22 values shown). The countfix model degrades on
+*both* sources, Frey (0.294 → 0.180 K) proportionally more than Allen — the generalization
+loss is not an Allen-specific tiling artifact.
 
 ### TreePolygons
 | Model | FT | Allen R | Allen P | Allen AP40 | Frey R | Frey P | Frey AP40 |

@@ -89,11 +89,40 @@ the number.
   bit-reproducible; expect run-to-run variation. The polygon trainers use seed 42.
 - The fine-tuned **polygon** Detectron2 weights predate v0.23; the model is scored on v0.23
   data but was trained on an earlier packaging of it. A v0.23 retrain is pending.
-- The fine-tuned **point** row is the count-loss-fixed run (job 39014685). Its held-out
-  validation counting error is still substantially worse than the pretrained checkpoint, so
-  no fine-tuned point row is published on the validation split.
 - **Cross-geometry** is defined as predicting polygons from another annotation geometry. It is
   not applicable to box or point prediction, so those tables are absent rather than zero-filled.
+
+## TreeFormer fine-tunes well and generalizes poorly
+
+The point rows show a clear gradient, and it is a result rather than an artifact. Fine-tuning
+TreeFormer helps in proportion to how closely the evaluation resembles the training data, and
+hurts once it does not:
+
+| Evaluation | Relationship to train | Fine-tuned | Pretrained |
+|---|---|---|---|
+| Within-distribution test | same sources | F1 **0.782**, counting nMAE **0.214** | F1 0.726, nMAE 1.611 |
+| Out-of-distribution test | held-out aerial sources | F1 0.675, nMAE **0.350** | F1 **0.750**, nMAE 0.489 |
+| Validation (held-out TLS) | different reference geometry | keypoint acc 0.265, Allen MAE 136.5 (nMAE 2.035) | Allen MAE **46.9** |
+
+Within-distribution, fine-tuning is decisively better on both detection and counting.
+Out-of-distribution it already loses detection F1 while still improving counting. On the
+held-out TLS validation split it loses badly, and the per-image count slope turns negative
+(−0.309 on Allen), meaning predicted counts are anti-correlated with truth. The conclusion is
+that TreeFormer's parameters adapt to the specific sources they are fine-tuned on rather than
+learning a transferable notion of tree density — it is a strong fine-tuning target and a weak
+generalizer. Applied users fine-tuning on local data should expect the within-distribution
+column; nobody should expect the validation column to follow from it.
+
+The source-level breakdown says the same thing. Amirkolaee is the within-distribution source
+where fine-tuning moves both axes the way the split does (recall 0.31 → 0.61, precision
+0.78 → 0.92, counting MAE 112 → 43). OFO is 1387 of the 3260 out-of-distribution test images
+and is what drives that split's aggregate precision drop: the fine-tune finds nearly every
+tree (recall 0.95 → 0.98) while precision falls 0.44 → 0.18, which is over-prediction, not a
+detection failure. Allen carries the validation counting collapse (MAE 47 → 136).
+
+Precision figures here are mask-aware: an unmatched prediction landing on tree-covered pixels
+is exempted rather than counted as a false positive, so precision swings image to image on
+closed-canopy sources and only the source-level aggregate is meaningful.
 
 ![TreePoints: model predictions by split](leaderboard_predictions_points.png)
 
