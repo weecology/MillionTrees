@@ -1382,10 +1382,10 @@ class DetectionMAP(Metric):
     Single-class: all labels are normalised to 0 so that predictions always match the ground-truth
     class regardless of the model's raw label output.
 
-    ``iou_thresholds`` controls the IoU threshold(s) AP is computed at. Pass ``[0.5]`` (the default
-    for TreeBoxes/TreePolygons) for PASCAL-style AP@0.5; pass ``[0.4]`` to match the IoU used by the
-    recall / mask-aware precision metrics (``AP40``); pass ``None`` for COCO-style mAP averaged
-    over IoU 0.50:0.05:0.95.
+    ``iou_thresholds`` controls the IoU threshold(s) AP is computed at. TreeBoxes/TreePolygons pass
+    ``[0.4]`` (``AP40``), the IoU the recall / mask-aware precision metrics use, so AP and F1 agree
+    on what counts as a match; pass ``[0.5]`` for PASCAL-style AP@0.5, or ``None`` for COCO-style
+    mAP averaged over IoU 0.50:0.05:0.95.
     """
 
     def __init__(self,
@@ -1486,10 +1486,10 @@ class DetectionMAP(Metric):
         result = metric.compute()
         # torchmetrics >=1.x puts AP@0.5 in "map_50"; the primary "map" key is
         # -1 when a custom max_detection_thresholds is combined with a single
-        # IoU threshold, so read map_50 directly for the AP50 configuration.
-        # For any other single threshold (e.g. AP40) map_50 is -1 and "map" --
-        # averaged over self.iou_thresholds, i.e. that one threshold -- is the
-        # value we want.
+        # IoU threshold, so an iou_thresholds=[0.5] metric must read map_50.
+        # For any other single threshold (the AP40 the datasets score) map_50
+        # is -1 and "map" -- averaged over self.iou_thresholds, i.e. that one
+        # threshold -- is the value we want.
         if list(self.iou_thresholds or []) == [0.5]:
             return result["map_50"]
         return result["map"]

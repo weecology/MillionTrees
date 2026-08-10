@@ -137,6 +137,19 @@ class TreeBoxesDataset(MillionTreesDataset):
             # unused for local download=False training/eval runs.
             'compressed_size':
                 79939201324
+        },
+        # v0.23 restores six configured box sources (~192k annotations, e.g. Puliti and
+        # Astrup 2022, Šrollerů et al. 2025) that packaging silently dropped through
+        # v0.22 by filtering on box columns and geometry before either was derived.
+        "0.23": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.23.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.23.zip",
+            # TODO: refresh with the real zip size once v0.23 zips finish building;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                79939201324
         }
     }
 
@@ -370,14 +383,9 @@ class TreeBoxesDataset(MillionTreesDataset):
                 MaskAwareDetectionPrecision(
                     geometry_name=self.geometry_name,
                     score_threshold=self.eval_score_threshold),
-            "AP50":
-                DetectionMAP(geometry_name=self.geometry_name,
-                             score_threshold=self.eval_score_threshold,
-                             iou_type="bbox",
-                             iou_thresholds=[0.5]),
             # AP40 uses the same IoU (0.4) as the recall / mask-aware precision
-            # metrics above, so AP and F1 agree on what counts as a match. Kept
-            # alongside AP50 so both are scored on identical predictions.
+            # metrics above, so AP and F1 agree on what counts as a match. It is
+            # the reported AP for every task; AP50 is not scored.
             "AP40":
                 DetectionMAP(geometry_name=self.geometry_name,
                              score_threshold=self.eval_score_threshold,

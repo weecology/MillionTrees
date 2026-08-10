@@ -113,7 +113,7 @@ def run_threshold_sweep(dataset,
         results, _ = dataset.eval(y_pred, y_true, metadata, viz_dir=None)
         recall = _recall_avg(results, dataset)
         precision = _metric_avg(results, dataset, "maskaware_precision")
-        ap50 = _metric_avg(results, dataset, "AP50")
+        ap40 = _metric_avg(results, dataset, "AP40")
         denom = recall + precision
         f1 = (2 * recall * precision /
               denom) if denom and not np.isnan(denom) else 0.0
@@ -124,14 +124,14 @@ def run_threshold_sweep(dataset,
             "threshold": t,
             "recall": recall,
             "precision": precision,
-            "ap50": ap50,
+            "ap40": ap40,
             "f1": f1
         }
         rows.append(row)
         print(
             f"[{model}/{task}/{split}] t={t:.2f}  "
             f"recall={recall:.3f}  precision={precision:.3f}  "
-            f"ap50={ap50:.3f}  f1={f1:.3f}",
+            f"ap40={ap40:.3f}  f1={f1:.3f}",
             flush=True)
 
     if out_csv:

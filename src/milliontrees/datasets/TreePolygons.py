@@ -107,6 +107,18 @@ class TreePolygonsDataset(MillionTreesDataset):
             # unused for local download=False training/eval runs.
             'compressed_size':
                 109263962653
+        },
+        # v0.23 repackages every geometry alongside the TreeBoxes source restoration
+        # (see TreeBoxes._versions_dict); polygon content is unchanged from v0.22.
+        "0.23": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.23.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.23.zip",
+            # TODO: refresh with the real zip size once v0.23 zips finish building;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                109263962653
         }
     }
 
@@ -497,16 +509,9 @@ class TreePolygonsDataset(MillionTreesDataset):
             "maskaware_precision":
                 MaskAwareMaskPrecision(geometry_name=self.geometry_name,
                                        score_threshold=score_threshold),
-            "AP50":
-                DetectionMAP(geometry_name=self.geometry_name,
-                             score_threshold=score_threshold,
-                             iou_type="segm",
-                             iou_thresholds=[0.5],
-                             max_detection_thresholds=[1, 10, 1000]),
             # AP40 uses the same IoU (0.4) as the mask recall / mask-aware
             # precision metrics above, so AP and F1 agree on what counts as a
-            # match. Kept alongside AP50 so both are scored on identical
-            # predictions.
+            # match. It is the reported AP for every task; AP50 is not scored.
             "AP40":
                 DetectionMAP(geometry_name=self.geometry_name,
                              score_threshold=score_threshold,

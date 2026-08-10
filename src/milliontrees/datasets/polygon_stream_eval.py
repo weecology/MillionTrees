@@ -26,10 +26,10 @@ def _read_map(result: dict, iou_thresholds: Any) -> torch.Tensor:
 
     torchmetrics >=1.x returns ``map = -1`` when a single IoU threshold is
     combined with a custom ``max_detection_thresholds``; the AP@0.5 value lives
-    in ``map_50`` instead. The AP50 metric is configured with
-    ``iou_thresholds=[0.5]``, so read ``map_50`` in that case. For any other
-    single threshold (AP40) ``map_50`` is -1 and ``map`` -- averaged over the
-    configured thresholds, i.e. that one threshold -- is the value.
+    in ``map_50`` instead, so a metric configured with ``iou_thresholds=[0.5]``
+    must read ``map_50``. For any other single threshold -- including the AP40
+    the datasets score -- ``map_50`` is -1 and ``map`` (averaged over the
+    configured thresholds, i.e. that one threshold) is the value.
     """
     if list(iou_thresholds or []) == [0.5]:
         return result["map_50"]
@@ -40,10 +40,10 @@ class TreePolygonsStreamingEvalState:
     """Accumulates metrics batch-wise; results match ``standard_group_eval`` semantics."""
 
     _EW_KEYS = ("accuracy", "recall", "maskaware_precision", "merge_commission")
-    # Every AP metric on the dataset that is present gets streamed. AP50 is the
-    # leaderboard metric; AP40 matches the IoU used by recall / mask-aware
-    # precision, so the two AP numbers are directly comparable to F1.
-    _MAP_KEYS = ("AP50", "AP40")
+    # Every AP metric on the dataset that is present gets streamed. AP40 is the
+    # leaderboard metric: it matches the IoU used by recall / mask-aware
+    # precision, so AP and F1 agree on what counts as a match.
+    _MAP_KEYS = ("AP40",)
 
     def __init__(self, dataset: Any) -> None:
         self._dataset = dataset
