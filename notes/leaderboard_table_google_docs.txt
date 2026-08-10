@@ -1,0 +1,36 @@
+--- TreePoints ---
+Paste the block below into Google Docs to create a table.
+
+Model	Fine-tuned	Split	Counting MAE
+SAM3	✗	Random	23.691
+TreeFormer	✗	Random	24.159
+DeepForest	✗	Random	25.289
+DeepForest	✓	Random	26.359
+DeepForest	✗	Zero-shot	51.462
+TreeFormer	✗	Zero-shot	52.546
+SAM3	✗	Zero-shot	55.043
+DeepForest	✓	Zero-shot	68.723
+
+--- TreeBoxes ---
+Paste the block below into Google Docs to create a table.
+
+Model	Fine-tuned	Split	Avg Recall
+DeepForest	✓	Random	0.497
+DeepForest	✗	Random	0.395
+SAM3	✗	Random	0.172
+DeepForest	✓	Zero-shot	0.508
+DeepForest	✗	Zero-shot	0.530
+SAM3	✗	Zero-shot	0.206
+
+--- TreePolygons ---
+Paste the block below into Google Docs to create a table.
+
+Model	Fine-tuned	Split	Avg Mask Accuracy
+SAM3	✗	Random	0.167
+DeepForest	✓	Random	0.183
+DeepForest	✗	Random	0.090
+SAM3	✗	Zero-shot	0.322
+DeepForest	✓	Zero-shot	0.183
+DeepForest	✗	Zero-shot	0.071
+SAM3	✗	Cross-geometry	0.322
+DeepForest	✗	Cross-geometry	0.071

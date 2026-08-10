@@ -1,0 +1,7 @@
+source,filename,prompt,n_pred,recall
+"Safonova et al. 2021","001_Safonova_et_al_2021.jpeg","tree",2,1.0000
+"Safonova et al. 2021","001_Safonova_et_al_2021.jpeg","tree canopy",0,0.0000
+"Safonova et al. 2021","001_Safonova_et_al_2021.jpeg","individual tree canopy",2,1.0000
+"NEON combined crowns","HARV_2025_rgb_mosaic_crop_29_NEON_combined_crowns.png","tree",19,0.1111
+"NEON combined crowns","HARV_2025_rgb_mosaic_crop_29_NEON_combined_crowns.png","tree canopy",1,0.0000
+"NEON combined crowns","HARV_2025_rgb_mosaic_crop_29_NEON_combined_crowns.png","individual tree canopy",2,0.0370

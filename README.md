@@ -11,14 +11,20 @@ The MillionTrees benchmark is designed to provide *open*, *reproducible*, and *r
 
 We have released a beta version of *public* data, these are datasets that have previously been published and have a DOI. We will followup this release, likely with a 1.0 tag, of the previously unpublished parts of the dataset along with a scientific manuscript.
 
-The current release (v0.18) contains **9,005,427 annotations** across **132,078 images** from **52 sources**, totaling **353 GB**:
+The current release (v0.22) contains **2,323,333 human-annotated trees** across **59,500 images** from **51 sources**, totaling **355 GB**:
 
 | Dataset | Annotations | Images | Sources | Size |
 |---------|-------------|--------|---------|------|
-| TreeBoxes | 7,064,065 | 57,685 | 13 | 63.05 GB |
-| TreePolygons | 921,945 | 27,578 | 28 | 112.45 GB |
-| TreePoints | 1,019,417 | 46,815 | 11 | 177.86 GB |
-| **Total** | **9,005,427** | **132,078** | **52** | **353 GB** |
+| TreeBoxes | 947,835 | 13,220 | 13 | 74.75 GB |
+| TreePolygons | 456,655 | 11,129 | 27 | 102.06 GB |
+| TreePoints | 918,843 | 35,151 | 11 | 178.15 GB |
+| **Total** | **2,323,333** | **59,500** | **51** | **355 GB** |
+
+Counts above cover human-annotated data only. The release additionally ships
+**6,864,993 weakly-labeled (machine-generated) annotations** on 65,980 images from three
+unsupervised sources, which the dataloaders exclude by default; pass
+`include_unsupervised=True` to opt in. The `Size` column is the full download, which
+includes the weakly-labeled imagery.
 
 📊 **Current Dataset Status**: See our comprehensive [Dataset Release Report](https://milliontrees.idtrees.org/en/latest/dataset_release_report.html) for up-to-date information on dataset versions, sizes, and download links.
 

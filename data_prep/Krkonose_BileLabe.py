@@ -26,6 +26,7 @@ import zipfile
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import rasterio
 
@@ -48,6 +49,51 @@ def _ensure_bb_extracted(extract_dir: Path, plot_subdir: str, prefix: str) -> Pa
         with zipfile.ZipFile(bb_zip) as z:
             z.extractall(tree_level)
     return shp
+
+
+def _valid_pixel_mask(data: np.ndarray, nodata) -> np.ndarray:
+    """(H, W) True where the ortho holds real imagery rather than fill."""
+    if nodata is None:
+        return np.ones(data.shape[1:], dtype=bool)
+    if data.shape[0] >= 4:
+        return data[3] != nodata  # 4th band is the alpha/fill mask
+    return ~(data[:3] == nodata).all(axis=0)
+
+
+def write_rgb_uint8(src_path: Path, dst_path: Path) -> None:
+    """Write a 3-band uint8 copy of an ortho, preserving the pixel grid.
+
+    These orthos are 4-band uint16 with 65535 fill, but the real radiometry only
+    occupies 0-255. That layout crashes the packaging tree-coverage mask step
+    (PIL: "Cannot handle this data type: (1, 1, 3), <f4"), which in turn drops
+    the source from the release, and cv2 reads it inconsistently at train time.
+    Width/height/transform are unchanged, so the annotations' pixel coordinates
+    stay valid.
+    """
+    if dst_path.exists():
+        with rasterio.open(dst_path) as dst:
+            if dst.count == 3 and dst.dtypes[0] == "uint8":
+                return
+
+    with rasterio.open(src_path) as src:
+        data = src.read()
+        profile = src.profile
+        nodata = src.nodata
+
+    valid = _valid_pixel_mask(data, nodata)
+    rgb = data[:3]
+    if rgb[:, valid].max() <= 255:
+        # Native 8-bit values stored in a 16-bit container: cast, don't stretch.
+        out = np.clip(rgb, 0, 255).astype(np.uint8)
+    else:
+        out = np.transpose(_raster_to_uint8_rgb(data, nodata=nodata), (2, 0, 1))
+    out[:, ~valid] = 0
+
+    profile.update(count=3, dtype="uint8", nodata=None, compress="deflate")
+    profile.pop("photometric", None)
+    dst_path.parent.mkdir(parents=True, exist_ok=True)
+    with rasterio.open(dst_path, "w", **profile) as dst:
+        dst.write(out)
 
 
 def process_plot(
@@ -94,10 +140,7 @@ def process_plot(
 
     ortho_basename = f"{prefix}_orthoimagery.tif"
     ortho_out = images_dir / ortho_basename
-    if not ortho_out.exists() and ortho_in.exists():
-        ortho_out.parent.mkdir(parents=True, exist_ok=True)
-        import shutil
-        shutil.copy2(ortho_in, ortho_out)
+    write_rgb_uint8(ortho_in, ortho_out)
 
     df = pd.DataFrame(rows)
     df["image_path"] = str(ortho_out)

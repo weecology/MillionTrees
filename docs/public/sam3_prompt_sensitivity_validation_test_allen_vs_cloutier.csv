@@ -1,0 +1,7 @@
+source,filename,prompt,n_pred,recall
+"Allen et al. 2025","SPA24_clipped_Allen_et_al_2025.tif","tree",125,0.6552
+"Allen et al. 2025","SPA24_clipped_Allen_et_al_2025.tif","tree canopy",88,0.5862
+"Allen et al. 2025","SPA24_clipped_Allen_et_al_2025.tif","individual tree canopy",112,0.5862
+"Cloutier et al. 2023","2021-09-02-sbl-z3-rgb-cog_34_Cloutier_et_al_2023.png","tree",142,0.8400
+"Cloutier et al. 2023","2021-09-02-sbl-z3-rgb-cog_34_Cloutier_et_al_2023.png","tree canopy",8,0.1600
+"Cloutier et al. 2023","2021-09-02-sbl-z3-rgb-cog_34_Cloutier_et_al_2023.png","individual tree canopy",71,0.7200

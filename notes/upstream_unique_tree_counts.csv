@@ -1,0 +1,58 @@
+geometry,source,raw_annotations,upstream_trees,method,notes
+TreeBoxes,Weinstein et al. 2018 unsupervised,7138782,7138782,raw (no our-tiling),
+TreePoints,Beery et al. 2022,452366,452366,raw (no our-tiling),
+TreeBoxes,SelvaBox,431910,102794,spatial_dedup,"global-coord dedup of ~75%-overlap CanopyRS tiles (offset+local box centroid/size, 5px grid)"
+TreePolygons,Feng et al. 2025,388725,388725,raw (no our-tiling),
+TreeBoxes,OAM-TCD,266635,266635,raw (provider-tiled),"independent HF scenes (test_N.png), no shared ortho to dedup; raw treated as unique"
+TreePolygons,Cloutier et al. 2023,260280,22933,upstream_file,3 zone crown maps reused across 7 flights then tiled
+TreePoints,OFO field 2025,136372,136372,raw (no our-tiling),
+TreePoints,Young et al. 2025 unsupervised,112719,112719,raw (no our-tiling),
+TreeBoxes,Young et al. 2025 weak supervised,110696,110696,raw (no our-tiling),
+TreeBoxes,Radogoshi et al. 2021,101837,101837,raw (provider-tiled),"independent overlapping UAV photos, no offset metadata; not deduped"
+TreePoints,Chen & Shang (2022),98949,98949,raw (no our-tiling),
+TreePoints,Ventura et al. 2022,96547,96547,raw (no our-tiling),
+TreePoints,Amirkolaee et al. 2023,95067,95067,raw (no our-tiling),
+TreeBoxes,Weecology_University_Florida,93126,93126,raw (no our-tiling),
+TreePolygons,Troles et al. 2024,92445,92445,raw (provider-tiled),105 parent images split into 2048px COCO tiles with no offset metadata; non-overlapping grid assumed (no dedup)
+TreePolygons,SelvaMask,70417,10934,spatial_dedup,"global-coord dedup of overlapping CanopyRS tiles (offset+local polygon centroid/size, 5px grid)"
+TreePoints,NEON_points,51106,51106,raw (no our-tiling),
+TreeBoxes,Puliti and Astrup 2022,48188,48188,raw (provider-tiled),"independent named UAV photos, no offset metadata; not deduped"
+TreeBoxes,Sun et al. 2022,31228,31228,raw (no our-tiling),
+TreeBoxes,World Resources Institute,30971,30971,raw (no our-tiling),
+TreePolygons,Justdiggit 2023,27238,27238,raw (no our-tiling),
+TreePolygons,Lefebvre et al. 2024,21626,19564,upstream_file,upstream *.gpkg (layer 1)
+TreePolygons,Schütte et al. 2025,18131,14677,upstream_file,*_GT.gpkg
+TreePolygons,Kaggle_Palm_Counting,18121,13068,upstream_file,pre-tiling annotations.csv
+TreeBoxes,Velasquez-Camacho et al. 2023,14772,14772,raw (no our-tiling),
+TreePolygons,Lucas et al. 2024,10570,10570,raw (no our-tiling),
+TreePolygons,Ball et al. 2023,9403,8546,upstream_file,"Paracou + DetectTree2 (Sepilok/Danum) crown gpkgs (two sites, one source name)"
+TreePolygons,NEON combined crowns,9252,6592,upstream_file,combined_crown_polygons.gpkg
+TreePolygons,Khan et al. 2026,8439,8439,raw (no our-tiling),
+TreePoints,Dubrovin et al. 2024,6938,6938,raw (no our-tiling),
+TreeBoxes,NEON_benchmark,6633,6633,raw (no our-tiling),
+TreePoints,OSBS megaplot 2025,6241,4891,upstream_file,VisibleTrees_2025.shp
+TreePolygons,Firoze et al. 2023,5967,3851,upstream_file,pre-tiling annotations.csv
+TreeBoxes,Reiersen et al. 2022,5890,4663,upstream_file,ReForestTree mapping/final_dataset.csv
+TreePolygons,Li et al. 2023,4680,4680,raw (flagged),upstream json has ~24.5k centroids that don't reconcile with 4.7k packaged (heavy upstream cleaning); kept raw
+TreePolygons,Takeshige et al. 2025,4143,4304,upstream_file,Crown_ver2/*_crown.shp (dir used by prep)
+TreeBoxes,Kwon et al. 2023,3827,3827,raw (no our-tiling),
+TreePolygons,Bohlman et al. 2008,3514,2321,upstream_file,upstream *_crowns.shp
+TreeBoxes,Dumortier et al. 2025,3408,3408,raw (no our-tiling),
+TreeBoxes,Zamboni et al. 2021,3382,3382,raw (no our-tiling),
+TreePolygons,Jansen et al. 2023,2779,2547,upstream_file,*_Labels.shp
+TreePolygons,Vasquez et al. 2023 - training,2725,2454,upstream_file,"two censuses of one plot: 2020=2454, 2022=2283; reporting max"
+TreeBoxes,NEON MultiTemporal,2602,784,id_dedup,unique 'individual' tree ids across years
+TreePoints,NEON MultiTemporal,2599,783,id_dedup,unique 'individual' tree ids across years
+TreePolygons,NEON MultiTemporal,2590,783,id_dedup,unique 'individual' tree ids across years
+TreePolygons,Zuniga-Gonzalez et al. 2023,2531,2531,raw (no our-tiling),
+TreePolygons,Vasquez et al. 2023,2440,2454,upstream_file,"two censuses of one plot: 2020=2454, 2022=2283; reporting max"
+TreePoints,Allen et al. 2025,1609,1609,raw (no our-tiling),
+TreeBoxes,Allen et al. 2025,1609,1609,raw (no our-tiling),
+TreePolygons,Allen et al. 2025,1609,1609,raw (no our-tiling),
+TreePolygons,Hickman 2021,1264,901,upstream_file,manual_crowns_sepilok.shp
+TreePolygons,Alejandro_Miranda,794,794,raw (no our-tiling),
+TreePolygons,Kattenborn et al. 2023,682,488,upstream_file,ecm*/wcm*.shp
+TreePolygons,Araujo et al. 2020,520,535,upstream_file,upstream crown shapefile
+TreePolygons,Safonova et al. 2021,316,316,raw (no our-tiling),
+TreePolygons,Wagner et al. 2023,151,151,raw (no our-tiling),
+TreeBoxes,Šrollerů et al. 2025,32,32,raw (no our-tiling),

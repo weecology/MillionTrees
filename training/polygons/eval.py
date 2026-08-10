@@ -86,7 +86,7 @@ def run_threshold_sweep(model, dataset, eval_subset, thresholds, *,
             "recall": recall,
             "maskaware_precision": precision,
             "f1": f1,
-            "ap50": _parse_avg(results_str, "AP50"),
+            "ap40": _parse_avg(results_str, "AP40"),
             "accuracy": _parse_avg(results_str, "accuracy"),
         })
     return rows
@@ -183,18 +183,18 @@ def main():
             model, dataset, eval_subset, sweep_thresholds,
             batch_size=args.batch_size, device=device,
         )
-        header = ["eval_score_threshold", "recall", "maskaware_precision", "f1", "ap50", "accuracy"]
+        header = ["eval_score_threshold", "recall", "maskaware_precision", "f1", "ap40", "accuracy"]
         print("\nEval score-threshold sweep ({} split, {}):".format(
             args.split_scheme, args.eval_split))
-        print("  thresh  recall  precision   f1     ap50   acc")
+        print("  thresh  recall  precision   f1     ap40   acc")
         best = max(rows, key=lambda r: r["f1"])
         for r in rows:
             mark = "  <-- best F1" if r is best else ""
             print(f"  {r['eval_score_threshold']:.3f}   {r['recall']:.3f}   "
                   f"{r['maskaware_precision']:.3f}     {r['f1']:.3f}  "
-                  f"{r['ap50']:.3f}  {r['accuracy']:.3f}{mark}")
+                  f"{r['ap40']:.3f}  {r['accuracy']:.3f}{mark}")
         print(f"BEST: eval_score_threshold={best['eval_score_threshold']:.3f} "
-              f"F1={best['f1']:.3f} recall={best['recall']:.3f} ap50={best['ap50']:.3f}")
+              f"F1={best['f1']:.3f} recall={best['recall']:.3f} ap40={best['ap40']:.3f}")
         if args.output_dir:
             os.makedirs(args.output_dir, exist_ok=True)
             csv_path = os.path.join(args.output_dir, "eval_threshold_sweep.csv")

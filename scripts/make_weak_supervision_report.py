@@ -11,11 +11,11 @@ import pandas as pd
 METRIC_PATTERNS = {
     "accuracy": re.compile(r"^Average accuracy:\s+([\d.]+)", re.MULTILINE),
     "recall": re.compile(r"^Average recall:\s+([\d.]+)", re.MULTILINE),
-    "AP50": re.compile(r"^Average AP50:\s+([\d.]+)", re.MULTILINE),
+    "AP40": re.compile(r"^Average AP40:\s+([\d.]+)", re.MULTILINE),
     "maskaware_precision": re.compile(r"^Average maskaware_precision:\s+([\d.]+)", re.MULTILINE),
 }
 
-PRIMARY_METRIC = "AP50"
+PRIMARY_METRIC = "AP40"
 
 
 def parse_txt(path):
@@ -129,7 +129,7 @@ def main():
     parser.add_argument("--figure-out", type=str,
                         default="docs/public/weak_supervision_pretraining_gain.png")
     parser.add_argument("--table-out", type=str,
-                        default="docs/weak_supervision_pretraining_table.md")
+                        default="notes/weak_supervision_pretraining_table.md")
     parser.add_argument("--csv-out", type=str,
                         default="training/weak_supervision/outputs/weak_supervision_table.csv")
     args = parser.parse_args()

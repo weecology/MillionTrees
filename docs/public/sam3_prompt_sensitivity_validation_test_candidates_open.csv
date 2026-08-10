@@ -1,0 +1,13 @@
+source,filename,prompt,n_pred,recall
+"Allen et al. 2025","SPA24_clipped_Allen_et_al_2025.tif","tree",125,0.6552
+"Allen et al. 2025","SPA24_clipped_Allen_et_al_2025.tif","tree canopy",88,0.5862
+"Allen et al. 2025","SPA24_clipped_Allen_et_al_2025.tif","individual tree canopy",112,0.5862
+"Justdiggit 2023","bumila_year_2018_tile_7000_13000_Justdiggit_2023.png","tree",86,0.9200
+"Justdiggit 2023","bumila_year_2018_tile_7000_13000_Justdiggit_2023.png","tree canopy",65,0.8000
+"Justdiggit 2023","bumila_year_2018_tile_7000_13000_Justdiggit_2023.png","individual tree canopy",69,0.8000
+"Jansen et al. 2023","PlotS2_20210621_RGB_63_Jansen_et_al_2023.png","tree",87,0.6667
+"Jansen et al. 2023","PlotS2_20210621_RGB_63_Jansen_et_al_2023.png","tree canopy",38,0.4444
+"Jansen et al. 2023","PlotS2_20210621_RGB_63_Jansen_et_al_2023.png","individual tree canopy",48,0.4444
+"Takeshige et al. 2025","Aya_AY-EB1_Ortho_54_Takeshige_et_al_2025.png","tree",116,0.7407
+"Takeshige et al. 2025","Aya_AY-EB1_Ortho_54_Takeshige_et_al_2025.png","tree canopy",37,0.4444
+"Takeshige et al. 2025","Aya_AY-EB1_Ortho_54_Takeshige_et_al_2025.png","individual tree canopy",99,0.7778

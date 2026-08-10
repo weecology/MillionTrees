@@ -5,7 +5,8 @@ include pyproject.toml
 recursive-exclude * __pycache__
 recursive-exclude * *.py[cod]
 recursive-exclude tests *
-recursive-exclude docs * 
+recursive-exclude docs *
+recursive-exclude notes *
 recursive-exclude data_prep *
 prune data-mini
 prune onboarding_data

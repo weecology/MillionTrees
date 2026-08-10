@@ -10,7 +10,7 @@ For each sampled test image we render a 3-panel figure:
 
 This makes it possible to see whether close-together trees even form separate
 modes in the density map, or whether they are merged before peak detection ever
-runs. See docs/treeformer_hyperparameters.md.
+runs. See notes/treeformer_hyperparameters.md.
 
 Example:
     uv run --group treeformer python existing_models/treeformer/visualize_density.py \

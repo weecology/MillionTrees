@@ -146,7 +146,7 @@ def _run_stream_eval(dataset, y_pred, y_true, metadata, timings: dict[str, float
             timings,
         )
     # Profile the leaderboard AP metric; the state streams one per IoU threshold.
-    map_key = "AP50"
+    map_key = "AP40"
     _timed("stream_finalize_map_global", state._map_global[map_key].compute,
            timings)
     gcnt = state._ew["accuracy"]["g_cnt"]
@@ -162,7 +162,7 @@ def _run_stream_eval(dataset, y_pred, y_true, metadata, timings: dict[str, float
 
 
 def _run_legacy_eval(dataset, y_pred, y_true, metadata, timings: dict[str, float]):
-    map_metric = dataset.metrics["AP50"]
+    map_metric = dataset.metrics["AP40"]
     for metric_name, metric in dataset.metrics.items():
         if metric_name == "counting_mae":
             continue
@@ -286,7 +286,7 @@ def main() -> None:
     _print_stats(stats, int(dataset._eval_grouper.n_groups))
 
     if args.profile_map_only:
-        map_metric = dataset.metrics["AP50"]
+        map_metric = dataset.metrics["AP40"]
         preds, targets = map_metric._format(all_y_pred, all_y_true)
         from torchmetrics.detection import MeanAveragePrecision
 
@@ -297,7 +297,7 @@ def main() -> None:
             class_metrics=False,
         )
         metric.update(preds, targets)
-        _, prof = _profile_call("AP50_global_compute", metric.compute)
+        _, prof = _profile_call("AP40_global_compute", metric.compute)
         print(prof)
         return
 
@@ -328,7 +328,7 @@ def main() -> None:
         if k.startswith("stream_finalize_map_group_"))
 
     print(f"\n{'=' * 60}")
-    print("AP50 compute() summary")
+    print("AP40 compute() summary")
     print(f"{'=' * 60}")
     print(f"  Legacy  global compute:  {map_legacy:.3f}s")
     print(f"  Legacy  per-group sum:   {map_groups_legacy:.3f}s  ({int(dataset._eval_grouper.n_groups)} groups)")

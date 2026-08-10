@@ -1,0 +1,7 @@
+filename,prompt,n_pred,recall
+"SPA24_clipped_Allen_et_al_2025.tif","tree",125,0.5862
+"SPA24_clipped_Allen_et_al_2025.tif","tree canopy",93,0.5862
+"SPA24_clipped_Allen_et_al_2025.tif","individual tree canopy",121,0.5862
+"SPA32_clipped_Allen_et_al_2025.tif","tree",138,0.6190
+"SPA32_clipped_Allen_et_al_2025.tif","tree canopy",103,0.6190
+"SPA32_clipped_Allen_et_al_2025.tif","individual tree canopy",114,0.6190

@@ -41,7 +41,7 @@ echo "=== CanopyRS eval: split=$SPLIT ==="
 
 # Box score_threshold=0.30 (not the 0.1 used by other pretrained models) is the
 # best-F1 operating point from the full-test-set sweep in
-# sweep_canopyrs_pr_curve.sbatch / docs/canopyrs_threshold_sweep.md -- CanopyRS
+# sweep_canopyrs_pr_curve.sbatch / notes/canopyrs_threshold_sweep.md -- CanopyRS
 # boxes at 0.1 are badly recall-heavy (e.g. OOD: recall 0.89 / precision 0.82 ->
 # recall 0.80 / precision 0.87 at 0.30).
 python eval_boxes.py \
@@ -55,7 +55,7 @@ python eval_boxes.py \
 
 # Polygon score_threshold=0.30 (not the 0.1 used by other pretrained models) is
 # the best-F1 operating point, confirmed on the full test set (see
-# eval_canopyrs_polygons_confirm_t030.sbatch / docs/canopyrs_threshold_sweep.md)
+# eval_canopyrs_polygons_confirm_t030.sbatch / notes/canopyrs_threshold_sweep.md)
 # -- at 0.1 this was the most recall-heavy row in the leaderboard (e.g. OOD:
 # recall 0.89 / precision 0.51 -> recall 0.82 / precision 0.86 at 0.30, mask
 # accuracy roughly doubling).

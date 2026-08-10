@@ -136,6 +136,26 @@ def main():
     parser.add_argument("--no-early-stop", action="store_true",
                         help="Disable EarlyStopping so training runs the full "
                              "--max-epochs (use to inspect the complete loss curve).")
+    parser.add_argument("--ckpt-monitor", type=str, default="point_recall",
+                        choices=["point_recall", "val_loss"],
+                        help="Metric driving ModelCheckpoint (and EarlyStopping when "
+                             "enabled). point_recall saturates near 0.93 on v0.23 and "
+                             "peaked at epoch 0-1 in the 08-05 runs, so it selected a "
+                             "~1-epoch model and early-stopped while val_loss was still "
+                             "falling; use val_loss for a checkpoint that reflects the "
+                             "whole run.")
+    parser.add_argument("--loss-preset", type=str, default="default",
+                        choices=["default", "pretrain"],
+                        help="Loss configuration. 'default' inherits DeepForest's "
+                             "conf/point.yaml + dataclass defaults, where "
+                             "enforce_count=True rescales the training density map to "
+                             "sum exactly to the ground-truth count -- which makes the "
+                             "'count' loss identically 0 (|x-x|) with zero gradient, so "
+                             "the count head is never trained and the CLS head that "
+                             "supplies the count at inference gets no signal either. "
+                             "'pretrain' mirrors conf/point_pretrain.yaml, the config "
+                             "the released checkpoint was actually trained under: "
+                             "enforce_count=False so the count loss is live.")
     parser.add_argument("--lr-scheduler", action="store_true",
                         help="Attach a ReduceLROnPlateau scheduler on val_loss "
                              "(factor 0.5, patience 5). DeepForest normally drops "
@@ -234,6 +254,23 @@ def main():
         "accelerator": args.accelerator,
         "workers": args.num_workers,
     }
+    if args.loss_preset == "pretrain":
+        # conf/point_pretrain.yaml -- the config the released weecology TreeFormer
+        # checkpoint was trained under. The key entry is enforce_count: false.
+        # With the DeepForest default (true) the training-path density is rescaled
+        # to sum exactly to the GT count, so count_loss = |log1p(s)-log1p(s)| = 0
+        # with zero gradient; val_loss then reduces to val_density_l1_loss alone and
+        # the model learns where trees are but never how many. The other values are
+        # copied from point_pretrain.yaml so the count term is weighted the way it
+        # was during pretraining rather than at the dataclass default of 1.0.
+        config_args["point"].update({
+            "enforce_count": False,
+            "losses": ["count", "ot", "density_l1"],
+            "mae_weight": 0.025,
+            "ot_weight": 0.1,
+            "density_l1_weight": 0.05,
+            "score_integration_radius": 2,
+        })
     if args.lr_scheduler:
         # ReduceLROnPlateau on val_loss. The scheduler is applied via the
         # configure_optimizers override below (DeepForest's own attaches it only
@@ -271,6 +308,30 @@ def main():
     model.model.score_integration_radius = args.score_integration_radius
     print(f"score_thresh: {model.model.score_thresh} "
           f"score_integration_radius: {model.model.score_integration_radius}")
+
+    if args.loss_preset == "pretrain":
+        # MUST be applied here, not via config_args. DeepForest's
+        # TreeFormer create_model() builds the loss kwargs (enforce_count,
+        # losses, mae_weight, ...) into `scratch_args` but only consumes them on
+        # the from-scratch branch; the `if pretrained:` branch forwards just
+        # score_thresh and score_integration_radius to from_pretrained(), so the
+        # checkpoint's own saved _hub_mixin_config wins for everything else.
+        # weecology/deepforest-tree-point ships enforce_count=True,
+        # losses=[count, count_cls, ot, density_l1], mae_weight=1.0,
+        # density_l1_weight=0.01 -- so setting config.point.* alone silently does
+        # nothing (verified: job 38977184 logged the intended config to Comet and
+        # still trained with count_loss == 0.00000 at every epoch).
+        m = model.model
+        m.enforce_count = False
+        m.losses = ["count", "ot", "density_l1"]
+        m.active_losses = set(m.losses)
+        m.mae_weight = 0.025
+        m.ot_weight = 0.1
+        m.density_l1_weight = 0.05
+        m.update_config()
+        print(f"loss-preset=pretrain APPLIED POST-LOAD: enforce_count="
+              f"{m.enforce_count} losses={sorted(m.active_losses)} "
+              f"mae_weight={m.mae_weight} density_l1_weight={m.density_l1_weight}")
 
     if args.lr_scheduler:
         # DeepForest.configure_optimizers only returns a scheduler when
@@ -335,23 +396,29 @@ def main():
         callbacks.append(pl.callbacks.LearningRateMonitor(logging_interval="epoch"))
     checkpoint_cb = None
     if has_val:
-        # Monitor point_recall (mode=max) rather than val_loss: TreeFormer's
-        # val_loss can drift upward while detections stay good, so it's a poor
-        # signal for checkpointing/early stopping.
+        # --ckpt-monitor picks the selection metric. point_recall (mode=max) was
+        # the original choice on the theory that val_loss drifts upward while
+        # detections stay good; that is not what v0.23 does. In jobs 38750849_{0,1}
+        # val_loss fell monotonically every epoch on both splits while point_recall
+        # sat at ~0.93 +/- 0.005 of noise and peaked at epoch 0 (OOD) / 1 (WD), so
+        # recall-based selection saved a one-epoch model and early-stopped the run
+        # at patience while the model was still improving (point_precision +5-11%,
+        # val_mae -9% over the epochs that were then thrown away).
+        monitor_mode = "min" if args.ckpt_monitor == "val_loss" else "max"
         checkpoint_cb = pl.callbacks.ModelCheckpoint(
             dirpath=os.path.join(args.output_dir, "checkpoints"),
-            filename="treeformer-{epoch:02d}-{point_recall:.4f}",
-            monitor="point_recall",
-            mode="max",
+            filename="treeformer-{epoch:02d}-{%s:.4f}" % args.ckpt_monitor,
+            monitor=args.ckpt_monitor,
+            mode=monitor_mode,
             save_top_k=1,
             save_last=True,
         )
         callbacks.append(checkpoint_cb)
         if not args.no_early_stop:
             callbacks.append(pl.callbacks.EarlyStopping(
-                monitor="point_recall",
+                monitor=args.ckpt_monitor,
                 patience=args.early_stop_patience,
-                mode="max",
+                mode=monitor_mode,
             ))
 
     trainer_kwargs = {}

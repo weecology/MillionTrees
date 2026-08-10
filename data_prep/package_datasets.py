@@ -11,7 +11,7 @@ import cv2
 import rasterio
 import glob
 from pathlib import Path
-from shapely import from_wkt
+from shapely import box as shapely_box, from_wkt, to_wkt
 from shapely.geometry.base import BaseGeometry
 
 from milliontrees.common.tile_completeness import (DEFAULT_MAX_MARGIN,
@@ -308,12 +308,110 @@ def keep_columns_if_exist(df: pd.DataFrame, cols: list) -> pd.DataFrame:
         existing = [c for c in cols if c in df.columns]
         return df[existing]
 
+BOX_COLUMNS = ["xmin", "ymin", "xmax", "ymax"]
+
+
+def log_dropped_by_source(before, after, label, reason):
+    """Report which sources a filter removed rows from, and how many.
+
+    Every packaging filter that can delete rows should route its before/after
+    through here. A filter that quietly empties a whole source (see
+    ``reconcile_box_columns``) is otherwise invisible until someone counts
+    annotations in the released CSVs.
+    """
+    n_dropped = len(before) - len(after)
+    if n_dropped <= 0 or "source" not in before.columns:
+        return
+    counts = (
+        before["source"].value_counts()
+        .subtract(after["source"].value_counts(), fill_value=0)
+        .astype(int)
+    )
+    counts = counts[counts > 0].sort_values(ascending=False)
+    print(f"{label}: dropped {n_dropped} annotations ({reason})")
+    remaining = after["source"].value_counts()
+    for source, n in counts.items():
+        if remaining.get(source, 0) == 0:
+            print(f"  {source}: {n} — SOURCE REMOVED ENTIRELY")
+        else:
+            print(f"  {source}: {n}")
+
+
+def reconcile_box_columns(datasets, label=""):
+    """Give every box row both representations: box columns *and* geometry WKT.
+
+    Per-source annotation CSVs ship one or the other: explicit
+    xmin/ymin/xmax/ymax columns (e.g. Šrollerů et al. 2025) or a ``geometry``
+    WKT column (e.g. Puliti and Astrup 2022). Concatenating them leaves NaN in
+    whichever side a source omitted, and the two downstream filters — the box
+    dropna in ``run`` and the ``geometry`` notna filter in
+    ``process_geometry_columns`` — then delete those rows. That silently removed
+    six configured TreeBoxes sources (~183k annotations) from v0.20-v0.22, so
+    derive the missing side here, before either filter runs.
+
+    Where both are present the geometry is authoritative: ``process_geometry_columns``
+    recomputes the box columns from it a few steps later.
+    """
+    datasets = datasets.copy()
+    for col in BOX_COLUMNS:
+        if col not in datasets.columns:
+            datasets[col] = np.nan
+        else:
+            datasets[col] = pd.to_numeric(datasets[col], errors="coerce")
+    if "geometry" not in datasets.columns:
+        datasets["geometry"] = None
+
+    has_boxes = datasets[BOX_COLUMNS].notna().all(axis=1)
+    has_geometry = datasets["geometry"].notna()
+
+    need_boxes = has_geometry & ~has_boxes
+    if need_boxes.any():
+        bounds = _parse_geometry_column(datasets.loc[need_boxes, "geometry"]).bounds
+        datasets.loc[need_boxes, BOX_COLUMNS] = bounds[
+            ["minx", "miny", "maxx", "maxy"]].to_numpy()
+        print(f"{label}: derived box columns from geometry for "
+              f"{int(need_boxes.sum())} annotations "
+              f"({sorted(datasets.loc[need_boxes, 'source'].unique())})")
+
+    need_geometry = has_boxes & ~has_geometry
+    if need_geometry.any():
+        b = datasets.loc[need_geometry, BOX_COLUMNS]
+        datasets.loc[need_geometry, "geometry"] = to_wkt(
+            shapely_box(b["xmin"].to_numpy(), b["ymin"].to_numpy(),
+                        b["xmax"].to_numpy(), b["ymax"].to_numpy()))
+        print(f"{label}: derived geometry from box columns for "
+              f"{int(need_geometry.sum())} annotations "
+              f"({sorted(datasets.loc[need_geometry, 'source'].unique())})")
+
+    return datasets
+
+
+def filter_invalid_boxes(datasets, label=""):
+    """Drop rows without usable box coordinates (NaN or non-positive extent).
+
+    Run *after* ``reconcile_box_columns``, so a source is only dropped here when
+    its coordinates are genuinely unusable rather than merely stored as WKT.
+    """
+    before = datasets
+    usable = datasets[BOX_COLUMNS].notna().all(axis=1)
+    datasets = datasets[usable]
+    datasets = datasets[
+        (datasets["xmax"] > datasets["xmin"]) & (datasets["ymax"] > datasets["ymin"])
+    ]
+    log_dropped_by_source(before, datasets, label,
+                          "missing or degenerate box coordinates")
+    return datasets
+
+
 def process_geometry_columns(datasets, geom_type):
     """Process geometry columns based on the dataset type."""
     # Filter out rows with None geometries before processing
     if "geometry" in datasets.columns:
+        before = datasets
         datasets = datasets[datasets["geometry"].notna()].copy()
-    
+        log_dropped_by_source(before, datasets, f"process_geometry_columns[{geom_type}]",
+                              "no geometry: source CSV shipped none and none could be derived")
+
     if len(datasets) == 0:
         return datasets
     
@@ -549,7 +647,7 @@ def drop_incomplete_validation_tiles(geometry_datasets, mask_source_dir, version
     where the footprint clips a corner and the rest of the tile is unlabelled forest. An edge
     tile is not usable as reference data -- AP charges every correct detection in the unlabelled
     part as a false positive -- so the release should not contain them at all
-    (``docs/validation_ap_completeness.md``).
+    (``notes/validation_ap_completeness.md``).
 
     Runs before ``copy_images``/``copy_masks`` so dropped tiles are never written into the
     package. The verdict is computed once from a geometry with *extent* (boxes, else polygons)
@@ -653,13 +751,18 @@ def copy_masks(datasets, base_dir, dataset_type, mask_source_dir):
         mask_name = f"{Path(packaged_name).stem}.png"
         source_mask = mask_source_dir / mask_name
         if not source_mask.exists():
-            print(f"Warning: Missing tree coverage mask for {packaged_name}, removing from dataset.")
             missing_images.add(packaged_name)
             continue
         pairs.append((str(source_mask), os.path.join(destination, mask_name)))
     _link_or_copy_many(pairs)
     if missing_images:
+        before = datasets
+        print(f"Warning: {len(missing_images)} image(s) have no tree coverage mask "
+              f"in {mask_source_dir}, removing them from {dataset_type}. "
+              f"e.g. {sorted(missing_images)[:3]}")
         datasets = datasets[~datasets["filename"].isin(missing_images)].copy()
+        log_dropped_by_source(before, datasets, f"copy_masks[{dataset_type}]",
+                              "no precomputed tree coverage mask")
     return datasets
 
 
@@ -1301,21 +1404,33 @@ def check_for_updated_annotations(dataset, geometry):
             skipped_files.append((filename, image_path))
             continue
         
-        # Process with read_file using the correct root_dir for this file
-        updated_batch = read_file(updated_batch, root_dir=root_dir)
-        
+        # Process with read_file using the correct root_dir for this file.
+        # reset_index is REQUIRED: read_file's point branch builds geometry as
+        # gpd.GeoSeries([...]) with a fresh RangeIndex and assigns it back, so a
+        # batch carrying the concat's non-contiguous index aligns to nothing and
+        # every geometry silently becomes NaN. That deleted 187 Amirkolaee et al.
+        # 2023 images (32,452 annotations) from every release through v0.23,
+        # because the originals are dropped above before the replacement is built.
+        # Box/polygon branches preserve the index, which is why only points broke.
+        updated_batch = read_file(updated_batch.reset_index(drop=True), root_dir=root_dir)
+
         # Filter out rows with None geometries (e.g., from empty images or invalid annotations)
         if "geometry" in updated_batch.columns:
             none_count = updated_batch["geometry"].isna().sum()
             if none_count > 0:
                 print(f"Warning: Found {none_count} annotations with None geometry for {filename}, filtering them out")
             updated_batch = updated_batch[updated_batch["geometry"].notna()].copy()
-        
+
         if len(updated_batch) > 0:
             new_annotations.append(updated_batch)
         else:
-            print(f"Warning: No valid annotations after processing for {filename}")
-            skipped_files.append((filename, "No valid geometries"))
+            # Never a benign case: unlabeled rows are dropped before matching_files
+            # is built, so an image only reaches here if it matched, had its
+            # original annotations removed, and then produced nothing to put back.
+            raise ValueError(
+                f"Annotation update for {filename} produced no valid geometries; its "
+                f"original annotations were already removed, so continuing would "
+                f"silently delete the image from the release.")
     
     if skipped_files:
         print(f"Skipped {len(skipped_files)} files with issues during annotation update")
@@ -1382,14 +1497,10 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
     TreePoints_datasets = assign_canopyrs_aligned_existing_split(TreePoints_datasets)
     TreePolygons_datasets = assign_canopyrs_aligned_existing_split(TreePolygons_datasets)
 
-    # Coerce box columns early (avoids mixed str/float rows) and drop degenerate rows
-    for col in ("xmin", "ymin", "xmax", "ymax"):
-        TreeBoxes_datasets[col] = pd.to_numeric(TreeBoxes_datasets[col], errors="coerce")
-    TreeBoxes_datasets = TreeBoxes_datasets.dropna(subset=["xmin", "ymin", "xmax", "ymax"])
-    TreeBoxes_datasets = TreeBoxes_datasets[
-        (TreeBoxes_datasets["xmax"] > TreeBoxes_datasets["xmin"])
-        & (TreeBoxes_datasets["ymax"] > TreeBoxes_datasets["ymin"])
-    ]
+    # Fill in whichever representation each source omitted (box columns vs geometry
+    # WKT) before anything filters on either, then coerce/drop genuinely bad rows.
+    TreeBoxes_datasets = reconcile_box_columns(TreeBoxes_datasets, "TreeBoxes")
+    TreeBoxes_datasets = filter_invalid_boxes(TreeBoxes_datasets, "TreeBoxes")
 
     # Check for updated annotations (from Label Studio review) and apply them
     TreeBoxes_datasets = check_for_updated_annotations(TreeBoxes_datasets, "Boxes")
@@ -1530,22 +1641,24 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
         base_dir, "TreePolygons", version, TreePolygons_supervised["filename"], "_supervised", "masks"
     )
 
-    # Zip datasets (commented out for large datasets to save space/time)
-    zip_directory(f"{base_dir}TreeBoxes_{version}", f"{base_dir}TreeBoxes_{version}.zip")
-    zip_directory(f"{base_dir}TreePoints_{version}", f"{base_dir}TreePoints_{version}.zip") 
-    zip_directory(f"{base_dir}TreePolygons_{version}", f"{base_dir}TreePolygons_{version}.zip")
-    
-    # Zip supervised datasets
-    zip_directory(f"{base_dir}TreeBoxes_supervised_{version}", f"{base_dir}TreeBoxes_supervised_{version}.zip")
-    zip_directory(f"{base_dir}TreePoints_supervised_{version}", f"{base_dir}TreePoints_supervised_{version}.zip")
-    zip_directory(f"{base_dir}TreePolygons_supervised_{version}", f"{base_dir}TreePolygons_supervised_{version}.zip")
-    
-    zip_directory(f"{base_dir}MiniTreeBoxes_{version}", f"{base_dir}MiniTreeBoxes_{version}.zip")
-    zip_directory(f"{base_dir}MiniTreePoints_{version}", f"{base_dir}MiniTreePoints_{version}.zip")
-    zip_directory(f"{base_dir}MiniTreePolygons_{version}", f"{base_dir}MiniTreePolygons_{version}.zip")
-    zip_directory(f"{base_dir}SmallTreeBoxes_{version}", f"{base_dir}SmallTreeBoxes_{version}.zip")
-    zip_directory(f"{base_dir}SmallTreePoints_{version}", f"{base_dir}SmallTreePoints_{version}.zip")
-    zip_directory(f"{base_dir}SmallTreePolygons_{version}", f"{base_dir}SmallTreePolygons_{version}.zip")
+    # Zip datasets. Re-zipping every archive is the bulk of a packaging run (~25h
+    # for the 12 v0.23 archives), so a targeted re-release (e.g. fixing only the
+    # point annotations) can restrict it: MILLIONTREES_ZIP_GEOMETRIES=TreePoints
+    # re-zips only the four TreePoints archives and leaves the others untouched.
+    # Unset means all geometries, i.e. the normal full release.
+    zip_geometries = os.environ.get("MILLIONTREES_ZIP_GEOMETRIES")
+    wanted = ([g.strip() for g in zip_geometries.split(",") if g.strip()]
+              if zip_geometries else ["TreeBoxes", "TreePoints", "TreePolygons"])
+    unknown = set(wanted) - {"TreeBoxes", "TreePoints", "TreePolygons"}
+    if unknown:
+        raise ValueError(
+            f"MILLIONTREES_ZIP_GEOMETRIES contains unknown geometry: {sorted(unknown)}")
+    print(f"\n=== Zipping releases for: {', '.join(wanted)} ===")
+    for geometry in wanted:
+        for name in (f"{geometry}_{version}", f"{geometry}_supervised_{version}",
+                     f"Mini{geometry}_{version}", f"Small{geometry}_{version}"):
+            print(f"Zipping {name}")
+            zip_directory(f"{base_dir}{name}", f"{base_dir}{name}.zip")
 
 
 if __name__ == "__main__":
