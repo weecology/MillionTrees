@@ -1,0 +1,9 @@
+; Copy to .comet.config and fill in your own values. .comet.config is gitignored;
+; never commit real credentials. Get an API key from https://www.comet.com/account-settings/apiKeys
+;
+; Training scripts read this file (or the COMET_API_KEY environment variable) when
+; run with --comet. See CLAUDE.md for the experiment naming scheme.
+[comet]
+api_key=YOUR_COMET_API_KEY
+workspace=YOUR_COMET_WORKSPACE
+project_name=milliontrees
