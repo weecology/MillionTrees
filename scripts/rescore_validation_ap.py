@@ -21,7 +21,7 @@ for three tile regimes:
 Usage:
     python scripts/rescore_validation_ap.py \
         --predictions existing_models/canopyrs/outputs/validation/preds_boxes.pkl \
-        --out-csv docs/validation_ap_iou_completeness.csv
+        --out-csv notes/validation_ap_iou_completeness.csv
 """
 
 import argparse

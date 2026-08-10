@@ -1,7 +1,7 @@
 #!/bin/bash
 # Full-test-set confirmation of the polygon score_threshold=0.30 operating point
 # identified by sweep_canopyrs_pr_curve_polygons.sbatch on a 5-imgs/source
-# subsample (docs/canopyrs_threshold_sweep.md: F1 0.742 OOD / 0.764 within-dist,
+# subsample (notes/canopyrs_threshold_sweep.md: F1 0.742 OOD / 0.764 within-dist,
 # vs. 0.649/0.659 at the standardized 0.1). This is the plain (non-sweep)
 # single-threshold eval_polygons.py invocation -- same streaming-eval code path
 # as the current leaderboard row -- just at the new threshold, so the result is

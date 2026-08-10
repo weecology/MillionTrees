@@ -1,6 +1,6 @@
 #!/bin/bash
 # Full-test-set, non-sweep box eval at the new score_threshold=0.30 (see
-# docs/canopyrs_threshold_sweep.md). The threshold sweep only captures
+# notes/canopyrs_threshold_sweep.md). The threshold sweep only captures
 # recall/precision/ap50/f1 (milliontrees.common.eval_sweep); it does not report
 # counting_mae or detection_accuracy, which the manuscript tables also need and
 # which come from the plain eval_boxes.py text/json output. This also refreshes

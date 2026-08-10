@@ -1,5 +1,5 @@
 #!/bin/bash
-# E7 (docs/treeformer_points_diagnosis_plan.md): re-evaluate the FINE-TUNED
+# E7 (notes/treeformer_points_diagnosis_plan.md): re-evaluate the FINE-TUNED
 # TreeFormer checkpoints at the chosen leaderboard resolution. The "fine-tuning
 # does nothing" claim was made at image_size=448, where both pretrained and
 # fine-tuned models were resolution-starved. Re-eval the best (point_recall)

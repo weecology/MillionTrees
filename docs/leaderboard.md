@@ -54,7 +54,7 @@ See [repository_structure.md](repository_structure.md).
   mask-aware precision use, so AP and F1 agree on what counts as a match. There is no AP50
   column; AP40 runs roughly +0.04 to +0.11 above AP50 on the same predictions, so these numbers
   are not comparable to MillionTrees tables published before 2026-08-04. See
-  [ap50_vs_ap40_existing_models.md](ap50_vs_ap40_existing_models.md).
+  [notes/ap50_vs_ap40_existing_models.md](https://github.com/weecology/MillionTrees/blob/main/notes/ap50_vs_ap40_existing_models.md).
 - **Point matching** uses a GSD-normalized radius per source (a fixed ground distance, not a
   fixed pixel count), so a point prediction is matched at the same real-world tolerance
   regardless of the source's resolution.
@@ -225,7 +225,7 @@ Everything needed to reproduce a row beyond the dataset version. Score threshold
 | Model | Geometry | Fine-tuned | Weights / checkpoint | Score threshold | Eval image size | Environment | Training configuration |
 |---|---|---|---|---|---|---|---|
 | DeepForest (RetinaNet) | TreeBoxes | ✓ | trained from the DeepForest release backbone | 0.10 | native tile | shared `.venv` (`uv run`) | `training/slurm/train_boxes.sbatch`: batch 32 x 2 GPUs, lr 0.01, <=200 epochs, early-stop patience 10 (within) / 15 (OOD), no gradient clipping, no seed set |
-| CanopyRS DINO Swin-L | TreeBoxes | ✗ | CanopyRS DINO Swin-L release | **0.30** (per-model tuned; see `docs/canopyrs_threshold_sweep.md`) | CanopyRS default tiling | `existing_models/canopyrs/.venv` | not trained on MillionTrees |
+| CanopyRS DINO Swin-L | TreeBoxes | ✗ | CanopyRS DINO Swin-L release | **0.30** (per-model tuned; see `notes/canopyrs_threshold_sweep.md`) | CanopyRS default tiling | `existing_models/canopyrs/.venv` | not trained on MillionTrees |
 | DeepForest (release weights) | TreeBoxes | ✗ | DeepForest release weights | 0.10 | native tile | deepforest venv | not trained on MillionTrees |
 | SAM3 | TreeBoxes | ✗ | `facebook/sam3` | 0.10 | SAM3 default | sam3 venv | not trained on MillionTrees |
 | TreeFormer (count-loss fix) | TreePoints | ✓ | `weecology/deepforest-tree-point`, fine-tuned (job 39014685) | 0.10 (`score_integration_radius` 2) | 896 | frozen `.venv-treeformer` (DeepForest `treeformer-training` branch) | `training/slurm/train_points_896_countfix.sbatch`: batch 16 x 3 GPUs, lr 2e-4, 20 epochs, image 896, `--loss-preset pretrain` (enforce_count False, losses count/ot/density_l1, mae_weight 0.025, density_l1_weight 0.05), checkpoint on val_loss, early stopping off, no seed set |

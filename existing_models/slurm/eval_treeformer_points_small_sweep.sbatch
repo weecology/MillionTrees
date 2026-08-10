@@ -1,5 +1,5 @@
 #!/bin/bash
-# E0+E1 (docs/treeformer_points_diagnosis_plan.md): pretrained TreeFormer on
+# E0+E1 (notes/treeformer_points_diagnosis_plan.md): pretrained TreeFormer on
 # SmallTreePoints v0.18, random split. Single inference pass, then sweep the
 # eval_score_threshold grid. The t=0.40 row reproduces the leaderboard recall
 # (~0.28 = E0); the full curve tests whether recall recovers below 0.4 (E1).

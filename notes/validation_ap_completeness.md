@@ -195,7 +195,7 @@ Headline validation numbers under that recommendation (complete tiles, AP40):
 ```bash
 # 1. audit completeness + render GT overlays
 uv run python scripts/validation_completeness.py --geometry boxes \
-    --out-csv docs/validation_completeness_boxes.csv \
+    --out-csv notes/validation_completeness_boxes.csv \
     --viz-dir docs/public/validation_completeness/boxes
 
 # 2. one inference pass per model, dumping raw predictions
@@ -206,7 +206,7 @@ sbatch training/slurm/eval_validation_dump_polygons.sbatch          # fine-tuned
 # 3. re-score offline (no GPU): any IoU, any tile subset
 uv run python scripts/rescore_validation_ap.py \
     --predictions outputs/validation_preds/*.pkl --max-margin 0.025 \
-    --out-csv docs/validation_ap_iou_completeness.csv
+    --out-csv notes/validation_ap_iou_completeness.csv
 ```
 
 Jobs: 38129318 (canopyrs) · 38129319 (sam3) · 38129320 (detectree2) · 38129321 (deepforest) ·

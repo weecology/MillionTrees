@@ -1,6 +1,6 @@
 #!/bin/bash
 # Polygon-only resubmit of sweep_canopyrs_pr_curve.sbatch: the box stage already
-# completed and its results are recorded (docs/canopyrs_threshold_sweep.md,
+# completed and its results are recorded (notes/canopyrs_threshold_sweep.md,
 # docs/leaderboard.md). The polygon stage hit the prior job's 8h limit after
 # finishing inference on the 10-imgs/source subset but completing only 1 of 12
 # threshold re-scores -- mask-based re-evaluation (AP50/mask-aware

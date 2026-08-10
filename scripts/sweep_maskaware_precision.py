@@ -4,7 +4,7 @@
 from the false-positive count when at least ``tree_fraction_threshold`` of its area falls on
 tree pixels in ``tree_coverage_mask``. The leaderboard fixes that cutoff at **0.5**, which on
 near-fully-canopied validation imagery forgives almost every false positive and inflates F1
-relative to AP (see ``docs/validation_ap_completeness.md``).
+relative to AP (see ``notes/validation_ap_completeness.md``).
 
 This script re-scores a ``--save-predictions`` dump at many cutoffs without re-running a model:
 

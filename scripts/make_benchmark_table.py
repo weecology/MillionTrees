@@ -149,7 +149,7 @@ RUNS = [
         "splits": ["within-distribution", "out-of-distribution"],
         "config": {
             "weights": "CanopyRS DINO Swin-L release",
-            "score_threshold": "**0.30** (per-model tuned; see `docs/canopyrs_threshold_sweep.md`)",
+            "score_threshold": "**0.30** (per-model tuned; see `notes/canopyrs_threshold_sweep.md`)",
             "eval_image_size": "CanopyRS default tiling",
             "env": "`existing_models/canopyrs/.venv`",
             "train": "not trained on MillionTrees",

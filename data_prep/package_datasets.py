@@ -647,7 +647,7 @@ def drop_incomplete_validation_tiles(geometry_datasets, mask_source_dir, version
     where the footprint clips a corner and the rest of the tile is unlabelled forest. An edge
     tile is not usable as reference data -- AP charges every correct detection in the unlabelled
     part as a false positive -- so the release should not contain them at all
-    (``docs/validation_ap_completeness.md``).
+    (``notes/validation_ap_completeness.md``).
 
     Runs before ``copy_images``/``copy_masks`` so dropped tiles are never written into the
     package. The verdict is computed once from a geometry with *extent* (boxes, else polygons)

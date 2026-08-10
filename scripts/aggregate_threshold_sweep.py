@@ -2,7 +2,7 @@
 
 Reads existing_models/*/outputs/sweep/threshold_sweep.csv, concatenates them, and
 prints (a) the full recall/precision/AP/F1 grid per model and (b) the best-F1
-threshold per (model, task, split). Writes a combined CSV + markdown summary to docs/.
+threshold per (model, task, split). Writes a combined CSV + markdown summary to notes/.
 
 The AP column is ``ap40`` (the current metric); sweeps written before AP moved to
 IoU 0.4 carry ``ap50`` instead and are labelled as such.
@@ -24,7 +24,7 @@ def main():
     df = df.drop_duplicates(subset=["model", "task", "split", "threshold"], keep="last")
     df = df.sort_values(["task", "model", "split", "threshold"])
 
-    out_csv = os.path.join(REPO, "docs/threshold_sweep_combined.csv")
+    out_csv = os.path.join(REPO, "notes/threshold_sweep_combined.csv")
     df.to_csv(out_csv, index=False)
 
     # Best F1 per (model, task, split)
@@ -52,7 +52,7 @@ def main():
                          f"{r[ap_col]:.3f} | {r.f1:.3f} |")
 
     md = "\n".join(lines) + "\n"
-    out_md = os.path.join(REPO, "docs/threshold_sweep_summary.md")
+    out_md = os.path.join(REPO, "notes/threshold_sweep_summary.md")
     with open(out_md, "w") as fh:
         fh.write(md)
 

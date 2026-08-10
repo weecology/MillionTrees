@@ -1,6 +1,6 @@
 # How sensitive is F1 to the mask-aware precision cutoff?
 
-Follow-up to `docs/validation_ap_completeness.md`, which attributed 41% of the F1-vs-AP50 gap to
+Follow-up to `notes/validation_ap_completeness.md`, which attributed 41% of the F1-vs-AP50 gap to
 `MaskAwareDetectionPrecision` "forgiving any unmatched prediction on ≥50% canopy pixels". This
 sweeps that cutoff (`tree_fraction_threshold`) over its whole range on the v0.22 **validation**
 split, re-scoring the saved prediction dumps in `outputs/validation_preds/` — no model was re-run.
@@ -74,4 +74,4 @@ Per model (`docs/public/maskaware_cutoff/`, polygons in `docs/public/maskaware_c
 Report plain precision alongside mask-aware precision rather than re-tuning the cutoff — the sweep
 shows no cutoff in (0, 1) meaningfully changes the story, so a second, unforgiving column is the
 only informative addition. The `off` column above is that number. See also
-`docs/validation_ap_completeness.md` for the IoU-threshold and incomplete-tile terms of the same gap.
+`notes/validation_ap_completeness.md` for the IoU-threshold and incomplete-tile terms of the same gap.

@@ -6,7 +6,7 @@ footprint that does not line up with the tiling grid, so a source is a mix of in
 annotated edge to edge and **edge tiles** where the footprint clips a corner and the rest of
 the tile is unlabelled forest. Scoring AP against an edge tile measures the annotation
 protocol, not the model: every correct detection outside the footprint is a false positive.
-See ``docs/validation_ap_completeness.md``.
+See ``notes/validation_ap_completeness.md``.
 
 This module defines that distinction once, as a deterministic function of data already in the
 package (annotation geometry + the precomputed tree-coverage masks), so the audit script, the

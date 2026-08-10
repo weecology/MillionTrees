@@ -1,5 +1,5 @@
 #!/bin/bash
-# E3+E5 (docs/treeformer_points_diagnosis_plan.md): the score-threshold sweep
+# E3+E5 (notes/treeformer_points_diagnosis_plan.md): the score-threshold sweep
 # (job 34671792) showed recall is capped ~0.27 even with no score filter, so the
 # model is UNDER-DETECTING, not being over-filtered. Test the two physical levers:
 #   - per-source recall breakdown (E3): is loss uniform, or driven by a few

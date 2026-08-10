@@ -10,7 +10,7 @@ result files and prints recall / precision / F1 / AP50 / AP40 side by side.
 Usage:
     python scripts/make_ap_iou_table.py \
         --outputs-dirname outputs_ap_iou \
-        --output docs/ap50_vs_ap40_existing_models.md
+        --output notes/ap50_vs_ap40_existing_models.md
 """
 
 import argparse
@@ -116,7 +116,7 @@ def main():
                         help="Results tree under each existing_models/<model>/ "
                         "to read (default: the AP-IoU comparison runs).")
     parser.add_argument("--output",
-                        default=os.path.join(ROOT, "docs",
+                        default=os.path.join(ROOT, "notes",
                                              "ap50_vs_ap40_existing_models.md"))
     args = parser.parse_args()
 

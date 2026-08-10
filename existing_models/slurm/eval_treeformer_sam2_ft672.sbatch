@@ -3,7 +3,7 @@
 # Mirrors eval_treeformer_sam2_runM.sbatch (B200, image-size 1024, no tiling,
 # negative prompts, hiera-large) but swaps the pretrained HF point model for the
 # fine-tuned Lightning checkpoint. This is the "FT checkpoint at the codified
-# defaults" run flagged as pending in docs/treeformer_sam2_experiments.md.
+# defaults" run flagged as pending in notes/treeformer_sam2_experiments.md.
 #SBATCH --job-name=mt_tf_sam2_ft672
 #SBATCH --output=/home/b.weinstein/logs/%x_%j.out
 #SBATCH --error=/home/b.weinstein/logs/%x_%j.err

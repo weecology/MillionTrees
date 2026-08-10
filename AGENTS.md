@@ -145,6 +145,18 @@ def filter_valid_annotations(annotations: list[dict]) -> list[dict]:
 - Simple getter/setter methods
 - Code that is self-explanatory
 
+### Where write-ups go: `notes/`, not `docs/`
+
+`docs/` is the readthedocs site. Every page in it must be listed in the toctree in
+`docs/index.rst`, and CI builds the docs with `-W`, so a markdown file dropped into
+`docs/` without a toctree entry **fails the build**.
+
+Analysis write-ups, diagnostic reports, experiment logs and generated table fragments go
+in `notes/` instead — see `notes/README.md`. Scripts that emit a report should default
+their output path there. Figures stay in `docs/public/` (notes reference them as
+`../docs/public/...`) so published pages can use the same images. Only move a note into
+`docs/` if a benchmark user should read it, and add it to the toctree in the same commit.
+
 ## Summary
 
 Write code that is clear, direct, and fails obviously when something goes wrong. Prefer simplicity over robustness, and trust that proper system design and monitoring will catch issues rather than trying to handle every possible error case in the code itself.

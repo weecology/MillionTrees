@@ -174,7 +174,7 @@ def add_sweep_args(parser):
         help=
         "Drop eval tiles that are not annotated wall to wall (edge tiles of a "
         "TLS plot footprint). AP charges detections in the unlabelled part of such a "
-        "tile as false positives; see docs/validation_ap_completeness.md.")
+        "tile as false positives; see notes/validation_ap_completeness.md.")
     parser.add_argument(
         "--per-source",
         type=int,

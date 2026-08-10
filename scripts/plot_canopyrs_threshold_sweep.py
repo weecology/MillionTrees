@@ -6,7 +6,7 @@ existing_models/canopyrs/eval_{boxes,polygons}.py --sweep on the manuscript
 splits) and renders one PR curve per (task, split), plus a companion
 recall/precision/F1-vs-threshold panel that motivates the recommended
 operating point. Also writes the best-F1 threshold per (task, split) as a
-markdown table fragment for docs/canopyrs_threshold_sweep.md.
+markdown table fragment for notes/canopyrs_threshold_sweep.md.
 """
 import glob
 import os
@@ -19,7 +19,7 @@ import pandas as pd
 REPO = "/blue/ewhite/b.weinstein/src/MillionTrees"
 SWEEP_GLOB = os.path.join(REPO, "existing_models/canopyrs/outputs/sweep/*/threshold_sweep.csv")
 OUT_PNG = os.path.join(REPO, "docs/public/canopyrs_threshold_sweep_pr_curve.png")
-OUT_TABLE_MD = os.path.join(REPO, "docs/canopyrs_threshold_sweep_table.md")
+OUT_TABLE_MD = os.path.join(REPO, "notes/canopyrs_threshold_sweep_table.md")
 
 # geometry -> color (categorical, fixed order), split -> linestyle (secondary encoding)
 TASK_COLOR = {

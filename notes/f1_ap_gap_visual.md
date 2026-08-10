@@ -46,7 +46,7 @@ while AP50 is capped at 0.549 before a single false positive is counted. Two thi
 
 ## 1. The curve AP integrates, and where F1 is read off it
 
-![PR curves](public/f1_ap_gap/pr_curves_boxes.png)
+![PR curves](../docs/public/f1_ap_gap/pr_curves_boxes.png)
 
 The line is precision at every confidence threshold; AP is its area. The three markers walk
 from the end of that curve to the number the leaderboard prints, one change at a time:
@@ -71,7 +71,7 @@ Two things worth noticing:
 
 ## 2. Hold the IoU fixed — most of the gap survives
 
-![AP vs IoU](public/f1_ap_gap/ap_vs_iou_boxes.png)
+![AP vs IoU](../docs/public/f1_ap_gap/ap_vs_iou_boxes.png)
 
 Both metrics recomputed at the same matching IoU, swept 0.25 → 0.80. Reading AP and F1 off the
 same x = 0.40 (the IoU recall and precision already use) leaves **0.27 of gap for CanopyRS,
@@ -83,7 +83,7 @@ IoU; the two never approach each other, which is the visual form of the structur
 
 ## 3. F1 is one column of a plot; AP is the whole plot
 
-![Metrics vs score threshold](public/f1_ap_gap/metrics_vs_score.png)
+![Metrics vs score threshold](../docs/public/f1_ap_gap/metrics_vs_score.png)
 
 Every metric as a function of the confidence threshold. The vertical rule is where the
 leaderboard reads F1 off.
@@ -102,7 +102,7 @@ leaderboard reads F1 off.
 
 ## 4. The full ladder, one change per bar
 
-![Waterfall](public/f1_ap_gap/gap_waterfall.png)
+![Waterfall](../docs/public/f1_ap_gap/gap_waterfall.png)
 
 CanopyRS boxes, macro over sources. Each bar changes exactly one thing from the bar to its
 left (`docs/public/f1_ap_gap/gap_waterfall.csv`):

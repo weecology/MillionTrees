@@ -2,7 +2,7 @@
 # Render TreeFormer raw density maps (before peak detection) for the pretrained
 # model on the random test split. Array varies score_integration_radius so the
 # detected peaks differ over the IDENTICAL density map -- this is the visual
-# study of the min_distance lever. See docs/treeformer_hyperparameters.md.
+# study of the min_distance lever. See notes/treeformer_hyperparameters.md.
 #SBATCH --job-name=mt_tf_density_viz
 #SBATCH --output=/home/b.weinstein/logs/%x_%A_%a.out
 #SBATCH --error=/home/b.weinstein/logs/%x_%A_%a.err

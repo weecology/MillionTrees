@@ -1,7 +1,7 @@
 #!/bin/bash
 # Composite TreeFormer hyperparameter panels (density map + points vs image_size
 # and integration radius) for selected sources. See density_panel.py and
-# docs/treeformer_hyperparameters.md.
+# notes/treeformer_hyperparameters.md.
 #SBATCH --job-name=mt_tf_density_panel
 #SBATCH --output=/home/b.weinstein/logs/%x_%j.out
 #SBATCH --error=/home/b.weinstein/logs/%x_%j.err

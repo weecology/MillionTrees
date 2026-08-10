@@ -337,7 +337,7 @@ def main():
                              "held-out Allen et al. 2025 + Frey et al. 2026 TLS set.")
     parser.add_argument("--complete-tiles-only", action="store_true",
                         help="Drop eval tiles that are not annotated wall to wall "
-                             "(see docs/validation_ap_completeness.md).")
+                             "(see notes/validation_ap_completeness.md).")
     add_dump_args(parser)
     parser.add_argument("--comet", action="store_true")
     parser.add_argument("--comet-name", type=str, default=None)

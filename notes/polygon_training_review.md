@@ -80,8 +80,8 @@ Early DeepForest-integration fix (same checkpoint, eval path only). Old eval squ
 
 | Resize 640 — best (AP50 0.165) | Native crop 640 (AP50 0.083) |
 |---|---|
-| ![](public/polygon_review/A_resize640.png) | ![](public/polygon_review/A_nativecrop640.png) |
+| ![](../docs/public/polygon_review/A_resize640.png) | ![](../docs/public/polygon_review/A_nativecrop640.png) |
 
 | RandomResizedCrop (AP50 0.081) | Resize 1280 — collapsed (recall 0.004) |
 |---|---|
-| ![](public/polygon_review/A_randomresizedcrop.png) | ![](public/polygon_review/A_resize1280.png) |
+| ![](../docs/public/polygon_review/A_randomresizedcrop.png) | ![](../docs/public/polygon_review/A_resize1280.png) |

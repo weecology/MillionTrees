@@ -82,7 +82,7 @@ pretrain) → polygon train with COCO weights in parallel (`train_polygons_coco.
 loaders default to the latest `_versions_dict` key, these pick up the new version automatically (e.g.
 v0.19) — confirm that key exists (see `[[project_bump_versions_dict_per_release]]`) before submitting.
 Report the four-row Recall / Mask-aware Precision / AP40 comparison per split in
-`docs/weak_supervision_pretraining_table.md` and the manuscript Table 6.
+`notes/weak_supervision_pretraining_table.md` and the manuscript Table 6.
 
 ## 4. AP is AP40 (IoU 0.4) — there is no AP50
 
@@ -99,7 +99,18 @@ Consequences to remember:
 - AP40 runs ~+0.04 to +0.11 above the old AP50 on the same predictions, so numbers are **not**
   comparable to pre-2026-08-04 tables. Older analysis docs keep their AP50 figures and say so.
 - The historical AP50-vs-AP40 comparison that motivated this lives in
-  `docs/ap50_vs_ap40_existing_models.md` (`scripts/make_ap_iou_table.py`, `outputs_ap_iou/` runs).
+  `notes/ap50_vs_ap40_existing_models.md` (`scripts/make_ap_iou_table.py`, `outputs_ap_iou/` runs).
+
+## 5. Analysis write-ups go in `notes/`, never in `docs/`
+
+`docs/` is the published readthedocs site. Every page there must be listed in the toctree in
+`docs/index.rst`, and CI builds with `-W`, so **any markdown file added to `docs/` without a
+toctree entry fails the build**. Do not "fix" that by adding an internal report to the toctree —
+benchmark users should not be reading diagnostic logs.
+
+Put analysis reports, experiment diagnostics, generated table fragments and anything written to
+navigate context in `notes/` (see `notes/README.md`). Scripts that emit a report default their
+`--output` there. Figures still live in `docs/public/`; notes link to them as `../docs/public/...`.
 
 ## More
 

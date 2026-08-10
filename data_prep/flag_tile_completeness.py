@@ -4,7 +4,7 @@ The packaged ``complete`` flag is per source (``source_completeness.csv``). That
 for the held-out TLS validation sources, which mix interior tiles annotated edge to edge with
 **edge tiles** where the plot footprint clips a corner and the rest of the tile is unlabelled
 forest. AP charges every detection in the unlabelled part as a false positive, so an edge tile
-scores the annotation protocol rather than the model (``docs/validation_ap_completeness.md``).
+scores the annotation protocol rather than the model (``notes/validation_ap_completeness.md``).
 
 This script applies ``milliontrees.common.tile_completeness`` to a packaged release and writes
 one row per tile. The loaders read the result when called with ``complete_tiles_only=True``.

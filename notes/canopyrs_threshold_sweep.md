@@ -46,7 +46,7 @@ the leaderboard polygon rows (see Recommendation).
 
 ## Results
 
-![CanopyRS precision-recall curve and F1 vs. threshold](public/canopyrs_threshold_sweep_pr_curve.png)
+![CanopyRS precision-recall curve and F1 vs. threshold](../docs/public/canopyrs_threshold_sweep_pr_curve.png)
 
 | Task | Split | Best threshold | Recall | Precision | F1 | Mask Accuracy | AP50 | Test set |
 |---|---|---:|---:|---:|---:|---:|---:|---|

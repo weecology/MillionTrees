@@ -129,7 +129,7 @@ def main():
     parser.add_argument("--figure-out", type=str,
                         default="docs/public/weak_supervision_pretraining_gain.png")
     parser.add_argument("--table-out", type=str,
-                        default="docs/weak_supervision_pretraining_table.md")
+                        default="notes/weak_supervision_pretraining_table.md")
     parser.add_argument("--csv-out", type=str,
                         default="training/weak_supervision/outputs/weak_supervision_table.csv")
     args = parser.parse_args()

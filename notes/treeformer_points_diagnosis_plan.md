@@ -301,7 +301,7 @@ pretrained vs fine-tuned TreeFormer, full release:
 The E7 table above predates the Bohlman 2008 removal (and used the best-`point_recall`
 ckpt). For the manuscript we re-ran both arms @672 with Bohlman dropped from the config
 and the **lowest-`val_loss`** checkpoint (leaderboard convention, matches
-`eval_points.sbatch`). These are the numbers in `docs/manuscript_table3_v0.18.csv`:
+`eval_points.sbatch`). These are the numbers in `notes/manuscript_table3_v0.18.csv`:
 
 | split | pretrained recall / prec / MAE | fine-tuned recall / prec / MAE | Δ recall |
 |---|---|---|---|
