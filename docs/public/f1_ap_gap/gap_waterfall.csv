@@ -1,0 +1,8 @@
+step,value
+Reported F1 mask-aware precision,0.67816661932067
+plain precision same matches,0.5278355673739614
+pooled over images not averaged per image,0.5278396993754001
+complete tiles only 59 of 85,0.5800514326166999
+"ranking-aware = AP40, complete",0.47313824790125814
+"IoU 0.50 = AP50, complete",0.376261775673643
+all 85 tiles = reported AP50,0.3126181336936089

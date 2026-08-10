@@ -1,0 +1,24 @@
+Geometry,Model,Fine-tuned,Split,Tree Counting (MAE),Detection Recall,Detection Precision,Detection F1,Tree Segmentation (AP@50)
+Points,TreeFormer,Yes,Random,150.97,0.58,0.78,0.67,
+Points,TreeFormer,No,Random,67.95,0.44,0.82,0.57,
+Points,SAM3,No,Random,38.34,0.20,0.70,0.31,
+Points,TreeFormer,Yes,Zero-shot,161.11,0.60,0.76,0.67,
+Points,TreeFormer,No,Zero-shot,41.36,0.48,0.84,0.61,
+Points,SAM3,No,Zero-shot,52.16,0.24,0.77,0.37,
+Boxes,CanopyRS,No,Random,169.94,0.84,0.53,0.65,0.47
+Boxes,DeepForest,Yes,Random,32.84,0.59,0.73,0.65,0.35
+Boxes,SAM3,No,Random,53.28,0.64,0.57,0.60,0.31
+Boxes,DeepForest,No,Random,28.40,0.40,0.75,0.52,0.14
+Boxes,CanopyRS,No,Zero-shot,199.25,0.90,0.68,0.77,0.60
+Boxes,SAM3,No,Zero-shot,48.12,0.71,0.73,0.72,0.40
+Boxes,DeepForest,Yes,Zero-shot,34.76,0.53,0.82,0.64,0.31
+Boxes,DeepForest,No,Zero-shot,29.92,0.40,0.90,0.55,0.10
+Polygons,Mask R-CNN,Yes,Random,,0.60,0.86,0.71,0.28
+Polygons,CanopyRS,No,Random,,0.57,0.88,0.69,0.22
+Polygons,DetectTree2,No,Random,,0.38,0.83,0.52,0.11
+Polygons,SAM3,No,Random,,0.24,0.64,0.35,0.05
+Polygons,CanopyRS,No,Zero-shot,,0.62,0.91,0.74,0.28
+Polygons,DetectTree2,No,Zero-shot,,0.35,0.86,0.50,0.14
+Polygons,Mask R-CNN,Yes,Zero-shot,,0.28,0.77,0.41,0.22
+Polygons,SAM3,No,Zero-shot,,0.12,0.54,0.20,0.06
+Polygons,TreeFormer + SAM2,No,Cross-geometry,,0.23,0.96,0.37,0.15

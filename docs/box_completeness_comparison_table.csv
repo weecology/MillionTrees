@@ -1,0 +1,9 @@
+split,train_regime,lr,train_images,test_images,accuracy,recall,maskaware_precision,AP50
+within-distribution,all_sources,0.005,10460,2670,0.317,0.546,0.783,0.310
+within-distribution,complete_only,0.005,2354,2670,0.286,0.458,0.741,0.231
+within-distribution,all_sources,0.001,10460,2670,0.314,0.539,0.797,0.290
+within-distribution,complete_only,0.001,2354,2670,0.285,0.422,0.786,0.214
+out-of-distribution,all_sources,0.005,9173,3957,0.349,0.517,0.891,0.290
+out-of-distribution,complete_only,0.005,1583,3957,0.305,0.423,0.879,0.148
+out-of-distribution,all_sources,0.001,9173,3957,0.315,0.506,0.861,0.269
+out-of-distribution,complete_only,0.001,1583,3957,0.325,0.435,0.889,0.180

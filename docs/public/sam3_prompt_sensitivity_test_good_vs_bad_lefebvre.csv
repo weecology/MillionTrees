@@ -1,0 +1,7 @@
+source,filename,prompt,n_pred,recall
+"Lefebvre et al. 2024","20230608_cbbernard3_p1_rgb.cog_387_Lefebvre_et_al_2024.png","tree",87,1.0000
+"Lefebvre et al. 2024","20230608_cbbernard3_p1_rgb.cog_387_Lefebvre_et_al_2024.png","tree canopy",63,1.0000
+"Lefebvre et al. 2024","20230608_cbbernard3_p1_rgb.cog_387_Lefebvre_et_al_2024.png","individual tree canopy",88,1.0000
+"NEON combined crowns","HARV_2025_rgb_mosaic_crop_29_NEON_combined_crowns.png","tree",19,0.1111
+"NEON combined crowns","HARV_2025_rgb_mosaic_crop_29_NEON_combined_crowns.png","tree canopy",1,0.0000
+"NEON combined crowns","HARV_2025_rgb_mosaic_crop_29_NEON_combined_crowns.png","individual tree canopy",2,0.0370
