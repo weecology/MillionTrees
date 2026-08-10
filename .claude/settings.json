@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python data_prep/DeepTrees_Halle.py)",
+      "Bash(scontrol show *)",
+      "Bash(squeue -u b.weinstein --format=\"%.10i %.20j %.8T %.10M %R\")"
+    ]
+  }
+}
