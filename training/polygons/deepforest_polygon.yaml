@@ -1,0 +1,82 @@
+# Self-contained DeepForest Mask R-CNN config for MillionTrees TreePolygons.
+#
+# This is a FLATTENED merge of DeepForest's conf/polygon.yaml + conf/oam.yaml
+# (the OAM-TCD Mask R-CNN recipe recommended on the polygon-maskrcnn-workflow
+# PR). It is kept in the MillionTrees repo on purpose:
+#
+#   * DeepForest's git wheel currently only packages conf/config.yaml, so the
+#     PR's polygon.yaml / oam.yaml are not importable via `--config-name oam`.
+#   * `deepforest.utilities.load_config(<abs path>)` merges the structured base
+#     schema + this YAML + runtime overrides and IGNORES Hydra `defaults:`, so a
+#     single flat file is the robust way to pin the recipe.
+#
+# train.py loads this file and overrides the data paths, epochs, lr, batch_size,
+# label_dict and log_root at runtime (see build_config()).
+
+architecture: maskrcnn
+
+batch_size: 8
+workers: 8
+
+# 1 foreground class ("Tree"); DeepForest's MaskRCNN adds the background class
+# internally (num_classes + 1) and shifts labels by one.
+label_dict:
+    Tree: 0
+num_classes: 1
+
+# Detectron2/OAM-TCD inference knobs. score_thresh is intentionally low so the
+# MillionTrees evaluator (which applies its own eval_score_threshold) sees the
+# full score distribution rather than a pre-filtered one.
+score_thresh: 0.15
+nms_thresh: 0.5
+detections_per_img: 300
+
+maskrcnn:
+    # Detectron2 FREEZE_AT=2 analog: trains layer2-4, freezes stem + layer1.
+    trainable_backbone_layers: 3
+    rpn_post_nms_top_n_train: 1000
+    rpn_pre_nms_top_n_test: 512
+    rpn_post_nms_top_n_test: 512
+    gradient_checkpointing: false
+    inference_output: dense   # dense (N,1,H,W) masks for the MillionTrees evaluator
+
+gradient_clip_val: null
+precision: 16-mixed
+
+train:
+    csv_file:        # set by train.py
+    root_dir:        # set by train.py
+    lr: 0.005        # OAM-TCD paper BASE_LR
+    optimizer:
+        type: SGD
+        weight_decay: 0.0001
+        momentum: 0.9
+    scheduler:
+        type: multistepLR
+        params:
+            milestones: [50, 80, 90]
+            gamma: 0.1
+    class_balanced_sampler: false
+    class_balanced_loss: false
+    epochs: 100
+    # MillionTrees polygons are pixel-accurate but a handful sit a few px past a
+    # tile edge; don't hard-fail the whole run on those.
+    validate_coordinates: false
+    augmentations:
+        - HorizontalFlip: {p: 0.5}
+        - VerticalFlip: {p: 0.5}
+        - RandomResizedCrop:
+            size: [640, 640]
+            scale: [0.64, 1.0]
+            ratio: [1.0, 1.0]
+            p: 1.0
+
+validation:
+    csv_file:        # set by train.py
+    root_dir:        # set by train.py
+    validate_coordinates: false
+    # Segm mAP during training is expensive; validate every 10 epochs.
+    val_accuracy_interval: 10
+    iou_threshold: 0.4
+    augmentations:
+        - Resize: {max_size: 1024}

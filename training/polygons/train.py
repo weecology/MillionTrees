@@ -14,7 +14,7 @@ polygon training stack (the ``cursor/polygon-maskrcnn-workflow`` PR):
     paths / epochs / lr. See that file for why it's vendored here.
   * Evaluation stays on the MillionTrees side: the trained DeepForest model is
     scored with the TreePolygons metrics (mask accuracy / recall / mask-aware
-    precision / AP50 / merge-commission) so the numbers remain leaderboard
+    precision / AP40 / merge-commission) so the numbers remain leaderboard
     comparable.
 
 The bridge from MillionTrees splits to DeepForest is a generated annotation CSV

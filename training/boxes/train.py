@@ -206,6 +206,12 @@ def main():
         help="Lightning accelerator (use 'cpu' for debugging).",
     )
     parser.add_argument("--early-stop-patience", type=int, default=10)
+    parser.add_argument(
+        "--gradient-clip-val", type=float, default=0.0,
+        help="Clip gradient norm to this value (0 = off, Lightning default). "
+             "The box-pretrained arm diverged to NaN at lr 0.01 (job 36058068_0), "
+             "so the pretraining ablation runs with 1.0.",
+    )
     parser.add_argument("--comet", action="store_true",
                         help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
     parser.add_argument("--comet-name", type=str, default=None,
@@ -378,6 +384,8 @@ def main():
         ))
 
     trainer_kwargs = {}
+    if args.gradient_clip_val > 0:
+        trainer_kwargs["gradient_clip_val"] = args.gradient_clip_val
     if has_val:
         trainer_kwargs["limit_val_batches"] = 1.0
         trainer_kwargs["num_sanity_val_steps"] = 2
