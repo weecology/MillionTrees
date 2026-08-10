@@ -61,8 +61,11 @@ def image_to_tiles(arr: np.ndarray, tile_size: int):
 
 def _array_to_pil(arr_chw: np.ndarray) -> Image.Image:
     """(C, H, W) uint8 or float [0,1] -> PIL RGB."""
-    if arr_chw.max() <= 1.0:
-        arr_chw = (arr_chw * 255).astype(np.uint8)
+    if arr_chw.dtype != np.uint8:
+        # Clip first: PIL cannot take a float array, and a >1.0 float (e.g. a
+        # uint16 raster divided by 255) used to fall straight through to
+        # Image.fromarray and raise "Cannot handle this data type".
+        arr_chw = (np.clip(arr_chw, 0, 1) * 255).astype(np.uint8)
     arr_hwc = np.transpose(arr_chw, (1, 2, 0))
     return Image.fromarray(arr_hwc)
 
@@ -78,7 +81,11 @@ def predict_tree_mask(processor, model, image_path: str, device: str) -> np.ndar
             arr = arr[:3, :, :]
         height, width = arr.shape[1], arr.shape[2]
     if arr.max() > 1:
-        arr = arr.astype(np.float32) / 255.0
+        # Scale by the container's range, not always 255: a uint16 raster divided
+        # by 255 lands far outside [0, 1] and blows out every tile it is fed.
+        scale = 255.0 if arr.dtype == np.uint8 or arr.max() <= 255 else float(
+            np.iinfo(arr.dtype).max if np.issubdtype(arr.dtype, np.integer) else arr.max())
+        arr = arr.astype(np.float32) / scale
 
     if height <= TILE_SIZE and width <= TILE_SIZE:
         pil_image = _array_to_pil(arr)
