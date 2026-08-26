@@ -153,11 +153,79 @@ def _extract_box_pretrained_backbone(checkpoint_path):
     return mapped
 
 
-def apply_box_pretrained_backbone(model, checkpoint_path):
-    """Overwrite the RetinaNet ResNet backbone with box-pretrained weights.
+def assert_coco_trunk(model):
+    """Raise unless the RetinaNet backbone+FPN is exactly torchvision COCO_V1.
 
-    Leaves DeepForest's COCO-initialized FPN and detection heads in place;
-    only swaps backbone.body.* — same surgery as the polygon ablation.
+    The ablation is only interpretable if the "clean" arm has never seen a tree
+    label. That is easy to get wrong: DeepForest's config default is
+    model.name = "weecology/deepforest-tree", and deepforest.__init__ ->
+    create_model() -> load_model() pulls it before train.py runs, so simply
+    *not* calling load_model() leaves a NEON-trained detector in place. Jobs
+    38840964 and 39089781 both shipped as "clean COCO" that way and reproduced
+    the contaminated baseline's AP40 to three decimals.
+
+    Guarding beats commenting: compare every backbone tensor against a freshly
+    constructed torchvision COCO_V1 and refuse to train on a mismatch.
+    """
+    from torchvision.models.detection import retinanet_resnet50_fpn
+
+    reference = retinanet_resnet50_fpn(weights="COCO_V1").backbone.state_dict()
+    actual = model.model.backbone.state_dict()
+
+    missing = sorted(set(reference) - set(actual))
+    extra = sorted(set(actual) - set(reference))
+    if missing or extra:
+        raise RuntimeError(
+            "Backbone does not have the torchvision RetinaNet structure "
+            f"(missing={missing[:5]}, unexpected={extra[:5]})."
+        )
+
+    mismatched = [
+        key for key, value in reference.items()
+        if not torch.equal(value, actual[key].detach().cpu().to(value.dtype))
+    ]
+    if mismatched:
+        raise RuntimeError(
+            f"CONTAMINATED INIT: {len(mismatched)}/{len(reference)} backbone/FPN "
+            "tensors differ from torchvision RetinaNet COCO_V1 — this is not a "
+            "tree-naive baseline. Most likely config.model.name still points at "
+            "a Hugging Face checkpoint (default 'weecology/deepforest-tree'). "
+            f"First mismatches: {mismatched[:5]}"
+        )
+
+    print(
+        f"Verified COCO init: all {len(reference)} backbone/FPN tensors match "
+        "torchvision RetinaNet COCO_V1"
+    )
+    return len(reference)
+
+
+def _extract_box_pretrained_network(checkpoint_path):
+    """Load a box-pretrained checkpoint; return every RetinaNet tensor."""
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    state = ckpt.get("state_dict", ckpt)
+    prefix = "model."
+    mapped = {
+        key[len(prefix):]: value
+        for key, value in state.items()
+        if key.startswith(prefix)
+    }
+    if not mapped:
+        raise ValueError(
+            f"No DeepForest weights found in {checkpoint_path}. "
+            "Expected keys prefixed with 'model.'."
+        )
+    return mapped
+
+
+def apply_box_pretrained_backbone(model, checkpoint_path):
+    """Overwrite the RetinaNet ResNet trunk only (backbone.body.*).
+
+    Retained for the polygon (box -> Mask R-CNN) ablation, where the trunk is
+    genuinely the only transferable piece. For box -> box use
+    apply_box_pretrained_network(): both stages are the same architecture, so
+    truncating here silently resets the FPN to COCO and the detection heads to
+    random init, discarding everything the pretraining learned about trees.
     """
     backbone_state = _extract_box_pretrained_backbone(checkpoint_path)
     missing, unexpected = model.model.load_state_dict(backbone_state, strict=False)
@@ -168,6 +236,123 @@ def apply_box_pretrained_backbone(model, checkpoint_path):
         raise ValueError("No backbone.body keys loaded from box pretrained checkpoint.")
     print(f"Loaded {loaded} backbone keys; {len(missing)} head keys left at COCO init.")
     return {"missing": len(missing), "loaded_backbone_keys": loaded}
+
+
+def apply_box_pretrained_network(model, checkpoint_path):
+    """Transfer the ENTIRE pretrained RetinaNet: trunk + FPN + detection heads.
+
+    Both the pretraining stage and this fine-tune build the identical
+    DeepForest RetinaNetHub with num_classes=1, so all 301 tensors are
+    shape-compatible and load strictly. Anything less than a strict full load
+    means the two stages disagree about architecture, which would silently
+    reintroduce the truncation this function exists to remove — so refuse.
+    """
+    state = _extract_box_pretrained_network(checkpoint_path)
+    expected = model.model.state_dict()
+
+    missing = sorted(set(expected) - set(state))
+    unexpected = sorted(set(state) - set(expected))
+    if missing or unexpected:
+        raise ValueError(
+            f"Checkpoint {checkpoint_path} does not cover the RetinaNet exactly: "
+            f"{len(missing)} missing (e.g. {missing[:3]}), "
+            f"{len(unexpected)} unexpected (e.g. {unexpected[:3]}). "
+            "A trunk-only export (box_backbone_*.pt) will trip this — the "
+            "box -> box ablation needs box_network_*.pt."
+        )
+
+    model.model.load_state_dict(state, strict=True)
+    groups = {
+        "backbone.body": sum(1 for k in state if k.startswith("backbone.body.")),
+        "backbone.fpn": sum(1 for k in state if k.startswith("backbone.fpn.")),
+        "head": sum(1 for k in state if k.startswith("head.")),
+    }
+    print(
+        f"Loaded FULL pretrained network: {len(state)} tensors "
+        f"(trunk {groups['backbone.body']}, FPN {groups['backbone.fpn']}, "
+        f"heads {groups['head']}); nothing left at COCO/random init."
+    )
+    return {"loaded_keys": len(state), **groups}
+
+
+def apply_imagenet_backbone(model):
+    """Replace the COCO backbone with an ImageNet trunk + randomly-init FPN.
+
+    DeepForest's create_model() hardcodes backbone_weights="COCO_V1", so there
+    is no config route to a non-COCO init; the backbone is swapped after
+    construction instead. torchvision's retinanet_resnet50_fpn(weights=None)
+    keeps weights_backbone=ResNet50_Weights.IMAGENET1K_V1, which is exactly the
+    conventional detection baseline: ImageNet trunk, fresh FPN, fresh heads.
+    The heads are already random here — RetinaNetHub builds them for
+    num_classes=1, so COCO's 91-class head never loads on any arm.
+    """
+    from torchvision.models.detection import retinanet_resnet50_fpn
+
+    replacement = retinanet_resnet50_fpn(weights=None).backbone
+    if replacement.out_channels != model.model.backbone.out_channels:
+        raise RuntimeError(
+            "ImageNet backbone out_channels "
+            f"({replacement.out_channels}) does not match the constructed model "
+            f"({model.model.backbone.out_channels}); the head would be invalid."
+        )
+    model.model.backbone = replacement
+    print("Swapped backbone to ImageNet trunk + randomly-initialized FPN.")
+    return replacement
+
+
+def assert_imagenet_trunk(model):
+    """Raise unless the trunk is torchvision ResNet50 IMAGENET1K_V1 and the FPN is not COCO.
+
+    The mirror of assert_coco_trunk(), for the same reason: this arm is only
+    interpretable if it has seen no detection pretraining at all. Note that
+    ImageNet and COCO trunks agree on 223/265 tensors — COCO RetinaNet is itself
+    ImageNet-initialized and freezes the early layers — so "differs from COCO"
+    is far too weak a check on its own. Verify against ImageNet positively.
+    """
+    from torchvision.models import resnet50, ResNet50_Weights
+    from torchvision.models.detection import retinanet_resnet50_fpn
+
+    actual = model.model.backbone.state_dict()
+    reference = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1).state_dict()
+
+    body = [k for k in actual if k.startswith("body.")]
+    if not body:
+        raise RuntimeError(
+            f"Backbone has no body.* tensors (keys: {sorted(actual)[:5]})."
+        )
+    mismatched = [
+        k for k in body
+        if not torch.equal(
+            reference[k[len("body."):]],
+            actual[k].detach().cpu().to(reference[k[len("body."):]].dtype),
+        )
+    ]
+    if mismatched:
+        raise RuntimeError(
+            f"NOT an ImageNet trunk: {len(mismatched)}/{len(body)} tensors differ "
+            "from torchvision ResNet50 IMAGENET1K_V1. First mismatches: "
+            f"{mismatched[:5]}"
+        )
+
+    # The FPN must NOT be COCO's: that is the piece the COCO arm actually gets.
+    coco_fpn = retinanet_resnet50_fpn(weights="COCO_V1").backbone.state_dict()
+    fpn = [k for k in actual if k.startswith("fpn.")]
+    fpn_same = [
+        k for k in fpn
+        if torch.equal(coco_fpn[k], actual[k].detach().cpu().to(coco_fpn[k].dtype))
+    ]
+    if fpn_same:
+        raise RuntimeError(
+            f"CONTAMINATED INIT: {len(fpn_same)}/{len(fpn)} FPN tensors still match "
+            "COCO — the backbone swap did not take effect."
+        )
+
+    print(
+        f"Verified ImageNet init: all {len(body)} trunk tensors match torchvision "
+        f"ResNet50 IMAGENET1K_V1; all {len(fpn)} FPN tensors are freshly initialized "
+        "(no COCO detection pretraining)."
+    )
+    return len(body)
 
 
 # ---------------------------------------------------------------------------
@@ -189,7 +374,27 @@ def main():
     parser.add_argument(
         "--include-unsupervised",
         action="store_true",
-        help="Use TreeBoxes_v* layout with full-zip URLs.",
+        help="Read the full TreeBoxes_v* release instead of the supervised-only "
+             "zip, which also MIXES the weakly-labelled sources into the TRAIN "
+             "split (Weinstein et al. 2018 unsupervised, 41,691 images / 6.4M "
+             "pseudo-boxes, plus Young et al. 2025 weak supervised, 11,739 / "
+             "99,626). This is the co-training arm of the weak-supervision "
+             "ablation: weak and human labels optimized together in one stage, "
+             "as opposed to the pretrain-then-finetune route through "
+             "pretrain_backbone_for_polygons.py. Test/validation are unaffected "
+             "— every weak row is in train — so the score stays comparable to "
+             "the supervised-only baseline.",
+    )
+    parser.add_argument(
+        "--exclude-sources", type=str, nargs="+", default=None,
+        help="Drop these source names (fnmatch wildcards, case-insensitive) from "
+             "ALL splits. Used by the co-training arm to hold the weak data "
+             "identical to what stage-1 pretraining saw: that stage trains on "
+             "include_sources=['*unsupervised*'], i.e. Weinstein et al. 2018 only, "
+             "so co-training passes --exclude-sources '*Young*' to keep the extra "
+             "weak source out and leave pretraining-vs-co-training as the single "
+             "difference. Excluding a source that only appears in train (both weak "
+             "sources do) leaves the eval set untouched.",
     )
     parser.add_argument(
         "--remove-incomplete",
@@ -197,6 +402,28 @@ def main():
         help="Train only on complete=True (exhaustively annotated) sources. "
              "Filters the TRAIN split only; the test set is always left "
              "unchanged so results are comparable to the full-train baseline.",
+    )
+    parser.add_argument(
+        "--train-sources", type=str, nargs="+", default=None,
+        help="Restrict the TRAIN split to these source names (fnmatch wildcards "
+             "allowed, e.g. 'Weecology*'). Validation/test are untouched, so the "
+             "run is scored on the same eval set as the full-train baseline. "
+             "Used by the weak-supervision data-scaling ablation.",
+    )
+    parser.add_argument(
+        "--train-frac", type=float, default=1.0,
+        help="Randomly keep this fraction of TRAIN images (after --train-sources). "
+             "Seeded by --seed so every arm of an ablation sees the identical subset.",
+    )
+    parser.add_argument(
+        "--val-frac", type=float, default=1.0,
+        help="Fraction of the test split used for the per-epoch validation metric "
+             "that drives early stopping / checkpoint selection. The final scored "
+             "evaluation always uses the full test split.",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=0,
+        help="Seed for the --train-frac subsample (and torch/numpy global seeding).",
     )
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--output-dir", type=str, default="training/boxes/outputs")
@@ -223,19 +450,26 @@ def main():
         "--init-mode",
         type=str,
         default="deepforest",
-        choices=["deepforest", "coco", "box_pretrained"],
+        choices=["deepforest", "coco", "imagenet", "box_pretrained", "box_pretrained_full"],
         help="Backbone initialization: "
              "deepforest = load weecology/deepforest-tree (NEON-pretrained, not a clean baseline); "
              "coco = torchvision COCO RetinaNet only (clean baseline, no NEON exposure); "
-             "box_pretrained = COCO RetinaNet with backbone swapped from --box-backbone-checkpoint "
-             "(clean comparison: COCO heads + NEON-pretrained backbone).",
+             "imagenet = ImageNet ResNet50 trunk with a freshly initialized FPN and heads, "
+             "i.e. no detection pretraining of any kind — the cold-start floor for asking "
+             "what COCO and the weak-label pretraining each add; "
+             "box_pretrained = COCO RetinaNet with only the ResNet trunk swapped from "
+             "--box-backbone-checkpoint (FPN reset to COCO, heads reset to random; kept for "
+             "reproducibility of the 39129721 runs and for the polygon ablation); "
+             "box_pretrained_full = the ENTIRE pretrained RetinaNet (trunk + FPN + heads) from "
+             "a box_network_*.pt export — the correct same-geometry transfer.",
     )
     parser.add_argument(
         "--box-backbone-checkpoint",
         type=str,
         default=None,
-        help="Path to a .pt backbone export from pretrain_backbone_for_polygons.py "
-             "(required when --init-mode box_pretrained).",
+        help="Path to a .pt export from pretrain_backbone_for_polygons.py: "
+             "box_backbone_*.pt for --init-mode box_pretrained, "
+             "box_network_*.pt for --init-mode box_pretrained_full.",
     )
     args = parser.parse_args()
 
@@ -245,6 +479,14 @@ def main():
 
     os.makedirs(args.output_dir, exist_ok=True)
 
+    # TreeBoxes only excludes '*unsupervised*' by default when exclude_sources is
+    # left as None; passing any list at all REPLACES that default. Re-add it here
+    # unless --include-unsupervised was asked for, so --exclude-sources can never
+    # smuggle the weak sources into a supervised-only arm.
+    exclude_sources = args.exclude_sources
+    if exclude_sources is not None and not args.include_unsupervised:
+        exclude_sources = list(exclude_sources) + ["*unsupervised*"]
+
     box_dataset = get_dataset(
         "TreeBoxes",
         download=args.download,
@@ -253,10 +495,24 @@ def main():
         split_scheme=args.split_scheme,
         include_unsupervised=args.include_unsupervised,
         remove_incomplete=args.remove_incomplete,
+        train_sources=args.train_sources,
+        exclude_sources=exclude_sources,
     )
 
-    train_subset = box_dataset.get_subset("train")
+    # Seed before get_subset: --train-frac draws its images with np.random, and
+    # every arm of an ablation must train on the identical subsample.
+    pl.seed_everything(args.seed, workers=True)
+
+    train_subset = box_dataset.get_subset("train", frac=args.train_frac)
     test_subset = box_dataset.get_subset("test")
+    # The val loader only drives early stopping / checkpoint selection; the final
+    # MillionTrees eval below always scores the FULL test split. Subsampling it
+    # keeps a small-train run from spending most of its wall clock validating
+    # 3k images after every 7-step epoch.
+    val_subset = (test_subset if args.val_frac >= 1.0
+                  else box_dataset.get_subset("test", frac=args.val_frac))
+    print(f"Train images: {len(train_subset)} | val (monitoring) images: "
+          f"{len(val_subset)} | test (scored) images: {len(test_subset)}")
 
     if len(train_subset) == 0:
         print("No training samples for this split; skipping training.")
@@ -266,7 +522,7 @@ def main():
     # DistributedSampler under DDP and shard data across GPUs. The collate_fn
     # translates MillionTrees batches into DeepForest's (images, targets, paths).
     adapt_collate = _AdaptCollate(train_subset.collate, box_dataset._filename_id_to_code)
-    has_val = len(test_subset) > 0
+    has_val = len(val_subset) > 0
 
     train_adapted = DataLoader(
         train_subset,
@@ -277,7 +533,7 @@ def main():
     )
     val_adapted = (
         DataLoader(
-            test_subset,
+            val_subset,
             batch_size=args.batch_size,
             shuffle=False,
             collate_fn=adapt_collate,
@@ -288,27 +544,42 @@ def main():
     )
 
     # Build DeepForest model and load pretrained weights
-    model = df_main.deepforest(
-        config_args={
-            "train": {
-                "epochs": args.max_epochs,
-                "lr": args.lr,
-                "root_dir": str(box_dataset._data_dir / "images"),
-            },
-            "validation": {
-                "root_dir": str(box_dataset._data_dir / "images"),
-                # Compute box_precision/box_recall/mAP every epoch. The base
-                # config defaults this to 20, so with ~20 epochs the metrics
-                # would only ever log on the final epoch and you'd see nothing
-                # but the losses. These metrics come from the val dataloader,
-                # not a csv_file.
-                "val_accuracy_interval": 1,
-                },
-            "batch_size": args.batch_size,
-            "devices": args.gpus,
-            "accelerator": args.accelerator,
-            "workers": args.num_workers,
+    config_args = {
+        "train": {
+            "epochs": args.max_epochs,
+            "lr": args.lr,
+            "root_dir": str(box_dataset._data_dir / "images"),
         },
+        "validation": {
+            "root_dir": str(box_dataset._data_dir / "images"),
+            # Compute box_precision/box_recall/mAP every epoch. The base
+            # config defaults this to 20, so with ~20 epochs the metrics
+            # would only ever log on the final epoch and you'd see nothing
+            # but the losses. These metrics come from the val dataloader,
+            # not a csv_file.
+            "val_accuracy_interval": 1,
+        },
+        "batch_size": args.batch_size,
+        "devices": args.gpus,
+        "accelerator": args.accelerator,
+        "workers": args.num_workers,
+    }
+
+    # Both clean arms must start from torchvision COCO, so model.name has to be
+    # None *at construction time*: deepforest.__init__ -> create_model() takes
+    # the load_model() branch for any non-None name, and the config default is
+    # "weecology/deepforest-tree". Nulling it here routes through
+    # RetinaNetHub(backbone_weights="COCO_V1"), i.e. COCO trunk+FPN with fresh
+    # heads, which is what the ablation claims to compare. num_classes and
+    # label_dict come from the hub checkpoint on the deepforest path, so they
+    # must be supplied explicitly once nothing is downloaded.
+    if args.init_mode in ("coco", "imagenet", "box_pretrained", "box_pretrained_full"):
+        config_args["model"] = {"name": None}
+        config_args["num_classes"] = 1
+        config_args["label_dict"] = {"Tree": 0}
+
+    model = df_main.deepforest(
+        config_args=config_args,
         existing_train_dataloader=train_adapted,
         existing_val_dataloader=val_adapted,
     )
@@ -319,11 +590,31 @@ def main():
     #   (COCO heads + NEON backbone — clean pair for comparing against coco init).
     if args.init_mode == "deepforest":
         model.load_model("weecology/deepforest-tree")
+    elif args.init_mode == "coco":
+        assert_coco_trunk(model)
+    elif args.init_mode == "imagenet":
+        # Confirm the base really was COCO before the swap, so a later guard
+        # failure is unambiguously the swap and not an unexpected starting model.
+        assert_coco_trunk(model)
+        apply_imagenet_backbone(model)
+        assert_imagenet_trunk(model)
     elif args.init_mode == "box_pretrained":
         if not args.box_backbone_checkpoint:
             raise ValueError("--box-backbone-checkpoint is required with --init-mode box_pretrained")
+        # Verify the base is COCO *before* the swap, so a failure here is
+        # unambiguously the base and not the exported backbone.
+        assert_coco_trunk(model)
         apply_box_pretrained_backbone(model, args.box_backbone_checkpoint)
-    # coco: no load_model call — torchvision COCO weights stay as-is
+    elif args.init_mode == "box_pretrained_full":
+        if not args.box_backbone_checkpoint:
+            raise ValueError(
+                "--box-backbone-checkpoint is required with --init-mode box_pretrained_full"
+            )
+        # Same ordering rationale as above: confirm the base is COCO before the
+        # pretrained weights land on top of it, so a guard failure is
+        # unambiguously the base and not the export.
+        assert_coco_trunk(model)
+        apply_box_pretrained_network(model, args.box_backbone_checkpoint)
 
     # Loggers
     loggers = []

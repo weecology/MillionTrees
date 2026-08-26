@@ -57,6 +57,10 @@ class TreeBoxesDataset(MillionTreesDataset):
             sources from the TRAIN split only. Validation/test are never
             filtered, so the evaluation set matches a full-train run.
         image_size (int): The size of the image to use.
+        train_sources (list): Restrict the TRAIN split to these source names
+            (fnmatch wildcards allowed). Validation/test are left untouched, so
+            results stay comparable to a full-train baseline. Use this (not
+            include_sources) to shrink the supervised training set.
         include_sources (list): The sources to include.
         exclude_sources (list): The sources to exclude.
         unsupervised (bool): If True, include unsupervised data in addition to
@@ -96,16 +100,6 @@ class TreeBoxesDataset(MillionTreesDataset):
         # v0.22 re-tiles the sources so every packaged image matches its tree-coverage
         # mask; in v0.21 the regenerated masks no longer match the v0.21 Allen imagery
         # and the loader raises on the validation split.
-        "0.22": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.22.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.22.zip",
-            # TODO: refresh with the real zip size once v0.22 zips finish building;
-            # unused for local download=False training/eval runs.
-            'compressed_size':
-                79939201324
-        },
         # v0.23 restores six configured box sources (~192k annotations, e.g. Puliti and
         # Astrup 2022, Šrollerů et al. 2025) that packaging silently dropped through
         # v0.22 by filtering on box columns and geometry before either was derived.
@@ -115,6 +109,22 @@ class TreeBoxesDataset(MillionTreesDataset):
             'supervised_download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.23.zip",
             # TODO: refresh with the real zip size once v0.23 zips finish building;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                79939201324
+        },
+        # v0.24 repairs the out-of-distribution split. Through v0.23 OOD membership was
+        # gated on each source's upstream existing_split pin, so declared hold-outs kept
+        # rows in train (SelvaBox: 585 images / 231,932 boxes) -- see
+        # notes/ood_split_test_sources_and_leaks.md. Box changes: SelvaBox is now
+        # train-only, NEON MultiTemporal joins the hold-out. Scores are NOT comparable
+        # to v0.23.
+        "0.24": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.24.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.24.zip",
+            # TODO: refresh with the real zip size once v0.24 zips finish building;
             # unused for local download=False training/eval runs.
             'compressed_size':
                 79939201324
@@ -132,6 +142,7 @@ class TreeBoxesDataset(MillionTreesDataset):
                  complete_tiles_only=False,
                  image_size=448,
                  include_sources=None,
+                 train_sources=None,
                  exclude_sources=None,
                  mini=False,
                  small=False,
@@ -218,6 +229,39 @@ class TreeBoxesDataset(MillionTreesDataset):
         if remove_incomplete:
             df = df[df['complete'] |
                     (df['split'] != 'train')].reset_index(drop=True)
+
+        # Restrict the TRAIN split to a subset of sources (wildcards allowed).
+        # Unlike include_sources, this leaves validation/test completely
+        # untouched, so a shrunken-training-set run is scored on exactly the
+        # same evaluation set as the full-train baseline. Added for the
+        # weak-supervision data-scaling ablation: if the benefit of the
+        # unsupervised boxes is being swamped by the size of the supervised
+        # training set, it should reappear once training is cut to one or two
+        # sources (notes/weak_supervision_data_scaling.md).
+        if train_sources:
+            train_patterns = (train_sources if isinstance(
+                train_sources, (list, tuple)) else [train_sources])
+            train_patterns = [str(p).lower() for p in train_patterns]
+            _src = df['source'].astype(str).str.lower()
+            _keep_train = _src.apply(
+                lambda s: any(fnmatch.fnmatch(s, p) for p in train_patterns))
+            _dropped = df[(df['split'] == 'train') &
+                          ~_keep_train]['source'].nunique()
+            df = df[_keep_train |
+                    (df['split'] != 'train')].reset_index(drop=True)
+            if (df['split'] == 'train').sum() == 0:
+                raise ValueError(
+                    f"train_sources={train_sources} matched no rows in the train "
+                    f"split. Available train sources: "
+                    f"{sorted(self.sources)}")
+            if self.verbose:
+                print(
+                    f"train_sources={train_sources}: kept "
+                    f"{df[df['split'] == 'train']['source'].nunique()} train "
+                    f"source(s), dropped {_dropped}; "
+                    f"{(df['split'] == 'train').sum()} train annotations on "
+                    f"{df[df['split'] == 'train']['filename'].nunique()} images "
+                    f"(eval splits untouched)")
 
         # Filter by include/exclude source names with wildcard support
         # Default: exclude sources containing 'unsupervised' unless include_unsupervised=True
@@ -353,12 +397,34 @@ class TreeBoxesDataset(MillionTreesDataset):
                     score_threshold=self.eval_score_threshold),
             # AP40 uses the same IoU (0.4) as the recall / mask-aware precision
             # metrics above, so AP and F1 agree on what counts as a match. It is
-            # the reported AP for every task; AP50 is not scored.
+            # the primary reported AP for every task; AP50 is not scored.
+            #
+            # max_detection_thresholds must be set explicitly: torchmetrics
+            # resolves None to [1, 10, 100], which scores only the 100
+            # highest-scoring predictions per image. Box crops are dense (mean
+            # ~75-83 GT/image, p99 ~300), so that default put ~20-25% of test
+            # ground truth permanently out of reach -- an oracle predicting GT
+            # exactly scored AP40 0.80 (OOD) / 0.75 (WD) instead of 1.0, and the
+            # loss concentrated in the dense sources (SelvaBox 28%, OAM-TCD 28%).
+            # 1000 matches TreePolygons so box and polygon AP are comparable, and
+            # sits above the model-side detections_per_img=300 cap so the metric
+            # never truncates what inference already emitted.
             "AP40":
                 DetectionMAP(geometry_name=self.geometry_name,
                              score_threshold=self.eval_score_threshold,
                              iou_type="bbox",
-                             iou_thresholds=[0.4]),
+                             iou_thresholds=[0.4],
+                             max_detection_thresholds=[1, 10, 1000]),
+            # AP60 is the stricter localisation complement to AP40: same
+            # predictions, same ranking, only the IoU a match requires changes.
+            # Reported alongside AP40 so a model that wins on loose overlap but
+            # localises poorly is visible; it is never reported on its own.
+            "AP60":
+                DetectionMAP(geometry_name=self.geometry_name,
+                             score_threshold=self.eval_score_threshold,
+                             iou_type="bbox",
+                             iou_thresholds=[0.6],
+                             max_detection_thresholds=[1, 10, 1000]),
             "merge_commission":
                 MergeCommissionMetric(
                     geometry_name=self.geometry_name,

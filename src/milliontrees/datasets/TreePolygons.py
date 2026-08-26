@@ -66,16 +66,6 @@ class TreePolygonsDataset(MillionTreesDataset):
         # v0.22 re-tiles the sources so every packaged image matches its tree-coverage
         # mask; in v0.21 the regenerated masks no longer match the v0.21 Allen imagery
         # and the loader raises on the validation split.
-        "0.22": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.22.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.22.zip",
-            # TODO: refresh with the real zip size once v0.22 zips finish building;
-            # unused for local download=False training/eval runs.
-            'compressed_size':
-                109263962653
-        },
         # v0.23 repackages every geometry alongside the TreeBoxes source restoration
         # (see TreeBoxes._versions_dict); polygon content is unchanged from v0.22.
         "0.23": {
@@ -84,6 +74,23 @@ class TreePolygonsDataset(MillionTreesDataset):
             'supervised_download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.23.zip",
             # TODO: refresh with the real zip size once v0.23 zips finish building;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                109263962653
+        },
+        # v0.24 repairs the out-of-distribution split -- see
+        # notes/ood_split_test_sources_and_leaks.md. Through v0.23 the OOD assignment was
+        # gated on each source's upstream existing_split pin, which leaked both ways:
+        # Troles et al. 2024 kept 2,140 train images while being a declared hold-out, and
+        # five undeclared sources (Cloutier, SelvaMask, NEON combined crowns, Lucas,
+        # Zuniga-Gonzalez) supplied 27.8% of the OOD test set. Troles is now a genuine
+        # hold-out and those five are train-only. Scores are NOT comparable to v0.23.
+        "0.24": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.24.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.24.zip",
+            # TODO: refresh with the real zip size once v0.24 zips finish building;
             # unused for local download=False training/eval runs.
             'compressed_size':
                 109263962653
@@ -101,6 +108,7 @@ class TreePolygonsDataset(MillionTreesDataset):
                  remove_incomplete=False,
                  complete_tiles_only=False,
                  include_sources=None,
+                 train_sources=None,
                  exclude_sources=None,
                  mini=False,
                  small=False,
@@ -179,6 +187,39 @@ class TreePolygonsDataset(MillionTreesDataset):
         if remove_incomplete:
             df = df[df['complete'] |
                     (df['split'] != 'train')].reset_index(drop=True)
+
+        # Restrict the TRAIN split to a subset of sources (wildcards allowed).
+        # Unlike include_sources, this leaves validation/test completely
+        # untouched, so a shrunken-training-set run is scored on exactly the
+        # same evaluation set as the full-train baseline. Added for the
+        # weak-supervision data-scaling ablation: if the benefit of the
+        # unsupervised boxes is being swamped by the size of the supervised
+        # training set, it should reappear once training is cut to one or two
+        # sources (notes/weak_supervision_data_scaling.md).
+        if train_sources:
+            train_patterns = (train_sources if isinstance(
+                train_sources, (list, tuple)) else [train_sources])
+            train_patterns = [str(p).lower() for p in train_patterns]
+            _src = df['source'].astype(str).str.lower()
+            _keep_train = _src.apply(
+                lambda s: any(fnmatch.fnmatch(s, p) for p in train_patterns))
+            _dropped = df[(df['split'] == 'train') &
+                          ~_keep_train]['source'].nunique()
+            df = df[_keep_train |
+                    (df['split'] != 'train')].reset_index(drop=True)
+            if (df['split'] == 'train').sum() == 0:
+                raise ValueError(
+                    f"train_sources={train_sources} matched no rows in the train "
+                    f"split. Available train sources: "
+                    f"{sorted(self.sources)}")
+            if self.verbose:
+                print(
+                    f"train_sources={train_sources}: kept "
+                    f"{df[df['split'] == 'train']['source'].nunique()} train "
+                    f"source(s), dropped {_dropped}; "
+                    f"{(df['split'] == 'train').sum()} train annotations on "
+                    f"{df[df['split'] == 'train']['filename'].nunique()} images "
+                    f"(eval splits untouched)")
 
         # Filter by include/exclude source names with wildcard support
         # Default: exclude sources containing 'unsupervised' unless include_unsupervised=True
@@ -479,12 +520,23 @@ class TreePolygonsDataset(MillionTreesDataset):
                                        score_threshold=score_threshold),
             # AP40 uses the same IoU (0.4) as the mask recall / mask-aware
             # precision metrics above, so AP and F1 agree on what counts as a
-            # match. It is the reported AP for every task; AP50 is not scored.
+            # match. It is the primary reported AP for every task; AP50 is not
+            # scored.
             "AP40":
                 DetectionMAP(geometry_name=self.geometry_name,
                              score_threshold=score_threshold,
                              iou_type="segm",
                              iou_thresholds=[0.4],
+                             max_detection_thresholds=[1, 10, 1000]),
+            # AP60 is the stricter localisation complement to AP40: same masks,
+            # same ranking, only the mask IoU a match requires changes. Reported
+            # alongside AP40 so a model that covers crowns loosely but delineates
+            # them poorly is visible; it is never reported on its own.
+            "AP60":
+                DetectionMAP(geometry_name=self.geometry_name,
+                             score_threshold=score_threshold,
+                             iou_type="segm",
+                             iou_thresholds=[0.6],
                              max_detection_thresholds=[1, 10, 1000]),
             "merge_commission":
                 MergeCommissionMetric(

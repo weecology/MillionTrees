@@ -87,16 +87,6 @@ class TreePointsDataset(MillionTreesDataset):
         # v0.22 re-tiles the sources so every packaged image matches its tree-coverage
         # mask; in v0.21 the regenerated masks no longer match the v0.21 Allen imagery
         # and the loader raises on the validation split.
-        "0.22": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.22.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.22.zip",
-            # TODO: refresh with the real zip size once v0.22 zips finish building;
-            # unused for local download=False training/eval runs.
-            'compressed_size':
-                190971944620
-        },
         # v0.23 repackages every geometry alongside the TreeBoxes source restoration
         # (see TreeBoxes._versions_dict); point content is unchanged from v0.22.
         "0.23": {
@@ -105,6 +95,29 @@ class TreePointsDataset(MillionTreesDataset):
             'supervised_download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.23.zip",
             # TODO: refresh with the real zip size once v0.23 zips finish building;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                190971944620
+        },
+        # v0.24 changes the point task substantially -- see
+        # notes/ood_split_test_sources_and_leaks.md:
+        #   * Beery et al. 2022 (AutoArborist) ships as 'Beery et al. 2022 unsupervised'.
+        #     Its labels are municipal inventory records, not image annotations (the TCD
+        #     canopy filter discards 49.7% of the raw points), and it is already barred
+        #     from evaluation -- yet it was 86.8% of supervised point train images.
+        #     Supervised point train drops to 3,403 images / 293,099 annotations.
+        #   * Amirkolaee et al. 2023 leaves the out-of-distribution hold-out: it IS the
+        #     TreeFormer dataset, so the pretrained checkpoint
+        #     (weecology/deepforest-tree-point) was trained on it.
+        #   * Dubrovin et al. 2024 joins the hold-out; OFO field 2025 becomes a genuine
+        #     hold-out (6,413 train images moved to test).
+        # Scores are NOT comparable to v0.23.
+        "0.24": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.24.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.24.zip",
+            # TODO: refresh with the real zip size once v0.24 zips finish building;
             # unused for local download=False training/eval runs.
             'compressed_size':
                 190971944620

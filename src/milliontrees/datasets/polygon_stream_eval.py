@@ -42,8 +42,11 @@ class TreePolygonsStreamingEvalState:
     _EW_KEYS = ("accuracy", "recall", "maskaware_precision", "merge_commission")
     # Every AP metric on the dataset that is present gets streamed. AP40 is the
     # leaderboard metric: it matches the IoU used by recall / mask-aware
-    # precision, so AP and F1 agree on what counts as a match.
-    _MAP_KEYS = ("AP40",)
+    # precision, so AP and F1 agree on what counts as a match. AP60 is its
+    # strict-localisation complement -- same masks and ranking, higher match
+    # IoU -- and shares the mask formatting below, so it costs only the second
+    # accumulation, not a second pass over the masks.
+    _MAP_KEYS = ("AP40", "AP60")
 
     def __init__(self, dataset: Any) -> None:
         self._dataset = dataset

@@ -113,6 +113,13 @@ learning a transferable notion of tree density — it is a strong fine-tuning ta
 generalizer. Applied users fine-tuning on local data should expect the within-distribution
 column; nobody should expect the validation column to follow from it.
 
+![Pretrained vs fine-tuned TreeFormer across the three evaluation regimes](public/treeformer_generalization_figure.png)
+
+One row per regime, pretrained (left) against fine-tuned (right). Every prediction is
+classified the way `MaskAwareKeypointPrecision` does — matched (green), counted false
+positive (red), and the mask-aware exemption for unmatched predictions on tree-covered
+pixels (grey) — so panel precision is the reported quantity rather than a generic dot plot.
+
 The source-level breakdown says the same thing. Amirkolaee is the within-distribution source
 where fine-tuning moves both axes the way the split does (recall 0.31 → 0.61, precision
 0.78 → 0.92, counting MAE 112 → 43). OFO is 1387 of the 3260 out-of-distribution test images
@@ -122,7 +129,22 @@ detection failure. Allen carries the validation counting collapse (MAE 47 → 13
 
 Precision figures here are mask-aware: an unmatched prediction landing on tree-covered pixels
 is exempted rather than counted as a false positive, so precision swings image to image on
-closed-canopy sources and only the source-level aggregate is meaningful.
+closed-canopy sources and only the source-level aggregate is meaningful. That is why the tile
+drawn in each panel is not a free choice: of nine candidates from the row's source, the one
+shown is whichever has per-tile recall and precision closest to the published aggregate for
+**both** models, so no panel contradicts the numbers printed above it.
+
+Regenerate with the frozen TreeFormer venv (CPU, no SLURM job needed). The `--version` pin is
+load-bearing — the loader default follows `_versions_dict` and would otherwise draw tiles from
+a different packaging than the result files the aggregates come from:
+
+```bash
+.venv-treeformer/bin/python scripts/make_generalization_figure.py \
+    --version 0.23 --out docs/public/treeformer_generalization_figure.png
+# re-style without redoing inference (panels are cached next to the output):
+.venv-treeformer/bin/python scripts/make_generalization_figure.py --from-cache \
+    --out docs/public/treeformer_generalization_figure.svg
+```
 
 ![TreePoints: model predictions by split](leaderboard_predictions_points.png)
 

@@ -237,3 +237,14 @@ existing_models/*/outputs_ap_iou/
 # per-image overlays behind them (~286 MB) are not.
 docs/public/validation_completeness/boxes/
 docs/public/validation_completeness/polygons/
+
+# Panel caches written next to the figures they build (scripts/make_*_figure.py
+# --from-cache). Re-derived from the result files in one pass; the figure itself
+# is what belongs in the repo, not the ~12 MB of intermediate arrays behind it.
+docs/public/*.panels.npz
+
+# Per-tile AP40-vs-AP60 close-ups behind notes/ap40_vs_ap60_visual.md. Same rule
+# as validation_completeness above: the four summary figures the note embeds are
+# tracked, the 15 whole-tile contact sheets (73 MB) are regenerated on demand
+# with scripts/visualize_ap40_vs_ap60.py --out-dir docs/public/ap40_vs_ap60/allen.
+docs/public/ap40_vs_ap60/allen/

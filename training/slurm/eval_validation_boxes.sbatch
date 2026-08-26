@@ -23,10 +23,12 @@ cd /blue/ewhite/b.weinstein/src/MillionTrees
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
 SPLIT=out-of-distribution
 
-# Pinned to the OOD leaderboard checkpoint (boxes-best-v2: newest, and its saved
-# results reproduce the leaderboard OOD row recall 0.616 / precision 0.727).
+# Pinned to the OOD leaderboard checkpoint: boxes-best.ckpt, written by the v0.23
+# training run (38750847, 2026-08-06). NOT boxes-best-v2.ckpt -- despite the name
+# that is the older 06-26 v0.19-era model, and it was this script's default until
+# 2026-08-22, so job 38825227 had to override CKPT by hand to score the right one.
 # Override at run time with: CKPT=/path/to.ckpt sbatch eval_validation_boxes.sbatch
-CKPT="${CKPT:-training/boxes/outputs/${SPLIT}/checkpoints/boxes-best-v2.ckpt}"
+CKPT="${CKPT:-training/boxes/outputs/${SPLIT}/checkpoints/boxes-best.ckpt}"
 if [ ! -f "$CKPT" ]; then echo "ERROR: checkpoint not found: $CKPT" >&2; exit 1; fi
 echo "=== Eval boxes on validation (Allen+Frey): split=$SPLIT ==="
 echo "Checkpoint: $CKPT"
