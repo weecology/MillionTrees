@@ -120,6 +120,11 @@ polygon = [
 package-dir = {"" = "src"}
 packages.find = {where = ["src"], include = ["milliontrees*"]}
 
+[tool.setuptools.package-data]
+# The license lookup tables must ship with the wheel: a missing table would
+# make every license filter silently return nothing usable.
+milliontrees = ["common/license_data/*.csv"]
+
 [tool.uv.sources]
 # The two DeepForest forks (treeformer-training for points, polygon-maskrcnn-workflow
 # for polygons) are the same package, so only one can be installed in .venv at a time

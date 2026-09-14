@@ -23,6 +23,7 @@ from milliontrees.common.metrics.all_metrics import (
     MaskAwareMaskPrecision,
     MergeCommissionMetric,
 )
+from milliontrees.common.licenses import (filter_by_license, source_license_map)
 from milliontrees.common.onboarding import print_dataset_summary
 
 
@@ -50,6 +51,21 @@ class TreePolygonsDataset(MillionTreesDataset):
 
     License:
         This dataset is distributed under the Creative Commons Attribution License.
+        Each source carries its own upstream license; the per-source table is
+        ``milliontrees.common.licenses`` and the ``licenses=`` argument below
+        selects the rows a given use is allowed to train on.
+
+    Args:
+        licenses (str | list): Keep only annotations whose upstream license permits
+            the intended use. Accepts a preset (``'commercial'``, ``'permissive'``,
+            ``'derivatives'``, ``'no-share-alike'``, ``'no-copyleft'``,
+            ``'public-domain'``, ``'noncommercial'``, ``'known'``, ``'all'``,
+            ``'unknown'``), a license id (``'CC-BY-4.0'``), an fnmatch pattern over
+            ids (``'CC-BY-*'``), or any list of those, which selects their union.
+            Rows are dropped, never reassigned: the surviving images keep the
+            train/validation/test split they already had. Sources with unconfirmed
+            terms are ``unknown`` and are excluded by every preset but
+            ``'all'``/``'unknown'``. See ``milliontrees.common.licenses``.
     """
 
     _dataset_name = 'TreePolygons'
@@ -110,6 +126,7 @@ class TreePolygonsDataset(MillionTreesDataset):
                  include_sources=None,
                  train_sources=None,
                  exclude_sources=None,
+                 licenses=None,
                  mini=False,
                  small=False,
                  verbose=True,
@@ -248,6 +265,18 @@ class TreePolygonsDataset(MillionTreesDataset):
             mask_exclude = source_str.apply(lambda s: any(
                 fnmatch.fnmatch(s, p) for p in patterns_exclude_lower))
             df = df[~mask_exclude]
+        # Upstream license of every source on hand, resolved from the unique
+        # source names so the default load pays nothing for it.
+        self.source_licenses = source_license_map(df)
+        self.licenses = licenses
+        if licenses is not None:
+            # Keep only the annotations the selected license(s) permit. This
+            # drops rows and nothing else: every surviving image keeps the
+            # train/validation/test assignment it already had, so a
+            # license-restricted run is scored on a subset of the same
+            # benchmark splits rather than a re-split of them.
+            df, _ = filter_by_license(df, licenses, verbose=self.verbose)
+            self.source_licenses = source_license_map(df)
         selected_source_count = df['source'].nunique()
         df = df.reset_index(drop=True)
 
@@ -361,6 +390,7 @@ class TreePolygonsDataset(MillionTreesDataset):
                 small=self.small,
                 include_patterns=include_patterns,
                 exclude_patterns=exclude_patterns,
+                licenses=licenses,
             )
 
         super().__init__(root_dir, download, split_scheme)

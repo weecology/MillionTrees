@@ -1,0 +1,22 @@
+# Per-row license overrides, for sources whose annotations do not all share the
+# license recorded in sources.csv.
+#
+# Each row narrows a source: every annotation whose `source` matches `source`
+# (exactly, ignoring case and surrounding whitespace) AND whose `filename` matches
+# the fnmatch `filename_pattern` takes `license` instead of the source-level one.
+# Rows are applied top to bottom, so a later row wins over an earlier one; any
+# annotation matched by no row keeps its source-level license.
+#
+# Open Forest Observatory is the reason this file exists. OFO field plots are
+# contributed by different data owners: some are CC-BY-NC-SA, others CC0. The
+# packaged filenames are `<mission_id>_ortho_<tile>_OFO_field_2025.png`, so one
+# row per mission_id assigns that plot's license, e.g.
+#
+#   OFO field 2025,000018_*,CC0-1.0,plot contributed under CC0
+#
+# Until the per-mission rows are filled in, `OFO field 2025` carries the more
+# restrictive CC-BY-NC-SA-4.0 from sources.csv, so a commercial-use filter drops
+# the whole source rather than including plots it may not be allowed to.
+#
+# Lines starting with '#' are comments.
+source,filename_pattern,license,notes
