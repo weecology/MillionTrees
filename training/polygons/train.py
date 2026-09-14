@@ -22,6 +22,7 @@ The bridge from MillionTrees splits to DeepForest is a generated annotation CSV
 """
 
 import argparse
+import fnmatch
 import glob
 import json
 import math
@@ -52,7 +53,8 @@ DEFAULT_CONFIG = str(Path(__file__).with_name("deepforest_polygon.yaml"))
 # --------------------------------------------------------------------------- #
 # MillionTrees -> DeepForest annotation bridge
 # --------------------------------------------------------------------------- #
-def build_annotation_csvs(data_dir, split_scheme, output_dir, include_unsupervised):
+def build_annotation_csvs(data_dir, split_scheme, output_dir, include_unsupervised,
+                         train_sources=None, train_frac=1.0, seed=42):
     """Write DeepForest-format train/val annotation CSVs from a MillionTrees split.
 
     The MillionTrees ``<split_scheme>.csv`` carries one polygon per row with a
@@ -83,6 +85,27 @@ def build_annotation_csvs(data_dir, split_scheme, output_dir, include_unsupervis
 
     def _write(split_name, path):
         rows = df[df["split"] == split_name]
+        # Shrink the TRAIN split only; val/test stay identical to a full-train
+        # run so the comparison against the baseline is apples to apples.
+        if split_name == "train":
+            if train_sources:
+                patterns = [str(p).lower() for p in train_sources]
+                src = rows["source"].astype(str).str.lower()
+                keep = src.apply(
+                    lambda v: any(fnmatch.fnmatch(v, pat) for pat in patterns))
+                rows = rows[keep]
+                if len(rows) == 0:
+                    raise ValueError(
+                        f"--train-sources {train_sources} matched no train rows. "
+                        f"Available: {sorted(df[df['split'] == 'train']['source'].unique())}")
+            if train_frac < 1.0:
+                imgs = np.sort(rows["filename"].unique())
+                n_keep = max(1, int(round(len(imgs) * train_frac)))
+                rng = np.random.default_rng(seed)
+                keep_imgs = set(rng.permutation(imgs)[:n_keep])
+                rows = rows[rows["filename"].isin(keep_imgs)]
+            print(f"[bridge] train subset: {rows['source'].nunique()} source(s), "
+                  f"{rows['filename'].nunique()} images, {len(rows)} polygons")
         if len(rows) == 0:
             return None, 0
         out = rows[["filename", "polygon", "label"]].rename(
@@ -118,6 +141,32 @@ def build_config(args, train_csv, val_csv, images_dir, log_root):
             "root_dir": images_dir if val_csv else None,
         },
     }
+    if args.warmup_epochs > 0:
+        # Ramp the LR in from near-zero over the first N epochs instead of
+        # hitting a transferred network with the full rate at step 0.
+        #
+        # This matters far more for --init-mode box_pretrained_maskrcnn than it
+        # ever did for the trunk-only arm. Stage 1 trains at lr 1e-3; stage 2 runs
+        # at 1e-2, a 10x jump applied from the very first iteration. When the only
+        # thing transferred was a ResNet trunk that was survivable, but the
+        # Mask R-CNN arm also transfers the RPN and the ROI box head -- the layers
+        # that actually encode "this is a tree and this is its extent", and the
+        # ones a large unwarmed step is most able to wash out. The stage-1 audit
+        # named this LR discontinuity as a sufficient mechanism for the null on
+        # its own (notes/weak_supervision_stage1_audit.md, section 4).
+        #
+        # Default is 0, so every existing run keeps its recipe and stays
+        # comparable; when this is on, BOTH arms of an ablation must use it.
+        overrides["train"]["scheduler"] = {
+            "type": "multistepLR",
+            "params": {
+                "milestones": [50, 80, 90],
+                "gamma": 0.1,
+                "warmup_epochs": args.warmup_epochs,
+                "warmup_start_factor": args.warmup_start_factor,
+            },
+        }
+
     if not args.augment:
         # Keep the geometric/photometric pipeline off for sanity runs.
         overrides["train"]["augmentations"] = []
@@ -196,6 +245,18 @@ def build_config(args, train_csv, val_csv, images_dir, log_root):
             overrides["train"]["augmentations"] = list(crop_aug)
         # Validation keeps the config default; leaderboard eval uses predict_tile.
 
+    # Both ablation arms must start from torchvision's COCO Mask R-CNN, so
+    # model.name has to be None *at construction time*: create_model() takes the
+    # load_model() branch for any non-None name, and the base config default is
+    # "weecology/deepforest-tree". That path calls MaskRCNN.from_pretrained(),
+    # which builds a cold-start shell and then loads a RetinaNet checkpoint whose
+    # keys never match the Mask R-CNN — so nothing lands on the backbone and the
+    # "COCO" arm trains a ResNet-50 from scratch (measured: 0/318 backbone.body
+    # tensors equal COCO_V1, all 53 BN running_mean still 0). Nulling the name
+    # routes through models.maskrcnn.Model.create_model(pretrained=None) ->
+    # MaskRCNN(backbone_weights="COCO_V1"), i.e. real COCO backbone+FPN+heads.
+    overrides["model"] = {"name": None}
+
     cfg = utilities.load_config(config_name=args.config, overrides=overrides)
     return cfg
 
@@ -203,6 +264,53 @@ def build_config(args, train_csv, val_csv, images_dir, log_root):
 # --------------------------------------------------------------------------- #
 # Box-pretrained backbone (weak-supervision ablation, Table 6)
 # --------------------------------------------------------------------------- #
+def assert_coco_trunk(model):
+    """Raise unless the Mask R-CNN backbone+FPN is exactly torchvision COCO_V1.
+
+    Table 6 is only interpretable if the control arm really is a generic COCO
+    backbone. Jobs 38750867/68/69 were not: the config default
+    model.name="weecology/deepforest-tree" sent construction through
+    MaskRCNN.from_pretrained(), which silently left the ResNet randomly
+    initialized (see build_config). The published +0.083 AP40 gain was therefore
+    box-pretrained-vs-*random*, not box-pretrained-vs-COCO.
+
+    Guarding beats commenting: compare every backbone tensor against a freshly
+    constructed torchvision maskrcnn_resnet50_fpn_v2 COCO_V1 -- the same factory
+    deepforest.models.maskrcnn uses -- and refuse to train on a mismatch.
+    """
+    from torchvision.models.detection import maskrcnn_resnet50_fpn_v2
+
+    reference = maskrcnn_resnet50_fpn_v2(weights="COCO_V1").backbone.state_dict()
+    actual = model.model.backbone.state_dict()
+
+    missing = sorted(set(reference) - set(actual))
+    extra = sorted(set(actual) - set(reference))
+    if missing or extra:
+        raise RuntimeError(
+            "Backbone does not have the torchvision Mask R-CNN v2 structure "
+            f"(missing={missing[:5]}, unexpected={extra[:5]})."
+        )
+
+    mismatched = [
+        key for key, value in reference.items()
+        if not torch.equal(value, actual[key].detach().cpu().to(value.dtype))
+    ]
+    if mismatched:
+        raise RuntimeError(
+            f"UNPRETRAINED INIT: {len(mismatched)}/{len(reference)} backbone/FPN "
+            "tensors differ from torchvision Mask R-CNN v2 COCO_V1 - this is not "
+            "a COCO baseline. Most likely config.model.name is non-None (default "
+            "'weecology/deepforest-tree'), which leaves the ResNet at random init. "
+            f"First mismatches: {mismatched[:5]}"
+        )
+
+    print(
+        f"Verified COCO init: all {len(reference)} backbone/FPN tensors match "
+        "torchvision Mask R-CNN v2 COCO_V1"
+    )
+    return len(reference)
+
+
 def _extract_box_pretrained_backbone(checkpoint_path):
     """Load a DeepForest box checkpoint; return backbone keys for the Mask R-CNN."""
     ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
@@ -236,7 +344,105 @@ def apply_box_pretrained_backbone(deepforest_module, checkpoint_path):
     loaded = sum(1 for k in backbone_state if k.startswith("backbone.body."))
     if loaded == 0:
         raise ValueError("No backbone.body keys loaded from box pretrained checkpoint.")
+    print(f"Loaded {loaded} backbone keys; {len(missing)} keys left at COCO init.")
     return {"missing": missing, "loaded_backbone_keys": loaded}
+
+
+MASK_HEAD_PREFIXES = ("roi_heads.mask_head.", "roi_heads.mask_predictor.")
+
+
+def _extract_box_pretrained_maskrcnn(checkpoint_path):
+    """Load a stage-1 Mask R-CNN export; return its Mask R-CNN-keyed tensors.
+
+    Rejects the two exports that would *silently* under-transfer if they were
+    accepted here. Both live in the same output directory as the right one and
+    differ only by filename, which is exactly the mistake worth failing loudly on:
+
+    * ``box_backbone_<split>.pt`` -- trunk only. ``load_state_dict(strict=False)``
+      would happily take its 318 keys, leave RPN and the ROI box head at COCO,
+      and produce a run indistinguishable from the old ``box_pretrained`` arm
+      while claiming to be the new one.
+    * ``box_network_<split>.pt`` -- a RetinaNet. Its keys are ``head.*`` /
+      ``anchor_generator.*``; none match, so the load would be a no-op.
+    """
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    state = ckpt.get("state_dict", ckpt)
+    prefix = "model."
+    mapped = {
+        key[len(prefix):]: value
+        for key, value in state.items()
+        if key.startswith(prefix)
+    }
+    if not mapped:
+        raise ValueError(
+            f"No 'model.'-prefixed keys found in {checkpoint_path}."
+        )
+
+    has_rpn = any(k.startswith("rpn.") for k in mapped)
+    has_box_head = any(k.startswith("roi_heads.box_predictor.") for k in mapped)
+    if not (has_rpn and has_box_head):
+        raise ValueError(
+            f"{checkpoint_path} is not a Mask R-CNN stage-1 export: it carries "
+            f"no {'rpn.*' if not has_rpn else 'roi_heads.box_predictor.*'} "
+            "tensors. --init-mode box_pretrained_maskrcnn needs the "
+            "'maskrcnn_transferable_<split>.pt' file written by "
+            "pretrain_backbone_for_polygons.py --arch maskrcnn. "
+            "(box_backbone_*.pt is trunk-only and box_network_*.pt is a "
+            "RetinaNet; use --init-mode box_pretrained for the former.)"
+        )
+    leaked = sorted(k for k in mapped if k.startswith(MASK_HEAD_PREFIXES))
+    if leaked:
+        raise ValueError(
+            f"{checkpoint_path} contains {len(leaked)} mask-head tensors "
+            f"(e.g. {leaked[0]}). Stage 1 trains on boxes with the mask branch "
+            "disabled, so it cannot have learned a mask head -- this export is "
+            "not from the arch this flag expects."
+        )
+    return mapped
+
+
+def apply_box_pretrained_maskrcnn(deepforest_module, checkpoint_path):
+    """Transplant a whole box-pretrained Mask R-CNN except its mask head.
+
+    The polygon analogue of the box->box whole-network arm. Where
+    :func:`apply_box_pretrained_backbone` moves only ``backbone.body.*`` -- and
+    in practice only 265 of that body's 318 tensors, leaving the FPN, the RPN
+    and both ROI heads at COCO or random init -- this moves all 404 tensors a
+    box-supervised stage 1 is able to learn. The 28 mask-head tensors stay at
+    COCO by construction: no weak box carries mask supervision.
+
+    That truncation was the standing explanation for the polygon null (see
+    notes/weak_supervision_pretraining_table.md section 3). Closing it is the
+    experiment.
+    """
+    state = _extract_box_pretrained_maskrcnn(checkpoint_path)
+    missing, unexpected = deepforest_module.model.load_state_dict(state, strict=False)
+    if unexpected:
+        raise ValueError(
+            f"Unexpected keys when loading the stage-1 Mask R-CNN: {unexpected[:5]}"
+        )
+    unexplained = [k for k in missing if not k.startswith(MASK_HEAD_PREFIXES)]
+    if unexplained:
+        raise ValueError(
+            f"{len(unexplained)} tensors were left un-transferred and are not "
+            f"mask-head tensors: {unexplained[:5]}. The stage-1 export does not "
+            "cover this architecture -- refusing to train a partially "
+            "initialized ablation arm."
+        )
+    # Count the untouched tensors from the module, not from ``missing``:
+    # ``_NormBase._load_from_state_dict`` silently defaults an absent
+    # ``num_batches_tracked`` to 0 instead of reporting it, so ``missing``
+    # undercounts the mask head by one tensor per BN layer.
+    held = sum(
+        1 for k in deepforest_module.model.state_dict()
+        if k.startswith(MASK_HEAD_PREFIXES)
+    )
+    print(
+        f"Loaded {len(state)} stage-1 Mask R-CNN tensors "
+        f"(backbone + FPN + RPN + ROI box head); {held} mask-head tensors "
+        "left at COCO init."
+    )
+    return {"loaded_keys": len(state), "mask_head_keys_at_coco": held}
 
 
 # --------------------------------------------------------------------------- #
@@ -623,9 +829,14 @@ def main():
                              "that guarantees each crop contains at least one annotation (use with "
                              "--eval-inference tiled).")
     parser.add_argument("--init-mode", type=str, default="coco",
-                        choices=["coco", "box_pretrained"],
+                        choices=["coco", "box_pretrained",
+                                 "box_pretrained_maskrcnn"],
                         help="coco: DeepForest COCO-initialized Mask R-CNN. "
-                             "box_pretrained: overwrite the ResNet backbone with a box checkpoint.")
+                             "box_pretrained: overwrite the ResNet backbone with a box checkpoint "
+                             "(trunk only, 265 tensors -- RetinaNet stage 1). "
+                             "box_pretrained_maskrcnn: transplant a whole box-pretrained "
+                             "Mask R-CNN except its mask head (404 of 432 tensors), which "
+                             "requires a stage 1 run with --arch maskrcnn.")
     parser.add_argument("--box-backbone-checkpoint", type=str, default=None,
                         help="DeepForest/box checkpoint when --init-mode=box_pretrained.")
     parser.add_argument("--include-unsupervised", action="store_true",
@@ -633,7 +844,23 @@ def main():
     parser.add_argument("--data-scope", type=str, default="subset",
                         choices=["subset", "full"],
                         help="Tag for experiment aggregation (subset vs full data pull).")
+    parser.add_argument("--warmup-epochs", type=int, default=0,
+                        help="Linear LR warmup over the first N epochs. 0 (default) "
+                             "keeps the historical recipe. Strongly recommended for "
+                             "--init-mode box_pretrained_maskrcnn, which transfers the "
+                             "RPN and ROI box head into a stage running at 10x the "
+                             "learning rate that trained them. Both arms of an "
+                             "ablation must use the same value.")
+    parser.add_argument("--warmup-start-factor", type=float, default=0.001,
+                        help="LR multiplier at step 0 of the warmup ramp.")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--train-sources", type=str, nargs="+", default=None,
+                        help="Restrict the TRAIN split to these source names "
+                             "(fnmatch wildcards allowed). Val/test untouched, so the "
+                             "run stays comparable to the full-train baseline.")
+    parser.add_argument("--train-frac", type=float, default=1.0,
+                        help="Randomly keep this fraction of TRAIN images (after "
+                             "--train-sources), seeded by --seed.")
     parser.add_argument("--augment", action=argparse.BooleanOptionalAction, default=True,
                         help="Apply the config's train augmentations. --no-augment strips them.")
     parser.add_argument("--early-stopping", action=argparse.BooleanOptionalAction, default=False,
@@ -666,7 +893,8 @@ def main():
     data_dir = polygon_dataset._data_dir
 
     train_csv, val_csv, images_dir = build_annotation_csvs(
-        data_dir, args.split_scheme, args.output_dir, args.include_unsupervised
+        data_dir, args.split_scheme, args.output_dir, args.include_unsupervised,
+        train_sources=args.train_sources, train_frac=args.train_frac, seed=args.seed
     )
     if train_csv is None:
         print("No training annotations for this split; skipping training.")
@@ -682,15 +910,35 @@ def main():
 
     model = deepforest(config=cfg)
     init_details = {"init_mode": args.init_mode, "stack": "deepforest-maskrcnn"}
-    if args.init_mode == "box_pretrained":
+    if args.init_mode == "coco":
+        assert_coco_trunk(model)
+    elif args.init_mode == "box_pretrained":
         if args.box_backbone_checkpoint is None:
             raise ValueError(
                 "--box-backbone-checkpoint is required for --init-mode=box_pretrained"
             )
+        # Verify the base is COCO *before* the swap, so a failure here is
+        # unambiguously the base and not the exported backbone.
+        assert_coco_trunk(model)
         details = apply_box_pretrained_backbone(model, args.box_backbone_checkpoint)
         init_details.update({
             "box_backbone_checkpoint": str(Path(args.box_backbone_checkpoint).resolve()),
             "loaded_backbone_keys": details["loaded_backbone_keys"],
+        })
+    elif args.init_mode == "box_pretrained_maskrcnn":
+        if args.box_backbone_checkpoint is None:
+            raise ValueError(
+                "--box-backbone-checkpoint is required for "
+                "--init-mode=box_pretrained_maskrcnn (pass the "
+                "maskrcnn_transferable_<split>.pt written by "
+                "pretrain_backbone_for_polygons.py --arch maskrcnn)"
+            )
+        assert_coco_trunk(model)
+        details = apply_box_pretrained_maskrcnn(model, args.box_backbone_checkpoint)
+        init_details.update({
+            "box_backbone_checkpoint": str(Path(args.box_backbone_checkpoint).resolve()),
+            "loaded_keys": details["loaded_keys"],
+            "mask_head_keys_at_coco": details["mask_head_keys_at_coco"],
         })
 
     checkpoint_cb = build_trainer(model, args, log_root)

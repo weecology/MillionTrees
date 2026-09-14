@@ -1,4 +1,4 @@
-"""Re-score dumped validation predictions: AP50 vs AP40, all tiles vs complete tiles.
+"""Re-score dumped validation predictions: AP at several IoUs, all tiles vs complete tiles.
 
 Answers the manuscript blocker "is AP50 low because the reference data is incompletely
 annotated, and does aligning AP's IoU with F1's IoU close the gap?" without re-running any
@@ -7,7 +7,9 @@ and reports, per source and overall:
 
   recall@0.4, plain precision@0.4, F1  -- the F1 ingredients, but WITHOUT the
       tree-coverage-mask forgiveness the leaderboard's mask-aware precision applies
-  AP50, AP40                           -- identical predictions, only the IoU differs
+  AP40, AP50, AP60                     -- identical predictions, only the matching IoU
+      differs. AP40 is the leaderboard AP (it uses the IoU recall/precision match at);
+      AP60 is the stricter localisation complement reported beside it.
 
 for three tile regimes:
 
@@ -35,6 +37,15 @@ from milliontrees.common.metrics.matching import greedy_iou_match, n_matched_gt
 from milliontrees.common.prediction_dump import decode_masks, load_predictions
 
 REGIMES = ("all", "complete", "cropped")
+
+# AP is reported at each of these IoUs. 0.4 is the leaderboard AP (matches the IoU
+# recall / mask-aware precision use); 0.6 is the stricter localisation complement.
+AP_IOUS = (0.4, 0.5, 0.6)
+
+
+def ap_key(iou):
+    """Column name for AP at ``iou`` -- 0.4 -> 'AP40'."""
+    return f"AP{int(round(iou * 100))}"
 
 
 # --------------------------------------------------------------------------- #
@@ -213,15 +224,20 @@ def recall_precision(records, iou_type, iou_threshold):
 def average_precision(records, iou_type, iou_threshold, max_detections=None):
     """AP at a single IoU, matching ``DetectionMAP``'s torchmetrics configuration.
 
-    ``max_detections`` overrides the per-image detection cap. The leaderboard leaves
-    TreeBoxes on torchmetrics' default (top 100 per image) while TreePolygons raises it
-    to 1000, so a box model that emits >100 detections on a 2000px tile is silently
-    truncated -- worth checking before blaming the IoU threshold.
+    ``max_detections`` overrides the per-image detection cap. Both TreeBoxes and
+    TreePolygons now use [1, 10, 1000], so that is the default here for either
+    iou_type and an offline re-score matches what the dataset reports.
+
+    Before 2026-08-26 TreeBoxes left this at torchmetrics' default (top 100 per
+    image), which silently truncated dense crops: ~20-25% of test ground truth was
+    unreachable and an oracle predicting GT exactly scored AP40 0.80 rather than 1.0.
+    Box AP numbers produced before that date are not comparable to current ones --
+    pass --max-detections 100 to reproduce them.
     """
     from milliontrees.common.metrics.all_metrics import make_mean_average_precision
 
     max_dets = max_detections
-    if max_dets is None and iou_type == "segm":
+    if max_dets is None:
         max_dets = [1, 10, 1000]
     kwargs = dict(iou_type=iou_type, iou_thresholds=[iou_threshold], class_metrics=False)
     if max_dets is not None:
@@ -254,19 +270,20 @@ def average_precision(records, iou_type, iou_threshold, max_detections=None):
     return value
 
 
-def score_group(records, iou_type, match_iou, max_detections=None):
+def score_group(records, iou_type, match_iou, max_detections=None, ap_ious=AP_IOUS):
     recall, precision = recall_precision(records, iou_type, match_iou)
     f1 = (2 * recall * precision / (recall + precision)) if (recall + precision) > 0 else 0.0
-    return {
+    stats = {
         "n_images": len(records),
         "n_gt": int(sum(len(r["gt_boxes"]) for r in records)),
         "n_pred": int(sum(len(r["pred_boxes"]) for r in records)),
         "recall": recall,
         "precision_plain": precision,
         "f1_plain": f1,
-        "AP50": average_precision(records, iou_type, 0.5, max_detections),
-        "AP40": average_precision(records, iou_type, 0.4, max_detections),
     }
+    for iou in ap_ious:
+        stats[ap_key(iou)] = average_precision(records, iou_type, iou, max_detections)
+    return stats
 
 
 def macro_average(per_source_stats):
@@ -275,7 +292,8 @@ def macro_average(per_source_stats):
     out = {"n_images": sum(s["n_images"] for s in stats),
            "n_gt": sum(s["n_gt"] for s in stats),
            "n_pred": sum(s["n_pred"] for s in stats)}
-    for key in ("recall", "precision_plain", "f1_plain", "AP50", "AP40"):
+    ap_keys = [k for k in (stats[0] if stats else {}) if k.startswith("AP")]
+    for key in ["recall", "precision_plain", "f1_plain", *ap_keys]:
         out[key] = float(np.mean([s[key] for s in stats])) if stats else float("nan")
     return out
 
@@ -293,9 +311,14 @@ def main():
                     help="'complete' regime: max fraction of the tile on any side that may "
                          "sit outside the annotated footprint.")
     ap.add_argument("--regimes", nargs="+", default=list(REGIMES), choices=list(REGIMES))
+    ap.add_argument("--ap-ious", nargs="+", type=float, default=list(AP_IOUS),
+                    help="IoU thresholds AP is computed at (one column each). Default "
+                         "0.4 (the leaderboard AP) 0.5 0.6 (strict complement).")
     ap.add_argument("--max-detections", type=int, default=None,
                     help="Override the per-image detection cap used by AP (torchmetrics "
-                         "max_detection_thresholds). TreeBoxes AP defaults to 100.")
+                         "max_detection_thresholds). Defaults to 1000, matching both "
+                         "TreeBoxes and TreePolygons. Pass 100 to reproduce box AP "
+                         "numbers from before 2026-08-26.")
     ap.add_argument("--out-csv", default=None)
     args = ap.parse_args()
 
@@ -323,24 +346,26 @@ def main():
             max_dets = ([1, 10, args.max_detections] if args.max_detections else None)
             sources = sorted({r["source"] for r in subset if r["source"]})
             per_source = {src: score_group([r for r in subset if r["source"] == src],
-                                           iou_type, args.match_iou, max_dets)
+                                           iou_type, args.match_iou, max_dets,
+                                           args.ap_ious)
                           for src in sources}
             # "overall (macro)" is the macro-average over sources, the convention
             # MillionTreesDataset.eval() reports, so these rows line up with the
             # results_*.txt files the leaderboard is built from.
             groups = {"overall (macro)": macro_average(per_source.values()),
                       "overall (pooled)": score_group(subset, iou_type, args.match_iou,
-                                                      max_dets)}
+                                                      max_dets, args.ap_ious)}
             groups.update(per_source)
             for name, stats in groups.items():
                 rows.append(dict(model=model, task=meta.get("task"),
                                  eval_split=meta.get("eval_split"), regime=regime,
                                  group=name, score_threshold=thr, **stats))
+                aps = "  ".join(f"{ap_key(i)}={stats[ap_key(i)]:.3f}"
+                                for i in args.ap_ious)
                 print(f"  [{regime:8s}] {name:<22s} n={stats['n_images']:>3d} "
                       f"gt={stats['n_gt']:>5d} pred={stats['n_pred']:>5d}  "
                       f"R={stats['recall']:.3f} P={stats['precision_plain']:.3f} "
-                      f"F1={stats['f1_plain']:.3f}  AP50={stats['AP50']:.3f} "
-                      f"AP40={stats['AP40']:.3f}")
+                      f"F1={stats['f1_plain']:.3f}  {aps}")
 
     df = pd.DataFrame(rows)
     if args.out_csv:

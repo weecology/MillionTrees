@@ -84,22 +84,44 @@ v0.19) — confirm that key exists (see `[[project_bump_versions_dict_per_releas
 Report the four-row Recall / Mask-aware Precision / AP40 comparison per split in
 `notes/weak_supervision_pretraining_table.md` and the manuscript Table 6.
 
-## 4. AP is AP40 (IoU 0.4) — there is no AP50
+## 4. AP is AP40 (headline) + AP60 (strict complement) — there is no AP50
 
-Every reported AP in this project is **AP40**: average precision with predictions matched to
-ground truth at **IoU 0.4**, the same IoU the recall and mask-aware precision behind F1 use, so
-AP and F1 agree on what counts as a match. `TreeBoxes`/`TreePolygons` register a single `AP40`
-metric (`src/milliontrees/datasets/`), and the parsers in `scripts/` read `Average AP40:`.
+The headline AP in this project is **AP40**: average precision with predictions matched to ground
+truth at **IoU 0.4**, the same IoU the recall and mask-aware precision behind F1 use, so AP and F1
+agree on what counts as a match. Since 2026-08-22 `TreeBoxes`/`TreePolygons` also register **AP60**
+(IoU 0.6) — same predictions, same ranking, stricter match — so a result file emits both
+`Average AP40:` and `Average AP60:`. The parsers in `scripts/` read `Average AP40:`; add the AP60
+pattern when a table needs the second column.
 
 Consequences to remember:
 
+- **AP40 and AP60 are reported together, and AP60 is never reported alone.** On its own it is
+  unreadable (crown boundaries are ambiguous at IoU 0.6); its job is the AP40 → AP60 *drop*, which
+  separates finding trees from delineating them. On the validation split boxes retain 6–53 % of
+  AP40 at AP60 and spread widely; polygons all sit at 33–37 % and separate nobody.
 - **Never reintroduce an AP50 column.** A result file that only has `Average AP50:` is a run made
-  before this change; it needs re-evaluation, not a table that mixes IoUs. `make_benchmark_table.py`
+  before 2026-08-04; it needs re-evaluation, not a table that mixes IoUs. `make_benchmark_table.py`
   deliberately prints `-` for those rather than silently falling back.
+- **AP is scored with `max_detection_thresholds=[1, 10, 1000]` on every geometry.** Never leave
+  this at torchmetrics' default: `None` resolves to `[1, 10, 100]`, which scores only the 100
+  highest-scoring predictions per image. TreeBoxes ran that way until 2026-08-26 and box crops are
+  dense (mean ~75-83 GT/image, p99 ~300), so ~20 % (OOD) to ~25 % (WD) of test ground truth was
+  unreachable — an oracle predicting GT exactly scored AP40 0.80 / 0.75 instead of 1.0, with the
+  loss concentrated in the dense sources (SelvaBox 28 %, OAM-TCD 28 %, Sun et al. 2022 62 %). It
+  also made box and polygon AP incomparable, since TreePolygons always used 1000. **Box AP40/AP60
+  from before 2026-08-26 needs re-scoring**; recall / mask-aware precision / F1 / counting MAE are
+  unaffected (`DetectionAccuracy` has no per-image cap). On validation the shift is small
+  (macro AP40 +0.000 to +0.005) because only 2.5 % of its GT was capped; the test splits move much
+  more. `rescore_validation_ap.py` defaults to 1000 — pass `--max-detections 100` to reproduce old
+  numbers.
 - AP40 runs ~+0.04 to +0.11 above the old AP50 on the same predictions, so numbers are **not**
   comparable to pre-2026-08-04 tables. Older analysis docs keep their AP50 figures and say so.
 - The historical AP50-vs-AP40 comparison that motivated this lives in
-  `notes/ap50_vs_ap40_existing_models.md` (`scripts/make_ap_iou_table.py`, `outputs_ap_iou/` runs).
+  `notes/ap50_vs_ap40_existing_models.md` (`scripts/make_ap_iou_table.py`, `outputs_ap_iou/` runs);
+  the AP40-vs-AP60 validation comparison is `notes/leaderboard_validation.md` +
+  `notes/validation_ap40_ap60.csv` (`scripts/rescore_validation_ap.py --ap-ious`).
+- Any AP question at a *new* IoU is answered offline from a `--save-predictions` dump by
+  `scripts/rescore_validation_ap.py`, not by a GPU re-run.
 
 ## 5. Analysis write-ups go in `notes/`, never in `docs/`
 

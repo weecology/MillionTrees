@@ -22,6 +22,10 @@ The pipeline mirrors train.py's *resize* arm so the comparison is apples-to-appl
     ``segmentation`` + ``XYXY_ABS`` bbox, single ``Tree`` class).
   * Training: stock Detectron2 ``DefaultTrainer`` with COCO-pretrained weights and
     the standard ResizeShortestEdge recipe.
+  * Arms: ``--init-mode`` selects one leg of the weak-supervision ablation --
+    ``coco`` (tree-naive control), ``box_pretrained_full`` (the whole stage-1 network
+    from ``pretrain_detectron2.py``), or ``cotrain`` (COCO init, weak TreeBoxes tiles
+    mixed into the polygon training set with the mask loss held off the box-only rows).
   * Eval: stays on the MillionTrees side. Each native test image runs through the
     Detectron2 predictor; predicted instance masks are resized into the dataset's
     ``image_size`` square (where the GT masks are rasterized) and scored with
@@ -46,6 +50,7 @@ from shapely import wkt
 from detectron2 import model_zoo
 from detectron2.config import get_cfg
 from detectron2.data import DatasetCatalog, MetadataCatalog
+from detectron2.data import build_detection_train_loader
 from detectron2.engine import DefaultPredictor, DefaultTrainer
 from detectron2.structures import BoxMode
 from detectron2.utils.logger import setup_logger
@@ -57,6 +62,8 @@ from milliontrees.datasets.polygon_stream_eval import (
     merge_viz_samples,
 )
 from milliontrees.common.prediction_dump import add_dump_args, make_dumper
+
+import d2_weak_supervision as d2ws
 
 _COCO_MASKRCNN = "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"
 # Pre-fetched COCO weights (compute nodes may have no outbound network).
@@ -136,15 +143,28 @@ def build_detectron2_dicts(df, split_name, images_dir):
     return records
 
 
-def register_datasets(df, images_dir, prefix):
-    """Register train/val Detectron2 catalogs; return (train_name, n_train_images)."""
+def register_datasets(df, images_dir, prefix, extra_train_records=()):
+    """Register train/val Detectron2 catalogs; return (train_name, n_train_images).
+
+    ``extra_train_records`` are the box-only weak tiles of the co-training arm. They are
+    flagged ``real_mask=False`` upstream, so :class:`~d2_weak_supervision.MaskAwareROIHeads`
+    keeps them out of the mask loss while they still contribute RPN and box losses.
+    """
     train_name = f"{prefix}_train"
     val_name = f"{prefix}_val"
     for name in (train_name, val_name):
         if name in DatasetCatalog.list():
             DatasetCatalog.remove(name)
 
-    train_records = build_detectron2_dicts(df, "train", images_dir)
+    train_records = d2ws.mark_real_masks(
+        build_detectron2_dicts(df, "train", images_dir), real=True)
+    if extra_train_records:
+        offset = len(train_records)
+        for i, rec in enumerate(extra_train_records):
+            rec["image_id"] = offset + i
+        train_records = train_records + list(extra_train_records)
+        print(f"[bridge] co-training set: {offset} polygon images + "
+              f"{len(extra_train_records)} weak box-only images")
     DatasetCatalog.register(train_name, lambda r=train_records: r)
     MetadataCatalog.get(train_name).set(thing_classes=["Tree"])
 
@@ -160,6 +180,15 @@ def register_datasets(df, images_dir, prefix):
 # --------------------------------------------------------------------------- #
 # Detectron2 config
 # --------------------------------------------------------------------------- #
+class AblationTrainer(DefaultTrainer):
+    """DefaultTrainer whose loader carries the per-image ``real_mask`` flag."""
+
+    @classmethod
+    def build_train_loader(cls, cfg):
+        return build_detection_train_loader(
+            cfg, mapper=d2ws.WeakMaskDatasetMapper(cfg, is_train=True))
+
+
 def build_cfg(args, train_name, n_train_images, output_dir):
     cfg = get_cfg()
     cfg.merge_from_file(model_zoo.get_config_file(_COCO_MASKRCNN))
@@ -178,11 +207,18 @@ def build_cfg(args, train_name, n_train_images, output_dir):
     # crawl). detections_per_img 300 also mirrors the DeepForest recipe.
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.15
     cfg.TEST.DETECTIONS_PER_IMAGE = 300
+    # Every arm gets the same ROI heads, so the co-training arm differs from the others
+    # only in its data. With no box-only images present these behave exactly like
+    # StandardROIHeads.
+    cfg.MODEL.ROI_HEADS.NAME = "MaskAwareROIHeads"
 
     cfg.SOLVER.IMS_PER_BATCH = args.batch_size
     cfg.SOLVER.BASE_LR = args.lr
     iters_per_epoch = max(1, math.ceil(n_train_images / args.batch_size))
-    cfg.SOLVER.MAX_ITER = iters_per_epoch * args.max_epochs
+    # The ablation pins --max-iter identically across arms. Without it the co-training
+    # arm's epoch is ~5x longer, so "50 epochs" would silently hand it 5x the updates
+    # and the comparison would confound the weak labels with the compute budget.
+    cfg.SOLVER.MAX_ITER = args.max_iter or iters_per_epoch * args.max_epochs
     cfg.SOLVER.STEPS = (
         int(0.7 * cfg.SOLVER.MAX_ITER),
         int(0.9 * cfg.SOLVER.MAX_ITER),
@@ -190,6 +226,11 @@ def build_cfg(args, train_name, n_train_images, output_dir):
     cfg.SOLVER.GAMMA = 0.1
     cfg.SOLVER.CHECKPOINT_PERIOD = iters_per_epoch * max(1, args.max_epochs // 10)
     cfg.SOLVER.WARMUP_ITERS = min(1000, iters_per_epoch)
+    # The box round's stage 1 diverged for want of this; stage 2 has always clipped.
+    cfg.SOLVER.CLIP_GRADIENTS.ENABLED = True
+    cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE = "norm"
+    cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE = args.grad_clip
+    cfg.SOLVER.CLIP_GRADIENTS.NORM_TYPE = 2.0
 
     cfg.INPUT.MIN_SIZE_TRAIN = tuple(args.min_size_train)
     cfg.INPUT.MAX_SIZE_TRAIN = args.max_size
@@ -320,9 +361,33 @@ def main():
     parser.add_argument("--weights", type=str, default=_DEFAULT_WEIGHTS,
                         help="Init weights (.pkl). Falls back to COCO model_zoo URL.")
     parser.add_argument("--init-mode", type=str, default="coco",
-                        choices=["coco", "box-pretrained"],
-                        help="Label for the init weights (Table 6 arm). 'box-pretrained' "
-                             "expects a merged pkl from convert_box_backbone_to_d2.py.")
+                        choices=["coco", "box-pretrained", "box_pretrained_full", "cotrain"],
+                        help="Which leg of the weak-supervision ablation to run. "
+                             "coco = tree-naive control, verified tensor-for-tensor "
+                             "against the released COCO Mask R-CNN. "
+                             "box_pretrained_full = the whole stage-1 network from "
+                             "pretrain_detectron2.py (backbone + FPN + RPN + ROI box "
+                             "head; mask head stays COCO), passed via --weights. "
+                             "cotrain = COCO init with the weak TreeBoxes tiles mixed "
+                             "into the polygon training set in one stage. "
+                             "box-pretrained = the legacy trunk-only arm "
+                             "(convert_box_backbone_to_d2.py), kept for provenance.")
+    parser.add_argument("--max-iter", type=int, default=None,
+                        help="Explicit SOLVER.MAX_ITER, overriding --max-epochs. The "
+                             "ablation sets this identically on every arm so they are "
+                             "compared at matched compute.")
+    parser.add_argument("--grad-clip", type=float, default=1.0)
+    parser.add_argument("--coco-pkl", type=str, default=_DEFAULT_WEIGHTS,
+                        help="Released COCO Mask R-CNN pkl used to verify --init-mode coco.")
+    parser.add_argument("--boxes-dataset", type=str, default="TreeBoxes_v0.23",
+                        help="TreeBoxes release supplying the weak tiles for --init-mode cotrain.")
+    parser.add_argument("--weak-sources", type=str, nargs="+", default=["*unsupervised*"],
+                        help="Source glob(s) counted as weak supervision when co-training.")
+    parser.add_argument("--limit-weak-images", type=int, default=None,
+                        help="Smoke-test knob: cap the co-training weak set.")
+    parser.add_argument("--exclude-sources", type=str, nargs="*", default=[],
+                        help="Source glob(s) held out of the weak set, so co-training and "
+                             "stage-1 pretraining see the identical weak tiles.")
     parser.add_argument("--output-dir", type=str, default="training/polygons/outputs/detectron2")
     parser.add_argument("--mini", action="store_true")
     parser.add_argument("--include-unsupervised", action="store_true")
@@ -365,10 +430,35 @@ def main():
 
     df = _filter_split_df(data_dir, args.split_scheme, args.include_unsupervised)
     prefix = f"mt_polygons_{args.split_scheme}"
-    train_name, n_train = register_datasets(df, images_dir, prefix)
+
+    weak_records = ()
+    if args.init_mode == "cotrain":
+        boxes_dir = Path(args.root_dir) / args.boxes_dataset
+        print(f"[cotrain] weak tiles from {boxes_dir} "
+              f"sources={args.weak_sources} exclude_sources={args.exclude_sources}")
+        weak_records = d2ws.load_weak_box_dicts(
+            boxes_dir, args.split_scheme, split="train",
+            source_patterns=tuple(args.weak_sources),
+            exclude_patterns=tuple(args.exclude_sources),
+            limit_images=args.limit_weak_images,
+        )
+        n_weak_boxes = sum(len(r["annotations"]) for r in weak_records)
+        print(f"[cotrain] {len(weak_records)} weak images / {n_weak_boxes} weak boxes")
+
+    train_name, n_train = register_datasets(df, images_dir, prefix, weak_records)
     if n_train == 0:
         print("No training images for this split; aborting.")
         return
+
+    # The sequential arm loads the whole stage-1 network; merging it onto the COCO
+    # release here (rather than trusting a pre-merged file on disk) means the log
+    # carries an exact receipt of what was replaced and what stayed at COCO init.
+    merge_report = None
+    if args.init_mode == "box_pretrained_full":
+        merged_path = os.path.join(args.output_dir, "stage1_merged_init.pkl")
+        merge_report = d2ws.merge_transferable_into_coco(
+            args.weights, args.coco_pkl, merged_path)
+        args.weights = merged_path
 
     cfg = build_cfg(args, train_name, n_train, args.output_dir)
 
@@ -391,8 +481,16 @@ def main():
             comet_exp = None
 
     if not args.eval_only:
-        trainer = DefaultTrainer(cfg)
+        trainer = AblationTrainer(cfg)
         trainer.resume_or_load(resume=False)
+        # Verify after the checkpointer has run, so this describes the real init.
+        if args.init_mode in ("coco", "cotrain"):
+            d2ws.verify_coco_init(trainer.model, args.coco_pkl)
+        elif args.init_mode == "box_pretrained_full":
+            d2ws.assert_not_coco_init(trainer.model, args.coco_pkl)
+            print(f"Loaded FULL pretrained network: {merge_report['replaced']} stage-1 "
+                  f"tensors; {merge_report['mask_head_keys_at_coco']} mask-head tensors "
+                  f"left at COCO init.")
         trainer.train()
 
     # ---- MillionTrees eval on the best (final) checkpoint ----
@@ -433,6 +531,11 @@ def main():
         "run_metadata": {
             "stack": "detectron2",
             "init_mode": args.init_mode,
+            "max_iter": cfg.SOLVER.MAX_ITER,
+            "n_train_images": n_train,
+            "n_weak_images": len(weak_records),
+            "exclude_sources": args.exclude_sources,
+            "merge_report": merge_report,
             "seed": args.seed,
             "include_unsupervised": args.include_unsupervised,
             "max_epochs": args.max_epochs,

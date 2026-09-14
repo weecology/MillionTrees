@@ -37,18 +37,28 @@ OUT_OF_DISTRIBUTION_TEST_SOURCES_POLYGONS = [
     "Takeshige et al. 2025",
     "Alejandro_Miranda",
 ]
+# Amirkolaee et al. 2023 is deliberately NOT a held-out source: it *is* the TreeFormer
+# dataset, and the pretrained point checkpoint on the leaderboard
+# (``weecology/deepforest-tree-point``) is trained on it, so evaluating that row on
+# Amirkolaee scores a model against its own training data. Dubrovin et al. 2024 replaces
+# it to keep a non-NEON vote in the macro-average -- NEON_points, NEON MultiTemporal and
+# OSBS megaplot are one sampling program at overlapping sites (HARV/BART/WREF/ABBY/OSBS).
 OUT_OF_DISTRIBUTION_TEST_SOURCES_POINTS = [
-    "Amirkolaee et al. 2023",
     "NEON_points",
     "NEON MultiTemporal",
     "OSBS megaplot 2025",
     "OFO field 2025",
+    "Dubrovin et al. 2024",
 ]
+# SelvaBox is NOT here: it ships an upstream train/test partition, which made it a broken
+# hold-out (231,932 boxes sat in train while it supplied 49% of the OOD test images). It is
+# in OUT_OF_DISTRIBUTION_TRAIN_ONLY_SOURCES instead. NEON MultiTemporal replaces it so the
+# box hold-out has a fourth source and matches the point/polygon hold-outs.
 OUT_OF_DISTRIBUTION_TEST_SOURCES_BOXES = [
     "Radogoshi et al. 2021",
-    "SelvaBox",
     "NEON_benchmark",
     "Zamboni et al. 2021",  # urban tree crowns (individual_urban_tree_crown_detection)
+    "NEON MultiTemporal",
 ]
 
 # Sources that must never seed an out-of-distribution test set and belong entirely
@@ -57,8 +67,13 @@ OUT_OF_DISTRIBUTION_TEST_SOURCES_BOXES = [
 # assign_canopyrs_aligned_existing_split for the within-distribution CanopyRS
 # comparison) are not a trustworthy held-out evaluation set. Force it to train in
 # the out-of-distribution split.
+# SelvaBox: 14 tropical drone orthos shipped with an upstream train/test partition
+# (existing_split). As a declared hold-out that partition kept 585 train images / 231,932
+# boxes in the OOD train split while SelvaBox supplied 49% of the OOD test images. Rather
+# than discard 231k tropical boxes to salvage the hold-out, keep it all for training.
 OUT_OF_DISTRIBUTION_TRAIN_ONLY_SOURCES = [
     "OAM-TCD",
+    "SelvaBox",
 ]
 
 # The MillionTrees ``validation`` split is reserved for these held-out sources only
@@ -85,14 +100,30 @@ UNSUPERVISED_SUFFIX = "unsupervised"
 # instead of sprinkling per-source masks through the splitting code.
 UNSUPERVISED_SOURCE_ALIASES = {
     "Feng et al. 2025",
+    # AutoArborist. The labels are municipal street-tree *inventory records*
+    # projected into aerial imagery, not image annotations: the TCD canopy filter
+    # (data_prep/filter_auto_arborist_tcd.py) discards 49.7% of the raw points
+    # (898,550 -> 452,367) for landing on majority no-tree pixels, and surviving
+    # the filter only means a point hit some canopy, not the right tree or its
+    # centre. It is also non-exhaustive by construction -- city inventories cover
+    # street and public trees while the tiles also contain park, yard and private
+    # trees. That is weak supervision, and the project already refuses to evaluate
+    # against it (TRAIN_ONLY_SOURCES below), so shipping it as a supervised source
+    # was inconsistent: it supplied 86.8% of supervised point train images.
+    "Beery et al. 2022",
 }
 
 # Sources whose annotations are usable for *training* but not accurate enough to
-# trust for *evaluation* (e.g. AutoArborist / "Beery et al. 2022": street-level
-# inventory points only loosely aligned to the aerial imagery). Any test rows
-# for these sources are demoted to the train split so they never appear in
-# test/eval. Kept in sync with TreePointsDataset.TRAIN_ONLY_SOURCES, which
-# enforces the same demotion at load time for already-released CSVs.
+# trust for *evaluation*. Any test rows for these sources are demoted to the train
+# split so they never appear in test/eval. Kept in sync with
+# TreePointsDataset.TRAIN_ONLY_SOURCES, which enforces the same demotion at load
+# time for already-released CSVs.
+#
+# "Beery et al. 2022" is now also an UNSUPERVISED_SOURCE_ALIAS, so from this
+# release forward normalize_unsupervised_sources renames it before this set is
+# consulted and the '*unsupervised*' exclusion keeps it out of test anyway. The
+# entry stays because v0.23 and earlier shipped the unsuffixed name, and the
+# loader-side TRAIN_ONLY_SOURCES still has to demote those released CSVs.
 TRAIN_ONLY_SOURCES = {
     "Beery et al. 2022",
 }
@@ -181,7 +212,10 @@ def normalize_unsupervised_sources(datasets):
 # the NEON 'Weinstein et al. 2018' box benchmark) is safe.
 UNSUPERVISED_SOURCES_EXPECTED = {
     "TreePolygons": ["Feng et al. 2025 unsupervised"],
-    "TreePoints": ["Young et al. 2025 unsupervised"],
+    "TreePoints": [
+        "Young et al. 2025 unsupervised",
+        "Beery et al. 2022 unsupervised",
+    ],
     "TreeBoxes": ["Weinstein et al. 2018 unsupervised"],
 }
 
@@ -884,6 +918,22 @@ def _validation_sources(df):
     return pinned & VALIDATION_SOURCES
 
 
+def _assign_ood_split_by_source(df, test_sources, train_sources):
+    """Force out-of-distribution split membership by source name.
+
+    Unlike the within-distribution split, an upstream ``existing_split`` pin must never
+    decide OOD membership: a held-out source belongs entirely to test and every other
+    (non-validation) source belongs entirely to train, whatever the upstream dataset's
+    own partition says. Rows already sitting in the reserved ``validation`` split are
+    left untouched, as are sources in neither list.
+    """
+    df = df.copy()
+    protected = df["split"] == "validation"
+    df.loc[df["source"].isin(train_sources) & ~protected, "split"] = "train"
+    df.loc[df["source"].isin(test_sources) & ~protected, "split"] = "test"
+    return df
+
+
 def _rows_needing_auto_split(df):
     """Rows without a pre-assigned split from existing_split."""
     if "existing_split" not in df.columns:
@@ -1130,6 +1180,20 @@ def cross_geometry_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_d
         TreePolygons_datasets.source.isin(OUT_OF_DISTRIBUTION_TEST_SOURCES_POLYGONS)
         | (TreePolygons_datasets["split"] == "validation")
     ]
+    # Boxes and points are the training geometries here, but a source that is also a
+    # polygon test source must not contribute them: NEON MultiTemporal is a declared
+    # polygon hold-out AND a box/point source, so the identical 151 tiles were landing in
+    # box train, point train and polygon test at once. Drop those rows before the blanket
+    # train assignment so "no local data from the test localities in train" actually holds.
+    TreePoints_datasets = TreePoints_datasets[
+        ~TreePoints_datasets.source.isin(OUT_OF_DISTRIBUTION_TEST_SOURCES_POLYGONS)
+        | (TreePoints_datasets["split"] == "validation")
+    ]
+    TreeBoxes_datasets = TreeBoxes_datasets[
+        ~TreeBoxes_datasets.source.isin(OUT_OF_DISTRIBUTION_TEST_SOURCES_POLYGONS)
+        | (TreeBoxes_datasets["split"] == "validation")
+    ]
+
     TreePoints_datasets.loc[
         TreePoints_datasets["split"] != "validation", "split"] = "train"
     TreeBoxes_datasets.loc[
@@ -1243,38 +1307,24 @@ def out_of_distribution_split(TreePolygons_datasets, TreePoints_datasets, TreeBo
     TreePoints_datasets = apply_existing_splits(TreePoints_datasets)
     TreeBoxes_datasets = apply_existing_splits(TreeBoxes_datasets)
 
-    TreePolygons_datasets.loc[
-        TreePolygons_datasets.source.isin(train_sources_polygons)
-        & _rows_needing_auto_split(TreePolygons_datasets),
-        "split",
-    ] = "train"
-    TreePolygons_datasets.loc[
-        TreePolygons_datasets.source.isin(test_sources_polygons)
-        & _rows_needing_auto_split(TreePolygons_datasets),
-        "split",
-    ] = "test"
-
-    TreePoints_datasets.loc[
-        TreePoints_datasets.source.isin(train_sources_points)
-        & _rows_needing_auto_split(TreePoints_datasets),
-        "split",
-    ] = "train"
-    TreePoints_datasets.loc[
-        TreePoints_datasets.source.isin(test_sources_points)
-        & _rows_needing_auto_split(TreePoints_datasets),
-        "split",
-    ] = "test"
-
-    TreeBoxes_datasets.loc[
-        TreeBoxes_datasets.source.isin(train_sources_boxes)
-        & _rows_needing_auto_split(TreeBoxes_datasets),
-        "split",
-    ] = "train"
-    TreeBoxes_datasets.loc[
-        TreeBoxes_datasets.source.isin(test_sources_boxes)
-        & _rows_needing_auto_split(TreeBoxes_datasets),
-        "split",
-    ] = "test"
+    # Out-of-distribution membership is decided by SOURCE alone. It must not be gated on
+    # _rows_needing_auto_split: apply_existing_splits has already placed every row that
+    # carries an upstream existing_split pin, and exempting those rows leaked in both
+    # directions -- a declared hold-out with existing_split=="train" rows kept them in
+    # train (SelvaBox 585 imgs, OFO field 2025 6,413 imgs, Amirkolaee 277 imgs, Troles
+    # 2,140 imgs), and a train source with existing_split=="test" rows kept them in test
+    # (Cloutier 425 imgs, SelvaMask 264 imgs, Lucas, Zuniga-Gonzalez, NEON combined
+    # crowns -- 27.8% of the polygon OOD test set). See
+    # notes/ood_split_test_sources_and_leaks.md.
+    #
+    # Validation rows are never reassigned: the reserved validation sources
+    # (VALIDATION_SOURCES) appear in neither the train nor the test source list.
+    TreePolygons_datasets = _assign_ood_split_by_source(
+        TreePolygons_datasets, test_sources_polygons, train_sources_polygons)
+    TreePoints_datasets = _assign_ood_split_by_source(
+        TreePoints_datasets, test_sources_points, train_sources_points)
+    TreeBoxes_datasets = _assign_ood_split_by_source(
+        TreeBoxes_datasets, test_sources_boxes, train_sources_boxes)
 
     # Force train-only sources entirely into train, overriding any existing_split
     # pin (e.g. OAM-TCD's incomplete upstream test tiles), so they never enter the
@@ -1662,7 +1712,7 @@ def run(version, base_dir, mask_source_dir=None, debug=False):
 
 
 if __name__ == "__main__":
-    version = "v0.23"
+    version = "v0.24"
     base_dir = "/orange/ewhite/web/public/MillionTrees/"
     mask_source_dir = "/orange/ewhite/DeepForest/tree_coverage_masks"
     debug = False
