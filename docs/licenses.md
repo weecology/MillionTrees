@@ -79,6 +79,19 @@ rather than assuming it is safe to use. To include those sources deliberately, a
 get_dataset("TreeBoxes", root_dir="data", licenses=["commercial", "unknown"])
 ```
 
+As of v0.24 three sources are `unknown`:
+
+| Source | Geometry | Annotations | Why |
+| --- | --- | --- | --- |
+| World Resources Institute | Boxes | 29,326 | not in the manuscript source table |
+| Safonova et al. 2021 | Polygons | 316 | not in the manuscript source table |
+| Bohlman et al. 2008 | Polygons | 3,508 | BCI Panama; does not match the one manuscript row with a blank license |
+
+Two further sources are mapped to a manuscript row by inference rather than by a matching
+name, and are recorded as CC-BY 4.0 on that basis: `Frey et al. 2026` (the EcoSense
+TLS plot, manuscript row "Liu et al. 2024") and `OSBS megaplot 2025` (manuscript row
+"Johnson et al. 2021"). The reasoning is in the `notes` column of `sources.csv`.
+
 ## Inspecting what you have
 
 Every loaded dataset exposes the licenses of the sources it is holding:
@@ -119,6 +132,14 @@ in `src/milliontrees/common/license_data/` handle this:
 
   Later rows override earlier ones, and anything no rule matches keeps the source-level
   license.
+
+**The OFO mission rows are not populated yet.** OFO's per-plot license metadata is not
+carried in the data the release is built from — the mission metadata we hold records the
+license of the *imagery*, not of the field plot. Until those rows are added, every
+`OFO field 2025` annotation takes the source-level `CC-BY-NC-SA-4.0`, which means a
+`commercial`, `permissive` or `public-domain` selection **drops the whole source**, all 237
+missions, rather than including plots it may not be entitled to. If you need the CC0 plots,
+add their missions to `overrides.csv`; no code change is required.
 
 The same mechanism covers any future source that needs sub-source granularity: add rows to
 `overrides.csv`, no loader change needed.
