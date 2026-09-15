@@ -171,6 +171,20 @@ def build_config(args, train_csv, val_csv, images_dir, log_root):
         # Keep the geometric/photometric pipeline off for sanity runs.
         overrides["train"]["augmentations"] = []
 
+    # Populated by whichever --train-aug branch below runs; the non-flip crop/
+    # resize op only, so --val-aug-match-train can reapply it to validation
+    # without also flipping validation images every epoch.
+    val_match_aug = None
+
+    if args.train_aug == "crop":
+        # The config default recipe (no override needed for training itself).
+        # Named here only so --val-aug-match-train has something to mirror --
+        # see deepforest_polygon.yaml's own train.augmentations for the source
+        # of truth this must stay in sync with.
+        val_match_aug = [{
+            "RandomResizedCrop": {"size": [640, 640], "scale": [0.64, 1.0], "ratio": [1.0, 1.0], "p": 1.0}
+        }]
+
     if args.train_aug == "resize":
         # Whole-image resize instead of RandomResizedCrop: scale each image (and
         # its annotations) to a fixed ``image_size`` square so the model sees the
@@ -215,8 +229,11 @@ def build_config(args, train_csv, val_csv, images_dir, log_root):
             ]
         else:
             overrides["train"]["augmentations"] = list(crop_aug)
-        # Validation keeps the config default (whole-image Resize); the leaderboard
-        # eval runs tiled predict_tile, not this transform.
+        val_match_aug = crop_aug
+        # Validation keeps the config default (whole-image Resize) unless
+        # --val-aug-match-train is set; the leaderboard eval runs tiled
+        # predict_tile, not this transform, so this in-loop val_loss/map is a
+        # separate scale question from the final eval.
 
     if args.train_aug == "annotationsafecrop":
         # Annotation-safe 640 crop: RandomSizedBBoxSafeCrop guarantees every crop
@@ -243,7 +260,19 @@ def build_config(args, train_csv, val_csv, images_dir, log_root):
             ]
         else:
             overrides["train"]["augmentations"] = list(crop_aug)
-        # Validation keeps the config default; leaderboard eval uses predict_tile.
+        val_match_aug = crop_aug
+        # Validation keeps the config default unless --val-aug-match-train is
+        # set; leaderboard eval uses predict_tile regardless.
+
+    if args.val_aug_match_train and val_match_aug is not None:
+        # Mirror the train crop/resize op (minus flips) onto validation so the
+        # in-loop val_loss/map Comet logs are scored at the same pixel scale
+        # the model trains on, instead of the config default whole-image
+        # Resize(max_size=1024). Doesn't touch --eval-inference/predict_tile,
+        # which already runs at the training scale for the final leaderboard
+        # numbers -- this only affects the per-epoch metrics DeepForest logs
+        # during fit().
+        overrides["validation"]["augmentations"] = list(val_match_aug)
 
     # Both ablation arms must start from torchvision's COCO Mask R-CNN, so
     # model.name has to be None *at construction time*: create_model() takes the
@@ -733,7 +762,7 @@ def build_trainer(model, args, log_root):
         filename="polygons-{epoch:02d}-{val_loss:.4f}",
         monitor="val_loss",
         mode="min",
-        save_top_k=1,
+        save_top_k=-1 if getattr(args, "keep_all_checkpoints", False) else 1,
         save_last=True,
     )
     callbacks.append(checkpoint_cb)
@@ -828,6 +857,13 @@ def main():
                              "--eval-inference tiled). annotationsafecrop: RandomSizedBBoxSafeCrop "
                              "that guarantees each crop contains at least one annotation (use with "
                              "--eval-inference tiled).")
+    parser.add_argument("--val-aug-match-train", action=argparse.BooleanOptionalAction, default=False,
+                         help="Mirror --train-aug's crop/resize op (minus flips) onto the "
+                              "in-loop validation set instead of the config default whole-image "
+                              "Resize(max_size=1024). Scores the Comet-logged val_loss/map at the "
+                              "same pixel scale training runs at. Off by default so existing "
+                              "recipes are unaffected; does not change --eval-inference/"
+                              "predict_tile, which already matches scale for the leaderboard eval.")
     parser.add_argument("--init-mode", type=str, default="coco",
                         choices=["coco", "box_pretrained",
                                  "box_pretrained_maskrcnn"],
@@ -866,6 +902,12 @@ def main():
     parser.add_argument("--early-stopping", action=argparse.BooleanOptionalAction, default=False,
                         help="EarlyStopping on val_loss (off by default; the OAM recipe trains full epochs).")
     parser.add_argument("--patience", type=int, default=10)
+    parser.add_argument("--keep-all-checkpoints", action="store_true",
+                        help="Keep a checkpoint at every validation epoch "
+                             "(save_top_k=-1) instead of only the best-val_loss one. "
+                             "Use when a downstream pass selects the checkpoint on the "
+                             "held-out validation split (val_loss overfits by ~epoch 9 "
+                             "on the polygon Mask R-CNN).")
     parser.add_argument("--debug-overfit", action="store_true",
                         help="Sanity check: validate/evaluate on the TRAIN annotations and "
                              "skip writing leaderboard results.")

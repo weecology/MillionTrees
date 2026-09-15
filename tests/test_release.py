@@ -149,3 +149,57 @@ def test_TreeBoxes_small_release(dataset, split_scheme):
         assert boxes.shape[1] == 4
 
     _test_dataset_structure(dataset, expected_shape_check=check_boxes_shape)
+
+
+# mini=True is within-distribution only (docs/dataset_structure.md), and unlike the
+# small/full tests above, the point of these is the data_dir assertion: mini=True with the
+# default include_unsupervised=False used to resolve to the full '<Geometry>_supervised'
+# directory instead of 'Mini<Geometry>', silently running smoke tests on the full release
+# (notes/prerelease_v1_packaging_audit.md, finding #4). The conftest fixture ships a
+# distinct Mini<Geometry>_v0.0 directory precisely so this assertion is meaningful.
+def test_TreePolygons_mini_release(dataset):
+    dataset = TreePolygonsDataset(
+        download=False,
+        root_dir=dataset,
+        split_scheme='within-distribution',
+        mini=True,
+        version="0.0",
+    )
+    assert dataset.data_dir.name == "MiniTreePolygons_v0.0"
+
+    def check_polygon_shape(y):
+        assert y[0].shape == (448, 448)
+
+    _test_dataset_structure(dataset, expected_shape_check=check_polygon_shape)
+
+
+def test_TreePoints_mini_release(dataset):
+    dataset = TreePointsDataset(
+        download=False,
+        root_dir=dataset,
+        split_scheme='within-distribution',
+        mini=True,
+        version="0.0",
+    )
+    assert dataset.data_dir.name == "MiniTreePoints_v0.0"
+
+    def check_points_shape(points):
+        assert points.shape[1] == 2
+
+    _test_dataset_structure(dataset, expected_shape_check=check_points_shape)
+
+
+def test_TreeBoxes_mini_release(dataset):
+    dataset = TreeBoxesDataset(
+        download=False,
+        root_dir=dataset,
+        split_scheme='within-distribution',
+        mini=True,
+        version="0.0",
+    )
+    assert dataset.data_dir.name == "MiniTreeBoxes_v0.0"
+
+    def check_boxes_shape(boxes):
+        assert boxes.shape[1] == 4
+
+    _test_dataset_structure(dataset, expected_shape_check=check_boxes_shape)

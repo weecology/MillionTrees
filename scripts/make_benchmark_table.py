@@ -58,7 +58,7 @@ TASK_METRICS = {
 
 # Dataset version every published row is scored against. Bump on a release, and
 # re-run every row -- mixing versions across rows makes the table uncomparable.
-DATA_VERSION = "v0.23"
+DATA_VERSION = "v0.24"
 
 # The published leaderboard rows.
 #
@@ -85,6 +85,7 @@ RUNS = [
             "env": "shared `.venv` (`uv run`)",
             "train": ("`training/slurm/train_boxes.sbatch`: batch 32 x 2 GPUs, lr 0.01, "
                       "<=200 epochs, early-stop patience 10 (within) / 15 (OOD), "
+                      "`--augment` (HFlip+VFlip+RandomRotate90 on the train subset), "
                       "no gradient clipping, no seed set"),
         },
     },
@@ -259,7 +260,7 @@ RUNS = [
         "model": "TreeFormer + SAM2",
         "task": "TreePolygons",
         "finetuned": False,
-        "path": ("existing_models/treeformer_sam2/outputs/crossgeometry_v023/"
+        "path": ("existing_models/treeformer_sam2/outputs/crossgeometry_v024/"
                  "results_polygons_crossgeometry.txt"),
         "splits": ["crossgeometry"],
         "config": {

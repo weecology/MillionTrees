@@ -31,7 +31,7 @@ All point sources are used to train and predict all box sources.
 
 # Results
 
-All scores below are computed on MillionTrees **v0.23**, on the **test** split of the named
+All scores below are computed on MillionTrees **v0.24**, on the **test** split of the named
 split scheme. Every table in this page is generated from the evaluation result files by
 `scripts/make_benchmark_table.py`, which reads an explicit registry of published runs — so
 the numbers, and the configuration table that accompanies them, always describe the same run.
@@ -68,8 +68,8 @@ Two things determine a number as much as the model does, and both are recorded i
 
 1. **Dataset version.** The loaders default to the newest key in their `_versions_dict`, so
    the same command run after a release produces different numbers. Pin it explicitly —
-   `TreeBoxesDataset(version="0.23")` — when reproducing anything here. All rows on this page
-   are v0.23, supervised sources only (`include_unsupervised=False`, the default).
+   `TreeBoxesDataset(version="0.24")` — when reproducing anything here. All rows on this page
+   are v0.24, supervised sources only (`include_unsupervised=False`, the default).
 2. **Score threshold.** The standardized operating point is **0.10**. Two exceptions are
    marked in the configuration table: the CanopyRS box and polygon rows use **0.30**, the
    best-F1 point from a full-test-set sweep (at 0.10 they are badly recall-heavy), and the
@@ -87,8 +87,8 @@ the number.
 
 - **Neither the box nor the point trainer sets a random seed**, so those rows are not
   bit-reproducible; expect run-to-run variation. The polygon trainers use seed 42.
-- The fine-tuned **polygon** Detectron2 weights predate v0.23; the model is scored on v0.23
-  data but was trained on an earlier packaging of it. A v0.23 retrain is pending.
+- All fine-tuned rows (boxes, points, Detectron2 and DeepForest polygons) were retrained on
+  v0.24 for this refresh; every row on this page is trained and scored on the same version.
 - **Cross-geometry** is defined as predicting polygons from another annotation geometry. It is
   not applicable to box or point prediction, so those tables are absent rather than zero-filled.
 
@@ -168,7 +168,7 @@ Once you have trained a model and evaluated its performance, you can submit your
 
 2. Generate predictions on the test split, pinning the dataset version explicitly:
    ```python
-   dataset = TreeBoxesDataset(version="0.23")  # pin the version; do not rely on the default
+   dataset = TreeBoxesDataset(version="0.24")  # pin the version; do not rely on the default
    test_dataset = dataset.get_subset("test")   # Use test split
    test_loader = get_eval_loader("standard", test_dataset, batch_size=16)
 
@@ -201,7 +201,7 @@ Once you have trained a model and evaluated its performance, you can submit your
 
 ## Benchmark Results
 
-Fine-tuned models (trained on the MillionTrees train split) vs. pretrained models evaluated zero-shot, all on MillionTrees **v0.23**. All AP is **AP40** (IoU 0.4), the same match threshold behind recall and mask-aware precision; F1 is their harmonic mean. Rows are generated from the result files by `scripts/make_benchmark_table.py` -- see the run configuration table below for what produced each number.
+Fine-tuned models (trained on the MillionTrees train split) vs. pretrained models evaluated zero-shot, all on MillionTrees **v0.24**. All AP is **AP40** (IoU 0.4), the same match threshold behind recall and mask-aware precision; F1 is their harmonic mean. Rows are generated from the result files by `scripts/make_benchmark_table.py` -- see the run configuration table below for what produced each number.
 
 ### Split: within-distribution
 
@@ -209,28 +209,28 @@ Fine-tuned models (trained on the MillionTrees train split) vs. pretrained model
 
 | Model | Fine-tuned | DetectionRecall | MaskAwarePrecision | F1 | AP40 | CountingMAE |
 |---|---|---|---|---|---|---|
-| CanopyRS DINO Swin-L | ✗ | 0.664 | 0.776 | 0.716 | 0.488 | 14.495 |
-| DeepForest (RetinaNet) | ✓ | 0.635 | 0.611 | 0.623 | 0.467 | 15.570 |
-| SAM3 | ✗ | 0.578 | 0.476 | 0.522 | 0.390 | 38.164 |
-| DeepForest (release weights) | ✗ | 0.388 | 0.598 | 0.471 | 0.241 | 11.440 |
+| CanopyRS DINO Swin-L | ✗ | 0.711 | 0.760 | 0.735 | 0.528 | 12.729 |
+| DeepForest (RetinaNet) | ✓ | 0.681 | 0.669 | 0.675 | 0.514 | 12.803 |
+| SAM3 | ✗ | 0.657 | 0.468 | 0.547 | 0.421 | 37.056 |
+| DeepForest (release weights) | ✗ | 0.413 | 0.642 | 0.503 | 0.260 | 11.923 |
 
 ### TreePoints
 
 | Model | Fine-tuned | KeypointAccuracy | MaskAwarePrecision | F1 | CountingMAE |
 |---|---|---|---|---|---|
-| TreeFormer (count-loss fix) | ✓ | 0.779 | 0.786 | 0.782 | 19.993 |
-| TreeFormer (release weights) | ✗ | 0.741 | 0.711 | 0.726 | 118.665 |
-| SAM3 | ✗ | 0.679 | 0.599 | 0.636 | 43.537 |
+| TreeFormer (count-loss fix) | ✓ | 0.781 | 0.759 | 0.770 | 19.549 |
+| TreeFormer (release weights) | ✗ | 0.743 | 0.702 | 0.722 | 123.431 |
+| SAM3 | ✗ | 0.704 | 0.610 | 0.654 | 40.602 |
 
 ### TreePolygons
 
 | Model | Fine-tuned | MaskRecall | MaskAwarePrecision | F1 | MaskAccuracy | AP40 |
 |---|---|---|---|---|---|---|
-| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.762 | 0.874 | 0.814 | 0.268 | 0.375 |
-| Mask R-CNN (Detectron2) | ✓ | 0.652 | 0.921 | 0.763 | 0.368 | 0.453 |
-| SAM3 | ✗ | 0.576 | 0.621 | 0.598 | 0.176 | 0.290 |
-| detectree2 | ✗ | 0.530 | 0.604 | 0.565 | 0.137 | 0.223 |
-| DeepForest Mask R-CNN | ✓ | 0.432 | 0.707 | 0.536 | 0.090 | 0.075 |
+| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.726 | 0.868 | 0.791 | 0.293 | 0.390 |
+| Mask R-CNN (Detectron2) | ✓ | 0.641 | 0.909 | 0.752 | 0.413 | 0.483 |
+| SAM3 | ✗ | 0.563 | 0.614 | 0.587 | 0.159 | 0.291 |
+| DeepForest Mask R-CNN | ✓ | 0.473 | 0.708 | 0.567 | 0.129 | 0.137 |
+| detectree2 | ✗ | 0.534 | 0.577 | 0.555 | 0.146 | 0.257 |
 
 ### Split: out-of-distribution
 
@@ -238,28 +238,28 @@ Fine-tuned models (trained on the MillionTrees train split) vs. pretrained model
 
 | Model | Fine-tuned | DetectionRecall | MaskAwarePrecision | F1 | AP40 | CountingMAE |
 |---|---|---|---|---|---|---|
-| CanopyRS DINO Swin-L | ✗ | 0.799 | 0.865 | 0.831 | 0.662 | 13.792 |
-| DeepForest (RetinaNet) | ✓ | 0.644 | 0.759 | 0.697 | 0.480 | 18.060 |
-| SAM3 | ✗ | 0.725 | 0.581 | 0.645 | 0.503 | 40.154 |
-| DeepForest (release weights) | ✗ | 0.465 | 0.781 | 0.583 | 0.305 | 13.104 |
+| CanopyRS DINO Swin-L | ✗ | 0.842 | 0.864 | 0.853 | 0.633 | 13.792 |
+| DeepForest (RetinaNet) | ✓ | 0.684 | 0.798 | 0.737 | 0.469 | 14.719 |
+| SAM3 | ✗ | 0.722 | 0.580 | 0.643 | 0.460 | 40.154 |
+| DeepForest (release weights) | ✗ | 0.540 | 0.781 | 0.639 | 0.298 | 13.104 |
 
 ### TreePoints
 
 | Model | Fine-tuned | KeypointAccuracy | MaskAwarePrecision | F1 | CountingMAE |
 |---|---|---|---|---|---|
-| TreeFormer (release weights) | ✗ | 0.763 | 0.737 | 0.750 | 66.771 |
-| TreeFormer (count-loss fix) | ✓ | 0.688 | 0.662 | 0.675 | 38.398 |
-| SAM3 | ✗ | 0.687 | 0.624 | 0.654 | 37.385 |
+| TreeFormer (count-loss fix) | ✓ | 0.827 | 0.795 | 0.811 | 50.068 |
+| TreeFormer (release weights) | ✗ | 0.841 | 0.781 | 0.810 | 17.216 |
+| SAM3 | ✗ | 0.693 | 0.669 | 0.681 | 37.182 |
 
 ### TreePolygons
 
 | Model | Fine-tuned | MaskRecall | MaskAwarePrecision | F1 | MaskAccuracy | AP40 |
 |---|---|---|---|---|---|---|
-| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.819 | 0.861 | 0.839 | 0.291 | 0.417 |
-| Mask R-CNN (Detectron2) | ✓ | 0.555 | 0.904 | 0.688 | 0.331 | 0.393 |
-| detectree2 | ✗ | 0.504 | 0.633 | 0.561 | 0.170 | 0.253 |
-| SAM3 | ✗ | 0.465 | 0.668 | 0.548 | 0.171 | 0.249 |
-| DeepForest Mask R-CNN | ✓ | 0.498 | 0.561 | 0.528 | 0.078 | 0.120 |
+| CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.803 | 0.878 | 0.839 | 0.322 | 0.511 |
+| detectree2 | ✗ | 0.617 | 0.640 | 0.628 | 0.172 | 0.306 |
+| SAM3 | ✗ | 0.561 | 0.674 | 0.612 | 0.169 | 0.256 |
+| Mask R-CNN (Detectron2) | ✓ | 0.435 | 0.937 | 0.594 | 0.301 | 0.273 |
+| DeepForest Mask R-CNN | ✓ | 0.132 | 0.521 | 0.211 | 0.015 | 0.007 |
 
 ### Split: crossgeometry
 
@@ -267,7 +267,7 @@ Fine-tuned models (trained on the MillionTrees train split) vs. pretrained model
 
 | Model | Fine-tuned | MaskRecall | MaskAwarePrecision | F1 | MaskAccuracy | AP40 |
 |---|---|---|---|---|---|---|
-| TreeFormer + SAM2 | ✗ | 0.464 | 0.653 | 0.543 | 0.179 | 0.211 |
+| TreeFormer + SAM2 | ✗ | 0.353 | 0.786 | 0.487 | 0.177 | 0.170 |
 
 ## Run configuration
 

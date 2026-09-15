@@ -92,6 +92,23 @@ def dataset():
                 os.path.join(tmp_dir, f"Small{geometry}_v0.0", split_csv),
             )
 
+    # Mini ships within-distribution.csv only (see docs/dataset_structure.md), but a
+    # distinct directory from the full/supervised release is the whole point: it lets
+    # test_within_distribution_release_mini regression-test that mini=True actually
+    # resolves to MiniTree*, not silently falling back to the full release (see
+    # notes/prerelease_v1_packaging_audit.md, finding #4).
+    for geometry in ("TreeBoxes", "TreePoints", "TreePolygons"):
+        mini_dir = os.path.join(tmp_dir, f"Mini{geometry}_v0.0")
+        os.mkdir(mini_dir)
+        shutil.copytree(os.path.join(tmp_dir, f"{geometry}_supervised_v0.0", "images"),
+                        os.path.join(mini_dir, "images"))
+        shutil.copy(
+            os.path.join(tmp_dir, f"{geometry}_supervised_v0.0", "within-distribution.csv"),
+            os.path.join(mini_dir, "within-distribution.csv"),
+        )
+        with open(os.path.join(mini_dir, "RELEASE_v0.0.txt"), "w") as f:
+            f.write("v0.0")
+
     return tmp_dir
 
 

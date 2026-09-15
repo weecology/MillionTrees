@@ -8,7 +8,6 @@ def box_wrapper(m):
     eval_csvs = {
     #"Radogoshi_Sweden":"/blue/ewhite/DeepForest/Radogoshi_Sweden/images/test.csv",
     #"NeonTreeEvaluation":"/orange/idtrees-collab/NeonTreeEvaluation/evaluation/RGB/benchmark_annotations.csv",
-    #"Beloiu_2023": "/blue/ewhite/DeepForest/Beloiu_2023/images/test.csv",
     #"justdigit-drone": "/blue/ewhite/DeepForest/justdiggit-drone/label_sample/test.csv",
     #"ReForestTree": "/blue/ewhite/DeepForest/ReForestTree/images/test.csv",
     #"Siberia": "/blue/ewhite/DeepForest/Siberia/orthos/test.csv"

@@ -121,6 +121,39 @@ def _blend_masks(
     return np.clip(out, 0, 255).astype(np.uint8)
 
 
+def _erode4(mask: np.ndarray) -> np.ndarray:
+    """One step of 4-connected binary erosion."""
+    eroded = mask.copy()
+    eroded[1:, :] &= mask[:-1, :]
+    eroded[:-1, :] &= mask[1:, :]
+    eroded[:, 1:] &= mask[:, :-1]
+    eroded[:, :-1] &= mask[:, 1:]
+    return eroded
+
+
+def _draw_mask_outlines(
+        base_rgb: np.ndarray,
+        masks: np.ndarray,
+        color: tuple[int, int, int] = (0, 0, 0),
+        thickness: int = 1,
+) -> np.ndarray:
+    """Draw a solid (non-blended) exterior outline per mask instance.
+
+    Computed per-instance rather than on the union so that adjacent/overlapping instances each keep
+    their own boundary instead of merging into one.
+    """
+    out = base_rgb
+    for i in range(masks.shape[0]):
+        m = masks[i].astype(bool)
+        if not m.any():
+            continue
+        eroded = m
+        for _ in range(thickness):
+            eroded = _erode4(eroded)
+        out[m & ~eroded] = color
+    return out
+
+
 def save_eval_visualizations(
     dataset,
     y_pred: list[dict],
@@ -235,6 +268,8 @@ def save_eval_visualizations(
             arr = np.asarray(base, dtype=np.uint8)
             arr = _blend_masks(arr, gt_m, _COLOR_GROUND_TRUTH, alpha=0.35)
             arr = _blend_masks(arr, pm, _COLOR_PREDICTION, alpha=0.35)
+            arr = _draw_mask_outlines(arr, gt_m, color=(0, 0, 0), thickness=1)
+            arr = _draw_mask_outlines(arr, pm, color=(0, 0, 0), thickness=1)
             base = Image.fromarray(arr, mode="RGB")
         else:
             raise ValueError(

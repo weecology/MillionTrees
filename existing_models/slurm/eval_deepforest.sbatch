@@ -5,7 +5,7 @@
 #SBATCH --array=0-1
 #SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --mem=24G
 #SBATCH --partition=hpg-turin
 #SBATCH --gpus=1
 
@@ -15,7 +15,7 @@ REPO=/blue/ewhite/b.weinstein/src/MillionTrees
 ROOT_DIR=${MT_ROOT:-/orange/ewhite/web/public/MillionTrees}
 SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
-OUT_BASE=$REPO/existing_models/deepforest/outputs/$SPLIT
+OUT_BASE=$REPO/existing_models/deepforest/${MT_OUT_SUBDIR:-outputs}/$SPLIT
 
 cd $REPO/existing_models/deepforest
 

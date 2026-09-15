@@ -14,13 +14,17 @@ Two panels, because they answer different questions:
   Can the model fit its own training targets at all, and are those targets any good?
 * ``val-supervised`` -- held-out human-labelled tiles. Does any of it transfer?
 
-Prediction post-processing is deliberately *not* DeepForest's inference default. That
-default is ``nms_thresh=0.05``, which deletes any box overlapping a higher-scoring one
-by >5% IoU -- crippling on tiles averaging 143 heavily-overlapping crowns, and the
-reason an earlier audit under-measured stage-1 recall as 0.217 when the network was
-actually recalling 0.42-0.49 of its own labels. Visualising through that gate would
-show a near-empty image and misattribute a postprocessing artifact to the model, so
-the thresholds are explicit arguments here.
+Prediction post-processing is exactly DeepForest's inference default -- the boxes
+drawn are the ones the model's own post-processing keeps, using the ``score_thresh``
+/ ``nms_thresh`` / ``detections_per_img`` it carries from its config (0.1 / 0.05 / 300
+for RetinaNet). That is the same set the MillionTrees leaderboard scores, so the panel
+shows what inference actually returns rather than a looser diagnostic view.
+
+An earlier version drew boxes at ``score>=0.05`` / ``nms=0.4`` / 600 dets to prove
+stage-1 "was predicting at all". That painted a blanket of low-confidence, heavily
+overlapping boxes that never reach the metric and read as gross over-prediction on the
+overlay. If you still want that diagnostic view, pass an explicit ``score_thresh``
+override; NMS and the detection cap always follow the model.
 """
 
 import numpy as np
@@ -73,10 +77,9 @@ def _threshold_holder(net):
     RetinaNet keeps ``score_thresh`` / ``nms_thresh`` / ``detections_per_img`` on
     the model itself. Mask R-CNN keeps the *effective* ones on ``roi_heads`` and
     mirrors only the first two onto the model as inert bookkeeping attributes --
-    it never mirrors ``detections_per_img`` at all. Writing to the model would
-    therefore raise on one attribute and silently change nothing on the other
-    two, which is the worst possible failure for a visualisation whose entire
-    job is to show what the model really predicts.
+    it never mirrors ``detections_per_img`` at all. This viz only *reads* the
+    effective ``score_thresh`` from here (to label the overlay); it never writes,
+    so it cannot perturb what the surrounding run measures.
     """
     roi_heads = getattr(net, "roi_heads", None)
     if roi_heads is not None and hasattr(roi_heads, "detections_per_img"):
@@ -93,52 +96,59 @@ class CometDetectionViz(pl.Callback):
     whatever epoch 0 already produced.
     """
 
-    def __init__(self, experiment, panels, score_thresh=0.05, nms_thresh=0.4,
-                 detections_per_img=600, max_boxes=300, label="Tree"):
+    def __init__(self, experiment, panels, score_thresh=None, max_boxes=300,
+                 label="Tree"):
         super().__init__()
         self.experiment = experiment
         self.panels = panels  # {tag: (images, targets, paths)}
+        # None -> draw exactly what inference keeps (the model's own score_thresh).
+        # A float overrides the confidence floor for the overlay only (e.g. to get
+        # the old loose diagnostic view, or to match a dataset eval_score_threshold
+        # that is higher than the model's).
         self.score_thresh = score_thresh
-        self.nms_thresh = nms_thresh
-        self.detections_per_img = detections_per_img
         self.max_boxes = max_boxes
         self.label = label
 
     # -- prediction ---------------------------------------------------------
 
-    def _predict(self, pl_module, images):
-        """Forward pass with the viz post-processing thresholds swapped in.
+    def _score_floor(self, pl_module):
+        """Confidence floor the overlay filters at: the override, else the model's."""
+        if self.score_thresh is not None:
+            return float(self.score_thresh)
+        holder = _threshold_holder(pl_module.model)
+        return float(getattr(holder, "score_thresh", 0.0))
 
-        The overrides are restored in a ``finally`` so a visualisation can never
-        change what the surrounding training/eval run measures.
+    def _predict(self, pl_module, images):
+        """Forward pass exactly as MillionTrees inference runs it.
+
+        No threshold overrides: the boxes returned are the ones the model's own
+        post-processing keeps (config score_thresh / nms_thresh /
+        detections_per_img), i.e. the same set the leaderboard scores. Only
+        ``net.eval()`` is toggled, and it is restored in a ``finally`` so the
+        visualisation can never change what the surrounding run measures.
         """
         net = pl_module.model
-        holder = _threshold_holder(net)
-        saved = (holder.score_thresh, holder.nms_thresh, holder.detections_per_img)
         was_training = net.training
         device = next(pl_module.parameters()).device
         try:
-            holder.score_thresh = self.score_thresh
-            holder.nms_thresh = self.nms_thresh
-            holder.detections_per_img = self.detections_per_img
             net.eval()
             with torch.no_grad():
                 return net(images.to(device))
         finally:
-            (holder.score_thresh, holder.nms_thresh,
-             holder.detections_per_img) = saved
             net.train(was_training)
 
     # -- logging ------------------------------------------------------------
 
-    def _layers(self, gt_boxes, pred):
+    def _layers(self, gt_boxes, pred, score_floor):
         from comet_ml.annotations import Box, Layer
 
         gt = [Box(_xyxy_to_xywh(b), self.label) for b in gt_boxes[: self.max_boxes]]
 
         boxes = pred.get("boxes", torch.zeros((0, 4)))
         scores = pred.get("scores", torch.zeros((0,)))
-        keep = scores >= self.score_thresh
+        # The model already applied its own score_thresh; this is a no-op unless
+        # an override floor was passed (or a checkpoint carries a lower thresh).
+        keep = scores >= score_floor
         boxes, scores = boxes[keep], scores[keep]
         # Highest-confidence first, so the max_boxes cap drops the tail rather
         # than an arbitrary slice -- an undertrained model emits hundreds of
@@ -168,12 +178,13 @@ class CometDetectionViz(pl.Callback):
         )
 
     def log_panels(self, pl_module, step):
+        score_floor = self._score_floor(pl_module)
         for tag, (images, targets, paths) in self.panels.items():
             predictions = self._predict(pl_module, images)
             n_gt, n_pred, max_scores = [], [], []
             for i, (image, target, pred) in enumerate(zip(images, targets, predictions)):
                 layers, gt_count, pred_count, top_score = self._layers(
-                    target["boxes"], pred)
+                    target["boxes"], pred, score_floor)
                 n_gt.append(gt_count)
                 n_pred.append(pred_count)
                 max_scores.append(top_score)

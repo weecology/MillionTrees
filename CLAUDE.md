@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Project-wide instructions for Claude Code. `AGENTS.md` is the full contributor/agent
-guide; this file surfaces the two conventions that every session must follow so that
+guide; this file surfaces the conventions that every session must follow so that
 runs stay trackable and decisions stay fast. **Read these before submitting any job.**
 
 ## 1. SLURM job ledger (required on every `sbatch`)
@@ -133,6 +133,40 @@ benchmark users should not be reading diagnostic logs.
 Put analysis reports, experiment diagnostics, generated table fragments and anything written to
 navigate context in `notes/` (see `notes/README.md`). Scripts that emit a report default their
 `--output` there. Figures still live in `docs/public/`; notes link to them as `../docs/public/...`.
+
+## 6. Right-size `--mem` before every `sbatch`
+
+The lab QOS `ewhite` caps **total concurrent memory at ~1508 GB** across all GPU jobs
+(`sacctmgr show qos ewhite`). We have 10 GPUs but historically request 240–480 GB per job,
+so memory — not GPUs — is what leaves jobs `PENDING (QOSGrpMemLimit)`. Every over-requested
+GB blocks another job from starting. Most scripts are wildly over-provisioned (points at
+480 G actually peak ~70–170 G; most eval jobs request 64–400 G and use <15 G).
+
+**Part of every submit: check the memory request against history.**
+
+```bash
+scripts/slurm_mem_audit.py --check training/slurm/<script>.sbatch
+```
+
+- Exit 3 + `OVER-REQUEST` → lower the script's `#SBATCH --mem` to the printed number
+  before submitting (commit the change).
+- `needs a probe run` / `no history` → submit as-is; the probe records a real number for
+  next time.
+- `tight` → raise it.
+
+**How the numbers are produced.** `scripts/slurm_mem_probe.sh` is `source`d at the top of
+the canonical train/pretrain sbatch scripts. On exit it appends the true peak working set
+(`anon + shmem` from the job cgroup, counted once even across `srun` tasks and dataloader
+workers) to `/home/b.weinstein/logs/mem_ledger.csv`. `slurm_mem_audit.py` prefers that
+ledger; for scripts that predate the probe it falls back to `sacct MaxRSS`, which the
+cluster's `jobacct_gather/linux` plugin **over-reports 2–4×** (it sums per-process RSS), so
+those rows are an upper bound only and flagged provisional.
+
+- **New sbatch scripts that train/pretrain** must `source scripts/slurm_mem_probe.sh`
+  right after the `cd` (see `training/slurm/train_boxes.sbatch`).
+- Full picture / periodic review: `scripts/slurm_mem_audit.py` → `notes/slurm_memory_audit.md`.
+- The cgroup `memory.peak` and `sacct` both include reclaimable page cache / slab and will
+  trend toward `--mem` for any I/O-heavy job — never size against those.
 
 ## More
 
