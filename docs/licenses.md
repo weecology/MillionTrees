@@ -112,7 +112,7 @@ in `src/milliontrees/common/license_data/` handle this:
   (`000018_ortho_616_OFO_field_2025.png`), so one row per mission assigns that plot's
   license:
 
-  ```csv
+  ```text
   source,filename_pattern,license,notes
   OFO field 2025,000018_*,CC0-1.0,plot contributed under CC0
   ```
