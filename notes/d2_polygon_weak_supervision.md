@@ -1,8 +1,11 @@
-# Detectron2 polygon weak-supervision ablation (v0.23 / AP40 + AP60)
+# Detectron2 polygon weak-supervision ablation (AP40 + AP60)
 
-**Status: running (jobs 40208343–40208348), results pending.** Design and plumbing are
-settled and verified end-to-end on GPU by smoke job 40204749 (`SMOKE PASSED`); this file
-gets its numbers when the runs land.
+**Status: v0.24 OOD re-run done + checkpoint-trajectory sweep done (2026-09-03). The
+headline result is a NEGATIVE: the weak-supervision "gains" in the last-iterate numbers
+are early-stopping artifacts. See "Results" below.** v0.23 first ran as jobs 40208343–48
+(2026-08-25); v0.24 OOD re-ran as 40874559/40874560 (2026-09-02, WD re-run 40874556/57
+was cancelled and not resubmitted); the per-epoch checkpoint sweep is job 40990287
+(2026-09-03, OOD only, `coco` + `box_pretrained_full`, inference only).
 
 ## The question
 
@@ -129,16 +132,104 @@ smoke gets its smallness from `--eval-split validation` (59 tiles) and `--max-it
 
 ## Results
 
-_Pending._ Fill Recall / mask-aware Precision / AP40 / AP60 / worst-group AP40 per arm
-per split from
-`training/polygons/outputs/detectron2_ablation/<split>/{coco,box_pretrained_full,cotrain}/results_<split>.txt`,
-then compare against the DeepForest box round in the table at the top of this file.
+### Last-iterate numbers (`model_final.pth`, the recipe behind the published D2 rows)
 
-| Split | Arm | Recall | Mask-aware P | AP40 | AP60 | Worst-group AP40 |
-|---|---|---|---|---|---|---|
-| within-distribution | COCO control | | | | | |
-| within-distribution | Sequential pretrain | | | | | |
-| within-distribution | Co-training | | | | | |
-| out-of-distribution | COCO control | | | | | |
-| out-of-distribution | Sequential pretrain | | | | | |
-| out-of-distribution | Co-training | | | | | |
+F1 = harmonic mean of mask-recall and mask-aware precision (the leaderboard convention).
+
+| Split | Arm | Recall | Mask-aware P | F1 | AP40 | AP60 | wg AP40 |
+|---|---|---|---|---|---|---|---|
+| within-distribution (v0.23) | COCO control        | 0.654 | 0.924 | 0.766 | 0.453 | 0.297 | 0.012 |
+| within-distribution (v0.23) | Sequential pretrain | 0.655 | 0.921 | 0.766 | 0.458 | 0.296 | 0.021 |
+| within-distribution (v0.23) | Co-training         | 0.759 | 0.817 | 0.787 | 0.380 | 0.252 | 0.001 |
+| out-of-distribution (v0.24) | COCO control        | 0.376 | 0.943 | 0.538 | 0.243 | 0.188 | 0.010 |
+| out-of-distribution (v0.24) | Sequential pretrain | 0.402 | 0.938 | 0.563 | 0.275 | 0.212 | 0.014 |
+| out-of-distribution (v0.24) | Co-training         | 0.686 | 0.790 | 0.734 | 0.302 | 0.225 | 0.076 |
+
+Read at face value this says co-training wins OOD F1 by +0.20 and sequential adds +0.03
+AP40. **Both readings are wrong** — see the sweep.
+
+### The checkpoint-trajectory sweep kills the result (job 40990287, OOD, 2026-09-03)
+
+Every retained checkpoint of the OOD `coco` and `box_pretrained_full` runs re-scored with
+the MillionTrees streaming evaluator (inference only, no retraining). `iters/epoch = 863`
+(6902 imgs / 8); `SOLVER.STEPS = (36295, 46665)` so LR is 0.01 through it 34519, then
+1e-3, then 1e-4.
+
+**COCO control:**
+
+| epoch | iter | LR | recall | mask-P | F1 | AP40 | AP60 | wg AP40 |
+|---|---|---|---|---|---|---|---|---|
+| 5   | 4314  | 1e-2 | 0.675 | 0.811 | 0.737 | 0.361 | 0.280 | 0.008 |
+| **10**  | 8629  | 1e-2 | 0.735 | 0.786 | **0.760** | **0.509** | **0.396** | 0.069 |
+| 15  | 12944 | 1e-2 | 0.619 | 0.884 | 0.728 | 0.417 | 0.321 | 0.015 |
+| 20  | 17259 | 1e-2 | 0.631 | 0.861 | 0.728 | 0.424 | 0.317 | 0.014 |
+| 25  | 21574 | 1e-2 | 0.567 | 0.880 | 0.690 | 0.342 | 0.251 | 0.008 |
+| 30  | 25889 | 1e-2 | 0.528 | 0.887 | 0.662 | 0.366 | 0.269 | 0.016 |
+| 35  | 30204 | 1e-2 | 0.480 | 0.923 | 0.632 | 0.288 | 0.209 | 0.009 |
+| 40  | 34519 | 1e-2 | 0.530 | 0.920 | 0.673 | 0.372 | 0.275 | 0.017 |
+| 45  | 38834 | 1e-3 | 0.433 | 0.933 | 0.591 | 0.291 | 0.222 | 0.010 |
+| 50  | 43149 | 1e-3 | 0.429 | 0.942 | 0.590 | 0.287 | 0.222 | 0.010 |
+| 55  | 47464 | 1e-4 | 0.397 | 0.941 | 0.558 | 0.265 | 0.203 | 0.010 |
+| 60  | 51779 | 1e-4 | 0.391 | 0.941 | 0.552 | 0.258 | 0.196 | 0.010 |
+| final | 51850 | 1e-4 | 0.376 | 0.943 | 0.538 | 0.243 | 0.188 | 0.010 |
+
+**Sequential (`box_pretrained_full`):**
+
+| epoch | iter | LR | recall | mask-P | F1 | AP40 | AP60 | wg AP40 |
+|---|---|---|---|---|---|---|---|---|
+| 5   | 4314  | 1e-2 | 0.672 | 0.822 | 0.739 | 0.455 | 0.357 | 0.019 |
+| 10  | 8629  | 1e-2 | 0.731 | 0.806 | 0.767 | **0.507** | 0.391 | 0.043 |
+| 15  | 12944 | 1e-2 | 0.706 | 0.833 | 0.764 | 0.470 | 0.366 | 0.028 |
+| **20**  | 17259 | 1e-2 | 0.694 | 0.869 | **0.772** | 0.489 | 0.378 | 0.046 |
+| 25  | 21574 | 1e-2 | 0.568 | 0.892 | 0.694 | 0.367 | 0.265 | 0.037 |
+| 30  | 25889 | 1e-2 | 0.552 | 0.906 | 0.686 | 0.351 | 0.259 | 0.022 |
+| 35  | 30204 | 1e-2 | 0.603 | 0.891 | 0.719 | 0.424 | 0.317 | 0.021 |
+| 40  | 34519 | 1e-2 | 0.633 | 0.852 | 0.726 | 0.435 | 0.329 | 0.033 |
+| 45  | 38834 | 1e-3 | 0.439 | 0.940 | 0.598 | 0.299 | 0.233 | 0.015 |
+| 50  | 43149 | 1e-3 | 0.390 | 0.946 | 0.552 | 0.264 | 0.203 | 0.010 |
+| 55  | 47464 | 1e-4 | 0.400 | 0.937 | 0.561 | 0.272 | 0.210 | 0.014 |
+| 60  | 51779 | 1e-4 | 0.402 | 0.937 | 0.563 | 0.274 | 0.211 | 0.014 |
+| final | 51850 | 1e-4 | 0.402 | 0.938 | 0.563 | 0.275 | 0.212 | 0.014 |
+
+### What this means
+
+1. **Both arms peak around epoch 10–20 and then overfit for 40+ epochs.** Peak vs
+   last-iterate: `coco` F1 0.760 → 0.538, AP40 0.509 → 0.243; `box_pretrained_full`
+   F1 0.772 → 0.563, AP40 0.507 → 0.275. Last-iterate scoring throws away **~40–50 % of
+   AP40**. The decay is overfitting at full LR (recall 0.735 → 0.48 by ep 35, precision
+   creeping 0.79 → 0.92 as the model turns conservative); the LR drops at ep 42/54 don't
+   cause the collapse, they just fail to arrest it.
+
+2. **At matched (peak) checkpoint selection, sequential weak-box pretraining buys nothing.**
+   `coco` peak F1 0.760 / AP40 0.509 vs `box_pretrained_full` peak F1 0.772 / AP40 0.507 —
+   inside run-to-run noise. The +0.03 AP40 "gain" at last-iterate is just that the
+   pretrained arm overfits a hair slower.
+
+3. **Co-training's apparent OOD F1 win (0.734 vs 0.538) is an early-stopping artifact.**
+   Co-training's mixed set is ~87 % weak box tiles, so 51 850 iters is only ~7.7 passes
+   over the polygon data (`n_train` 53 725) vs the control's ~60. It "wins" only because
+   its diluted schedule accidentally stops near a reasonable point while the controls are
+   scored 50 epochs past their peak. A properly checkpoint-selected COCO control
+   (F1 0.760 / AP40 0.509) **beats** co-training (0.734 / 0.302) outright — and on AP40 by
+   0.20. Co-training's one real edge is worst-group AP40 (0.076 vs ~0.010), but that is on
+   a near-zero baseline (one OOD source never works for any arm).
+
+### Consequence for manuscript Table 6
+
+Every row was scored at `model_final.pth`, i.e. at the overfit endpoint, and the arms
+overfit at different rates, so the table currently measures overfitting rate, not weak
+supervision. **Table 6 must be regenerated with validation-F1 (or val-AP40) checkpoint
+selection on every arm** before any weak-supervision claim. Expectation after that fix:
+the three arms collapse to roughly F1 0.76 / AP40 0.50 on OOD and the ablation reports a
+clean null. (Caveat: the peaks above are read off the *test* set — an optimistic bound;
+real selection needs a validation curve. But the early-peak-then-decay shape is identical
+across both swept arms and unambiguous.)
+
+Mechanism to add: `train_detectron2.py` currently scores only `model_final.pth`
+(line ~497). Needs a `--eval-split validation` pass per retained checkpoint (or an
+in-training hook) picking the best by val F1, then a single test eval of that checkpoint.
+`select_checkpoint.py` does this for the DeepForest polygon stack already.
+
+Per-checkpoint prediction dumps are at
+`training/polygons/outputs/detectron2_ablation/out-of-distribution/{coco,box_pretrained_full}_ckpt_sweep/ep*/preds.pkl`
+for offline score-threshold / IoU re-scoring.

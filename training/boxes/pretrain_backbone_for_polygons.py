@@ -302,19 +302,13 @@ def main():
     parser.add_argument(
         "--viz-score-thresh",
         type=float,
-        default=0.05,
-        help="Confidence floor for boxes drawn in the Comet overlays. Low on "
-             "purpose: stage-1 models top out around score 0.30, so the usual 0.5 "
-             "would render an empty image for a model that is in fact predicting.",
-    )
-    parser.add_argument(
-        "--viz-nms-thresh",
-        type=float,
-        default=0.4,
-        help="NMS IoU for the overlays only (never for the reported metrics). "
-             "DeepForest's inference default is 0.05, which discards any box "
-             "overlapping a better one by >5% IoU -- on tiles averaging 143 "
-             "overlapping crowns that hides most of what the model found.",
+        default=None,
+        help="Override the confidence floor for boxes drawn in the Comet overlays. "
+             "Default (unset) draws exactly what MillionTrees inference keeps -- the "
+             "model's own score_thresh / nms_thresh / detections_per_img, the same "
+             "set the leaderboard scores. Pass a low value (e.g. 0.05) only for the "
+             "old loose diagnostic view; NMS and the detection cap always follow the "
+             "model.",
     )
     parser.add_argument(
         "--viz-max-boxes",
@@ -640,13 +634,14 @@ def main():
                 loggers[0].experiment,
                 panels,
                 score_thresh=args.viz_score_thresh,
-                nms_thresh=args.viz_nms_thresh,
                 max_boxes=args.viz_max_boxes,
             )
             callbacks.append(viz_cb)
+            floor = ("model default" if args.viz_score_thresh is None
+                     else f"score>={args.viz_score_thresh}")
             print(f"[viz] Comet detection overlays enabled for panels "
                   f"{sorted(panels)} ({args.viz_images} tiles each, "
-                  f"score>={args.viz_score_thresh}, nms={args.viz_nms_thresh})")
+                  f"as-scored inference post-processing, {floor})")
     elif args.viz_images > 0:
         print("[viz] Comet detection overlays skipped: --viz-images requires --comet")
 

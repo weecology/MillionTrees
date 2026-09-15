@@ -104,9 +104,6 @@ DATASETS = {
     "BohlmanBCI": [
         "/orange/ewhite/DeepForest/BohlmanBCI/*.tif",
     ],
-    "Beloiu2023": [
-        "/orange/ewhite/DeepForest/Beloiu_2023/images/*.tif",
-    ],
     "Puliti_2022": [
         "/orange/ewhite/DeepForest/Puliti_2022/*.tif",
     ],

@@ -28,6 +28,7 @@ def print_dataset_summary(
     small: bool = False,
     include_patterns: Optional[list[str]] = None,
     exclude_patterns: Optional[list[str]] = None,
+    licenses: Optional[str | list[str]] = None,
 ) -> None:
     """Print a concise onboarding summary for dataset initialization."""
     if mini and small:
@@ -49,6 +50,8 @@ def print_dataset_summary(
         print(f"[MillionTrees] include_sources: {include_patterns}")
     if exclude_patterns:
         print(f"[MillionTrees] exclude_sources: {exclude_patterns}")
+    if licenses:
+        print(f"[MillionTrees] licenses: {licenses}")
 
 
 def plot_release_size_summary(

@@ -13,6 +13,10 @@ set -euo pipefail
 cd /blue/ewhite/b.weinstein/src/MillionTrees
 mkdir -p training/polygons/outputs
 
+# Record real peak memory to /home/b.weinstein/logs/mem_ledger.csv on exit
+# (scripts/slurm_mem_audit.py reads this to right-size --mem).
+source scripts/slurm_mem_probe.sh
+
 # hpg-turin L4 GPUs (24GB) OOM on Mask R-CNN even at batch_size 1; use a larger
 # B200 GPU (180GB) and reduce allocator fragmentation. The B200 headroom lets us
 # run a much larger batch than the L4 could.

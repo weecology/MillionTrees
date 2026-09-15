@@ -15,7 +15,7 @@ REPO=/blue/ewhite/b.weinstein/src/MillionTrees
 ROOT_DIR=${MT_ROOT:-/orange/ewhite/web/public/MillionTrees}
 SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
-OUT_BASE=$REPO/existing_models/detectree2/outputs/$SPLIT
+OUT_BASE=$REPO/existing_models/detectree2/${MT_OUT_SUBDIR:-outputs}/$SPLIT
 
 cd $REPO/existing_models/detectree2
 

@@ -16,6 +16,10 @@ set -euo pipefail
 cd /blue/ewhite/b.weinstein/src/MillionTrees
 mkdir -p training/points/outputs
 
+# Record real peak memory to /home/b.weinstein/logs/mem_ledger.csv on exit
+# (scripts/slurm_mem_audit.py reads this to right-size --mem).
+source scripts/slurm_mem_probe.sh
+
 ROOT_DIR=/orange/ewhite/web/public/MillionTrees
 SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}

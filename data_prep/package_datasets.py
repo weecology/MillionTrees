@@ -1084,32 +1084,44 @@ def zip_directory(folder_path, zip_path):
                 arcname = os.path.relpath(file_path, folder_path)
                 zipf.write(file_path, arcname)
 
+def assign_within_distribution_auto_split(df):
+    """Assign the auto-split ~10% test fraction at the IMAGE level.
+
+    Rows without a pre-assigned split (see ``_rows_needing_auto_split``) are split
+    per source, holding out roughly 10% of that source's *images* as test. Must
+    group by filename before choosing test images: an image contributes one row
+    per annotation, so slicing row-index directly (the previous implementation)
+    cut some images' rows into test and the rest into train, landing the same
+    image on both sides of the eval. See notes/prerelease_v1_packaging_audit.md
+    (finding #1) and notes/ood_split_test_sources_and_leaks.md (§8b).
+    """
+    df = apply_existing_splits(df)
+    needs_split = _rows_needing_auto_split(df)
+    remaining = df.loc[needs_split]
+    if not remaining.empty:
+        for source in remaining["source"].dropna().unique():
+            source_rows = remaining[remaining["source"] == source]
+            filenames = pd.Series(source_rows["filename"].unique())
+            n = len(filenames)
+            if n == 0:
+                continue
+            n_test = max(1, int(round(n * 0.1))) if n > 1 else 0
+            test_filenames = (
+                set(filenames.sample(n=n_test, random_state=42))
+                if n_test > 0 else set())
+            is_test = source_rows["filename"].isin(test_filenames)
+            df.loc[source_rows.index[is_test], "split"] = "test"
+            df.loc[source_rows.index[~is_test], "split"] = "train"
+    return df
+
+
 def within_distribution_split(TreePolygons_datasets, TreePoints_datasets, TreeBoxes_datasets,
                  base_dir, version, suffix="", prefix=""):
     """Perform within-distribution split and save the results."""
-    
-    def apply_split(df):
-        df = apply_existing_splits(df)
-        needs_split = _rows_needing_auto_split(df)
-        remaining = df.loc[needs_split].copy()
-        if not remaining.empty:
-            for source in remaining["source"].dropna().unique():
-                idx = remaining[remaining["source"] == source].index
-                n = len(idx)
-                if n == 0:
-                    continue
-                n_test = max(1, int(round(n * 0.1))) if n > 1 else 0
-                test_idx = idx[:n_test]
-                train_idx = idx[n_test:]
-                if n_test > 0:
-                    df.loc[test_idx, "split"] = "test"
-                if len(train_idx) > 0:
-                    df.loc[train_idx, "split"] = "train"
-        return df
 
-    TreePolygons_datasets = apply_split(TreePolygons_datasets)
-    TreePoints_datasets = apply_split(TreePoints_datasets)
-    TreeBoxes_datasets = apply_split(TreeBoxes_datasets)
+    TreePolygons_datasets = assign_within_distribution_auto_split(TreePolygons_datasets)
+    TreePoints_datasets = assign_within_distribution_auto_split(TreePoints_datasets)
+    TreeBoxes_datasets = assign_within_distribution_auto_split(TreeBoxes_datasets)
 
     # Remove from test split any entries with 'unsupervised' or 'weak supervised'
     # in the source column. normalize_unsupervised_sources() guarantees aliases

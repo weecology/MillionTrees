@@ -231,6 +231,9 @@ existing_models/treeformer_sam2/
 training/weak_supervision/outputs/
 training/polygons/detectron2_assets/
 existing_models/*/outputs_ap_iou/
+existing_models/*/outputs_repro/
+training/points/weak_supervision_outputs/
+notes/polygon_input_pipeline_viz/
 
 # Per-image diagnostic renders backing docs/validation_ap_completeness.md.
 # The contact sheets that the doc actually embeds are tracked; the ~286 GB of

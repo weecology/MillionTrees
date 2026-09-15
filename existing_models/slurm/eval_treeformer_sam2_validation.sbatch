@@ -23,9 +23,12 @@ REPO=/blue/ewhite/b.weinstein/src/MillionTrees
 ROOT_DIR=${MT_ROOT:-/orange/ewhite/web/public/MillionTrees}
 OUT_DIR=$REPO/existing_models/treeformer_sam2/outputs/validation
 
-# v0.20 within-distribution fine-tuned TreeFormer point checkpoint (epoch 13, recall 0.2265)
-# -- the leaderboard cross-geometry model.
-CKPT="$REPO/training/points/outputs/within-distribution/checkpoints/treeformer-epoch=13-point_recall=0.2265.ckpt"
+# v0.24 within-distribution fine-tuned TreeFormer point checkpoint (val_loss-selected,
+# epoch 18) -- the exact checkpoint behind the v0.24 leaderboard cross-geometry TEST row
+# (existing_models/slurm/eval_treeformer_sam2_crossgeom_v024.sbatch, job 40371591), so
+# this validation score is directly comparable to it. Override with CKPT=... sbatch ...
+CKPT="${CKPT:-$REPO/training/points/outputs/within-distribution_896_countfix/checkpoints/treeformer-epoch=18-val_loss=1.7955.ckpt}"
+if [ ! -f "$CKPT" ]; then echo "ERROR: checkpoint not found: $CKPT" >&2; exit 1; fi
 
 cd $REPO/existing_models/treeformer_sam2
 

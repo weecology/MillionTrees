@@ -173,6 +173,28 @@ def _explode_polygons(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return gdf
 
 
+def _drop_duplicate_crowns(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Drop duplicate crown rows.
+
+    ``combined_crown_polygons.gpkg`` concatenates several compiled layers
+    (e.g. ``hastings_july_15``, ``old_crowns``, ``hastings_july_9``,
+    ``field_data``) that repeat the same digitized crown under the same
+    ``crownID``/``GlobalID`` with identical geometry. Left undeduplicated,
+    every crown is quadruplicated straight through to the tiled annotations
+    (e.g. 308 rows for 75 unique crowns in one tile), inflating its training
+    weight 4x with no new information.
+    """
+    before = len(gdf)
+    if "crownID" in gdf.columns:
+        gdf = gdf.drop_duplicates(subset="crownID").copy()
+    else:
+        gdf = gdf.drop_duplicates(subset="geometry").copy()
+    dropped = before - len(gdf)
+    if dropped:
+        print(f"Dropped {dropped} duplicate crown row(s) ({before} -> {len(gdf)})")
+    return gdf
+
+
 def run(
     gpkg: Path,
     output_dir: Path,
@@ -190,6 +212,7 @@ def run(
     gdf = gpd.read_file(gpkg)
     if gdf.crs is None:
         raise ValueError("GeoPackage has no CRS; cannot align to NEON imagery.")
+    gdf = _drop_duplicate_crowns(gdf)
     gdf = _explode_polygons(gdf)
     if gdf.empty:
         raise ValueError(

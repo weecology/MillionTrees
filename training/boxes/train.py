@@ -24,6 +24,63 @@ from milliontrees import get_dataset
 from milliontrees.common.data_loaders import get_eval_loader
 
 
+def _train_augmentation(image_size):
+    """Resize-only + label-preserving geometric augmentation for the TRAIN subset.
+
+    Mirrors ``TreeBoxes._transform_`` (same ``A.Resize`` and ``bbox_params``) and
+    only inserts flips / 90-degree rotations, which are valid for nadir imagery
+    and need no radiometric assumptions. Passed as ``get_subset(transform=...)``
+    so val/test keep the plain resize-only transform.
+    """
+    import albumentations as A
+    from albumentations.pytorch import ToTensorV2
+
+    return A.Compose(
+        [
+            A.Resize(height=image_size, width=image_size, p=1.0),
+            A.HorizontalFlip(p=0.5),
+            A.VerticalFlip(p=0.5),
+            A.RandomRotate90(p=0.5),
+            ToTensorV2(),
+        ],
+        bbox_params=A.BboxParams(
+            format="pascal_voc", label_fields=["labels"], clip=True
+        ),
+    )
+
+
+def _add_box_f1_metric(model):
+    """Wrap DeepForest's ``_compute_epoch_metrics`` so every validation epoch also
+    logs ``box_f1`` = harmonic mean of ``box_precision`` and ``box_recall``.
+
+    Both inputs are computed at ``config.validation.iou_threshold`` (0.4), the
+    same IoU the final scored F1 uses, so the selection metric and the reported
+    metric agree on what counts as a match. Emitting it inside
+    ``_compute_epoch_metrics`` puts ``box_f1`` in the same ``log_dict`` call as
+    its inputs, so it is in ``callback_metrics`` when ModelCheckpoint /
+    EarlyStopping read it. Needed because recall can plateau while precision
+    keeps climbing (co-training arm) — monitoring recall alone then stops a run
+    whose F1 is still improving.
+    """
+    import types
+
+    base = model._compute_epoch_metrics.__func__
+
+    def _compute_epoch_metrics(self):
+        metrics = base(self)
+        p = metrics.get("box_precision")
+        r = metrics.get("box_recall")
+        p = float(p) if p is not None else float("nan")
+        r = float(r) if r is not None else float("nan")
+        if math.isfinite(p) and math.isfinite(r) and (p + r) > 0:
+            metrics["box_f1"] = 2 * p * r / (p + r)
+        else:
+            metrics["box_f1"] = 0.0
+        return metrics
+
+    model._compute_epoch_metrics = types.MethodType(_compute_epoch_metrics, model)
+
+
 # ---------------------------------------------------------------------------
 # Batch format adapter
 # ---------------------------------------------------------------------------
@@ -434,11 +491,42 @@ def main():
     )
     parser.add_argument("--early-stop-patience", type=int, default=10)
     parser.add_argument(
+        "--ckpt-monitor", type=str, default="box_f1",
+        choices=["box_f1", "box_recall", "box_precision", "val_loss"],
+        help="Metric driving ModelCheckpoint and EarlyStopping. Default box_f1 "
+             "(harmonic mean of box_precision/box_recall at IoU 0.4) tracks the "
+             "reported F1; box_recall was the pre-2026-08 default but stops runs "
+             "whose recall has plateaued while precision is still improving.",
+    )
+    parser.add_argument(
         "--gradient-clip-val", type=float, default=0.0,
         help="Clip gradient norm to this value (0 = off, Lightning default). "
              "The box-pretrained arm diverged to NaN at lr 0.01 (job 36058068_0), "
              "so the pretraining ablation runs with 1.0.",
     )
+    parser.add_argument(
+        "--lr-scheduler", action="store_true",
+        help="Attach a ReduceLROnPlateau scheduler (factor 0.5, patience 5) on "
+             "the --lr-plateau-monitor metric. DeepForest's configure_optimizers "
+             "only returns a scheduler when validation.csv_file is set, and "
+             "MillionTrees always uses an in-memory val dataloader, so train.py "
+             "re-attaches it via a configure_optimizers override (mirrors "
+             "training/points/train.py).")
+    parser.add_argument(
+        "--lr-plateau-monitor", type=str, default="val_loss",
+        choices=["val_loss", "box_f1"],
+        help="Metric the --lr-scheduler ReduceLROnPlateau watches for a plateau. "
+             "val_loss (default, min mode) is the DeepForest-native target but is "
+             "an anchor-level loss whose late-training rise is partly background/"
+             "hard-negative noise the post-NMS detection metrics never see; "
+             "box_f1 (max mode) anneals LR on the same signal that drives "
+             "checkpoint selection.")
+    parser.add_argument(
+        "--augment", action="store_true",
+        help="Add label-preserving geometric augmentation to the TRAIN subset "
+             "only (HorizontalFlip + VerticalFlip + RandomRotate90, p=0.5 each). "
+             "The production box recipe trains with resize-only, which overfits "
+             "by a handful of epochs; val/test transforms are untouched.")
     parser.add_argument("--comet", action="store_true",
                         help="Log to Comet ML (requires .comet.config or COMET_API_KEY)")
     parser.add_argument("--comet-name", type=str, default=None,
@@ -503,7 +591,15 @@ def main():
     # every arm of an ablation must train on the identical subsample.
     pl.seed_everything(args.seed, workers=True)
 
-    train_subset = box_dataset.get_subset("train", frac=args.train_frac)
+    train_transform = (
+        _train_augmentation(box_dataset.image_size) if args.augment else None
+    )
+    train_subset = box_dataset.get_subset(
+        "train", frac=args.train_frac, transform=train_transform
+    )
+    if args.augment:
+        print("Train augmentation: HFlip + VFlip + RandomRotate90 (p=0.5 each); "
+              "val/test resize-only.")
     test_subset = box_dataset.get_subset("test")
     # The val loader only drives early stopping / checkpoint selection; the final
     # MillionTrees eval below always scores the FULL test split. Subsampling it
@@ -565,6 +661,22 @@ def main():
         "workers": args.num_workers,
     }
 
+    if args.lr_scheduler:
+        # ReduceLROnPlateau on --lr-plateau-monitor. Applied via the
+        # configure_optimizers override below (DeepForest's own attaches a
+        # scheduler only when validation.csv_file is set, which MillionTrees
+        # training never uses). box_f1 is a "max" objective, val_loss a "min" one.
+        plateau_mode = "max" if args.lr_plateau_monitor == "box_f1" else "min"
+        config_args["train"]["scheduler"] = {
+            "type": "ReduceLROnPlateau",
+            "params": {
+                "mode": plateau_mode, "factor": 0.5, "patience": 5,
+                "threshold": 1e-4, "threshold_mode": "rel",
+                "cooldown": 0, "min_lr": 0, "eps": 1e-8,
+            },
+        }
+        config_args["validation"]["lr_plateau_target"] = args.lr_plateau_monitor
+
     # Both clean arms must start from torchvision COCO, so model.name has to be
     # None *at construction time*: deepforest.__init__ -> create_model() takes
     # the load_model() branch for any non-None name, and the config default is
@@ -616,6 +728,55 @@ def main():
         assert_coco_trunk(model)
         apply_box_pretrained_network(model, args.box_backbone_checkpoint)
 
+    if args.lr_scheduler:
+        # DeepForest.configure_optimizers only returns a scheduler when
+        # validation.csv_file is set; MillionTrees uses an in-memory val
+        # dataloader (csv_file=None), so the base method drops the scheduler and
+        # returns a bare optimizer. Re-attach ReduceLROnPlateau on the
+        # --lr-plateau-monitor metric, mirroring DeepForest's own construction
+        # (main.py configure_optimizers) and training/points/train.py.
+        import types
+
+        def _configure_optimizers_with_plateau(self):
+            opt_cfg = self.config.train.optimizer
+            lr = self.config.train.lr
+            try:
+                param_groups = self._build_param_groups(opt_cfg.weight_decay)
+            except AttributeError:
+                param_groups = self.model.parameters()
+            if opt_cfg.type == "Adam":
+                optimizer = torch.optim.Adam(
+                    param_groups, lr=lr, betas=tuple(opt_cfg.betas),
+                    weight_decay=opt_cfg.weight_decay)
+            elif opt_cfg.type == "AdamW":
+                optimizer = torch.optim.AdamW(
+                    param_groups, lr=lr, betas=tuple(opt_cfg.betas),
+                    weight_decay=opt_cfg.weight_decay)
+            else:  # SGD is the DeepForest box default
+                optimizer = torch.optim.SGD(
+                    param_groups, lr=lr, momentum=opt_cfg.momentum,
+                    weight_decay=opt_cfg.weight_decay)
+            p = self.config.train.scheduler.params
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, mode=p["mode"], factor=p["factor"], patience=p["patience"],
+                threshold=p["threshold"], threshold_mode=p["threshold_mode"],
+                cooldown=p["cooldown"], min_lr=p["min_lr"], eps=p["eps"],
+            )
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "monitor": self.config.validation.lr_plateau_target,
+                    "interval": "epoch",
+                },
+            }
+
+        model.configure_optimizers = types.MethodType(
+            _configure_optimizers_with_plateau, model)
+        print("LR scheduler: ReduceLROnPlateau "
+              f"(mode={model.config.train.scheduler.params['mode']}) on "
+              f"{model.config.validation.lr_plateau_target} (factor 0.5, patience 5)")
+
     # Loggers
     loggers = []
     if args.comet:
@@ -643,7 +804,10 @@ def main():
                             safe[k] = type(v).__name__
                     super().log_hyperparams(safe)
 
-            comet_name = args.comet_name or f"boxes-{args.split_scheme}-{args.init_mode}-lr{args.lr:g}"
+            comet_name = args.comet_name or (
+                f"boxes-{args.split_scheme}-{args.init_mode}-lr{args.lr:g}"
+                + ("-aug" if args.augment else "")
+                + (f"-sched-{args.lr_plateau_monitor}" if args.lr_scheduler else ""))
             loggers.append(_SafeCometLogger(
                 project_name="milliontrees-boxes",
                 name=comet_name,
@@ -654,24 +818,32 @@ def main():
 
     # Callbacks
     callbacks = []
+    if args.lr_scheduler:
+        # Surface the ReduceLROnPlateau drops on the Comet LR curve.
+        callbacks.append(pl.callbacks.LearningRateMonitor(logging_interval="epoch"))
     checkpoint_cb = None
     if has_val:
-        # Monitor box_recall (mode=max) rather than the regression loss: the
-        # loss can drift upward while detections stay good, so it's a poor
-        # signal for checkpointing/early stopping.
+        # Monitor a detection metric (default box_f1) rather than the regression
+        # loss: the loss can drift upward while detections stay good, so it's a
+        # poor signal for checkpointing/early stopping. box_f1 is injected into
+        # DeepForest's own per-epoch metric dict by _add_box_f1_metric().
+        monitor = args.ckpt_monitor
+        monitor_mode = "min" if monitor == "val_loss" else "max"
+        if monitor == "box_f1":
+            _add_box_f1_metric(model)
         checkpoint_cb = pl.callbacks.ModelCheckpoint(
             dirpath=os.path.join(args.output_dir, "checkpoints"),
             filename="boxes-best",
-            monitor="box_recall",
-            mode="max",
+            monitor=monitor,
+            mode=monitor_mode,
             save_last=True,
             save_top_k=1,
         )
         callbacks.append(checkpoint_cb)
         callbacks.append(pl.callbacks.EarlyStopping(
-            monitor="box_recall",
+            monitor=monitor,
             patience=args.early_stop_patience,
-            mode="max",
+            mode=monitor_mode,
         ))
 
     trainer_kwargs = {}

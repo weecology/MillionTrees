@@ -24,7 +24,7 @@ This looks at the file within-distribution.csv and gets the 'split' column that 
 
 The MillionTrees benchmark supports multiple dataset split schemes to accommodate various tasks:
 
-- **Within-distribution**: For each source, most images are used for training and a subset for testing (the same sources appear in both splits), matching a typical fine-tuning workflow.
+- **Within-distribution**: For each source, most images are used for training and a subset for testing (the same sources appear in both splits), matching a typical fine-tuning workflow. The split is assigned per image: no image appears in more than one split.
 - **Out-of-distribution**: Entire sources are held out for testing, simulating a common applied example in which a user applies to model to new data outside of training distributions. 
 - **Crossgeometry**: Combines boxes and points annotations to predict Polygons.
 

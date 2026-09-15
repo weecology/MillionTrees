@@ -8,7 +8,7 @@
 # eval_polygons.py now streams metrics batch-by-batch (TreePolygonsStreamingEvalState)
 # instead of accumulating the full test set of dense 1024x1024 masks, so peak RAM is one
 # batch rather than ~270 GiB. 150G is plenty; keep headroom for the box stage + loaders.
-#SBATCH --mem=150G
+#SBATCH --mem=88G
 #SBATCH --partition=hpg-b200
 #SBATCH --gpus=1
 
@@ -18,7 +18,7 @@ REPO=/blue/ewhite/b.weinstein/src/MillionTrees
 ROOT_DIR=${MT_ROOT:-/orange/ewhite/web/public/MillionTrees}
 SPLITS=(within-distribution out-of-distribution)
 SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
-OUT_BASE=$REPO/existing_models/canopyrs/outputs/$SPLIT
+OUT_BASE=$REPO/existing_models/canopyrs/${MT_OUT_SUBDIR:-outputs}/$SPLIT
 
 # CanopyRS (detrex + Detectron2 + SAM3) lives in a uv venv built by build_env.sh.
 # detectron2/detrex CUDA ops are a fat binary for L4 (sm_89) + B200 (sm_100); load the

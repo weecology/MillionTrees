@@ -5,6 +5,7 @@ import csv
 import json
 import os
 import re
+import sys
 
 from pathlib import Path
 
@@ -12,6 +13,12 @@ import torch
 
 from deepforest import utilities as df_utilities
 from deepforest.main import deepforest
+
+# Allow ``python training/polygons/eval.py`` (and select_checkpoint.py's subprocess
+# call) to resolve the top-level ``training`` namespace package without PYTHONPATH.
+_REPO_ROOT = str(Path(__file__).resolve().parents[2])
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 _POLYGON_CONFIG = str(Path(__file__).with_name("deepforest_polygon.yaml"))
 
@@ -135,6 +142,16 @@ def main():
         choices=["stream", "legacy"],
         help="stream = low-memory per-batch metrics; legacy = accumulate then dataset.eval()",
     )
+    parser.add_argument(
+        "--eval-inference",
+        type=str,
+        default="tiled",
+        choices=["tiled", "resize"],
+        help="tiled: native-resolution predict_tile at the training patch size "
+             "(matches --train-aug crop/nativecrop/annotationsafecrop). resize: "
+             "whole-image resize to --image-size, single forward pass (matches "
+             "--train-aug resize). Must match how the checkpoint was trained.",
+    )
     args = parser.parse_args()
 
     # Visualization on by default: 10 overlays per source (dataset.eval viz_n_per_source=10).
@@ -213,6 +230,7 @@ def main():
         device=device,
         viz_dir=args.viz_dir,
         eval_mode=args.eval_mode,
+        eval_inference=args.eval_inference,
     )
     print(results_str)
 

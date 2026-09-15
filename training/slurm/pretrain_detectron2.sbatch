@@ -7,7 +7,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=240G
+#SBATCH --mem=40G
 #SBATCH --partition=hpg-b200
 #SBATCH --gpus=b200:1
 
@@ -35,6 +35,10 @@ SPLIT=${SPLITS[$SLURM_ARRAY_TASK_ID]}
 OUT_DIR="$REPO/training/weak_supervision/outputs/pretrain_detectron2/$SPLIT"
 mkdir -p "$OUT_DIR"
 
+# Record real peak memory to /home/b.weinstein/logs/mem_ledger.csv on exit
+# (scripts/slurm_mem_audit.py reads this to right-size --mem).
+source "$REPO/scripts/slurm_mem_probe.sh"
+
 # Detectron2 (CanopyRS venv) CUDA ops are a fat binary for L4 (sm_89) + B200 (sm_100).
 module load cuda/12.8.1 gdal/3.7.0
 export CUDA_HOME=/apps/compilers/cuda/12.8.1
@@ -50,7 +54,7 @@ source .venv/bin/activate
 echo "=== Detectron2 stage 1: weak-box pretraining, split=$SPLIT ==="
 python "$REPO/training/polygons/pretrain_detectron2.py" \
   --root-dir "$ROOT_DIR" \
-  --boxes-dataset TreeBoxes_v0.23 \
+  --boxes-dataset TreeBoxes_v0.24 \
   --split-scheme "$SPLIT" \
   --weak-sources '*unsupervised*' \
   --holdout-images 512 \

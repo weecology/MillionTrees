@@ -1,0 +1,67 @@
+# Upstream license for every source shipped in a MillionTrees release.
+#
+# `source` matches the `source` column of the packaged split CSVs exactly (matching
+# is whitespace- and case-insensitive). `license` must be one of the identifiers in
+# milliontrees.common.licenses.LICENSES, or `unknown` when the upstream terms have
+# not been confirmed -- `unknown` is never returned by a license filter, so an
+# unconfirmed source is dropped rather than silently redistributed.
+#
+# A source whose rows do not all share one license keeps its most restrictive
+# license here and is refined per row in overrides.csv (see Open Forest Observatory).
+#
+# Lines starting with '#' are comments. Keep this file sorted by source.
+source,license,notes
+Alejandro_Miranda,CC-BY-4.0,Miranda et al. 2021 (Chile)
+Allen et al. 2025,CC-BY-NC-4.0,Allen et al. 2026 TLS validation plots
+Amirkolaee et al. 2023,CC-BY-4.0,
+Araujo et al. 2020,CC-BY-4.0,
+Ball et al. 2023,CC-BY-4.0,
+Beery et al. 2022 unsupervised,CC-BY-3.0,Auto-Arborist
+Bohlman et al. 2008,unknown,Upstream terms not confirmed; BCI Panama plots
+Chen & Shang (2022),CC-BY-4.0,
+Cloutier et al. 2023,CC-BY-4.0,
+Dubrovin et al. 2024,CC-BY-4.0,
+Dumortier et al. 2025,CC0-1.0,
+Feng et al. 2025 unsupervised,CC-BY-4.0,SPREAD simulation
+Firoze et al. 2023,CC-BY-4.0,
+Frey et al. 2026,CC-BY-4.0,EcoSense TLS; manuscript row "Liu et al. 2024"
+Hickman 2021,CC-BY-4.0,Hickman et al. 2021
+Jansen et al. 2023,CC-BY-4.0,
+Justdiggit 2023,CC-BY-4.0,
+Kaggle_Palm_Counting,CC0-1.0,
+Kattenborn et al. 2023,CC-BY-4.0,Kattenborn et al. 2022 (New Zealand)
+Khan et al. 2026,CC-BY-4.0,
+Kwon et al. 2023,CC-BY-4.0,
+Lefebvre et al. 2024,CC0-1.0,Lefebvre and Laliberte 2024
+Li et al. 2023,CC-BY-4.0,
+Lucas et al. 2024,CC-BY-4.0,
+NEON MultiTemporal,CC-BY-4.0,NEON / Weinstein et al. 2020
+NEON combined crowns,CC-BY-4.0,NEON / Weinstein et al. 2020
+NEON_benchmark,CC-BY-4.0,NEON / Weinstein et al. 2020
+NEON_points,CC-BY-4.0,NEON / Weinstein et al. 2020
+OAM-TCD,CC-BY-4.0,Veitch-Michaelis et al. 2024
+OFO field 2025,CC-BY-NC-SA-4.0,Open Forest Observatory field plots; mixed per-plot licenses - see overrides.csv
+OSBS megaplot 2025,CC-BY-4.0,Manuscript row "Johnson et al. 2021"
+Puliti and Astrup 2022,AGPL-3.0-or-later,Puliti and Astrup 2025
+Radogoshi et al. 2021,CDLA-Permissive-1.0,Swedish Forest Agency 2021
+Reiersen et al. 2022,CC-BY-4.0,
+Safonova et al. 2021,unknown,Upstream terms not confirmed; not in the manuscript source table
+Schütte et al. 2025,CC-BY-4.0,
+SelvaBox,CC-BY-4.0,Baudchon et al. 2026
+SelvaMask,CC-BY-4.0,Duguay et al. 2026
+Sun et al. 2022,CC-BY-4.0,
+Takeshige et al. 2025,CC-BY-NC-4.0,
+Troles et al. 2024,CC-BY-NC-ND-3.0,
+Vasquez et al. 2023,CC-BY-4.0,
+Vasquez et al. 2023 - training,CC-BY-4.0,
+Velasquez-Camacho et al. 2023,CC-BY-4.0,
+Ventura et al. 2022,CC-BY-4.0,Ventura et al. 2024
+Wagner et al. 2023,CC-BY-4.0,Wagner et al. 2021
+Weecology_University_Florida,CC-BY-4.0,NEON / Weinstein et al. 2020
+Weinstein et al. 2018 unsupervised,CC-BY-4.0,Weinstein et al. 2019
+World Resources Institute,unknown,Upstream terms not confirmed; not in the manuscript source table
+Young et al. 2025 unsupervised,CC-BY-4.0,Open Forest Observatory photogrammetry CHM peaks
+Young et al. 2025 weak supervised,CC-BY-4.0,Open Forest Observatory photogrammetry CHM peaks
+Zamboni et al. 2021,CC-BY-4.0,
+Zuniga-Gonzalez et al. 2023,CC-BY-4.0,Zuniga-Gonzalez et al. 2023
+Šrollerů et al. 2025,CC-BY-4.0,

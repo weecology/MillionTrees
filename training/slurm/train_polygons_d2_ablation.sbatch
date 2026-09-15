@@ -35,6 +35,11 @@ set -euo pipefail
 
 REPO=/blue/ewhite/b.weinstein/src/MillionTrees
 ROOT_DIR=${MT_ROOT:-/orange/ewhite/web/public/MillionTrees}
+
+# Record real peak memory to /home/b.weinstein/logs/mem_ledger.csv on exit
+# (scripts/slurm_mem_audit.py reads this to right-size --mem; without it the audit falls
+# back to sacct MaxRSS, which over-reports 2-4x).
+source "$REPO/scripts/slurm_mem_probe.sh"
 SPLIT="${SPLIT:-within-distribution}"
 
 # 50 epochs' worth of the CONTROL arm's data, i.e. the recipe behind the published
@@ -91,7 +96,7 @@ case "$ARM" in
     # Same weak set stage 1 sees, so the only difference between arms 1 and 2 is WHEN the
     # weak labels are used, not WHICH ones.
     ARM_ARGS=(--init-mode cotrain
-              --boxes-dataset TreeBoxes_v0.23
+              --boxes-dataset TreeBoxes_v0.24
               --weak-sources '*unsupervised*'
               --comet-name "polygons-${SPLIT}-coco-lr0.01-d2-cotrain-weak")
     ;;
