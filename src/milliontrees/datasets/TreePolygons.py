@@ -78,22 +78,10 @@ class TreePolygonsDataset(MillionTreesDataset):
         # Only versions whose archives are still on the server belong here: the
         # host keeps the two most recent releases and deletes the rest, so a
         # version left in this dict after its zips are removed turns every
-        # download=True call into a 404. v0.18-v0.21 were pruned for that reason.
+        # download=True call into a 404. v0.18-v0.23 were pruned for that reason.
         # v0.22 re-tiles the sources so every packaged image matches its tree-coverage
         # mask; in v0.21 the regenerated masks no longer match the v0.21 Allen imagery
         # and the loader raises on the validation split.
-        # v0.23 repackages every geometry alongside the TreeBoxes source restoration
-        # (see TreeBoxes._versions_dict); polygon content is unchanged from v0.22.
-        "0.23": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.23.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.23.zip",
-            # TODO: refresh with the real zip size once v0.23 zips finish building;
-            # unused for local download=False training/eval runs.
-            'compressed_size':
-                109263962653
-        },
         # v0.24 repairs the out-of-distribution split -- see
         # notes/ood_split_test_sources_and_leaks.md. Through v0.23 the OOD assignment was
         # gated on each source's upstream existing_split pin, which leaked both ways:
@@ -107,6 +95,19 @@ class TreePolygonsDataset(MillionTreesDataset):
             'supervised_download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.24.zip",
             # TODO: refresh with the real zip size once v0.24 zips finish building;
+            # unused for local download=False training/eval runs.
+            'compressed_size':
+                109263962653
+        },
+        # v0.25 drops OliveTrees_spain (Safonova et al. 2021) from the release for
+        # licensing reasons -- see data_prep/annotation_csvs.cfg. No other polygon
+        # content change.
+        "0.25": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_v0.25.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePolygons_supervised_v0.25.zip",
+            # TODO: refresh with the real zip size once v0.25 zips finish building;
             # unused for local download=False training/eval runs.
             'compressed_size':
                 109263962653
