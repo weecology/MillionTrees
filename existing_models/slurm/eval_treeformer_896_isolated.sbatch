@@ -16,7 +16,7 @@
 #SBATCH --array=0-1
 #SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --mem=24G
 #SBATCH --partition=hpg-turin
 #SBATCH --gpus=1
 

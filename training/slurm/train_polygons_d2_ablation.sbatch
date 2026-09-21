@@ -7,7 +7,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=240G
+#SBATCH --mem=104G
 #SBATCH --partition=hpg-b200
 #SBATCH --gpus=b200:1
 

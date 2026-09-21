@@ -46,7 +46,7 @@
 #SBATCH --array=0-1
 #SBATCH --time=36:00:00
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=480GB
+#SBATCH --mem=152G
 #SBATCH --partition=hpg-b200
 #SBATCH --gpus=b200:3
 #SBATCH --nodes=1

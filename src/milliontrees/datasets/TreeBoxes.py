@@ -135,10 +135,8 @@ class TreeBoxesDataset(MillionTreesDataset):
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.25.zip",
             'supervised_download_url':
                 "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.25.zip",
-            # TODO: refresh with the real zip size once v0.25 zips finish building;
-            # unused for local download=False training/eval runs.
             'compressed_size':
-                79939201324
+                109762843008
         }
     }
 
