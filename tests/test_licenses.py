@@ -16,6 +16,8 @@ def frame(rows):
     ("CC-BY 4.0", "CC-BY-4.0"),
     ("CC BY 4.0", "CC-BY-4.0"),
     ("cc_by_4", "CC-BY-4.0"),
+    ("CC BY SA 4.0", "CC-BY-SA-4.0"),
+    ("CC-BY-SA-4.0", "CC-BY-SA-4.0"),
     ("CC BY-NC-ND 3.0", "CC-BY-NC-ND-3.0"),
     ("CC0", "CC0-1.0"),
     ("CC0 1.0", "CC0-1.0"),
@@ -46,6 +48,16 @@ def test_permissive_excludes_copyleft_and_share_alike():
     assert "AGPL-3.0-or-later" not in allowed
     assert "CC-BY-NC-SA-4.0" not in allowed
     assert {"CC-BY-4.0", "CC0-1.0", "CDLA-Permissive-1.0"} <= allowed
+
+
+def test_share_alike_is_commercial_but_not_permissive():
+    """CC-BY-SA 4.0 arrived with the Open Forest Observatory plots: commercial use is
+    fine, but a derivative has to carry the same terms."""
+    assert "CC-BY-SA-4.0" in lic.resolve_selection("commercial")
+    assert "CC-BY-SA-4.0" in lic.resolve_selection("derivatives")
+    assert "CC-BY-SA-4.0" not in lic.resolve_selection("no-share-alike")
+    assert "CC-BY-SA-4.0" not in lic.resolve_selection("permissive")
+    assert "CC-BY-SA-4.0" in lic.resolve_selection("no-copyleft")
 
 
 def test_selection_accepts_ids_patterns_and_unions():
@@ -91,9 +103,9 @@ def test_overrides_refine_a_single_source_per_filename():
     overrides = [("ofo field 2025", "000018_*", "CC0-1.0")]
     resolved = lic.row_licenses(df, overrides=overrides)
     assert resolved.tolist() == [
-        "CC0-1.0",            # overridden
-        "CC-BY-NC-SA-4.0",    # source-level fallback
-        "CC-BY-4.0",          # a different source, untouched by the pattern
+        "CC0-1.0",  # overridden
+        "CC-BY-NC-SA-4.0",  # source-level fallback
+        "CC-BY-4.0",  # a different source, untouched by the pattern
     ]
 
 
@@ -102,6 +114,101 @@ def test_later_override_wins():
     overrides = [("ofo field 2025", "000018_*", "CC0-1.0"),
                  ("ofo field 2025", "*_a.png", "CC-BY-4.0")]
     assert lic.row_licenses(df, overrides=overrides).tolist() == ["CC-BY-4.0"]
+
+
+def test_mission_rule_then_per_tile_exception():
+    """The shape the shipped OFO table uses: one rule for the mission, then exact
+    filenames for the tiles inside it whose plot has different terms."""
+    df = frame([
+        ["OFO field 2025", "000091_ortho_10_OFO_field_2025.png", "train"],
+        ["OFO field 2025", "000091_ortho_340_OFO_field_2025.png", "train"],
+    ])
+    overrides = [
+        ("ofo field 2025", "000091_ortho_*_OFO_field_2025.png", "CC-BY-SA-4.0"),
+        ("ofo field 2025", "000091_ortho_340_OFO_field_2025.png",
+         "CC-BY-NC-SA-4.0"),
+    ]
+    assert lic.row_licenses(df, overrides=overrides).tolist() == [
+        "CC-BY-SA-4.0", "CC-BY-NC-SA-4.0"
+    ]
+
+
+# --------------------------------------------------------------------------- #
+# An explicit per-row license column
+# --------------------------------------------------------------------------- #
+def licensed_frame(rows):
+    return pd.DataFrame(rows,
+                        columns=["source", "filename", "split", "license"])
+
+
+def test_explicit_license_column_beats_both_tables():
+    df = licensed_frame([
+        # More permissive than the source-level fallback.
+        [
+            "OFO field 2025", "000018_ortho_1_OFO_field_2025.png", "train",
+            "CC-BY-4.0"
+        ],
+        # Stricter than the source-level license.
+        ["Cloutier et al. 2023", "a.png", "train", "CC-BY-NC-4.0"],
+    ])
+    assert lic.row_licenses(df).tolist() == ["CC-BY-4.0", "CC-BY-NC-4.0"]
+
+
+def test_explicit_license_column_splits_one_image():
+    """The case a filename rule cannot express: one OFO tile straddling two field
+    plots, so its own points carry two different licenses."""
+    tile = "000133_ortho_589_OFO_field_2025.png"
+    df = licensed_frame([
+        ["OFO field 2025", tile, "train", "CC-BY-NC-SA-4.0"],
+        ["OFO field 2025", tile, "train", "CC-BY-SA-4.0"],
+    ])
+    assert lic.row_licenses(df).tolist() == ["CC-BY-NC-SA-4.0", "CC-BY-SA-4.0"]
+    kept, _ = lic.filter_by_license(df, "commercial")
+    assert len(kept) == 1
+    # The image is not dropped, it just carries one fewer annotation.
+    assert kept["filename"].tolist() == [tile]
+
+
+def test_blank_license_cells_fall_back_to_the_tables():
+    """Only OFO rows will carry the column at first, so every other source arrives
+    with it empty and must still resolve from sources.csv."""
+    df = licensed_frame([
+        ["Cloutier et al. 2023", "a.png", "train", None],
+        ["Troles et al. 2024", "b.png", "train", ""],
+        [
+            "OFO field 2025", "000091_ortho_5_OFO_field_2025.png", "train",
+            "CC-BY-SA-4.0"
+        ],
+    ])
+    assert lic.row_licenses(df).tolist() == [
+        "CC-BY-4.0", "CC-BY-NC-ND-3.0", "CC-BY-SA-4.0"
+    ]
+
+
+def test_explicit_license_column_is_normalized():
+    df = licensed_frame(
+        [["Cloutier et al. 2023", "a.png", "train", "CC BY SA 4.0"]])
+    assert lic.row_licenses(df).tolist() == ["CC-BY-SA-4.0"]
+
+
+def test_unrecognized_license_in_the_column_raises():
+    df = licensed_frame([["Cloutier et al. 2023", "a.png", "train", "MIT-ish"]])
+    with pytest.raises(ValueError, match="Unrecognized license"):
+        lic.row_licenses(df)
+
+
+def test_source_license_map_reports_explicit_licenses():
+    df = licensed_frame([
+        [
+            "OFO field 2025", "000133_ortho_589_OFO_field_2025.png", "train",
+            "CC-BY-NC-SA-4.0"
+        ],
+        [
+            "OFO field 2025", "000133_ortho_589_OFO_field_2025.png", "train",
+            "CC-BY-SA-4.0"
+        ],
+    ])
+    assert "CC-BY-SA-4.0" in lic.source_license_map(df)["OFO field 2025"]
 
 
 # --------------------------------------------------------------------------- #
@@ -157,6 +264,46 @@ def test_shipped_tables_parse_and_use_known_licenses():
         assert pattern
 
 
+def test_shipped_overrides_are_no_looser_than_their_source_fallback():
+    """A source-level license is the fallback for any row no override matches, so it
+    must be at least as restrictive as everything the overrides span -- otherwise a
+    tile that slipped past the rules would be offered under terms it does not have."""
+    table = lic.load_source_licenses()
+    spans = {}
+    for source_key, _pattern, license_id in lic.load_license_overrides():
+        spans.setdefault(source_key, set()).add(license_id)
+    for source_key, override_ids in spans.items():
+        fallback = lic.LICENSES[table[source_key]]
+        for override_id in override_ids:
+            over = lic.LICENSES[override_id]
+            assert fallback.commercial_use <= over.commercial_use
+            assert fallback.derivatives <= over.derivatives
+            assert fallback.share_alike >= over.share_alike
+            assert fallback.copyleft >= over.copyleft
+
+
+def test_shipped_ofo_overrides_cover_whole_missions():
+    """Every OFO rule is scoped to one mission id, either mission-wide or to one of its
+    tiles, and each mission-wide rule precedes its own exceptions."""
+    rules = [
+        (pattern, license_id)
+        for source_key, pattern, license_id in lic.load_license_overrides()
+        if source_key == "ofo field 2025"
+    ]
+    assert rules, "the shipped overrides table no longer carries OFO"
+    seen_wide = set()
+    for pattern, _license_id in rules:
+        assert pattern.endswith("_OFO_field_2025.png")
+        mission = pattern.split("_", 1)[0]
+        assert mission.isdigit() and len(mission) == 6, pattern
+        if "*" in pattern:
+            assert mission not in seen_wide, f"two mission-wide rules for {mission}"
+            seen_wide.add(mission)
+        else:
+            assert mission in seen_wide, (
+                f"per-tile rule {pattern} has no mission-wide rule before it")
+
+
 def test_every_shipped_source_name_is_unique():
     import pandas as pd
     raw = pd.read_csv(lic.SOURCES_PATH, comment="#")
@@ -173,9 +320,7 @@ def _rewrite_fixture_sources(dataset_dir, sources):
     import os
     for csv_path in glob.glob(os.path.join(dataset_dir, "*.csv")):
         df = pd.read_csv(csv_path)
-        df["source"] = [
-            sources[i % len(sources)] for i in range(len(df))
-        ]
+        df["source"] = [sources[i % len(sources)] for i in range(len(df))]
         df.to_csv(csv_path, index=False)
 
 
@@ -212,9 +357,7 @@ def test_loader_license_filter_keeps_splits_intact(dataset, geometry, loader,
     assert set(full.source_licenses) == {
         "Cloutier et al. 2023", "Takeshige et al. 2025"
     }
-    assert restricted.source_licenses == {
-        "Cloutier et al. 2023": ["CC-BY-4.0"]
-    }
+    assert restricted.source_licenses == {"Cloutier et al. 2023": ["CC-BY-4.0"]}
     assert len(restricted) < len(full)
 
     # Every image the filter keeps sits in exactly the split it had before.

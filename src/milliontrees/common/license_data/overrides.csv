@@ -7,16 +7,335 @@
 # Rows are applied top to bottom, so a later row wins over an earlier one; any
 # annotation matched by no row keeps its source-level license.
 #
-# Open Forest Observatory is the reason this file exists. OFO field plots are
-# contributed by different data owners: some are CC-BY-NC-SA, others CC0. The
-# packaged filenames are `<mission_id>_ortho_<tile>_OFO_field_2025.png`, so one
-# row per mission_id assigns that plot's license, e.g.
+# GENERATED FILE -- edit data_prep/ofo_license_overrides.py and rerun it, not this.
 #
-#   OFO field 2025,000018_*,CC0-1.0,plot contributed under CC0
+# Open Forest Observatory is the reason this file exists, and the only source in it.
+# Its imagery and its annotations have different owners and different licenses:
 #
-# Until the per-mission rows are filled in, `OFO field 2025` carries the more
-# restrictive CC-BY-NC-SA-4.0 from sources.csv, so a commercial-use filter drops
-# the whole source rather than including plots it may not be allowed to.
+#   * the image tile is cut from an OFO drone mission orthomosaic -- every mission in
+#     the OFO catalog is CC-BY 4.0;
+#   * the points are a contributor's ground-reference stem map, and those plots span
+#     CC-BY 4.0, CC-BY-SA 4.0, CC-BY-NC-SA 4.0, CC0 1.0 and U.S. Forest Service
+#     public domain.
+#
+# A packaged row ships both, so `license` below is the MOST RESTRICTIVE of the two,
+# and `notes` records the plot license it came from. Plot licenses are the
+# `license_short` column of ofo_ground-reference_plots.gpkg in Zenodo record
+# https://zenodo.org/records/22731179.
+#
+# One mission can cover plots under different licenses, so a mission-wide pattern is
+# followed by exact-filename rows for the tiles that differ.
 #
 # Lines starting with '#' are comments.
 source,filename_pattern,license,notes
+OFO field 2025,000018_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000018, 2 tiles; plots CC0 1.0 + CC-BY 4.0 imagery"
+OFO field 2025,000019_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000019, 75 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000028_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000028, 14 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000029_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000029, 25 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000048_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000048, 8 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000089_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000089, 49 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000090_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000090, 61 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000091_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000091, 15 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000091_ortho_340_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_341_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_342_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_362_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_363_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_364_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_383_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_384_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_385_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_386_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_387_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_406_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_407_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000091_ortho_408_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0040 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000092_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000092, 12 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000093_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000093, 12 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000096_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000096, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000096_ortho_247_OFO_field_2025.png,CC-BY-SA-4.0,plot 0107 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000096_ortho_248_OFO_field_2025.png,CC-BY-SA-4.0,plot 0107 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000096_ortho_249_OFO_field_2025.png,CC-BY-SA-4.0,plot 0107 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000096_ortho_262_OFO_field_2025.png,CC-BY-SA-4.0,plot 0107 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000096_ortho_263_OFO_field_2025.png,CC-BY-SA-4.0,plot 0107 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000096_ortho_264_OFO_field_2025.png,CC-BY-SA-4.0,plot 0107 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000096_ortho_277_OFO_field_2025.png,CC-BY-SA-4.0,plot 0107 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000096_ortho_278_OFO_field_2025.png,CC-BY-SA-4.0,plot 0107 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000096_ortho_279_OFO_field_2025.png,CC-BY-SA-4.0,plot 0107 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000097_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000097, 5 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000100_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000100, 8 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000101_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000101, 14 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000103_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000103, 8 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000104_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000104, 7 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000106_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000106, 9 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000109_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000109, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000110_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000110, 10 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000113_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000113, 10 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000114_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000114, 10 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000116_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000116, 12 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000118_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000118, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000119_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000119, 9 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000121_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000121, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000124_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000124, 8 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000124_ortho_154_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0032 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000124_ortho_155_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0032 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000124_ortho_168_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0032 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000124_ortho_169_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0032 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000124_ortho_170_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0032 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000124_ortho_184_OFO_field_2025.png,CC-BY-NC-SA-4.0,plot 0032 (CC BY NC SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000126_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000126, 9 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000127_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000127, 6 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000128_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000128, 9 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000129_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000129, 6 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000131_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000131, 6 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000133_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000133, 15 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000133_ortho_493_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000133_ortho_494_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000133_ortho_495_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000133_ortho_525_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000133_ortho_526_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000133_ortho_527_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000133_ortho_528_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000133_ortho_557_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000133_ortho_558_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000133_ortho_559_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000133_ortho_560_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000133_ortho_591_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000136_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000136, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000136_ortho_231_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000136_ortho_252_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000136_ortho_253_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000136_ortho_254_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000136_ortho_274_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000136_ortho_275_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000136_ortho_276_OFO_field_2025.png,CC-BY-SA-4.0,plot 0110 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000137_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000137, 7 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000141_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000141, 20 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000142_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000142, 7 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000143_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000143, 7 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000144_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000144, 10 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000145_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000145, 12 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000147_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000147, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000148_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000148, 10 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000149_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000149, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000151_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000151, 14 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000152_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000152, 10 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000153_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000153, 7 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000155_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000155, 6 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000157_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000157, 11 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000158_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000158, 15 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000160_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000160, 10 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000161_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000161, 7 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000162_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000162, 9 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000164_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000164, 13 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000165_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000165, 9 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000167_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000167, 9 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000168_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000168, 6 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000169_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000169, 10 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000171_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000171, 41 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000173_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000173, 17 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000174_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000174, 32 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000175_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000175, 29 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000180_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000180, 11 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000184_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000184, 7 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000187_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000187, 14 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000188_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000188, 12 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000189_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000189, 10 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000190_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000190, 10 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000191_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000191, 8 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000193_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000193, 13 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000194_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000194, 10 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000197_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000197, 5 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000199_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000199, 11 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000203_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000203, 14 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000204_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000204, 3 tiles; plots CC0 1.0 + CC-BY 4.0 imagery"
+OFO field 2025,000207_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000207, 9 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000208_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000208, 2 tiles; plots CC0 1.0 + CC-BY 4.0 imagery"
+OFO field 2025,000211_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000211, 16 tiles; plots CC0 1.0 + CC-BY 4.0 imagery"
+OFO field 2025,000220_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000220, 20 tiles; plots CC0 1.0 + CC-BY 4.0 imagery"
+OFO field 2025,000223_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000223, 237 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000225_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000225, 277 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000227_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000227, 64 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000229_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000229, 8 tiles; plots CC0 1.0 + CC-BY 4.0 imagery"
+OFO field 2025,000230_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000230, 159 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000231_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000231, 199 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000232_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000232, 182 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000233_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000233, 95 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000234_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000234, 66 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000242_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000242, 57 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000244_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000244, 10 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000245_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000245, 42 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000246_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000246, 7 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000248_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000248, 12 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000251_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000251, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000254_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000254, 11 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000256_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000256, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000271_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000271, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000273_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000273, 7 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000278_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000278, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000279_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000279, 13 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000280_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000280, 11 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000281_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000281, 11 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000282_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000282, 6 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000283_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000283, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000284_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000284, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000285_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000285, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000286_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000286, 11 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000288_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000288, 12 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000289_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000289, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000291_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000291, 6 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000293_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000293, 13 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000295_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000295, 10 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000296_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000296, 13 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000301_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000301, 12 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000306_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000306, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000307_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000307, 7 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000310_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000310, 2 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000323_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000323, 58 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000324_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000324, 125 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000333_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000333, 71 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000334_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000334, 62 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000335_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000335, 102 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000337_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000337, 18 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000338_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000338, 29 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000339_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000339, 37 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000340_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000340, 58 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000342_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000342, 59 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000348_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000348, 83 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000349_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000349, 52 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000404_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000404, 31 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000405_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000405, 51 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000406_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000406, 25 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000407_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000407, 39 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000430_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000430, 23 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000431_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000431, 34 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000434_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000434, 60 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000435_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000435, 120 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000436_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000436, 47 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000438_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000438, 102 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000439_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000439, 65 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000440_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000440, 81 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000442_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000442, 51 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000443_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000443, 81 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000444_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000444, 21 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000446_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000446, 10 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000448_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000448, 29 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000448_ortho_585_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_612_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_613_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_614_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_615_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_642_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_643_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_644_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_645_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_672_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_673_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_674_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_675_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_676_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000448_ortho_704_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000450_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000450, 17 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000451_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000451, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000452_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000452, 20 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000452_ortho_333_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000452_ortho_354_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000452_ortho_355_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000452_ortho_356_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000452_ortho_357_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000452_ortho_378_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000452_ortho_379_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000452_ortho_380_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000452_ortho_401_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000452_ortho_402_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000452_ortho_403_OFO_field_2025.png,CC-BY-SA-4.0,plot 0171 (CC BY SA 4.0) + CC-BY 4.0 imagery
+OFO field 2025,000643_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000643, 20 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000644_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000644, 30 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000645_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000645, 22 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000646_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000646, 27 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000647_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000647, 39 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000648_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000648, 28 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000649_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000649, 51 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000650_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000650, 82 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000676_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000676, 16 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000743_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000743, 36 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000748_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000748, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000749_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000749, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000750_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000750, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000751_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000751, 14 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000775_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000775, 11 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000776_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000776, 15 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000777_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 000777, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000778_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000778, 8 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000779_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 000779, 8 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000780_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000780, 64 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000781_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000781, 51 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000782_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000782, 59 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000808_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000808, 230 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000874_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000874, 194 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000932_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000932, 282 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000934_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000934, 240 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000935_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000935, 184 tiles; plots Public domain + CC-BY 4.0 imagery"
+OFO field 2025,000938_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000938, 59 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,000939_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 000939, 82 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001011_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001011, 37 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001012_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001012, 41 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001015_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001015, 50 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001016_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001016, 39 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001017_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001017, 45 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001019_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001019, 80 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001044_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001044, 40 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001045_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001045, 70 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001048_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001048, 27 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001049_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001049, 21 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001053_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001053, 33 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001055_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001055, 44 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001065_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001065, 64 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001204_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001204, 18 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001205_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001205, 29 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001206_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001206, 6 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001207_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001207, 4 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001208_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001208, 9 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001209_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001209, 8 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001210_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001210, 8 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001211_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001211, 6 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001214_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001214, 8 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001215_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001215, 6 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001216_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001216, 12 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001217_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001217, 8 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001218_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001218, 10 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001219_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001219, 13 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001220_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001220, 9 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001221_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001221, 10 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001237_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001237, 22 tiles; plots CC0 1.0 + CC-BY 4.0 imagery"
+OFO field 2025,001238_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001238, 11 tiles; plots CC0 1.0 + CC-BY 4.0 imagery"
+OFO field 2025,001270_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001270, 28 tiles; plots CC0 1.0 + CC-BY 4.0 imagery"
+OFO field 2025,001271_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001271, 34 tiles; plots CC0 1.0 + CC-BY 4.0 imagery"
+OFO field 2025,001273_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001273, 36 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001275_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001275, 54 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001304_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001304, 40 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001306_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001306, 50 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001307_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001307, 94 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001309_ortho_*_OFO_field_2025.png,CC-BY-4.0,"mission 001309, 80 tiles; plots CC BY 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001406_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 001406, 6 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001407_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 001407, 17 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001408_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001408, 11 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001409_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001409, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001411_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001411, 11 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001414_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 001414, 10 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001415_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 001415, 8 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001416_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 001416, 14 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001417_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 001417, 7 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001418_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001418, 52 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001419_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001419, 18 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001420_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001420, 17 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001421_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001421, 12 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001422_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001422, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001435_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001435, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001436_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001436, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001437_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001437, 12 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001438_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001438, 8 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001439_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001439, 9 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001440_ortho_*_OFO_field_2025.png,CC-BY-NC-SA-4.0,"mission 001440, 13 tiles; plots CC BY NC SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001468_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 001468, 26 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"
+OFO field 2025,001469_ortho_*_OFO_field_2025.png,CC-BY-SA-4.0,"mission 001469, 49 tiles; plots CC BY SA 4.0 + CC-BY 4.0 imagery"

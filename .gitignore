@@ -251,3 +251,6 @@ docs/public/*.panels.npz
 # tracked, the 15 whole-tile contact sheets (73 MB) are regenerated on demand
 # with scripts/visualize_ap40_vs_ap60.py --out-dir docs/public/ap40_vs_ap60/allen.
 docs/public/ap40_vs_ap60/allen/
+
+# Upstream OFO catalog geopackages cached by data_prep/ofo_license_overrides.py
+data_prep/ofo_catalog/

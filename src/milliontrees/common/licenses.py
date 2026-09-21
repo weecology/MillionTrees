@@ -10,11 +10,20 @@ Two version-controlled tables in ``license_data/`` drive it:
 
 * ``sources.csv`` -- one license per packaged ``source`` name. A source whose terms have
   not been confirmed is recorded as ``unknown``.
+A packaged release may additionally carry a ``license`` column; where it is filled it wins
+over both tables. It is the only way to describe an image whose own annotations differ -- an
+fnmatch rule over ``filename`` cannot split one image -- and the tables remain the fallback
+for every row it leaves empty.
+
 * ``overrides.csv`` -- per-row refinements for sources that mix licenses, matched on
   ``source`` + an fnmatch pattern over ``filename``. Open Forest Observatory is the case
-  that needs this: its field plots come from different data owners (CC-BY-NC-SA and CC0),
-  and the packaged filename carries the OFO mission id, so one override row per mission
-  assigns that plot's license. A source-level license covers everything the overrides do
+  that needs this: an OFO row's image tile comes from a drone mission (CC-BY 4.0) and its
+  points from a contributor's ground-reference plot (CC-BY 4.0, CC-BY-SA 4.0, CC-BY-NC-SA
+  4.0, CC0 1.0 or U.S. Forest Service public domain), so the license recorded per row is
+  the most restrictive of the two. The packaged filename carries the OFO mission id, which
+  covers most missions in one rule; missions spanning plots under different licenses are
+  refined tile by tile. ``data_prep/ofo_license_overrides.py`` regenerates the table from
+  the OFO catalog on Zenodo. A source-level license covers everything the overrides do
   not, and it is deliberately the *most restrictive* of the licenses a mixed source spans.
 
 Filtering removes annotation rows. It never re-splits anything: an image whose annotations
@@ -99,6 +108,15 @@ LICENSES: dict[str, LicenseInfo] = {
             attribution=True,
         ),
         LicenseInfo(
+            "CC-BY-SA-4.0",
+            "Creative Commons Attribution-ShareAlike 4.0",
+            "https://creativecommons.org/licenses/by-sa/4.0/",
+            commercial_use=True,
+            derivatives=True,
+            share_alike=True,
+            attribution=True,
+        ),
+        LicenseInfo(
             "CC-BY-NC-4.0",
             "Creative Commons Attribution-NonCommercial 4.0",
             "https://creativecommons.org/licenses/by-nc/4.0/",
@@ -167,6 +185,9 @@ _ALIASES = {
     "ccby30": "CC-BY-3.0",
     "ccby4": "CC-BY-4.0",
     "ccby40": "CC-BY-4.0",
+    "ccbysa": "CC-BY-SA-4.0",
+    "ccbysa4": "CC-BY-SA-4.0",
+    "ccbysa40": "CC-BY-SA-4.0",
     "ccbync4": "CC-BY-NC-4.0",
     "ccbync40": "CC-BY-NC-4.0",
     "ccbyncsa": "CC-BY-NC-SA-4.0",
@@ -316,6 +337,12 @@ def row_licenses(df, source_licenses=None, overrides=None, warn=True):
     ``df`` needs a ``source`` column; ``filename`` is used when overrides apply. Sources missing
     from the table resolve to ``unknown`` and raise a warning, so a source added to a release
     without a license entry is visible instead of being quietly excluded.
+
+    A packaged release may also carry a ``license`` column, which takes precedence over both
+    tables for the rows that fill it. That is the only way to describe an image whose
+    annotations do not share one license -- a filename-keyed rule cannot split a single image
+    -- and it is how Open Forest Observatory tiles that straddle two field plots are meant to
+    be resolved. Rows where the column is empty fall back to the tables as usual.
     """
     import pandas as pd
 
@@ -344,19 +371,50 @@ def row_licenses(df, source_licenses=None, overrides=None, warn=True):
     result = result.fillna(UNKNOWN)
 
     if overrides and "filename" in df.columns:
+        # Match patterns against the *unique* filenames of each overridden source, not
+        # against every row. OFO alone contributes a few hundred rules over 7,800 tiles,
+        # and a release is millions of rows: one fnmatch pass per rule per row would take
+        # minutes for an answer that only depends on the filename.
         filenames = df["filename"].astype(str)
+        rules_by_source: dict[str, list] = {}
         for source_key, pattern, license_id in overrides:
+            rules_by_source.setdefault(source_key, []).append(
+                (pattern, license_id))
+
+        overridden = pd.Series(index=df.index, dtype=object)
+        for source_key, rules in rules_by_source.items():
             in_source = source_column.map({
                 value: key == source_key for value, key in keys.items()
-            })
+            }).astype(bool)
             if not in_source.any():
                 continue
-            match = in_source & filenames.map(
-                lambda f, p=pattern: fnmatch.fnmatch(f, p))
-            if match.any():
-                result = result.mask(match, license_id)
+            subset = filenames[in_source]
+            unique_names = subset.unique().tolist()
+            # Rules are applied in file order, so a later match overwrites an earlier one.
+            by_filename: dict[str, str] = {}
+            for pattern, license_id in rules:
+                for name in fnmatch.filter(unique_names, pattern):
+                    by_filename[name] = license_id
+            if by_filename:
+                overridden.loc[in_source] = subset.map(by_filename)
 
-    return pd.Series(result, index=df.index, name="license")
+        result = result.mask(overridden.notna(), overridden)
+
+    result = pd.Series(result, index=df.index, name="license")
+
+    if "license" in df.columns:
+        explicit = df["license"]
+        present = explicit.notna() & explicit.astype(str).str.strip().ne("")
+        if present.any():
+            # Normalize per unique spelling, not per row -- the column repeats a handful
+            # of values across millions of rows.
+            canonical = {
+                value: normalize_license(value)
+                for value in explicit[present].unique()
+            }
+            result = result.mask(present, explicit.map(canonical))
+
+    return result
 
 
 def source_license_map(df, source_licenses=None, overrides=None):
@@ -364,7 +422,8 @@ def source_license_map(df, source_licenses=None, overrides=None):
 
     Resolved from the unique source names rather than row by row, so it is cheap on a multi-million-
     row release. A source that ``overrides.csv`` splits lists every license its rows can carry; use
-    :func:`row_licenses` when the per-row answer is what is needed.
+    :func:`row_licenses` when the per-row answer is what is needed. When the release carries a
+    ``license`` column, the licenses it records are reported too.
     """
     source_licenses = (load_source_licenses()
                        if source_licenses is None else source_licenses)
@@ -381,6 +440,15 @@ def source_license_map(df, source_licenses=None, overrides=None):
         for value, key in present.items():
             if key == source_key:
                 result[value].add(license_id)
+
+    if "license" in df.columns:
+        explicit = df[["source", "license"]].dropna(subset=["license"])
+        explicit = explicit[explicit["license"].astype(str).str.strip().ne("")]
+        for value, license_id in explicit.drop_duplicates().itertuples(
+                index=False):
+            result.setdefault(str(value),
+                              set()).add(normalize_license(license_id))
+
     return {value: sorted(ids) for value, ids in result.items()}
 
 

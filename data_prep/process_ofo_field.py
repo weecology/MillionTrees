@@ -116,8 +116,8 @@ def load_field_trees(path: str,
             "Per David Young's note, trees overlapping multiple missions should be duplicated with"
             " a 'mission_id' attribute identifying the drone pairing.")
 
-    gdf['mission_id'] = (gdf['mission_id'].astype(str).str.split(
-        '-').str[0].str.zfill(6))
+    gdf['mission_id'] = (
+        gdf['mission_id'].astype(str).str.split('-').str[0].str.zfill(6))
 
     if only_overstory:
         if 'predicted_overstory' in gdf.columns:
@@ -129,7 +129,9 @@ def load_field_trees(path: str,
                 mask = mask | ohvis_visible
             gdf = gdf[mask].copy()
         else:
-            print("Warning: 'predicted_overstory' missing; skipping overstory filter")
+            print(
+                "Warning: 'predicted_overstory' missing; skipping overstory filter"
+            )
 
     return gdf
 
@@ -173,9 +175,17 @@ def tile_mission(
     mission_trees['image_path'] = os.path.basename(out_ortho)
     mission_trees['label'] = 'Tree'
     keep_cols = ['image_path', 'label', 'geometry']
+    # plot_id rides through split_raster so each annotation keeps the ground-reference
+    # plot it was surveyed in, and with it that plot's license. A tile can straddle two
+    # plots, which is why this has to travel per annotation and not per filename.
+    if 'plot_id' in mission_trees.columns:
+        mission_trees['plot_id'] = (
+            mission_trees['plot_id'].astype(str).str.zfill(4))
+        keep_cols.append('plot_id')
     if 'withhold_from_training' in mission_trees.columns:
         mission_trees['withhold_from_training'] = mission_trees[
-            'withhold_from_training'].astype('boolean').fillna(False).astype(bool)
+            'withhold_from_training'].astype('boolean').fillna(False).astype(
+                bool)
         keep_cols.append('withhold_from_training')
     df_for_split = mission_trees[keep_cols].copy()
     df_for_split = read_file(df_for_split, root_dir=os.path.dirname(out_ortho))
@@ -225,6 +235,38 @@ def tile_mission(
     return points_tiled
 
 
+def attach_licenses(annotations: pd.DataFrame) -> pd.DataFrame:
+    """Stamp each annotation with the license its packaged row carries.
+
+    That is the most restrictive of the CC-BY 4.0 drone imagery and the ground-reference
+    plot the stem was surveyed in -- see ``ofo_catalog_licenses``. Carrying it per
+    annotation rather than per file is what lets a tile straddling two plots keep both
+    plots' points under their own terms; the filename-keyed rules in
+    ``license_data/overrides.csv`` are the fallback for releases packaged before this
+    column existed.
+    """
+    if 'plot_id' not in annotations.columns:
+        print("Warning: no 'plot_id' column; skipping the license column")
+        return annotations
+
+    from ofo_catalog_licenses import load_combined_licenses
+
+    licenses = load_combined_licenses()
+    plot_ids = annotations['plot_id'].astype(str).str.zfill(4)
+    missing = sorted(set(plot_ids) - set(licenses))
+    if missing:
+        raise ValueError(
+            f"Plot(s) {missing} are not in the OFO ground-reference catalog, so their "
+            "license is unknown. Refresh the cached catalog and check upstream."
+        )
+    annotations = annotations.copy()
+    annotations['license'] = plot_ids.map(licenses)
+    print("Licenses attached:")
+    for license_id, count in annotations['license'].value_counts().items():
+        print(f"  {license_id}: {count} annotations")
+    return annotations
+
+
 def write_sample_overlays(images_dir: str,
                           annotations_csv: str,
                           savedir: str,
@@ -247,17 +289,28 @@ def write_sample_overlays(images_dir: str,
         train = sub[sub['split'] == 'train']
         test = sub[sub['split'] == 'test']
         if not train.empty:
-            ax.scatter(train['x'], train['y'], c='cyan', s=80, marker='+',
-                       linewidths=2.0, label='train')
+            ax.scatter(train['x'],
+                       train['y'],
+                       c='cyan',
+                       s=80,
+                       marker='+',
+                       linewidths=2.0,
+                       label='train')
         if not test.empty:
-            ax.scatter(test['x'], test['y'], c='red', s=80, marker='x',
-                       linewidths=2.0, label='test (withheld)')
+            ax.scatter(test['x'],
+                       test['y'],
+                       c='red',
+                       s=80,
+                       marker='x',
+                       linewidths=2.0,
+                       label='test (withheld)')
         ax.set_title(f"{basename} — {len(sub)} field trees")
         ax.legend(loc='upper right')
         ax.axis('off')
         fig.tight_layout()
         fig.savefig(os.path.join(savedir, f"sample_points_{basename}"),
-                    dpi=120, bbox_inches='tight')
+                    dpi=120,
+                    bbox_inches='tight')
         plt.close(fig)
     print(f"Sample overlay plots written to {savedir}")
 
@@ -294,7 +347,10 @@ def run(
         if ortho_path is None:
             continue
         try:
-            tiled = tile_mission(mid, ortho_path, field_trees, images_dir,
+            tiled = tile_mission(mid,
+                                 ortho_path,
+                                 field_trees,
+                                 images_dir,
                                  patch_size=patch_size)
         except Exception as e:  # noqa: BLE001 - keep going so one bad mission
             print(f"  ERROR tiling mission {mid}: {e}")
@@ -313,37 +369,51 @@ def run(
             " availability on Jetstream2.")
 
     combined = pd.concat(tiled_records, ignore_index=True)
+    combined = attach_licenses(combined)
     combined['image_path'] = combined['filename'].apply(
         lambda fn: os.path.join(images_dir, fn))
     combined = combined.drop(columns=['filename'])
 
     out_csv = os.path.join(output_dir, 'TreePoints_OFO_field.csv')
     combined.to_csv(out_csv, index=False)
-    print(f"Wrote {len(combined)} annotations across {combined['image_path'].nunique()} tiles to"
-          f" {out_csv}")
+    print(
+        f"Wrote {len(combined)} annotations across {combined['image_path'].nunique()} tiles to"
+        f" {out_csv}")
 
     if write_overlays:
-        write_sample_overlays(images_dir, out_csv,
-                              overlays_dir or os.path.join(output_dir, 'sample_plots'))
+        write_sample_overlays(
+            images_dir, out_csv, overlays_dir or
+            os.path.join(output_dir, 'sample_plots'))
 
     return out_csv
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Build TreePoints_OFO_field dataset from OFO field-validated trees')
-    parser.add_argument('--field_trees', required=True,
-                        help='Geopackage of concatenated field trees with mission_id')
-    parser.add_argument('--output_dir', required=True,
-                        help='MillionTrees-style output directory (will contain images/)')
-    parser.add_argument('--ofo_root', required=True,
+        description=
+        'Build TreePoints_OFO_field dataset from OFO field-validated trees')
+    parser.add_argument(
+        '--field_trees',
+        required=True,
+        help='Geopackage of concatenated field trees with mission_id')
+    parser.add_argument(
+        '--output_dir',
+        required=True,
+        help='MillionTrees-style output directory (will contain images/)')
+    parser.add_argument('--ofo_root',
+                        required=True,
                         help='Local cache dir for downloaded orthomosaics')
     parser.add_argument('--patch_size', type=int, default=800)
-    parser.add_argument('--num_missions', type=int, default=None,
+    parser.add_argument('--num_missions',
+                        type=int,
+                        default=None,
                         help='Limit number of missions (handy for local tests)')
-    parser.add_argument('--include_understory', action='store_true',
-                        help='Keep trees regardless of predicted_overstory flag')
-    parser.add_argument('--sample_plots', action='store_true',
+    parser.add_argument(
+        '--include_understory',
+        action='store_true',
+        help='Keep trees regardless of predicted_overstory flag')
+    parser.add_argument('--sample_plots',
+                        action='store_true',
                         help='Write per-tile QC overlay PNGs alongside the CSV')
     parser.add_argument('--sample_plots_dir', default=None)
     return parser.parse_args()
