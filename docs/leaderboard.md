@@ -31,7 +31,7 @@ All point sources are used to train and predict all box sources.
 
 # Results
 
-All scores below are computed on MillionTrees **v0.24**, on the **test** split of the named
+All scores below are computed on MillionTrees **v0.25**, on the **test** split of the named
 split scheme. Every table in this page is generated from the evaluation result files by
 `scripts/make_benchmark_table.py`, which reads an explicit registry of published runs — so
 the numbers, and the configuration table that accompanies them, always describe the same run.
@@ -68,8 +68,8 @@ Two things determine a number as much as the model does, and both are recorded i
 
 1. **Dataset version.** The loaders default to the newest key in their `_versions_dict`, so
    the same command run after a release produces different numbers. Pin it explicitly —
-   `TreeBoxesDataset(version="0.24")` — when reproducing anything here. All rows on this page
-   are v0.24, supervised sources only (`include_unsupervised=False`, the default).
+   `TreeBoxesDataset(version="0.25")` — when reproducing anything here. All rows on this page
+   are v0.25, supervised sources only (`include_unsupervised=False`, the default).
 2. **Score threshold.** The standardized operating point is **0.10**. Two exceptions are
    marked in the configuration table: the CanopyRS box and polygon rows use **0.30**, the
    best-F1 point from a full-test-set sweep (at 0.10 they are badly recall-heavy), and the
@@ -87,8 +87,8 @@ the number.
 
 - **Neither the box nor the point trainer sets a random seed**, so those rows are not
   bit-reproducible; expect run-to-run variation. The polygon trainers use seed 42.
-- All fine-tuned rows (boxes, points, Detectron2 and DeepForest polygons) were retrained on
-  v0.24 for this refresh; every row on this page is trained and scored on the same version.
+- All fine-tuned rows (boxes, points, and Detectron2 polygons) were retrained on
+  v0.25 for this refresh; every row on this page is trained and scored on the same version.
 - **Cross-geometry** is defined as predicting polygons from another annotation geometry. It is
   not applicable to box or point prediction, so those tables are absent rather than zero-filled.
 
@@ -168,7 +168,7 @@ Once you have trained a model and evaluated its performance, you can submit your
 
 2. Generate predictions on the test split, pinning the dataset version explicitly:
    ```python
-   dataset = TreeBoxesDataset(version="0.24")  # pin the version; do not rely on the default
+   dataset = TreeBoxesDataset(version="0.25")  # pin the version; do not rely on the default
    test_dataset = dataset.get_subset("test")   # Use test split
    test_loader = get_eval_loader("standard", test_dataset, batch_size=16)
 
