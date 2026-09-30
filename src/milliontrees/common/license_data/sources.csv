@@ -40,7 +40,7 @@ NEON combined crowns,CC-BY-4.0,NEON / Weinstein et al. 2020
 NEON_benchmark,CC-BY-4.0,NEON / Weinstein et al. 2020
 NEON_points,CC-BY-4.0,NEON / Weinstein et al. 2020
 OAM-TCD,CC-BY-4.0,Veitch-Michaelis et al. 2024
-OFO field 2025,CC-BY-NC-SA-4.0,Open Forest Observatory field plots; mixed per-plot licenses - see overrides.csv
+OFO field 2025,CC-BY-NC-SA-4.0,Open Forest Observatory field plots; per-tile licenses in overrides.csv (CC-BY 4.0 imagery + a per-plot license) - this is the fallback for a tile no override matches
 OSBS megaplot 2025,CC-BY-4.0,Manuscript row "Johnson et al. 2021"
 Puliti and Astrup 2022,AGPL-3.0-or-later,Puliti and Astrup 2025
 Radogoshi et al. 2021,CDLA-Permissive-1.0,Swedish Forest Agency 2021
@@ -60,8 +60,8 @@ Wagner et al. 2023,CC-BY-4.0,Wagner et al. 2021
 Weecology_University_Florida,CC-BY-4.0,NEON / Weinstein et al. 2020
 Weinstein et al. 2018 unsupervised,CC-BY-4.0,Weinstein et al. 2019
 World Resources Institute,unknown,Upstream terms not confirmed; not in the manuscript source table
-Young et al. 2025 unsupervised,CC-BY-4.0,Open Forest Observatory photogrammetry CHM peaks
-Young et al. 2025 weak supervised,CC-BY-4.0,Open Forest Observatory photogrammetry CHM peaks
+Young et al. 2025 unsupervised,CC-BY-4.0,Open Forest Observatory photogrammetry CHM peaks; all 606 OFO drone missions are CC-BY 4.0 and the labels are machine-derived
+Young et al. 2025 weak supervised,CC-BY-4.0,Open Forest Observatory photogrammetry CHM peaks; all 606 OFO drone missions are CC-BY 4.0 and the labels are machine-derived
 Zamboni et al. 2021,CC-BY-4.0,
 Zuniga-Gonzalez et al. 2023,CC-BY-4.0,Zuniga-Gonzalez et al. 2023
 Šrollerů et al. 2025,CC-BY-4.0,

@@ -492,14 +492,6 @@ Citation status uncertain, contact Tjomme Dooper fruit punch AI.
 
 **Link:** [Courtesy of Alejandro Miranda](http://www.lepfor.ufro.cl/)
 
-## Safonova et al. 2021
-
-![sample_image](public/Safonova_et_al._2021.png)
-
-**Link:** [https://www.mdpi.com/1424-8220/21/5/1617](https://www.mdpi.com/1424-8220/21/5/1617)
-
-**Location:** Spain
-
 ## Takeshige et al. 2025
 
 ### Source Name: "Takeshige et al. 2025"

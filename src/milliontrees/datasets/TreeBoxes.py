@@ -108,23 +108,10 @@ class TreeBoxesDataset(MillionTreesDataset):
         # Only versions whose archives are still on the server belong here: the
         # host keeps the two most recent releases and deletes the rest, so a
         # version left in this dict after its zips are removed turns every
-        # download=True call into a 404. v0.18-v0.21 were pruned for that reason.
+        # download=True call into a 404. v0.18-v0.23 were pruned for that reason.
         # v0.22 re-tiles the sources so every packaged image matches its tree-coverage
         # mask; in v0.21 the regenerated masks no longer match the v0.21 Allen imagery
         # and the loader raises on the validation split.
-        # v0.23 restores six configured box sources (~192k annotations, e.g. Puliti and
-        # Astrup 2022, Šrollerů et al. 2025) that packaging silently dropped through
-        # v0.22 by filtering on box columns and geometry before either was derived.
-        "0.23": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.23.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.23.zip",
-            # TODO: refresh with the real zip size once v0.23 zips finish building;
-            # unused for local download=False training/eval runs.
-            'compressed_size':
-                79939201324
-        },
         # v0.24 repairs the out-of-distribution split. Through v0.23 OOD membership was
         # gated on each source's upstream existing_split pin, so declared hold-outs kept
         # rows in train (SelvaBox: 585 images / 231,932 boxes) -- see
@@ -140,6 +127,16 @@ class TreeBoxesDataset(MillionTreesDataset):
             # unused for local download=False training/eval runs.
             'compressed_size':
                 79939201324
+        },
+        # v0.25 repackages alongside the TreePolygons license filtering (see
+        # TreePolygons._versions_dict); box content is unchanged from v0.24.
+        "0.25": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_v0.25.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreeBoxes_supervised_v0.25.zip",
+            'compressed_size':
+                109762843008
         }
     }
 

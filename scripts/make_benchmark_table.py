@@ -37,6 +37,10 @@ METRIC_PATTERNS = {
     # precision (and therefore F1). Runs made before AP moved off IoU 0.5 only
     # report AP50 and show "-" here until they are re-evaluated.
     "AP40": r"average ap40:\s*([\d.]+)",
+    # AP at IoU 0.6, registered on TreeBoxes/TreePolygons since 2026-08-22: same
+    # predictions and ranking as AP40, stricter match. Reported alongside AP40,
+    # never alone (CLAUDE.md section 4) -- its value is the AP40->AP60 drop.
+    "AP60": r"average ap60:\s*([\d.]+)",
 }
 
 # For each task, the (recall, precision) metrics used to compute the detection F1.
@@ -51,14 +55,14 @@ F1_INPUTS = {
 # Map task names to which metrics are relevant (recall, precision, F1 first so the
 # F1 sort key is easy to read against its inputs).
 TASK_METRICS = {
-    "TreeBoxes": ["DetectionRecall", "MaskAwarePrecision", "F1", "AP40", "CountingMAE"],
+    "TreeBoxes": ["DetectionRecall", "MaskAwarePrecision", "F1", "AP40", "AP60", "CountingMAE"],
     "TreePoints": ["KeypointAccuracy", "MaskAwarePrecision", "F1", "CountingMAE"],
-    "TreePolygons": ["MaskRecall", "MaskAwarePrecision", "F1", "MaskAccuracy", "AP40"],
+    "TreePolygons": ["MaskRecall", "MaskAwarePrecision", "F1", "MaskAccuracy", "AP40", "AP60"],
 }
 
 # Dataset version every published row is scored against. Bump on a release, and
 # re-run every row -- mixing versions across rows makes the table uncomparable.
-DATA_VERSION = "v0.24"
+DATA_VERSION = "v0.25"
 
 # The published leaderboard rows.
 #
@@ -123,24 +127,10 @@ RUNS = [
                       "of iters, warmup <=1000 iters, seed 42"),
         },
     },
-    {
-        "model": "DeepForest Mask R-CNN",
-        "task": "TreePolygons",
-        "finetuned": True,
-        "path": ("training/polygons/outputs/deepforest_annotationsafecrop/{split}/"
-                 "results_{split}.txt"),
-        "splits": ["within-distribution", "out-of-distribution"],
-        "config": {
-            "weights": "torchvision Mask R-CNN, COCO init",
-            "score_threshold": "0.10",
-            "eval_image_size": "448, tiled stream eval",
-            "env": "shared `.venv` (`uv run`)",
-            "train": ("`training/slurm/train_polygons_deepforest_annotationsafecrop.sbatch`: "
-                      "batch 16, lr 0.01, <=100 epochs, image 448, "
-                      "`--train-aug annotationsafecrop`, `--eval-inference tiled`, "
-                      "`--data-scope subset`, seed 42"),
-        },
-    },
+    # NOTE: the DeepForest (torchvision) Mask R-CNN polygon row was dropped from the
+    # manuscript 2026-09-02 (see memory feedback_maskrcnn_is_detectron_only) -- "Mask
+    # R-CNN" now means Detectron2 only. Do not re-add
+    # `training/polygons/outputs/deepforest_annotationsafecrop/` as a leaderboard row.
     # ---- pretrained / zero-shot ----------------------------------------------
     {
         "model": "CanopyRS DINO Swin-L",
@@ -260,7 +250,7 @@ RUNS = [
         "model": "TreeFormer + SAM2",
         "task": "TreePolygons",
         "finetuned": False,
-        "path": ("existing_models/treeformer_sam2/outputs/crossgeometry_v024/"
+        "path": ("existing_models/treeformer_sam2/outputs/crossgeometry_v025/"
                  "results_polygons_crossgeometry.txt"),
         "splits": ["crossgeometry"],
         "config": {

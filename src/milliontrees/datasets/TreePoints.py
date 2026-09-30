@@ -99,22 +99,10 @@ class TreePointsDataset(MillionTreesDataset):
         # Only versions whose archives are still on the server belong here: the
         # host keeps the two most recent releases and deletes the rest, so a
         # version left in this dict after its zips are removed turns every
-        # download=True call into a 404. v0.18-v0.21 were pruned for that reason.
+        # download=True call into a 404. v0.18-v0.23 were pruned for that reason.
         # v0.22 re-tiles the sources so every packaged image matches its tree-coverage
         # mask; in v0.21 the regenerated masks no longer match the v0.21 Allen imagery
         # and the loader raises on the validation split.
-        # v0.23 repackages every geometry alongside the TreeBoxes source restoration
-        # (see TreeBoxes._versions_dict); point content is unchanged from v0.22.
-        "0.23": {
-            'download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.23.zip",
-            'supervised_download_url':
-                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.23.zip",
-            # TODO: refresh with the real zip size once v0.23 zips finish building;
-            # unused for local download=False training/eval runs.
-            'compressed_size':
-                190971944620
-        },
         # v0.24 changes the point task substantially -- see
         # notes/ood_split_test_sources_and_leaks.md:
         #   * Beery et al. 2022 (AutoArborist) ships as 'Beery et al. 2022 unsupervised'.
@@ -137,6 +125,16 @@ class TreePointsDataset(MillionTreesDataset):
             # unused for local download=False training/eval runs.
             'compressed_size':
                 190971944620
+        },
+        # v0.25 repackages alongside the TreePolygons license filtering (see
+        # TreePolygons._versions_dict); point content is unchanged from v0.24.
+        "0.25": {
+            'download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_v0.25.zip",
+            'supervised_download_url':
+                "https://data.rc.ufl.edu/pub/ewhite/MillionTrees/TreePoints_supervised_v0.25.zip",
+            'compressed_size':
+                191080595158
         }
     }
 
