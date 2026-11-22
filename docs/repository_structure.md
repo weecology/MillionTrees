@@ -52,6 +52,7 @@ dependencies stay isolated from the core package.
 | TreeFormer | `existing_models/treeformer/` | points |
 | SAM3 | `existing_models/sam3/` | boxes, points, polygons |
 | CanopyRS (DINO Swin-L / DINO+SAM3) | `existing_models/canopyrs/` | boxes, polygons |
+| CanopyGIS v1.8.1 | `existing_models/canopygis/` | polygons |
 
 ```bash
 uv run python existing_models/deepforest/eval_boxes.py --split-scheme out-of-distribution --root-dir "$MT_ROOT"

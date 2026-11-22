@@ -228,6 +228,7 @@ Fine-tuned models (trained on the MillionTrees train split) vs. pretrained model
 |---|---|---|---|---|---|---|---|
 | CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.724 | 0.867 | 0.789 | 0.288 | 0.387 | 0.244 |
 | Mask R-CNN (Detectron2) | ✓ | 0.641 | 0.910 | 0.752 | 0.406 | 0.479 | 0.319 |
+| CanopyGIS v1.8.1 | ✗ | 0.459 | 0.882 | 0.604 | 0.208 | 0.243 | 0.156 |
 | SAM3 | ✗ | 0.547 | 0.612 | 0.578 | 0.146 | 0.268 | 0.181 |
 | detectree2 | ✗ | 0.554 | 0.586 | 0.570 | 0.151 | 0.263 | 0.175 |
 
@@ -255,6 +256,7 @@ Fine-tuned models (trained on the MillionTrees train split) vs. pretrained model
 | Model | Fine-tuned | MaskRecall | MaskAwarePrecision | F1 | MaskAccuracy | AP40 | AP60 |
 |---|---|---|---|---|---|---|---|
 | CanopyRS DINO + SAM3 (SelvaMask) | ✗ | 0.803 | 0.878 | 0.839 | 0.322 | 0.511 | 0.415 |
+| CanopyGIS v1.8.1 | ✗ | 0.617 | 0.936 | 0.744 | 0.314 | 0.439 | 0.350 |
 | detectree2 | ✗ | 0.617 | 0.640 | 0.628 | 0.172 | 0.306 | 0.222 |
 | SAM3 | ✗ | 0.561 | 0.674 | 0.612 | 0.169 | 0.256 | 0.175 |
 | Mask R-CNN (Detectron2) | ✓ | 0.444 | 0.929 | 0.601 | 0.314 | 0.308 | 0.232 |
@@ -281,6 +283,7 @@ Everything needed to reproduce a row beyond the dataset version. Score threshold
 | SAM3 | TreePoints | ✗ | `facebook/sam3` | 0.10 | SAM3 default | sam3 venv | not trained on MillionTrees |
 | TreeFormer (release weights) | TreePoints | ✗ | `weecology/deepforest-tree-point` | 0.10 (`score_integration_radius` 2) | 896 | frozen `.venv-treeformer` | not trained on MillionTrees |
 | Mask R-CNN (Detectron2) | TreePolygons | ✓ | COCO Mask R-CNN R50-FPN 3x; checkpoint `model_final.pth` | 0.15 (`ROI_HEADS.SCORE_THRESH_TEST`) | 448 (`min-size-test` 800, `max-size` 1333) | CanopyRS uv venv (from-source Detectron2) | `training/slurm/train_polygons_detectron2.sbatch`: batch 8, lr 0.01, 50 epochs, image 448, `min-size-train` 640-800, LR steps at 70%/90% of iters, warmup <=1000 iters, seed 42 |
+| CanopyGIS v1.8.1 | TreePolygons | ✗ | `facebook/sam3` + CanopyGIS v1.8.1 planar watershed (`napattan/CanopyGIS@v1.8.1`) | 0.10 | 1024 (`direct`, `gsd_m=None`) | `existing_models/canopygis/.venv` (`uv`) | not trained on MillionTrees (0 forestry fine-tuning; deterministic) |
 | CanopyRS DINO + SAM3 (SelvaMask) | TreePolygons | ✗ | CanopyRS DINO detector + SAM3 SelvaMask segmenter | **0.30** (per-model tuned) | CanopyRS default tiling | `existing_models/canopyrs/.venv` | not trained on MillionTrees |
 | SAM3 | TreePolygons | ✗ | `facebook/sam3` | 0.10 | SAM3 default | sam3 venv | not trained on MillionTrees |
 | TreeFormer + SAM2 | TreePolygons | ✗ | TreeFormer points -> SAM2 mask prompting | 0.10 | 896 (points stage) | frozen `.venv-treeformer` + SAM2 | not trained on MillionTrees |
