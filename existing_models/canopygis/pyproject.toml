@@ -1,0 +1,24 @@
+[project]
+name = "milliontrees-canopygis"
+version = "0.1.0"
+description = "CanopyGIS v1.8.1 pure zero-shot planar evaluation on MillionTrees TreePolygons"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "milliontrees",
+    "canopygis @ git+https://github.com/napattan/CanopyGIS.git@v1.8.1",
+    "torch",
+    "transformers>=5.0.0rc1",
+    "accelerate",
+    "huggingface-hub>=1.0.0",
+    "safetensors",
+    "tokenizers>=0.20.0",
+    "opencv-python-headless",
+    "pillow",
+    "scipy",
+    "scikit-image",
+    "shapely",
+    "numpy",
+]
+
+[tool.uv.sources]
+milliontrees = { path = "../..", editable = true }

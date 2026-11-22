@@ -245,6 +245,23 @@ RUNS = [
             "train": "not trained on MillionTrees",
         },
     },
+    {
+        "model": "CanopyGIS v1.8.1",
+        "task": "TreePolygons",
+        "finetuned": False,
+        "path": ("existing_models/canopygis/outputs/{split}/"
+                 "results_polygons_{split}.txt"),
+        "splits": ["within-distribution", "out-of-distribution"],
+        "config": {
+            "weights": ("`facebook/sam3` + CanopyGIS v1.8.1 planar watershed "
+                        "(`napattan/CanopyGIS@v1.8.1`)"),
+            "score_threshold": "0.10",
+            "eval_image_size": "1024 (`direct`, `gsd_m=None`)",
+            "env": "`existing_models/canopygis/.venv` (`uv`)",
+            "train": ("not trained on MillionTrees "
+                      "(0 forestry fine-tuning; deterministic)"),
+        },
+    },
     # ---- cross-geometry (polygons predicted from another geometry) -----------
     {
         "model": "TreeFormer + SAM2",
